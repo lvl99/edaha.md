@@ -1,0 +1,259 @@
+# edaha.md
+
+A static website and blog generator. It builds pages, paginated lists, tag and author pages and RSS feeds from Markdown articles with [Nunjucks](https://mozilla.github.io/nunjucks/) templates. It also includes a local article editor.
+
+Licensed under the [Apache License 2.0](LICENSE).
+
+## Install
+
+Requires Node.js 22 or later.
+
+```sh
+pnpm add -D @lvl99dotcom/edaha.md
+```
+
+## Quick start
+
+A site is a folder with a `config.yml` and an `articles/` folder:
+
+```
+my-site/
+  config.yml
+  articles/
+    news/
+      hello-world/
+        article.md
+        photo.jpg
+  templates/   # optional; overrides the default theme's templates
+  static/      # optional; overrides and adds to the default theme's static files
+```
+
+```yaml
+# config.yml
+name: My Site
+description: News and notes.
+```
+
+```sh
+npx edaha build --dir my-site --site-url https://example.com
+npx edaha editor --dir my-site
+```
+
+The build writes the website into `my-site/dist`. The editor runs at http://127.0.0.1:5180.
+
+## Commands
+
+```
+edaha build    Build the site into config.yml's outputDir (and copy it into publishDir, if set)
+edaha editor   Run the local article editor (only reachable from this computer)
+```
+
+| Option             | Command | Description                                                                          |
+| ------------------ | ------- | ------------------------------------------------------------------------------------ |
+| `--dir <folder>`   | both    | The site folder. Default: the current folder                                         |
+| `--site-url <url>` | build   | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl` in config |
+| `--port <number>`  | editor  | The port to listen on. Default: 5180                                                 |
+| `-h`, `--help`     |         | Show help                                                                            |
+| `-v`, `--version`  |         | Show the version                                                                     |
+
+## config.yml
+
+```yaml
+# Required: the website's name and description
+name: My Site
+description: News and notes.
+# Optional; the URL path prefix of every article type. Default: "" (the website's root)
+path: ""
+# Optional; the build folder, inside the site folder. It is emptied on every build. Default: dist
+outputDir: dist
+# Optional; a folder outside the site folder that the built files are copied into, e.g. another app's build folder
+publishDir: ../app/dist
+# Optional; the website's absolute URL for feeds, used when SITE_URL isn't set. Default: http://localhost (with a warning)
+siteUrl: https://example.com
+# Optional; paths at the website's root that articles and types can't use, e.g. another app's routes
+reservedPaths: [app, api]
+# Optional; settings for each article type (a folder in articles/)
+types:
+  news:
+    labelSingle: News
+    labelPlural: News
+  page:
+    labelSingle: Page
+    labelPlural: Pages
+    # The website's own pages, at its root: page/index is "/", page/about is "/about"
+    path: ""
+    generate:
+      list: false
+      feed: false
+      author: false
+      tag: false
+```
+
+- **Article types:** each folder in `articles/` is a type. `types` sets:
+  - its URL `path` (default: its name; `""` for the root);
+  - its labels (`labelSingle`, `labelPlural`);
+  - what is built for it (`generate`: `article`, `list`, `feed`, `author`, `tag`, all `true` by default, or `generate: false` for nothing).
+
+  A type that isn't configured gives a warning and uses the defaults. Unknown settings stop the build. Types can't be called `tags` or `authors`.
+
+- **Publishing:** when `publishDir` is set, the copy first removes what the previous build published there. It stops if a file is already there (e.g. one written by the other app's build).
+
+## Articles
+
+Each article is a folder `articles/<type>/<slug>/` with an `article.md`. Its images and attachments go in the same folder. Folder names are lowercase kebab-case.
+
+```md
+<!--yaml
+date: 2026-10-19T12:00:00.000Z # required
+status: published # published (default), draft (not built) or unlisted (own page only, not in lists or feeds)
+author: Jo Bloggs # or { name, email, url }; defaults to the website name
+template: single # optional; a template in templates/<type>/ (or templates/article/), e.g. home
+tags: [News]
+thumbnail: thumb.jpg # relative to the article folder, or an absolute URL
+attachments:
+  - url: guide.pdf
+-->
+
+# Article title
+
+The excerpt shown in lists. <!-- readmore -->The rest of the article.
+
+<!-- embed -->https://www.youtube.com/watch?v=aju_UB5VIf8<!-- /embed -->
+```
+
+- **Heading IDs:** headings get IDs from their text, so they can be linked to. "This?! Is an, example..." becomes `#this-is-an-example`. A repeated heading gets `-2`, `-3`…, and a heading without letters or numbers gets none.
+- **Extra HTML:** `<small>`, `<big>` and `<details><summary>…</summary>…</details>` can be used. Leave a blank line after `<summary>…</summary>` and before `</details>`, so the content between them is read as Markdown.
+- **Output:**
+  - Each type's list is at its path (e.g. `/news/`, 20 per page: `/news/2`, …), with a `feed.xml` RSS feed.
+  - Tag and author lists are under it (`/news/tags/<tag>/`, `/news/authors/<author>/`).
+  - Articles are at `/<type path>/<slug>/`.
+  - An article named `index` is built at its type's path in place of the list (the feed is still built). Its template gets the list's newest articles.
+- **URLs can't clash:** slugs can't be `tags`, `authors` or numbers. At the website's root, slugs and type paths can't be a `reservedPaths` entry or another type's path.
+
+## Embeds
+
+Put a URL between `<!-- embed -->` and `<!-- /embed -->` to embed it:
+
+- **YouTube** embeds always use youtube-nocookie.com.
+- **Bandcamp** embeds fetch the page at build time, so the build needs internet access.
+
+An unrecognised URL gives a warning and is rendered as a link.
+
+To add your own renderers, build from code:
+
+```ts
+import {
+  buildBlog,
+  EMBED_RENDERERS,
+  type EmbedRenderer,
+} from "@lvl99dotcom/edaha.md";
+
+const vimeo: EmbedRenderer = {
+  name: "Vimeo",
+  match: (url) => url.hostname === "vimeo.com",
+  render: async (url) =>
+    `<iframe src="https://player.vimeo.com/video${url.pathname}"></iframe>`,
+};
+
+await buildBlog({
+  siteDir: "my-site",
+  siteUrl: "https://example.com",
+  embedRenderers: [...EMBED_RENDERERS, vimeo],
+});
+```
+
+The editor's previews only use the built-in renderers.
+
+## Templates and the default theme
+
+edaha.md ships a neutral default theme in `theme/`: Nunjucks templates in `theme/templates/` and a stylesheet in `theme/static/site.css`.
+
+- **Templates:** a site's own `templates/` folder overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type. A type's own folder (e.g. `templates/page/`) overrides them, and an article's `template` setting picks another one (e.g. `page/home.njk`).
+- **Static files:** a site's own `static/` folder is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
+
+Templates get these variables:
+
+- `site.url`: the website's absolute URL.
+- `blog`: `name`, `description`, `url` and each type's settings and `url`.
+- `article` (on article pages): its settings, `bodyHtml`, `excerptHtml`, `author`, `tags` and `attachments`.
+- `list` (on list pages and index articles): its `articles` and `pagination`.
+
+They have these filters:
+
+- `date`: e.g. 19 October 2026.
+- `rfc822`: the date format feeds use.
+- `absoluteUrls(site.url)`: makes root-relative links absolute.
+
+The full types are exported as `TemplateData*`.
+
+## Editor
+
+`edaha editor` runs a local WYSIWYG editor for a site's articles. It only listens on `127.0.0.1` and must never be deployed.
+
+- **Articles:** it lists every article (including drafts), grouped by type with the newest first. It edits the title, template, body and settings.
+- **Body:** rich text with images, links, tables, small and big text, collapsible details blocks, embeds and the read more break.
+- **Files:** it uploads images and attachments into the article's folder. Uploads need the article to be saved first.
+- **Moving:** changing an article's type or slug moves its folder.
+- **Views:** "WYSIWYG", "Markdown" and "Preview" switch between rich text, the body's Markdown, and the unsaved article rendered with its type's "single" template. The preview uses the site's templates and static files over the theme's. It is sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API.
+- **Safety:** its API only accepts changes from the editor page itself.
+- **Saving:** saving rewrites `article.md` in a normalised form (e.g. the read more break on its own line).
+
+## API
+
+```ts
+import { buildBlog, startEditor } from "@lvl99dotcom/edaha.md";
+
+const result = await buildBlog({
+  siteDir: "my-site",
+  siteUrl: "https://example.com",
+});
+console.log(result.files);
+
+const editor = await startEditor({ siteDir: "my-site", port: 5180 });
+console.log(`Open ${editor.url}`);
+```
+
+`buildBlog` options:
+
+- `siteDir` (required)
+- `siteUrl`
+- `themeDir`: another theme folder
+- `logger`
+- `fetch`
+- `embedRenderers`
+
+`startEditor` options:
+
+- `siteDir` (required)
+- `port`
+- `themeDir`
+- `fetch`
+
+## Development
+
+```sh
+pnpm install
+pnpm build          # dist/: Node.js code and types (tsc), and the editor page (Vite)
+pnpm test           # unit tests
+pnpm test:coverage  # unit tests with coverage
+pnpm typecheck
+pnpm lint
+pnpm format:check
+EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for a site
+```
+
+### Project layout
+
+- `src/generator/`: reads `config.yml` and articles, renders templates and builds the site (`buildBlog`).
+- `src/embeds/`: embed renderers.
+- `src/server/`: the editor's API, article store and Markdown conversion.
+- `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`.
+- `src/editor/`: the editor's web server (`startEditor`).
+- `src/cli/`: the `edaha` command.
+- `src/theme/`: the path to `theme/`.
+- `src/shared/tests/`: test helpers and a fixture site.
+- `theme/`: the default templates and stylesheet.
+
+Source imports name their files with `.ts` extensions (e.g. `../slug/index.ts`), so scripts run directly with Node.js type stripping. The build rewrites them to `.js`.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.
