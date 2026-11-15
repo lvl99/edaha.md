@@ -1,0 +1,34 @@
+{
+  // Type checks everything: source, tests, scripts and configs. See tsconfig.build.json for the published code.
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "compilerOptions": {
+    // Environment Settings
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    // The editor client runs in browsers; the generator, editor server and CLI run in Node.js
+    "lib": ["es2022", "dom", "dom.iterable"],
+    // Vite's types let the editor import its components' style.css as text (?inline)
+    "types": ["node", "vite/client"],
+    "resolveJsonModule": true,
+    // Source imports use .ts extensions so scripts run directly with Node.js type stripping; the build rewrites them
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
+
+    // Stricter Typechecking Options
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+
+    // Recommended Options
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src", "scripts", "*.config.ts"]
+}
