@@ -2,7 +2,7 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
-## Unreleased
+## 0.1.0 (2026-11-15)
 
 The first release: the blog generator and article editor from LiveCanvas, as a package of their own.
 

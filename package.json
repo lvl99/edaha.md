@@ -1,7 +1,7 @@
 {
   "name": "@lvl99dotcom/edaha.md",
   "version": "0.0.0",
-  "description": "Static blog and website generator from Markdown articles, with a local article editor.",
+  "description": "Static blog and website generator using Markdown",
   "keywords": [
     "blog",
     "static-site-generator",
