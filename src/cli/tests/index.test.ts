@@ -1,0 +1,163 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it, vi } from "vitest";
+import { USAGE, parsePort, runCli, version, type CliContext } from "..";
+import { startEditor } from "../../editor";
+import type { BuildResult } from "../../generator/build";
+
+// The real editor would keep listening after the test
+vi.mock("../../editor/index.ts", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  startEditor: vi.fn(async ({ port }: { port: number }) => ({
+    url: `http://127.0.0.1:${port}`,
+    close: async () => undefined,
+  })),
+}));
+
+/** A CLI context that records messages, with fake build and editor functions */
+const context = (
+  overrides: Partial<Pick<CliContext, "cwd" | "env" | "build">> = {},
+) => {
+  const build = vi.fn(async (): Promise<BuildResult> => ({
+    outputDir: "/site/dist",
+    publishDir: "/app/dist",
+    articles: [],
+    files: ["index.html"],
+  }));
+  const editor = vi.fn(async () => ({
+    url: "http://127.0.0.1:5180",
+    close: async () => undefined,
+  }));
+  return {
+    cwd: "/work",
+    env: {},
+    log: vi.fn(),
+    error: vi.fn(),
+    build,
+    editor,
+    ...overrides,
+  };
+};
+
+describe("version", () => {
+  it("should read the package's version", () => {
+    const pkg = JSON.parse(
+      readFileSync(new URL("../../../package.json", import.meta.url), "utf8"),
+    ) as { version: string };
+    expect(version()).toBe(pkg.version);
+  });
+});
+
+describe("parsePort", () => {
+  it("should read port numbers and reject anything else", () => {
+    expect(parsePort("5180")).toBe(5180);
+    for (const value of ["0", "65536", "abc", "51.8", ""])
+      expect(() => parsePort(value), value).toThrow(
+        "--port must be a number from 1 to 65535",
+      );
+  });
+});
+
+describe("runCli", () => {
+  it("should show help and the version", async () => {
+    const help = context();
+    expect(await runCli(["--help"], help)).toBe(0);
+    expect(help.log).toHaveBeenCalledWith(USAGE);
+    const none = context();
+    expect(await runCli([], none)).toBe(1);
+    expect(none.log).toHaveBeenCalledWith(USAGE);
+    const ver = context();
+    expect(await runCli(["-v"], ver)).toBe(0);
+    expect(ver.log).toHaveBeenCalledWith(version());
+  });
+
+  it("should refuse unknown commands, options and extra arguments", async () => {
+    for (const args of [["publish"], ["build", "--nope"], ["build", "extra"]]) {
+      const ctx = context();
+      expect(await runCli(args, ctx), args.join(" ")).toBe(1);
+      expect(ctx.error.mock.calls[0]?.[0]).toContain(USAGE);
+    }
+  });
+
+  it("should build the site in the current folder, with SITE_URL", async () => {
+    const ctx = context({ env: { SITE_URL: "https://example.com" } });
+    expect(await runCli(["build"], ctx)).toBe(0);
+    expect(ctx.build).toHaveBeenCalledWith({
+      siteDir: "/work",
+      siteUrl: "https://example.com",
+      logger: { warn: ctx.error },
+    });
+    expect(ctx.log).toHaveBeenCalledWith(
+      "Built 0 articles (1 files) into /site/dist and copied them into /app/dist",
+    );
+  });
+
+  it("should build another folder with --dir and --site-url, without a publish folder", async () => {
+    const ctx = context({
+      env: { SITE_URL: "https://ignored.com" },
+      build: vi.fn(async () => ({
+        outputDir: "/work/blog/dist",
+        publishDir: undefined,
+        articles: [],
+        files: [],
+      })),
+    });
+    expect(
+      await runCli(
+        ["build", "--dir", "blog", "--site-url", "https://example.com"],
+        ctx,
+      ),
+    ).toBe(0);
+    expect(ctx.build).toHaveBeenCalledWith(
+      expect.objectContaining({
+        siteDir: "/work/blog",
+        siteUrl: "https://example.com",
+      }),
+    );
+    expect(ctx.log).toHaveBeenCalledWith(
+      "Built 0 articles (0 files) into /work/blog/dist",
+    );
+  });
+
+  it("should report build errors", async () => {
+    const ctx = context({
+      build: vi.fn(async () => {
+        throw new Error("config.yml: expected a map of settings");
+      }),
+    });
+    expect(await runCli(["build"], ctx)).toBe(1);
+    expect(ctx.error).toHaveBeenCalledWith(
+      "config.yml: expected a map of settings",
+    );
+  });
+
+  it("should start the editor on the default port or --port", async () => {
+    const ctx = context();
+    expect(await runCli(["editor"], ctx)).toBe(0);
+    expect(ctx.editor).toHaveBeenCalledWith({ siteDir: "/work", port: 5180 });
+    expect(ctx.log).toHaveBeenCalledWith(
+      "Article editor for /work running at http://127.0.0.1:5180 (press Ctrl+C to stop)",
+    );
+    const other = context();
+    expect(await runCli(["editor", "--port", "6000"], other)).toBe(0);
+    expect(other.editor).toHaveBeenCalledWith({ siteDir: "/work", port: 6000 });
+    const bad = context();
+    expect(await runCli(["editor", "--port", "x"], bad)).toBe(1);
+    expect(bad.error).toHaveBeenCalledWith(
+      '--port must be a number from 1 to 65535, got "x"',
+    );
+  });
+
+  it("should use the real build when none is given", async () => {
+    const ctx = context({ cwd: "/nonexistent-edaha-site" });
+    delete (ctx as Partial<CliContext>).build;
+    expect(await runCli(["build"], ctx)).toBe(1);
+    expect(ctx.error.mock.calls[0]?.[0]).toContain("ENOENT");
+  });
+
+  it("should use the real editor when none is given", async () => {
+    const ctx = context();
+    delete (ctx as Partial<CliContext>).editor;
+    expect(await runCli(["editor", "--port", "6001"], ctx)).toBe(0);
+    expect(startEditor).toHaveBeenCalledWith({ siteDir: "/work", port: 6001 });
+  });
+});

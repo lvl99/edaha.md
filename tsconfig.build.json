@@ -1,0 +1,15 @@
+{
+  // Writes the published Node.js code and type definitions (dist/) for the generator, editor server, embeds and CLI.
+  // The editor's browser code is bundled by Vite instead (see vite.config.ts).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": ["es2022", "dom"],
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["src/**/tests", "src/client"]
+}
