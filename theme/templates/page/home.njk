@@ -1,0 +1,21 @@
+{# The website's front page: its title and body, without the header or breadcrumbs #}
+{% extends "layouts/html.njk" %}
+
+{% block head_title %}{{ blog.name }}{% endblock %}
+
+{% block head_description %}{{ blog.description }}{% endblock %}
+
+{% block bodyClass %}home{% endblock %}
+
+{# The title is the page's own header #}
+{% block header %}{% endblock %}
+
+{% block breadcrumb %}{% endblock %}
+
+{% block main %}
+<h1 class="site-title">{{ article.title }}</h1>
+
+<div class="home-body">
+  {{ article.bodyHtml | safe }}
+</div>
+{% endblock %}

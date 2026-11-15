@@ -1,0 +1,138 @@
+/* Structural layout only */
+blog-editor {
+  display: grid;
+  grid-template-columns: 16rem 1fr;
+  gap: 1rem;
+}
+blog-article form {
+  display: grid;
+  grid-template-columns: 1fr 20rem;
+  gap: 1rem;
+}
+blog-article-data-field {
+  display: block;
+  margin-block: 0.5rem;
+}
+blog-article-data-field input,
+blog-article-data-field select,
+blog-article-data-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+.toasts {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 24rem;
+}
+.toast {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: Canvas;
+  border: 1px solid;
+}
+.toast.error {
+  border-width: 2px;
+}
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 40%);
+}
+.dialog {
+  padding: 1rem;
+  background: Canvas;
+  border: 1px solid;
+}
+blog-article .preview {
+  box-sizing: border-box;
+  width: 100%;
+  height: 40rem;
+}
+.richtext-content .ProseMirror {
+  min-height: 20rem;
+}
+.richtext-content img {
+  max-width: 100%;
+}
+/* Editor-only blocks: outlined so they can be seen and clicked, and highlighted when selected */
+.richtext-content .readmore-block,
+.richtext-content .embed-block {
+  margin-block: 0.5rem;
+  padding: 0.5rem;
+  border: 1px dashed;
+  cursor: pointer;
+}
+.richtext-content .block-header {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.richtext-content .block-header span {
+  flex: 1;
+}
+/* Details blocks: outlined like the other blocks, with their summary and content outlined inside and labelled. The
+   content is always shown while editing (the extension's own toggle button, which hides it, isn't shown). */
+.richtext-content [data-type="details"] {
+  margin-block: 0.5rem;
+  padding: 0.5rem;
+  border: 1px dashed;
+  /* Clicking the box (not its summary or content) selects the whole block */
+  cursor: pointer;
+}
+.richtext-content [data-type="details"] summary,
+.richtext-content [data-type="detailsContent"] {
+  cursor: text;
+}
+.richtext-content [data-type="details"] > button {
+  display: none;
+}
+.richtext-content [data-type="details"] summary,
+.richtext-content [data-type="detailsContent"] {
+  display: block;
+  margin-block-start: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px dotted;
+}
+.richtext-content [data-type="detailsContent"][hidden] {
+  display: block;
+}
+.richtext-content [data-type="details"]::before,
+.richtext-content [data-type="details"] summary::before,
+.richtext-content [data-type="detailsContent"]::before {
+  display: block;
+  font-size: 0.75em;
+  font-weight: normal;
+  opacity: 0.6;
+}
+.richtext-content [data-type="details"]::before {
+  content: "Details";
+}
+.richtext-content [data-type="details"] summary::before {
+  content: "Summary";
+}
+.richtext-content [data-type="detailsContent"]::before {
+  content: "Content";
+}
+.richtext-content .embed-preview iframe {
+  max-width: 100%;
+}
+/* Heading IDs, shown after headings for copying into links */
+.richtext-content .heading-id {
+  margin-inline-start: 0.5em;
+  font-size: 0.75em;
+  font-weight: normal;
+  opacity: 0.6;
+  user-select: all;
+}
+.richtext-content .ProseMirror-selectednode {
+  outline: 3px solid Highlight;
+}

@@ -1,0 +1,217 @@
+import { Hono } from "hono";
+import mime from "mime-types";
+import { EmbedResolver } from "../../embeds/index.ts";
+import {
+  editorHtmlToMarkdown,
+  markdownToEditorHtml,
+} from "../convert/index.ts";
+import { bodyBaseUrl, EditorError, type ArticleStore } from "../store/index.ts";
+import type {
+  ArticleLocation,
+  EditorArticleData,
+  EmbedPreview,
+} from "../types/index.ts";
+
+/** Options for the editor API */
+export interface EditorAppOptions {
+  /** Origins allowed to change articles, e.g. "http://127.0.0.1:5180" */
+  allowedOrigins: readonly string[];
+  /** Fetches extra data for embed previews (defaults to the global fetch) */
+  fetch?: typeof fetch | undefined;
+}
+
+/**
+ * The Content Security Policy of preview pages and their files: like the website's news pages (its own files, YouTube
+ * and Bandcamp embeds), but with no scripts, requests or forms at all. Previews are served from the editor's own
+ * address, so this is what stops anything in an article from using the editor's API.
+ */
+export const PREVIEW_CSP =
+  "default-src 'self'; script-src 'none'; frame-src https://www.youtube-nocookie.com https://bandcamp.com; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
+
+/**
+ * Create the article editor's local API. Requests that change files must come from the editor's own page (checked
+ * with the Origin header), so other websites open in the same browser can't write articles.
+ *
+ * Routes:
+ * - `GET /api/articles`: list articles
+ * - `GET /api/types`: the article types from config.yml, with their labels
+ * - `GET /api/templates/:type`: the template names an article of a type can use
+ * - `POST /api/articles`: create an article
+ * - `GET|PUT|DELETE /api/articles/:type/:slug`: load, save (and move) or delete an article
+ * - `POST /api/articles/:type/:slug/files`: upload a file (multipart field "file")
+ * - `GET /files/:type/:slug/:name`: an article's file, for previews in the editor
+ * - `GET /api/embed?url=...`: render an embed URL as the website would, for previews in the editor
+ * - `POST /api/convert/markdown` and `POST /api/convert/html`: convert an article body between editor HTML and Markdown
+ *   (`{ html | markdown, location? }`, where `location` is the saved article's, which relative URLs are relative to)
+ * - `POST /api/preview`: remember unsaved article data (`{ data, location? }`) for a preview page, and give its URL
+ *   (`{ url }`); answers 400 if it can't be rendered
+ * - `GET /preview/:id/`: render a remembered preview with its type's "single" template, and `GET /<path>`: one of the
+ *   blog's static files (e.g. `/site.css`), both with a Content Security Policy that forbids scripts (`PREVIEW_CSP`)
+ *
+ * @example
+ * const app = createEditorApp(new ArticleStore("packages/blog"), { allowedOrigins: ["http://127.0.0.1:5180"] });
+ */
+export const createEditorApp = (
+  store: ArticleStore,
+  {
+    allowedOrigins,
+    fetch: fetchFn = (...args) => fetch(...args),
+  }: EditorAppOptions,
+): Hono => {
+  const app = new Hono();
+
+  app.use(async (c, next) => {
+    if (c.req.method !== "GET" && c.req.method !== "HEAD") {
+      const origin = c.req.header("origin");
+      if (!origin || !allowedOrigins.includes(origin))
+        return c.json({ error: "Forbidden" }, 403);
+    }
+    await next();
+  });
+
+  app.onError((error, c) =>
+    error instanceof EditorError
+      ? c.json({ error: error.message }, error.status as 400)
+      : c.json({ error: error.message }, 500),
+  );
+
+  app.get("/api/articles", async (c) => c.json(await store.list()));
+
+  app.get("/api/types", async (c) => c.json(await store.types()));
+
+  app.get("/api/templates/:type", (c) =>
+    c.json(store.templates(c.req.param("type"))),
+  );
+
+  app.get("/api/embed", async (c) => {
+    const url = c.req.query("url") ?? "";
+    const warnings: string[] = [];
+    // A new resolver each time, so a fixed URL or a network failure isn't remembered
+    const embeds = new EmbedResolver({
+      fetch: fetchFn,
+      logger: { warn: (message) => warnings.push(message) },
+    });
+    return c.json<EmbedPreview>({
+      html: await embeds.render(url, "Preview"),
+      warnings,
+    });
+  });
+
+  app.post("/api/convert/markdown", async (c) => {
+    const { html, location } = await c.req.json<{
+      html: string;
+      location?: ArticleLocation;
+    }>();
+    return c.json({
+      markdown: editorHtmlToMarkdown(html, bodyBaseUrl(location)),
+    });
+  });
+
+  app.post("/api/convert/html", async (c) => {
+    const { markdown, location } = await c.req.json<{
+      markdown: string;
+      location?: ArticleLocation;
+    }>();
+    return c.json({
+      html: markdownToEditorHtml(markdown, bodyBaseUrl(location)),
+    });
+  });
+
+  app.post("/api/preview", async (c) => {
+    const { data, location } = await c.req.json<{
+      data: EditorArticleData;
+      location?: ArticleLocation;
+    }>();
+    // A new resolver each time, so a fixed URL or a network failure isn't remembered
+    const embeds = new EmbedResolver({
+      fetch: fetchFn,
+      logger: { warn: () => undefined },
+    });
+    // Rendered now to report problems (e.g. a missing file), then again each time the page is shown
+    await store.preview(data, location, embeds);
+    return c.json({
+      url: `/preview/${store.rememberPreview(data, location)}/`,
+    });
+  });
+
+  app.post("/api/articles", async (c) => {
+    const data = await c.req.json<EditorArticleData>();
+    return c.json(await store.save(data), 201);
+  });
+
+  app.get("/api/articles/:type/:slug", async (c) =>
+    c.json(await store.read(c.req.param("type"), c.req.param("slug"))),
+  );
+
+  app.put("/api/articles/:type/:slug", async (c) => {
+    const data = await c.req.json<EditorArticleData>();
+    return c.json(
+      await store.save(data, {
+        type: c.req.param("type"),
+        slug: c.req.param("slug"),
+      }),
+    );
+  });
+
+  app.delete("/api/articles/:type/:slug", async (c) => {
+    await store.remove(c.req.param("type"), c.req.param("slug"));
+    return c.body(null, 204);
+  });
+
+  app.post("/api/articles/:type/:slug/files", async (c) => {
+    const body = await c.req.parseBody();
+    const file = body.file;
+    if (!(file instanceof File))
+      throw new EditorError(400, 'Expected a file in the "file" field');
+    return c.json(
+      await store.upload(
+        c.req.param("type"),
+        c.req.param("slug"),
+        file.name,
+        new Uint8Array(await file.arrayBuffer()),
+      ),
+      201,
+    );
+  });
+
+  app.get("/files/:type/:slug/:name", async (c) => {
+    const name = c.req.param("name");
+    const contents = await store.file(
+      c.req.param("type"),
+      c.req.param("slug"),
+      name,
+    );
+    return c.body(contents as Uint8Array<ArrayBuffer>, 200, {
+      "Content-Type": mime.lookup(name) || "application/octet-stream",
+      "Cache-Control": "no-store",
+    });
+  });
+
+  // A remembered preview, rendered now, so template changes show when it reloads
+  app.get("/preview/:id/", async (c) => {
+    const html = await store.renderPreview(
+      c.req.param("id"),
+      new EmbedResolver({ fetch: fetchFn, logger: { warn: () => undefined } }),
+    );
+    return c.html(html, 200, {
+      "Cache-Control": "no-store",
+      "Content-Security-Policy": PREVIEW_CSP,
+    });
+  });
+
+  // The blog's static files (stylesheet, fonts), at the root as preview pages link them
+  app.get("/*", async (c) => {
+    const path = decodeURIComponent(c.req.path.slice(1));
+    return c.body(
+      (await store.staticFile(path)) as Uint8Array<ArrayBuffer>,
+      200,
+      {
+        "Content-Type": mime.lookup(path) || "application/octet-stream",
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": PREVIEW_CSP,
+      },
+    );
+  });
+
+  return app;
+};

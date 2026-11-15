@@ -1,0 +1,18 @@
+{% extends "layouts/html.njk" %}
+
+{% block head_title %}{{ article.title }} | {{ blog.name }}{% endblock %}
+
+{% block head_description %}{{ article.excerptText }}{% endblock %}
+
+{% block breadcrumbItems %}
+<li><a href="{{ article.url }}" aria-current="page">{{ article.title }}</a></li>
+{% endblock %}
+
+{% block main %}
+<article>
+  <h1 class="article-title">{{ article.title }}</h1>
+  <p class="article-updated">Last updated: <time datetime="{{ article.date }}">{{ article.date | date }}</time></p>
+
+  {{ article.bodyHtml | safe }}
+</article>
+{% endblock %}

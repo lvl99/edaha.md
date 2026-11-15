@@ -1,0 +1,256 @@
+import { parse } from "yaml";
+import { isSlug } from "../slug/index.ts";
+
+/** What is built for an article type */
+export interface GenerateConfig {
+  /** Build the type's articles (when false, nothing else is built for it either) */
+  article: boolean;
+  /** Build the type's list pages, and include its articles in the all-articles list */
+  list: boolean;
+  /** Build the type's feed, and include its articles in the all-articles, tag and author feeds */
+  feed: boolean;
+  /** Include the type's articles in author lists */
+  author: boolean;
+  /** Include the type's articles in tag lists */
+  tag: boolean;
+}
+
+/** Settings of an article type */
+export interface ArticleTypeConfig {
+  /** The type's URL path ("" for the blog's root), e.g. "news" */
+  path: string;
+  /** Label for one article, e.g. "Article" */
+  labelSingle: string;
+  /** Label for several articles, e.g. "Articles" */
+  labelPlural: string;
+  /** What is built for the type */
+  generate: GenerateConfig;
+}
+
+/** Blog-level settings from `config.yml` */
+export interface BlogConfig {
+  /** The name of the website */
+  name: string;
+  /** The description of the website */
+  description: string;
+  /** The URL path prefix of every article type ("" for the website's root) */
+  path: string;
+  /** The build folder, relative to the site folder and inside it (emptied on every build). Default: "dist" */
+  outputDir: string;
+  /** Optional; where built files are copied to, relative to the site folder (e.g. another app's build folder) */
+  publishDir?: string | undefined;
+  /** Optional; the website's absolute URL for feeds, used when the `SITE_URL` environment variable isn't set */
+  siteUrl?: string | undefined;
+  /** Paths at the website's root that the blog can't use, e.g. another app's routes. Default: none */
+  reservedPaths: string[];
+  /** Article type settings, by type */
+  types: Record<string, ArticleTypeConfig>;
+}
+
+/** Settings under `generate` */
+const GENERATE_KEYS: (keyof GenerateConfig)[] = [
+  "article",
+  "list",
+  "feed",
+  "author",
+  "tag",
+];
+
+/** Settings of an article type */
+const TYPE_KEYS = ["labelSingle", "labelPlural", "path", "generate"];
+
+/** Blog settings */
+const CONFIG_KEYS = [
+  "name",
+  "description",
+  "path",
+  "outputDir",
+  "publishDir",
+  "siteUrl",
+  "reservedPaths",
+  "types",
+];
+
+/** List folders that can't be used as article types */
+export const RESERVED_TYPES = ["tags", "authors"];
+
+/**
+ * Settings for an article type that isn't configured: everything generated, labelled from its name.
+ *
+ * @example
+ * defaultTypeConfig("video"); // { path: "video", labelSingle: "Video", labelPlural: "Videos", generate: { article: true, ... } }
+ */
+export const defaultTypeConfig = (type: string): ArticleTypeConfig => {
+  const labelSingle = type.charAt(0).toUpperCase() + type.slice(1);
+  return {
+    path: type,
+    labelSingle,
+    labelPlural: `${labelSingle}s`,
+    generate: {
+      article: true,
+      list: true,
+      feed: true,
+      author: true,
+      tag: true,
+    },
+  };
+};
+
+/** Check a value is a map, throwing a config error if not */
+const asMap = (value: unknown, what: string): Record<string, unknown> => {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw new Error(`config.yml: ${what} must be a map`);
+  return value as Record<string, unknown>;
+};
+
+/**
+ * Read an optional URL path: lowercase kebab-case, or "" for the root.
+ */
+const parsePath = (value: unknown, what: string): string | undefined => {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string" || (value !== "" && !isSlug(value)))
+    throw new Error(
+      `config.yml: ${what} must be lowercase kebab-case, or "" for the root`,
+    );
+  return value;
+};
+
+/** Throw a config error for keys that aren't allowed */
+const checkKeys = (
+  map: Record<string, unknown>,
+  allowed: string[],
+  what: string,
+) => {
+  const unknown = Object.keys(map).filter((key) => !allowed.includes(key));
+  if (unknown.length)
+    throw new Error(
+      `config.yml: unknown ${what} setting${unknown.length > 1 ? "s" : ""} ${unknown.map((key) => `"${key}"`).join(", ")}`,
+    );
+};
+
+/**
+ * Parse one article type's settings, filling in defaults.
+ */
+const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
+  if (!isSlug(type) || RESERVED_TYPES.includes(type))
+    throw new Error(
+      `config.yml: type "${type}" must be lowercase kebab-case and not ${RESERVED_TYPES.join(" or ")}`,
+    );
+  const config = defaultTypeConfig(type);
+  if (value === null || value === undefined) return config;
+  const fields = asMap(value, `"types.${type}"`);
+  checkKeys(fields, TYPE_KEYS, `"types.${type}"`);
+  for (const label of ["labelSingle", "labelPlural"] as const) {
+    const text = fields[label];
+    if (text === undefined) continue;
+    if (typeof text !== "string" || !text.trim())
+      throw new Error(
+        `config.yml: "types.${type}.${label}" must be a non-empty string`,
+      );
+    config[label] = text.trim();
+  }
+  config.path = parsePath(fields.path, `"types.${type}.path"`) ?? type;
+  const generate = fields.generate;
+  if (generate === false)
+    for (const key of GENERATE_KEYS) config.generate[key] = false;
+  else if (generate !== undefined && generate !== true) {
+    const flags = asMap(generate, `"types.${type}.generate"`);
+    checkKeys(flags, GENERATE_KEYS, `"types.${type}.generate"`);
+    for (const key of GENERATE_KEYS) {
+      const flag = flags[key];
+      if (flag === undefined) continue;
+      if (typeof flag !== "boolean")
+        throw new Error(
+          `config.yml: "types.${type}.generate.${key}" must be true or false`,
+        );
+      config.generate[key] = flag;
+    }
+  }
+  // Without articles, nothing else can be built
+  if (!config.generate.article)
+    for (const key of GENERATE_KEYS) config.generate[key] = false;
+  return config;
+};
+
+/**
+ * Read a required, non-empty string field from parsed YAML.
+ */
+const requireString = (data: Record<string, unknown>, field: string) => {
+  const value = data[field];
+  if (typeof value !== "string" || value.trim() === "")
+    throw new Error(`config.yml: "${field}" must be a non-empty string`);
+  return value.trim();
+};
+
+/**
+ * Read an optional, non-empty string field from parsed YAML.
+ */
+const optionalString = (data: Record<string, unknown>, field: string) =>
+  data[field] === undefined || data[field] === null
+    ? undefined
+    : requireString(data, field);
+
+/**
+ * Read the optional site URL: an absolute http(s) URL.
+ */
+const parseSiteUrl = (data: Record<string, unknown>) => {
+  const value = optionalString(data, "siteUrl");
+  if (value !== undefined && !/^https?:\/\/[^/]/.test(value))
+    throw new Error(
+      'config.yml: "siteUrl" must be an absolute http(s) URL, e.g. "https://example.com"',
+    );
+  return value;
+};
+
+/**
+ * Read the optional list of reserved paths: URL path segments or file names, e.g. "app" or "jwks.json".
+ */
+const parseReservedPaths = (data: Record<string, unknown>): string[] => {
+  const value = data.reservedPaths;
+  if (value === undefined || value === null) return [];
+  if (
+    !Array.isArray(value) ||
+    value.some(
+      (path) =>
+        typeof path !== "string" || !/^[a-z0-9][a-z0-9._-]*$/.test(path),
+    )
+  )
+    throw new Error(
+      'config.yml: "reservedPaths" must be a list of lowercase paths at the website\'s root, e.g. ["app", "api"]',
+    );
+  return value as string[];
+};
+
+/**
+ * Parse and validate the contents of the blog's `config.yml`.
+ *
+ * @example
+ * parseConfig("name: News\ndescription: Updates\noutputDir: dist");
+ */
+export const parseConfig = (text: string): BlogConfig => {
+  const data: unknown = parse(text);
+  if (!data || typeof data !== "object" || Array.isArray(data))
+    throw new Error("config.yml: expected a map of settings");
+  const fields = data as Record<string, unknown>;
+  checkKeys(fields, CONFIG_KEYS, "blog");
+  const types =
+    fields.types === undefined || fields.types === null
+      ? {}
+      : asMap(fields.types, '"types"');
+  const config = {
+    name: requireString(fields, "name"),
+    description: requireString(fields, "description"),
+    path: parsePath(fields.path, '"path"') ?? "",
+    outputDir: optionalString(fields, "outputDir") ?? "dist",
+    publishDir: optionalString(fields, "publishDir"),
+    siteUrl: parseSiteUrl(fields),
+    reservedPaths: parseReservedPaths(fields),
+    types: Object.fromEntries(
+      Object.entries(types).map(([type, value]) => [
+        type,
+        parseTypeConfig(type, value),
+      ]),
+    ),
+  };
+  return config;
+};

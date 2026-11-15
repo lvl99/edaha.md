@@ -1,0 +1,69 @@
+{% extends "layouts/html.njk" %}
+
+{% block head_title %}{{ list.name }} | {% if list.pagination.page.index > 1 %}Page {{ list.pagination.page.index }} | {% endif %}{{ blog.name }}{% endblock %}
+
+{% block breadcrumbItems %}
+{% set type = blog.types[list.type] %}
+{% if list.kind != "type" %}
+<li><a href="{{ type.url }}">{{ type.labelPlural }}</a></li>
+{% endif %}
+<li><a href="{{ list.url }}" aria-current="page">{{ list.name }}</a></li>
+{% endblock %}
+
+{% block main %}
+<h1>{{ list.name }}</h1>
+{% if list.kind == "tag" %}
+<p>{{ blog.types[list.type].labelPlural }} tagged "{{ list.name }}".</p>
+{% elif list.kind == "author" %}
+<p>{{ blog.types[list.type].labelPlural }} by {{ list.name }}.</p>
+{% endif %}
+
+{% if list.articles.length %}
+<ul class="list-articles">
+  {% for article in list.articles %}
+  <li class="list-article">
+    {% if article.thumbnail %}
+    <div class="article-thumbnail">
+      <a href="{{ article.url }}"><img src="{{ article.thumbnail }}" alt="" /></a>
+    </div>
+    {% endif %}
+    <div class="article-info">
+      <h2 class="article-title"><a href="{{ article.url }}">{{ article.title }}</a></h2>
+      <p class="article-meta">
+        <time datetime="{{ article.date }}">{{ article.date | date }}</time>
+        by {{ article.author.name }}
+      </p>
+      <div class="article-excerpt">
+        {{ article.excerptHtml | safe }}
+        <p><a class="button article-readmore" href="{{ article.url }}">Read more<span class="visually-hidden"> of {{ article.title }}</span></a></p>
+      </div>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No articles yet.</p>
+{% endif %}
+
+{% if list.pagination.pages.length > 1 %}
+<nav aria-label="Pages">
+  <ul>
+    {% if list.pagination.prevPage %}
+    <li><a href="{{ list.pagination.prevPage.url }}" rel="prev">Previous</a></li>
+    {% endif %}
+    {% for page in list.pagination.pages %}
+    <li>
+      <a href="{{ page.url }}" title="View page {{ page.index }} of {{ list.pagination.pages.length }}"{% if page.isCurrent %} aria-current="page"{% endif %}>{{ page.index }}</a>
+    </li>
+    {% endfor %}
+    {% if list.pagination.nextPage %}
+    <li><a href="{{ list.pagination.nextPage.url }}" rel="next">Next</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% if list.hasFeed %}
+<p><a href="{{ list.feedUrl }}">RSS feed</a></p>
+{% endif %}
+{% endblock %}
