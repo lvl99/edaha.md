@@ -19,8 +19,17 @@ import type {
   TemplateDataTag,
 } from "../types/index.ts";
 
-/** The YAML config header at the start of an article: `<!--yaml ... -->` */
-const HEADER = /^\s*<!--yaml\s*?\n([\s\S]*?)-->/;
+/** Formats an article's config header can be written in */
+export const HEADER_FORMATS = ["yaml", "yml", "json"] as const;
+
+/** A format an article's config header can be written in */
+export type HeaderFormat = (typeof HEADER_FORMATS)[number];
+
+/** The format articles' config headers are written in by default */
+export const DEFAULT_HEADER_FORMAT: HeaderFormat = "yaml";
+
+/** The config header at the start of an article: `<!--yaml ... -->`, `<!--yml ... -->` or `<!--json ... -->` */
+const HEADER = /^\s*<!--(yaml|yml|json)[ \t]*\r?\n([\s\S]*?)-->/;
 
 /** The `<!-- readmore -->` shortcode */
 export const READMORE = /<!--\s*readmore\s*-->/;
@@ -66,18 +75,48 @@ export interface ArticleConfig {
 }
 
 /**
- * Split an article's source into its parsed YAML config header (empty if there is none) and its markdown content.
+ * The format of an article's config header, or DEFAULT_HEADER_FORMAT if it has none.
  *
  * @example
- * splitArticle("<!--yaml\ndate: 2026-10-19\n-->\n# Hi"); // { header: { date: "2026-10-19" }, content: "\n# Hi" }
+ * headerFormat("<!--json\n{}\n-->\n# Hi"); // "json"
+ */
+export const headerFormat = (source: string): HeaderFormat =>
+  (HEADER.exec(source)?.[1] as HeaderFormat | undefined) ??
+  DEFAULT_HEADER_FORMAT;
+
+/**
+ * Split an article's source into its parsed config header (empty if there is none), the header's format and its
+ * markdown content. The header is YAML (`<!--yaml` or `<!--yml`) or JSON (`<!--json`). Throws if it can't be read.
+ *
+ * @example
+ * splitArticle("<!--yaml\ndate: 2026-10-19\n-->\n# Hi"); // { header: { date: "2026-10-19" }, format: "yaml", content: "\n# Hi" }
+ * splitArticle('<!--json\n{ "date": "2026-10-19" }\n-->\n# Hi'); // { header: { date: "2026-10-19" }, format: "json", content: "\n# Hi" }
  */
 export const splitArticle = (
   source: string,
-): { header: unknown; content: string } => {
+): { header: unknown; format: HeaderFormat; content: string } => {
   const match = HEADER.exec(source);
-  if (!match) return { header: {}, content: source };
+  if (!match)
+    return { header: {}, format: DEFAULT_HEADER_FORMAT, content: source };
+  const format = match[1] as HeaderFormat;
+  const text = match[2] as string;
+  let header: unknown;
+  try {
+    header =
+      format === "json"
+        ? text.trim()
+          ? (JSON.parse(text) as unknown)
+          : null
+        : (parse(text) as unknown);
+  } catch (error) {
+    throw new Error(
+      `the ${format} config header can't be read: ${(error as Error).message}`,
+      { cause: error },
+    );
+  }
   return {
-    header: parse(match[1] as string) ?? {},
+    header: header ?? {},
+    format,
     content: source.slice(match[0].length),
   };
 };
@@ -350,7 +389,13 @@ export const loadArticle = async (
   type: string,
   context: ArticleContext,
 ): Promise<TemplateDataArticle | undefined> => {
-  const { header, content } = splitArticle(source);
+  let split: ReturnType<typeof splitArticle>;
+  try {
+    split = splitArticle(source);
+  } catch (error) {
+    return fail(context.source, (error as Error).message);
+  }
+  const { header, content } = split;
   const config = parseArticleConfig(header, type, context.source);
   if (config.status === "draft") return undefined;
 

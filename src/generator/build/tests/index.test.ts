@@ -543,6 +543,22 @@ describe("buildBlog", () => {
       join(space.siteDir, "articles"),
       join(space.siteDir, "content"),
     );
+    // Articles with yml and json headers too
+    const content = join(space.siteDir, "content");
+    const about = join(content, "page/about-us/article.md");
+    await writeFile(
+      about,
+      (await readFile(about, "utf8")).replace("<!--yaml", "<!--yml"),
+    );
+    const hidden = join(content, "article/hidden/article.md");
+    await writeFile(
+      hidden,
+      (await readFile(hidden, "utf8")).replace(
+        /^<!--yaml\n([\s\S]*?)-->/,
+        (_, header: string) =>
+          `<!--json\n${JSON.stringify(parse(header))}\n-->`,
+      ),
+    );
     const settings = parse(
       await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8"),
     ) as Record<string, unknown>;
@@ -563,6 +579,12 @@ describe("buildBlog", () => {
     expect(logger.warn).toHaveBeenCalledWith(
       'content/page: type "page" is not in settings.json; using the default settings',
     );
+    // Article config headers are never written into built files
+    for (const file of result.files)
+      expect(
+        await readFile(join(result.outputDir, file), "utf8"),
+        file,
+      ).not.toMatch(/<!--(yaml|yml|json)/);
 
     await writeFile(
       configFile,

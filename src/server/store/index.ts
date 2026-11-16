@@ -12,10 +12,13 @@ import { basename, extname, join } from "node:path";
 import { stringify } from "yaml";
 import type { EmbedResolver } from "../../embeds/index.ts";
 import {
+  DEFAULT_HEADER_FORMAT,
+  headerFormat,
   loadArticle,
   parseArticleConfig,
   splitArticle,
   splitContent,
+  type HeaderFormat,
 } from "../../generator/article/index.ts";
 import { blogData, DEFAULT_SITE_URL } from "../../generator/build/index.ts";
 import {
@@ -136,15 +139,19 @@ export const safeFileName = (name: string): string => {
 };
 
 /**
- * Write an article's markdown source: the YAML config header, the title as an H1 and the body.
+ * Write an article's markdown source: the config header (YAML by default, or JSON), the title as an H1 and the body.
  * The type (always the article's folder) and defaults (empty lists) are left out to keep the header short.
+ *
+ * @param format - the config header's format
  *
  * @example
  * serializeArticle({ type: "article", slug: "hi", status: "published", date, title: "Hi", tags: [], attachments: [] }, "Body");
+ * serializeArticle(data, "Body", "json"); // '<!--json\n{\n  "status": "published", ...'
  */
 export const serializeArticle = (
   data: EditorArticleData,
   body: string,
+  format: HeaderFormat = DEFAULT_HEADER_FORMAT,
 ): string => {
   const author =
     data.author && (data.author.email || data.author.url)
@@ -170,7 +177,11 @@ export const serializeArticle = (
       tags: data.tags.length ? data.tags : undefined,
     }).filter(([, value]) => value !== undefined && value !== ""),
   );
-  return `<!--yaml\n${stringify(config)}-->\n\n# ${data.title.trim()}\n\n${body}\n`;
+  const header =
+    format === "json"
+      ? `${JSON.stringify(config, null, 2)}\n`
+      : stringify(config);
+  return `<!--${format}\n${header}-->\n\n# ${data.title.trim()}\n\n${body}\n`;
 };
 
 /**
@@ -365,19 +376,18 @@ export class ArticleStore {
         409,
         `Article ${data.type}/${data.slug} already exists`,
       );
+    // A saved article keeps its config header's format; new ones get the default
+    const format = from
+      ? headerFormat(await this.source(from.type, from.slug))
+      : DEFAULT_HEADER_FORMAT;
     const fromDir = from ? this.dir(from.type, from.slug) : undefined;
-    if (fromDir && !(await exists(join(fromDir, "article.md"))))
-      throw new EditorError(
-        404,
-        `Article ${from?.type}/${from?.slug} not found`,
-      );
 
     // Files referenced from the body keep working after a move, as they are saved relative to the folder
     const body = editorHtmlToMarkdown(
       data.bodyHtml,
       filesUrl(from?.type ?? data.type, from?.slug ?? data.slug),
     );
-    const source = serializeArticle(data, body);
+    const source = serializeArticle(data, body, format);
     try {
       parseArticleConfig(
         splitArticle(source).header,

@@ -95,6 +95,15 @@ describe("serializeArticle", () => {
     );
   });
 
+  it("should write the header as JSON or YAML in the given format", () => {
+    expect(serializeArticle(data({ tags: ["News"] }), "Body", "json")).toBe(
+      `<!--json\n{\n  "status": "draft",\n  "date": "${DATE}",\n  "tags": [\n    "News"\n  ]\n}\n-->\n\n# New one\n\nBody\n`,
+    );
+    expect(serializeArticle(data(), "Body", "yml")).toBe(
+      `<!--yml\nstatus: draft\ndate: ${DATE}\n-->\n\n# New one\n\nBody\n`,
+    );
+  });
+
   it("should write every field, with a plain author name when that is all there is", () => {
     expect(
       serializeArticle(
@@ -359,6 +368,40 @@ describe("ArticleStore", () => {
     );
     expect(source).toContain("# Renamed\n");
     expect(source).toContain("![an image](thumb.png)");
+  });
+
+  it("should keep a saved article's header format, and write new ones' as YAML", async () => {
+    const { dir, store } = await blog();
+    const file = join(dir, "articles/article/first/article.md");
+    const yaml = await readFile(file, "utf8");
+    await writeFile(
+      file,
+      yaml.replace(
+        /^<!--yaml\n[\s\S]*?-->/,
+        `<!--json\n{ "date": "${DATE}" }\n-->`,
+      ),
+    );
+    const article = await store.read("article", "first");
+    await store.save(
+      { ...article, slug: "first-moved" },
+      { type: "article", slug: "first" },
+    );
+    const moved = await readFile(
+      join(dir, "articles/article/first-moved/article.md"),
+      "utf8",
+    );
+    expect(moved).toMatch(
+      /^<!--json\n\{\n {2}"status": "published",\n {2}"date": /,
+    );
+    expect((await store.read("article", "first-moved")).date).toBe(DATE);
+
+    await store.save(data({ slug: "brand-new" }));
+    expect(
+      await readFile(
+        join(dir, "articles/article/brand-new/article.md"),
+        "utf8",
+      ),
+    ).toMatch(/^<!--yaml\n/);
   });
 
   it("should move an article's folder when its type or slug changes", async () => {

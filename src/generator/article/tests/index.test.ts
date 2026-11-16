@@ -4,6 +4,7 @@ import {
   authorData,
   loadArticle,
   parseArticleConfig,
+  headerFormat,
   splitArticle,
   splitContent,
   tagData,
@@ -53,16 +54,65 @@ describe("splitArticle", () => {
   it("should split the YAML header from the content", () => {
     expect(splitArticle("<!--yaml\ndate: 2026-10-19\n-->\n# Hi")).toEqual({
       header: { date: "2026-10-19" },
+      format: "yaml",
+      content: "\n# Hi",
+    });
+    expect(splitArticle("<!--yml\r\ndate: 2026-10-19\r\n-->\n# Hi")).toEqual({
+      header: { date: "2026-10-19" },
+      format: "yml",
+      content: "\n# Hi",
+    });
+  });
+
+  it("should split the JSON header from the content", () => {
+    expect(
+      splitArticle(
+        '<!--json \n{ "date": "2026-10-19", "tags": ["a"] }\n-->\n# Hi',
+      ),
+    ).toEqual({
+      header: { date: "2026-10-19", tags: ["a"] },
+      format: "json",
       content: "\n# Hi",
     });
   });
 
   it("should treat a missing or empty header as no config", () => {
-    expect(splitArticle("# Hi")).toEqual({ header: {}, content: "# Hi" });
-    expect(splitArticle("<!--yaml\n-->\nBody")).toEqual({
+    expect(splitArticle("# Hi")).toEqual({
       header: {},
-      content: "\nBody",
+      format: "yaml",
+      content: "# Hi",
     });
+    for (const format of ["yaml", "yml", "json"])
+      expect(splitArticle(`<!--${format}\n-->\nBody`)).toEqual({
+        header: {},
+        format,
+        content: "\nBody",
+      });
+  });
+
+  it("should leave other comments and unknown formats in the content", () => {
+    expect(splitArticle("<!--toml\na = 1\n-->\n# Hi")).toEqual({
+      header: {},
+      format: "yaml",
+      content: "<!--toml\na = 1\n-->\n# Hi",
+    });
+  });
+
+  it("should throw when the header can't be read", () => {
+    expect(() => splitArticle("<!--json\n{ date: 1 }\n-->\n# Hi")).toThrow(
+      /^the json config header can't be read: /,
+    );
+    expect(() => splitArticle("<!--yaml\na: [\n-->\n# Hi")).toThrow(
+      /^the yaml config header can't be read: /,
+    );
+  });
+});
+
+describe("headerFormat", () => {
+  it("should give the config header's format, or yaml when there is none", () => {
+    expect(headerFormat("<!--json\n{}\n-->\n# Hi")).toBe("json");
+    expect(headerFormat("<!--yml\na: [\n-->")).toBe("yml");
+    expect(headerFormat("# Hi")).toBe("yaml");
   });
 });
 
@@ -226,6 +276,26 @@ describe("authorData and tagData", () => {
 });
 
 describe("loadArticle", () => {
+  it("should read JSON headers and leave them out of the article", async () => {
+    const article = await loadArticle(
+      `<!--json\n{ "date": "${DATE}", "tags": ["News"] }\n-->\n# Json\n\nBody`,
+      "article",
+      context(),
+    );
+    expect(article?.title).toBe("Json");
+    expect(article?.tags.map((tag) => tag.name)).toEqual(["News"]);
+    expect(article?.bodyHtml).not.toContain("<!--");
+    expect(article?.bodyHtml).not.toContain(DATE);
+  });
+
+  it("should name the article when its header can't be read", async () => {
+    await expect(
+      loadArticle("<!--json\n{\n-->\n# Bad", "article", context()),
+    ).rejects.toThrow(
+      /^articles\/article\/first: the json config header can't be read: /,
+    );
+  });
+
   it("should return nothing for drafts", async () => {
     expect(
       await loadArticle(
