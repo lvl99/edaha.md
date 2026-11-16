@@ -7,8 +7,14 @@ import mime from "mime-types";
 /** The address the server listens on: this computer only */
 export const SITE_HOST = "127.0.0.1";
 
-/** The port to listen on: PORT, or 5181 */
-export const sitePort = (): number => Number(process.env.PORT ?? 5181);
+/**
+ * The port to listen on: PORT, or the given default.
+ *
+ * @example
+ * sitePort(8449); // 8449, or PORT if it is set
+ */
+export const sitePort = (defaultPort: number): number =>
+  Number(process.env.PORT ?? defaultPort);
 
 /** The URL path pages listen on for reloads, in live reload mode */
 const RELOAD_PATH = "/__edaha_reload";
@@ -20,6 +26,8 @@ const RELOAD_SCRIPT = `<script>new EventSource("${RELOAD_PATH}").addEventListene
 export interface SiteServerOptions {
   /** The built website's folder (read on every request, so it can change) */
   root: () => string;
+  /** The port to listen on when PORT isn't set */
+  port: number;
   /** Reload open pages when `reload()` is called */
   liveReload?: boolean;
 }
@@ -62,15 +70,16 @@ const sendText = (response: ServerResponse, status: number, text: string) => {
 };
 
 /**
- * Serve a built website on this computer (SITE_HOST), at sitePort(). In live reload mode, HTML pages reload when
+ * Serve a built website on this computer (SITE_HOST), at PORT or the given port. Rejects if the port is in use. In live reload mode, HTML pages reload when
  * `reload()` is called.
  *
  * @example
- * const server = await startSiteServer({ root: () => "site/build" });
+ * const server = await startSiteServer({ root: () => "site/build", port: 5181 });
  * console.log(server.url);
  */
 export const startSiteServer = ({
   root,
+  port: defaultPort,
   liveReload = false,
 }: SiteServerOptions): Promise<SiteServer> => {
   const listeners = new Set<ServerResponse>();
@@ -104,9 +113,18 @@ export const startSiteServer = ({
       })
       .catch((error: unknown) => sendText(response, 500, String(error)));
   });
-  const port = sitePort();
+  const port = sitePort(defaultPort);
   return new Promise((done, fail) => {
-    server.once("error", fail);
+    server.once("error", (error: NodeJS.ErrnoException) =>
+      fail(
+        error.code === "EADDRINUSE"
+          ? new Error(
+              `Port ${port} is already in use; stop what is using it, or set PORT to use another port`,
+              { cause: error },
+            )
+          : error,
+      ),
+    );
     server.listen(port, SITE_HOST, () =>
       done({
         url: `http://${SITE_HOST}:${port}`,

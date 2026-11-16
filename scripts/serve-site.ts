@@ -11,5 +11,10 @@ if (!(await stat(root).catch(() => undefined))) {
   process.exit(1);
 }
 
-const server = await startSiteServer({ root: () => root });
+const server = await startSiteServer({ root: () => root, port: 5181 }).catch(
+  (error: Error) => {
+    console.error(error.message);
+    process.exit(1);
+  },
+);
 console.log(`Serving ${root} at ${server.url} (press Ctrl+C to stop)`);

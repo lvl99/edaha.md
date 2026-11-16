@@ -1,6 +1,6 @@
 // Builds and serves the edaha.md website (site/) on this computer, and rebuilds it whenever its articles, config file,
 // templates, static files or the default theme change, reloading open pages. Run with `pnpm site:dev`. Set PORT to use
-// another port than 5181.
+// another port than 8449 (U+8449 is 葉, "leaf").
 import { existsSync, watch } from "node:fs";
 import {
   basename,
@@ -31,7 +31,11 @@ const SETTLE_TIME = 150;
 
 const server = await startSiteServer({
   root: () => outputDir,
+  port: 8449,
   liveReload: true,
+}).catch((error: Error) => {
+  console.error(error.message);
+  process.exit(1);
 });
 
 /** Whether a build is running, and whether another is needed once it finishes */
