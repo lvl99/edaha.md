@@ -151,6 +151,8 @@ The excerpt shown in lists. <!-- readmore -->The rest of the article.
 
 - **Heading IDs:** headings get IDs from their text, so they can be linked to. "This?! Is an, example..." becomes `#this-is-an-example`. A repeated heading gets `-2`, `-3`…, and a heading without letters or numbers gets none.
 - **Extra HTML:** `<small>`, `<big>` and `<details><summary>…</summary>…</details>` can be used. Leave a blank line after `<summary>…</summary>` and before `</details>`, so the content between them is read as Markdown.
+- **Raw content:** anything between `<!-- raw -->` and `<!-- /raw -->` is shown exactly as it is written: no Markdown, embeds, read more breaks or typography. On its own lines it is a `<pre class="raw">` block; within a line, a `<span class="raw">`.
+- **Code:** read more breaks, embeds and raw markers in code blocks and inline code are left as they are.
 - **Output:**
   - Each type's list is at its path (e.g. `/news/`, 20 per page: `/news/2`, …), with a `feed.xml` RSS feed.
   - Tag and author lists are under it (`/news/tags/<tag>/`, `/news/authors/<author>/`).
@@ -217,7 +219,7 @@ The full types are exported as `TemplateData*`.
 `edaha editor` runs a local WYSIWYG editor for a site's articles. It only listens on `127.0.0.1` and must never be deployed.
 
 - **Articles:** it lists every article (including drafts), grouped by type with the newest first. It edits the title, template, body and settings.
-- **Body:** rich text with images, links, tables, small and big text, collapsible details blocks, embeds and the read more break.
+- **Body:** rich text with images, links, tables, small and big text, collapsible details blocks, raw blocks, embeds and the read more break.
 - **Files:** it uploads images and attachments into the article's folder. Uploads need the article to be saved first.
 - **Moving:** changing an article's type or slug moves its folder.
 - **Views:** "WYSIWYG", "Markdown" and "Preview" switch between rich text, the body's Markdown, and the unsaved article rendered with its type's "single" template. The preview uses the site's templates and static files over the theme's. It is sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API.

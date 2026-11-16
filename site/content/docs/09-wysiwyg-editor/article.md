@@ -28,6 +28,7 @@ The list of articles shows every article, including drafts, grouped by type with
    - **Details**: a block readers can open and close;
    - **Image URL**, **Upload image** and **Table**;
    - **Embed**: a YouTube video, Bandcamp player or other [embed](/docs/07-embeds/), from its address;
+   - **Raw**: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;
    - **Read more**: where the article's summary in lists ends.
 4. Choose **Save**.
 

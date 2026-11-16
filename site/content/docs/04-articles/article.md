@@ -108,7 +108,36 @@ After the header comes the article in Markdown:
 - **Images and links** to files in the article's folder are written relative to it, e.g. `![A photo](photo.jpg)`.
 - **Headings** get IDs from their text, so they can be linked to: `## Getting started` can be linked as `#getting-started`.
 - **Embeds** turn a URL into a video or player. See [Embeds](/docs/07-embeds/).
+- **Raw content** is shown exactly as it is written. See [Raw content](#raw-content).
 - **Extra HTML:** `<small>`, `<big>` and `<details><summary>…</summary>…</details>` can be used. Leave a blank line after `</summary>` and before `</details>`, so the content between them is read as Markdown.
+
+## Raw content
+
+Put content between `<!-- raw -->` and `<!-- /raw -->` to show it exactly as it is written. Nothing inside is read as Markdown, embeds, read more breaks or HTML, and quotes and dashes aren't made typographic:
+
+<!-- prettier-ignore -->
+```md
+<!-- raw -->
+*Not italic*, # not a heading, <b>not bold</b>
+<!-- readmore --> isn't a read more break here
+<!-- /raw -->
+```
+
+Shows on the page as:
+
+<!-- prettier-ignore-start -->
+<!-- raw -->
+*Not italic*, # not a heading, <b>not bold</b>
+<!-- readmore --> isn't a read more break here
+<!-- /raw -->
+<!-- prettier-ignore-end -->
+
+- **On its own lines**, raw content is a block, `<pre class="raw">`, keeping its spaces and line breaks.
+- **Within a line**, e.g. `Type <!-- raw -->*<!-- /raw --> for a star`, it is inline, `<span class="raw">`.
+- The default theme shows raw content in the page's own font. Style `.raw` in your site's `static/site.css` to change it.
+- Raw markers inside code blocks and inline code are left alone, as on this page.
+
+In the [WYSIWYG editor](/docs/09-wysiwyg-editor/), the **Raw** button turns a block into raw content.
 
 ## Excerpts
 
