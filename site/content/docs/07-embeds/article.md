@@ -99,12 +99,12 @@ The editor's preview pages only allow frames from the origins that embeds list i
 
 ### From code
 
-If you build with code rather than the `edaha` command, `buildBlog` and `startEditor` also take `embedRenderers`: the renderers tried after the config file's. They default to the built-in ones, which are exported as `EMBED_RENDERERS`.
+If you build with code rather than the `edaha` command, `buildSite` and `startEditor` also take `embedRenderers`: the renderers tried after the config file's. They default to the built-in ones, which are exported as `EMBED_RENDERERS`.
 
 ```ts
-import { buildBlog, EMBED_RENDERERS } from "@lvl99dotcom/edaha.md";
+import { buildSite, EMBED_RENDERERS } from "@lvl99dotcom/edaha.md";
 
-await buildBlog({
+await buildSite({
   siteDir: "my-site",
   embedRenderers: [...EMBED_RENDERERS, vimeo],
 });

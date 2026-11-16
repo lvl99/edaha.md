@@ -97,9 +97,9 @@ Each type's list pages use its `list` template: `templates/<type>/list.njk`, or 
 ```njk
 <h1>{{ list.name }}</h1>
 {% if list.kind == "tag" %}
-<p>{{ blog.types[list.type].labelPlural }} tagged "{{ list.name }}".</p>
+<p>{{ site.types[list.type].labelPlural }} tagged "{{ list.name }}".</p>
 {% elif list.kind == "author" %}
-<p>{{ blog.types[list.type].labelPlural }} by {{ list.name }}.</p>
+<p>{{ site.types[list.type].labelPlural }} by {{ list.name }}.</p>
 {% endif %}
 ```
 

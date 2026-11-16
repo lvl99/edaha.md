@@ -193,7 +193,7 @@ export default {
 };
 ```
 
-`render` gets the URL and `{ fetch }`, and returns HTML; it throws if the URL can't be embedded, which gives a warning and a link. From code, `buildBlog` and `startEditor` also take `embedRenderers`: the renderers tried after the config file's (default: the built-in ones, `EMBED_RENDERERS`).
+`render` gets the URL and `{ fetch }`, and returns HTML; it throws if the URL can't be embedded, which gives a warning and a link. From code, `buildSite` and `startEditor` also take `embedRenderers`: the renderers tried after the config file's (default: the built-in ones, `EMBED_RENDERERS`).
 
 ## Templates and the default theme
 
@@ -204,8 +204,7 @@ edaha.md ships a neutral default theme in `theme/`: Nunjucks templates in `theme
 
 Templates get these variables:
 
-- `site.url`: the website's absolute URL.
-- `blog`: `name`, `description`, `url` and each type's settings and `url`.
+- `site`: the website's `name`, `description`, `url` (its absolute URL), `path` (its home URL, e.g. `/`) and `types` (each type's settings and `url`).
 - `article` (on article pages): its settings, `bodyHtml`, `excerptHtml`, `author`, `tags` and `attachments`.
 - `list` (on list pages and index articles): its `articles` and `pagination`.
 
@@ -232,9 +231,9 @@ The full types are exported as `TemplateData*`.
 ## API
 
 ```ts
-import { buildBlog, startEditor } from "@lvl99dotcom/edaha.md";
+import { buildSite, startEditor } from "@lvl99dotcom/edaha.md";
 
-const result = await buildBlog({
+const result = await buildSite({
   siteDir: "my-site",
   siteUrl: "https://example.com",
 });
@@ -244,7 +243,7 @@ const editor = await startEditor({ siteDir: "my-site", port: 5180 });
 console.log(`Open ${editor.url}`);
 ```
 
-`buildBlog` options:
+`buildSite` options:
 
 - `siteDir`: the folder to look for a config file in. Default: the current folder
 - `configFile`: the config file to use instead
@@ -256,7 +255,7 @@ console.log(`Open ${editor.url}`);
 
 `startEditor` (and `createEditorServer`) options:
 
-- `siteDir`, `configFile`: as for `buildBlog`
+- `siteDir`, `configFile`: as for `buildSite`
 - `port`
 - `themeDir`
 - `fetch`
@@ -280,7 +279,7 @@ pnpm site:dev       # build and serve site/ at http://127.0.0.1:8449, rebuilding
 
 ### Project layout
 
-- `src/generator/`: finds and reads the config file and articles, renders templates and builds the site (`buildBlog`).
+- `src/generator/`: finds and reads the config file and articles, renders templates and builds the site (`buildSite`).
 - `src/embeds/`: embed renderers.
 - `src/server/`: the editor's API, article store and Markdown conversion.
 - `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`.

@@ -78,8 +78,10 @@ The editor lists the templates an article can use.
 
 Every template gets:
 
-- `site.url`: the website's absolute URL, e.g. `https://example.com`.
-- `blog`: the website's `name`, `description` and `url`, and its `types`, each with its settings (`labelSingle`, `labelPlural`, `path`, `generate`) and `url`.
+- `site.name` and `site.description`: the website's name and description.
+- `site.url`: the website's absolute URL, e.g. `https://example.com`, for links that leave the website (e.g. in feeds).
+- `site.path`: the URL of the website's home page, e.g. `/` (or `/docs/` with the `path` setting `docs`).
+- `site.types`: each article type's settings (`labelSingle`, `labelPlural`, `path`, `generate`) and `url`.
 
 Article pages also get `article`:
 
@@ -132,7 +134,7 @@ The theme's templates extend `layouts/html.njk` and fill in its blocks: `head_ti
 ```njk
 {% block header %}
 <header class="site-header">
-  <p class="site-title"><a href="{{ blog.url }}">{{ blog.name }}</a></p>
+  <p class="site-title"><a href="{{ site.path }}">{{ site.name }}</a></p>
   <nav aria-label="Main">
     <a href="/docs/">Docs</a>
     <a href="/news/">News</a>
@@ -148,7 +150,7 @@ The theme's templates extend `layouts/html.njk` and fill in its blocks: `head_ti
 ```njk
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ article.title }} | {{ blog.name }}{% endblock %}
+{% block head_title %}{{ article.title }} | {{ site.name }}{% endblock %}
 
 {% block main %}
 <article>
@@ -166,7 +168,7 @@ The theme's templates extend `layouts/html.njk` and fill in its blocks: `head_ti
 ```njk
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ list.name }} | {{ blog.name }}{% endblock %}
+{% block head_title %}{{ list.name }} | {{ site.name }}{% endblock %}
 
 {% block main %}
 <h1>{{ list.name }}</h1>
@@ -185,7 +187,7 @@ Create `templates/page/landing.njk`, then set `template: landing` in an article'
 ### Show tags with their lists
 
 ```njk
-{% if article.tags.length and blog.types[article.type].generate.tag %}
+{% if article.tags.length and site.types[article.type].generate.tag %}
 <ul class="tags">
   {% for tag in article.tags %}
   <li><a href="{{ tag.url }}">{{ tag.name }}</a></li>
