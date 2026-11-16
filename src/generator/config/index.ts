@@ -38,8 +38,12 @@ export interface BlogConfig {
   path: string;
   /** The build folder, relative to the site folder and inside it (emptied on every build). Default: "build" */
   outputDir: string;
-  /** The articles folder, relative to the site folder and inside it, apart from templates/ and static/. Default: "articles" */
+  /** The articles folder, relative to the site folder and inside it. Default: "articles" */
   articlesDir: string;
+  /** The site's templates folder, over the theme's, relative to the site folder and inside it. Default: "templates" */
+  templatesDir: string;
+  /** The site's static files folder, over the theme's, relative to the site folder and inside it. Default: "static" */
+  staticDir: string;
   /** Optional; where built files are copied to, relative to the site folder (e.g. another app's build folder) */
   publishDir?: string | undefined;
   /** Optional; the website's absolute URL for feeds, used when the `SITE_URL` environment variable isn't set */
@@ -71,6 +75,8 @@ const CONFIG_KEYS = [
   "path",
   "outputDir",
   "articlesDir",
+  "templatesDir",
+  "staticDir",
   "publishDir",
   "siteUrl",
   "reservedPaths",
@@ -208,26 +214,55 @@ const parseSiteUrl = (data: Record<string, unknown>) => {
 /**
  * Read the optional list of reserved paths: URL path segments or file names, e.g. "app" or "jwks.json".
  */
-/** The site's folders that the articles folder must be apart from */
-const THEME_FOLDERS = ["templates", "static"];
+/** The site's source folders' settings, with their defaults */
+export const SOURCE_FOLDERS = {
+  articlesDir: "articles",
+  templatesDir: "templates",
+  staticDir: "static",
+} as const;
+
+/** A setting for one of the site's source folders */
+type SourceFolder = keyof typeof SOURCE_FOLDERS;
 
 /**
- * Read the optional articles folder: a folder inside the site folder, apart from its theme folders. Gives the folder
+ * Read an optional source folder setting: a folder inside the site folder (not the site folder itself). Gives the folder
  * with "/" separators.
  */
-const parseArticlesDir = (data: Record<string, unknown>): string => {
-  const value = optionalString(data, "articlesDir") ?? "articles";
+const parseFolder = (
+  data: Record<string, unknown>,
+  field: SourceFolder,
+): string => {
+  const value = optionalString(data, field) ?? SOURCE_FOLDERS[field];
   const folder = normalize(value).split(sep).join("/").replace(/\/$/, "");
-  if (
-    isAbsolute(value) ||
-    folder === "." ||
-    folder.split("/")[0] === ".." ||
-    THEME_FOLDERS.includes(folder.split("/")[0] as string)
-  )
+  if (isAbsolute(value) || folder === "." || folder.split("/")[0] === "..")
     throw new Error(
-      `"articlesDir" must be a folder inside the site folder, apart from ${THEME_FOLDERS.join(" and ")}, got "${value}"`,
+      `"${field}" must be a folder inside the site folder, got "${value}"`,
     );
   return folder;
+};
+
+/** Whether one folder (with "/" separators) is the other or inside it */
+const overlaps = (a: string, b: string) =>
+  a === b || a.startsWith(`${b}/`) || b.startsWith(`${a}/`);
+
+/**
+ * Read the source folders (articles, templates and static files), which must be apart from each other.
+ */
+const parseSourceFolders = (
+  data: Record<string, unknown>,
+): Record<SourceFolder, string> => {
+  const fields = Object.keys(SOURCE_FOLDERS) as SourceFolder[];
+  const folders = Object.fromEntries(
+    fields.map((field) => [field, parseFolder(data, field)]),
+  ) as Record<SourceFolder, string>;
+  fields.forEach((a, i) => {
+    for (const b of fields.slice(i + 1))
+      if (overlaps(folders[a], folders[b]))
+        throw new Error(
+          `"${a}" and "${b}" must be apart from each other, got "${folders[a]}" and "${folders[b]}"`,
+        );
+  });
+  return folders;
 };
 
 /** Whether a value is an embed renderer: a name, match and render functions, and optional frame sources */
@@ -296,7 +331,7 @@ const validateConfig = (data: unknown): BlogConfig => {
     description: requireString(fields, "description"),
     path: parsePath(fields.path, '"path"') ?? "",
     outputDir: optionalString(fields, "outputDir") ?? "build",
-    articlesDir: parseArticlesDir(fields),
+    ...parseSourceFolders(fields),
     publishDir: optionalString(fields, "publishDir"),
     siteUrl: parseSiteUrl(fields),
     reservedPaths: parseReservedPaths(fields),

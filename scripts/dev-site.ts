@@ -96,8 +96,8 @@ const changed = (path: string) => {
 const folders = [
   join(projectDir, "site"),
   join(siteDir, config.articlesDir),
-  join(siteDir, "templates"),
-  join(siteDir, "static"),
+  join(siteDir, config.templatesDir),
+  join(siteDir, config.staticDir),
   THEME_DIR,
 ].filter(
   (folder, index, all) =>

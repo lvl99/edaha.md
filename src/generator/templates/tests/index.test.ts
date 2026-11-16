@@ -70,7 +70,7 @@ describe("Templates", () => {
       warn: vi.fn(),
     });
     expect(() => templates.resolve("page", "missing")).toThrow(
-      'Template "missing" not found in templates/page/ or templates/article/',
+      /^Template "missing" not found: looked for page\/missing\.njk and article\/missing\.njk in \/.+$/,
     );
   });
 

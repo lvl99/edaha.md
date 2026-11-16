@@ -25,6 +25,7 @@ import { loadArticle } from "../article/index.ts";
 import {
   defaultTypeConfig,
   RESERVED_TYPES,
+  SOURCE_FOLDERS,
   type ArticleTypeConfig,
   type BlogConfig,
 } from "../config/index.ts";
@@ -59,7 +60,7 @@ export interface BuildOptions {
   /**
    * The folder to look for a config file in, before the nearest package.json's folder (see findConfigFile). Default:
    * the current folder. The site folder is the config file's folder: it holds the articles folder (`articlesDir`), and
-   * optionally templates/ and static/.
+   * optionally the templates and static files folders (`templatesDir` and `staticDir`).
    */
   siteDir?: string | undefined;
   /** The config file to use instead of looking for one */
@@ -135,19 +136,19 @@ const overlaps = (a: string, b: string) => {
 
 /**
  * Resolve `outputDir` from the config file: a folder inside the site folder, apart from its source folders (the
- * articles folder, templates/ and static/), as it is emptied on every build.
+ * articles, templates and static files folders), as it is emptied on every build.
  *
- * @param articlesDir - the articles folder, relative to the site folder
+ * @param sources - the source folders, relative to the site folder (default: the default ones)
  *
  * @example
  * resolveOutputDir("/site", "build"); // "/site/build"
+ * resolveOutputDir("/site", "site/build", ["site/content", "site/templates", "site/static"]); // "/site/site/build"
  */
 export const resolveOutputDir = (
   siteDir: string,
   folder: string,
-  articlesDir: string = "articles",
+  sources: readonly string[] = Object.values(SOURCE_FOLDERS),
 ): string => {
-  const sources = [articlesDir, "templates", "static"];
   const dir = resolve(siteDir, folder);
   const fromSite = relative(resolve(siteDir), dir);
   if (!fromSite || fromSite.startsWith("..") || isAbsolute(fromSite))
@@ -261,7 +262,11 @@ export const buildBlog = async (
     }
   };
   const outputDir = checkConfig(() =>
-    resolveOutputDir(siteDir, config.outputDir, config.articlesDir),
+    resolveOutputDir(siteDir, config.outputDir, [
+      config.articlesDir,
+      config.templatesDir,
+      config.staticDir,
+    ]),
   );
   const publishDir =
     config.publishDir === undefined
@@ -270,7 +275,7 @@ export const buildBlog = async (
           resolvePublishDir(siteDir, config.publishDir as string),
         );
   const templates = new Templates(
-    [join(siteDir, "templates"), join(themeDir, "templates")],
+    [join(siteDir, config.templatesDir), join(themeDir, "templates")],
     logger,
   );
 
@@ -438,12 +443,12 @@ export const buildBlog = async (
   // Static files (stylesheet, fonts) at the website's root, beside the articles
   const statics = await staticFiles([
     join(themeDir, "static"),
-    join(siteDir, "static"),
+    join(siteDir, config.staticDir),
   ]);
   for (const file of statics.keys())
     if (await exists(join(outputDir, file)))
       throw new Error(
-        `static/${file} has the same path as an article's file; rename one of them`,
+        `${config.staticDir}/${file} has the same path as an article's file; rename one of them`,
       );
   for (const [file, source] of statics) {
     await mkdir(dirname(join(outputDir, file)), { recursive: true });

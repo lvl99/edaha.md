@@ -85,7 +85,7 @@ export class Templates {
     const fallback = `article/${name}.njk`;
     if (!this.exists(fallback))
       throw new Error(
-        `Template "${name}" not found in templates/${type}/ or templates/article/`,
+        `Template "${name}" not found: looked for ${file} and ${fallback} in ${this.dirs.join(" and ")}`,
       );
     if (this.exists(type) && !this.warned.has(file)) {
       this.warned.add(file);

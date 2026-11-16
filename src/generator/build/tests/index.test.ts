@@ -85,12 +85,17 @@ describe("resolveOutputDir", () => {
       expect(() => resolveOutputDir("/site", dir)).toThrow(
         '"outputDir" must be apart from articles, templates, static',
       );
-    expect(resolveOutputDir("/site", "articles", "content")).toBe(
+    const sources = ["site/content", "site/templates", "site/static"];
+    expect(resolveOutputDir("/site", "articles", sources)).toBe(
       "/site/articles",
     );
-    expect(() => resolveOutputDir("/site", "content/dist", "content")).toThrow(
-      '"outputDir" must be apart from content, templates, static, got "content/dist"',
+    expect(resolveOutputDir("/site", "site/build", sources)).toBe(
+      "/site/site/build",
     );
+    for (const dir of ["site/content/out", "site/templates", "site"])
+      expect(() => resolveOutputDir("/site", dir, sources)).toThrow(
+        `"outputDir" must be apart from site/content, site/templates, site/static, got "${dir}"`,
+      );
   });
 });
 
@@ -430,6 +435,25 @@ describe("buildBlog", () => {
       "Site layout: {% block main %}{% endblock %}",
     );
     await writeSiteFile(space, "static/site.css", "site");
+    const { read } = await build(space, "https://example.com");
+    expect(await read("news/first/index.html")).toMatch(/^Site layout: /);
+    expect(await read("site.css")).toBe("site");
+  });
+
+  it("should use the templatesDir and staticDir folders", async () => {
+    const space = await workspace();
+    await writeFile(
+      join(space.siteDir, "edahaconfig.yml"),
+      `templatesDir: site/templates\nstaticDir: site/static\n${await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8")}`,
+    );
+    await writeSiteFile(
+      space,
+      "site/templates/layouts/html.njk",
+      "Site layout: {% block main %}{% endblock %}",
+    );
+    // Not used: templates/ and static/ are no longer the site's folders
+    await writeSiteFile(space, "templates/layouts/html.njk", "Unused");
+    await writeSiteFile(space, "site/static/site.css", "site");
     const { read } = await build(space, "https://example.com");
     expect(await read("news/first/index.html")).toMatch(/^Site layout: /);
     expect(await read("site.css")).toBe("site");

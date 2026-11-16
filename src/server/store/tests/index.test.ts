@@ -614,6 +614,19 @@ describe("ArticleStore previews", () => {
     );
   });
 
+  it("should use the templatesDir and staticDir folders", async () => {
+    const { dir } = await blog();
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `templatesDir: site/templates\nstaticDir: site/static\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
+    );
+    await mkdir(join(dir, "site/templates/article"), { recursive: true });
+    await writeFile(join(dir, "site/templates/article/wide.njk"), "Wide");
+    const store = await openStore(dir);
+    expect(store.templates("article")).toContain("wide");
+    expect(store.staticDirs[0]).toBe(join(dir, "site/static"));
+  });
+
   it("should read static files only inside the static folders, the site's over the theme's", async () => {
     const { dir } = await blog();
     const theme = await mkdtemp(join(tmpdir(), "blog-theme-"));

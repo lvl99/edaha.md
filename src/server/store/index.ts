@@ -197,6 +197,12 @@ export class ArticleStore {
 
   private readonly configFile: string;
 
+  /** The site's templates folder, relative to the site folder */
+  private readonly templatesDir: string;
+
+  /** The site's static files folder, relative to the site folder */
+  private readonly staticDir: string;
+
   /** Previews' unsaved data by ID, the newest last (see `rememberPreview`) */
   private readonly previews = new Map<string, Preview>();
 
@@ -205,8 +211,8 @@ export class ArticleStore {
   private readonly themeDir: string;
 
   /**
-   * @param site - the site's config file, folder (which holds the articles folder, and optionally templates/ and
-   *   static/) and settings
+   * @param site - the site's config file, folder (which holds the articles, templates and static files folders) and
+   *   settings
    * @param themeDir - the default theme folder that the site's templates and static files override
    */
   constructor(site: SiteConfig, themeDir: string = THEME_DIR) {
@@ -214,12 +220,14 @@ export class ArticleStore {
     this.siteDir = site.siteDir;
     this.themeDir = themeDir;
     this.articlesDir = join(site.siteDir, site.config.articlesDir);
+    this.templatesDir = site.config.templatesDir;
+    this.staticDir = site.config.staticDir;
   }
 
   /** The site's templates over the theme's */
   private loadTemplates() {
     return new Templates(
-      [join(this.siteDir, "templates"), join(this.themeDir, "templates")],
+      [join(this.siteDir, this.templatesDir), join(this.themeDir, "templates")],
       console,
     );
   }
@@ -546,7 +554,7 @@ export class ArticleStore {
 
   /** The static folders (stylesheet, fonts) published at the website's root: the site's, then the theme's */
   get staticDirs(): string[] {
-    return [join(this.siteDir, "static"), join(this.themeDir, "static")];
+    return [join(this.siteDir, this.staticDir), join(this.themeDir, "static")];
   }
 
   /**

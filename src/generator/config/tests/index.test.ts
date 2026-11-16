@@ -28,6 +28,8 @@ describe("parseConfig", () => {
       path: "",
       outputDir: "dist",
       articlesDir: "articles",
+      templatesDir: "templates",
+      staticDir: "static",
       publishDir: "../app/dist",
       siteUrl: undefined,
       reservedPaths: [],
@@ -66,25 +68,48 @@ describe("parseConfig", () => {
     expect(config.siteUrl).toBeUndefined();
   });
 
-  it("should read the articles folder inside the site folder, apart from templates and static", () => {
-    for (const [value, folder] of [
-      ["content", "content"],
-      ["./site/content/", "site/content"],
-      ["a/../posts", "posts"],
+  it("should read the articles, templates and static folders inside the site folder", () => {
+    for (const field of ["articlesDir", "templatesDir", "staticDir"] as const) {
+      for (const [value, folder] of [
+        ["content", "content"],
+        ["./site/content/", "site/content"],
+        ["a/../posts", "posts"],
+      ])
+        expect(parseYaml(`${VALID}${field}: ${value}\n`)[field], field).toBe(
+          folder,
+        );
+      for (const value of [".", "..", "../content", "/content"])
+        expect(() => parseYaml(`${VALID}${field}: ${value}\n`), value).toThrow(
+          `edahaconfig.yml: "${field}" must be a folder inside the site folder, got "${value}"`,
+        );
+    }
+    const site = parseYaml(
+      `${VALID}articlesDir: site/content\ntemplatesDir: site/templates\nstaticDir: site/static\n`,
+    );
+    expect([site.articlesDir, site.templatesDir, site.staticDir]).toEqual([
+      "site/content",
+      "site/templates",
+      "site/static",
+    ]);
+  });
+
+  it("should keep the articles, templates and static folders apart from each other", () => {
+    for (const [settings, message] of [
+      [
+        "articlesDir: templates",
+        '"articlesDir" and "templatesDir" must be apart from each other, got "templates" and "templates"',
+      ],
+      [
+        "articlesDir: static/articles",
+        '"articlesDir" and "staticDir" must be apart from each other, got "static/articles" and "static"',
+      ],
+      [
+        "templatesDir: site\nstaticDir: site/static",
+        '"templatesDir" and "staticDir" must be apart from each other, got "site" and "site/static"',
+      ],
     ])
-      expect(parseYaml(`${VALID}articlesDir: ${value}\n`).articlesDir).toBe(
-        folder,
-      );
-    for (const value of [
-      ".",
-      "..",
-      "../content",
-      "/content",
-      "templates",
-      "static/articles",
-    ])
-      expect(() => parseYaml(`${VALID}articlesDir: ${value}\n`), value).toThrow(
-        `edahaconfig.yml: "articlesDir" must be a folder inside the site folder, apart from templates and static, got "${value}"`,
+      expect(() => parseYaml(`${VALID}${settings}\n`), settings).toThrow(
+        `edahaconfig.yml: ${message}`,
       );
   });
 
