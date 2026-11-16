@@ -10,7 +10,7 @@ import {
 } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { stringify } from "yaml";
-import type { EmbedResolver } from "../../embeds/index.ts";
+import type { EmbedRenderer, EmbedResolver } from "../../embeds/index.ts";
 import {
   DEFAULT_HEADER_FORMAT,
   headerFormat,
@@ -237,6 +237,13 @@ export class ArticleStore {
    */
   templates(type: string): string[] {
     return this.loadTemplates().names(type);
+  }
+
+  /**
+   * The config file's custom embed renderers (read again each time, so changes show without restarting the editor).
+   */
+  async embeds(): Promise<EmbedRenderer[]> {
+    return (await this.config()).embeds;
   }
 
   /**

@@ -96,6 +96,8 @@ publishDir: ../app/dist
 siteUrl: https://example.com
 # Optional; paths at the website's root that articles and types can't use, e.g. another app's routes
 reservedPaths: [app, api]
+# Optional; custom embed renderers, only in a JavaScript config file (see Embeds)
+# embeds: [vimeo]
 # Optional; settings for each article type (a folder in the articles folder)
 types:
   news:
@@ -165,30 +167,28 @@ Put a URL between `<!-- embed -->` and `<!-- /embed -->` to embed it:
 
 An unrecognised URL gives a warning and is rendered as a link.
 
-To add your own renderers, build from code:
+To add your own renderers, list them under `embeds` in a JavaScript config file. They are tried before the built-in ones, by `edaha build` and by the editor and its previews:
 
-```ts
-import {
-  buildBlog,
-  EMBED_RENDERERS,
-  type EmbedRenderer,
-} from "@lvl99dotcom/edaha.md";
-
-const vimeo: EmbedRenderer = {
+```js
+// edaha.config.mjs
+/** @type {import("@lvl99dotcom/edaha.md").EmbedRenderer} */
+const vimeo = {
   name: "Vimeo",
+  // Origins its iframes load from, which the editor's preview pages allow
+  frameSources: ["https://player.vimeo.com"],
   match: (url) => url.hostname === "vimeo.com",
   render: async (url) =>
     `<iframe src="https://player.vimeo.com/video${url.pathname}"></iframe>`,
 };
 
-await buildBlog({
-  siteDir: "my-site",
-  siteUrl: "https://example.com",
-  embedRenderers: [...EMBED_RENDERERS, vimeo],
-});
+export default {
+  name: "My Site",
+  description: "News and notes.",
+  embeds: [vimeo],
+};
 ```
 
-The editor's previews only use the built-in renderers.
+`render` gets the URL and `{ fetch }`, and returns HTML; it throws if the URL can't be embedded, which gives a warning and a link. From code, `buildBlog` and `startEditor` also take `embedRenderers`: the renderers tried after the config file's (default: the built-in ones, `EMBED_RENDERERS`).
 
 ## Templates and the default theme
 
@@ -247,7 +247,7 @@ console.log(`Open ${editor.url}`);
 - `themeDir`: another theme folder
 - `logger`
 - `fetch`
-- `embedRenderers`
+- `embedRenderers`: tried after the config file's `embeds`. Default: `EMBED_RENDERERS`
 
 `startEditor` (and `createEditorServer`) options:
 
@@ -255,6 +255,7 @@ console.log(`Open ${editor.url}`);
 - `port`
 - `themeDir`
 - `fetch`
+- `embedRenderers`
 
 ## Development
 

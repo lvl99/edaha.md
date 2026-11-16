@@ -32,6 +32,7 @@ describe("parseConfig", () => {
       siteUrl: undefined,
       reservedPaths: [],
       types: {},
+      embeds: [],
     });
     expect(parseYaml(`${VALID}path: blog\n`).path).toBe("blog");
   });
@@ -84,6 +85,37 @@ describe("parseConfig", () => {
     ])
       expect(() => parseYaml(`${VALID}articlesDir: ${value}\n`), value).toThrow(
         `edahaconfig.yml: "articlesDir" must be a folder inside the site folder, apart from templates and static, got "${value}"`,
+      );
+  });
+
+  it("should read custom embed renderers and reject anything else", () => {
+    const vimeo = {
+      name: "Vimeo",
+      frameSources: ["https://player.vimeo.com"],
+      match: () => true,
+      render: async () => "",
+    };
+    const plain = { name: "Plain", match: () => true, render: async () => "" };
+    expect(
+      parseConfig({ ...parse(VALID), embeds: [vimeo, plain] }).embeds,
+    ).toEqual([vimeo, plain]);
+    expect(parseConfig({ ...parse(VALID), embeds: null }).embeds).toEqual([]);
+    for (const embeds of [
+      vimeo,
+      ["https://vimeo.com"],
+      [null],
+      [{ ...vimeo, name: " " }],
+      [{ ...vimeo, match: "vimeo.com" }],
+      [{ ...vimeo, render: undefined }],
+      [{ ...vimeo, frameSources: "https://player.vimeo.com" }],
+      [{ ...vimeo, frameSources: ["http://player.vimeo.com"] }],
+      [{ ...vimeo, frameSources: ["https://player.vimeo.com/video"] }],
+      [{ ...vimeo, frameSources: [3] }],
+    ])
+      expect(() =>
+        parseConfig({ ...parse(VALID), embeds }, "edaha.config.mjs"),
+      ).toThrow(
+        'edaha.config.mjs: "embeds" must be a list of embed renderers ({ name, match(url), render(url, context), frameSources? } with https origins), set in a JavaScript config file',
       );
   });
 

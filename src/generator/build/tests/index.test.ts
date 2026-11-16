@@ -599,6 +599,51 @@ describe("buildBlog", () => {
     );
   });
 
+  it("should render embeds with the config file's renderers, then the given or built-in ones", async () => {
+    const space = await workspace();
+    const settings = parse(
+      await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8"),
+    ) as Record<string, unknown>;
+    await rm(join(space.siteDir, "edahaconfig.yml"));
+    await writeFile(
+      join(space.siteDir, "edaha.config.mjs"),
+      `export default {
+  ...${JSON.stringify(settings)},
+  embeds: [
+    {
+      name: "Example",
+      match: (url) => url.hostname === "media.example.com",
+      render: async (url) => \`<iframe src="\${url.href}"></iframe>\`,
+    },
+  ],
+};
+`,
+    );
+    await writeArticle(
+      space,
+      "article/embeds",
+      `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\n<!-- embed -->https://media.example.com/v/1<!-- /embed -->\n\n<!-- embed -->https://youtu.be/aju_UB5VIf8<!-- /embed -->\n`,
+    );
+    const { read } = await build(space, "https://example.com");
+    const html = await read("news/embeds/index.html");
+    expect(html).toContain('<iframe src="https://media.example.com/v/1">');
+    expect(html).toContain("youtube-nocookie.com/embed/aju_UB5VIf8");
+
+    // Given renderers take the built-in ones' place, after the config file's
+    const result = await buildBlog({
+      siteDir: space.siteDir,
+      siteUrl: "https://example.com",
+      logger: { warn: vi.fn() },
+      embedRenderers: [],
+    });
+    const only = await readFile(
+      join(result.outputDir, "news/embeds/index.html"),
+      "utf8",
+    );
+    expect(only).toContain('<iframe src="https://media.example.com/v/1">');
+    expect(only).not.toContain("youtube-nocookie.com");
+  });
+
   it("should reject invalid type and article folder names", async () => {
     const reserved = await workspace();
     await cp(

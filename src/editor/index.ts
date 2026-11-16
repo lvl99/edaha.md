@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { serve, type ServerType } from "@hono/node-server";
 import { Hono } from "hono";
 import mime from "mime-types";
+import type { EmbedRenderer } from "../embeds/index.ts";
 import { createEditorApp } from "../server/app/index.ts";
 import { ArticleStore } from "../server/store/index.ts";
 import {
@@ -33,6 +34,8 @@ export interface EditorServerOptions extends SiteConfigOptions {
   clientDir?: string;
   /** Fetches extra data for embed previews (defaults to the global fetch) */
   fetch?: typeof fetch;
+  /** Embed renderers tried after the config file's `embeds` (defaults to the built-in ones, EMBED_RENDERERS) */
+  embedRenderers?: readonly EmbedRenderer[];
 }
 
 /** A running editor server */
@@ -101,6 +104,7 @@ export const createEditorServer = async (
   const editorApp = createEditorApp(store, {
     allowedOrigins: [editorUrl(port)],
     fetch: options.fetch,
+    embedRenderers: options.embedRenderers,
   });
 
   const app = new Hono();

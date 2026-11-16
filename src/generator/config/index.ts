@@ -1,4 +1,5 @@
 import { isAbsolute, normalize, sep } from "node:path";
+import type { EmbedRenderer } from "../../embeds/types/index.ts";
 import { isSlug } from "../slug/index.ts";
 
 /** What is built for an article type */
@@ -47,6 +48,8 @@ export interface BlogConfig {
   reservedPaths: string[];
   /** Article type settings, by type */
   types: Record<string, ArticleTypeConfig>;
+  /** Custom embed renderers, tried before the built-in ones. Only JavaScript config files can set them. Default: none */
+  embeds: EmbedRenderer[];
 }
 
 /** Settings under `generate` */
@@ -72,6 +75,7 @@ const CONFIG_KEYS = [
   "siteUrl",
   "reservedPaths",
   "types",
+  "embeds",
 ];
 
 /** List folders that can't be used as article types */
@@ -226,6 +230,41 @@ const parseArticlesDir = (data: Record<string, unknown>): string => {
   return folder;
 };
 
+/** Whether a value is an embed renderer: a name, match and render functions, and optional frame sources */
+const isEmbedRenderer = (value: unknown): value is EmbedRenderer => {
+  if (!value || typeof value !== "object") return false;
+  const { name, match, render, frameSources } = value as Record<
+    string,
+    unknown
+  >;
+  return (
+    typeof name === "string" &&
+    name.trim() !== "" &&
+    typeof match === "function" &&
+    typeof render === "function" &&
+    (frameSources === undefined ||
+      (Array.isArray(frameSources) &&
+        frameSources.every(
+          (source) =>
+            typeof source === "string" && /^https:\/\/[^/\s;]+$/.test(source),
+        )))
+  );
+};
+
+/**
+ * Read the optional custom embed renderers: a list of `{ name, match, render, frameSources? }` objects, which only a
+ * JavaScript config file can hold.
+ */
+const parseEmbeds = (data: Record<string, unknown>): EmbedRenderer[] => {
+  const value = data.embeds;
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || !value.every(isEmbedRenderer))
+    throw new Error(
+      '"embeds" must be a list of embed renderers ({ name, match(url), render(url, context), frameSources? } with https origins), set in a JavaScript config file',
+    );
+  return value;
+};
+
 const parseReservedPaths = (data: Record<string, unknown>): string[] => {
   const value = data.reservedPaths;
   if (value === undefined || value === null) return [];
@@ -261,6 +300,7 @@ const validateConfig = (data: unknown): BlogConfig => {
     publishDir: optionalString(fields, "publishDir"),
     siteUrl: parseSiteUrl(fields),
     reservedPaths: parseReservedPaths(fields),
+    embeds: parseEmbeds(fields),
     types: Object.fromEntries(
       Object.entries(types).map(([type, value]) => [
         type,

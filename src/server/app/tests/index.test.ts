@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { PREVIEW_CSP, createEditorApp } from "..";
+import { PREVIEW_CSP, createEditorApp, previewCsp } from "..";
 import { ArticleStore } from "../../store";
 import { loadSiteConfig } from "../../../generator/configFile";
 
@@ -165,6 +165,76 @@ describe("createEditorApp", () => {
     expect(unknown.warnings).toEqual(['Preview: embed "" is not a valid URL']);
   });
 
+  it("should render embeds and allow their frames in previews with the config file's renderers, then the given ones", async () => {
+    const { dir } = await setup();
+    await writeFile(
+      join(dir, "edaha.config.mjs"),
+      `import { readFileSync } from "node:fs";
+import { parse } from "yaml";
+export default {
+  ...parse(readFileSync(new URL("./edahaconfig.yml", import.meta.url), "utf8")),
+  embeds: [
+    {
+      name: "Example",
+      frameSources: ["https://media.example.com"],
+      match: (url) => url.hostname === "media.example.com",
+      render: async (url) => \`<iframe src="\${url.href}"></iframe>\`,
+    },
+  ],
+};
+`,
+    );
+    const store = new ArticleStore(
+      await loadSiteConfig({ configFile: join(dir, "edaha.config.mjs") }),
+    );
+    const app = createEditorApp(store, {
+      allowedOrigins: [ORIGIN],
+      embedRenderers: [],
+    });
+    const embed = (await (
+      await app.request(
+        `/api/embed?url=${encodeURIComponent("https://media.example.com/v/1")}`,
+      )
+    ).json()) as { html: string };
+    expect(embed.html).toContain(
+      '<iframe src="https://media.example.com/v/1">',
+    );
+    // No built-in renderers, so YouTube URLs are plain links
+    const youtube = (await (
+      await app.request(
+        `/api/embed?url=${encodeURIComponent("https://youtu.be/aju_UB5VIf8")}`,
+      )
+    ).json()) as { html: string };
+    expect(youtube.html).toContain('class="embed-link"');
+
+    const created = await app.request(
+      "/api/preview",
+      json("POST", {
+        data: {
+          type: "article",
+          slug: "embeds",
+          status: "draft",
+          date: "2026-10-19T09:54:00.000Z",
+          title: "Embeds",
+          tags: [],
+          attachments: [],
+          bodyHtml: '<div class="embed">https://media.example.com/v/1</div>',
+        },
+      }),
+    );
+    const { url } = (await created.json()) as { url: string };
+    const page = await app.request(url);
+    expect(await page.text()).toContain(
+      '<iframe src="https://media.example.com/v/1">',
+    );
+    expect(page.headers.get("content-security-policy")).toBe(
+      previewCsp(await store.embeds()),
+    );
+    expect(page.headers.get("content-security-policy")).toContain(
+      "frame-src https://media.example.com;",
+    );
+  });
+
   it("should fetch embed data with the given fetch, or the global one", async () => {
     const page =
       '<meta property="og:video" content="https://bandcamp.com/EmbeddedPlayer/album=7/">';
@@ -277,6 +347,19 @@ describe("createEditorApp", () => {
     expect(PREVIEW_CSP).toContain("form-action 'none'");
     expect(PREVIEW_CSP).toContain(
       "frame-src https://www.youtube-nocookie.com https://bandcamp.com",
+    );
+    // No frames without renderers that declare them, and each origin once
+    expect(previewCsp([])).toContain("frame-src 'none';");
+    const renderer = {
+      name: "A",
+      frameSources: ["https://a.example.com"],
+      match: () => false,
+      render: async () => "",
+    };
+    const frameless = { ...renderer, frameSources: undefined };
+    expect(previewCsp([frameless])).toContain("frame-src 'none';");
+    expect(previewCsp([renderer, { ...renderer, name: "B" }])).toContain(
+      "frame-src https://a.example.com;",
     );
   });
 

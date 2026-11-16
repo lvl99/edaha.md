@@ -1,6 +1,11 @@
 import { Hono } from "hono";
 import mime from "mime-types";
-import { EmbedResolver } from "../../embeds/index.ts";
+import {
+  EMBED_RENDERERS,
+  EmbedResolver,
+  type EmbedRenderer,
+} from "../../embeds/index.ts";
+import type { Logger } from "../../generator/types/index.ts";
 import {
   editorHtmlToMarkdown,
   markdownToEditorHtml,
@@ -18,15 +23,27 @@ export interface EditorAppOptions {
   allowedOrigins: readonly string[];
   /** Fetches extra data for embed previews (defaults to the global fetch) */
   fetch?: typeof fetch | undefined;
+  /** Embed renderers tried after the config file's `embeds` (defaults to the built-in ones, EMBED_RENDERERS) */
+  embedRenderers?: readonly EmbedRenderer[] | undefined;
 }
 
 /**
- * The Content Security Policy of preview pages and their files: like the website's news pages (its own files, YouTube
- * and Bandcamp embeds), but with no scripts, requests or forms at all. Previews are served from the editor's own
- * address, so this is what stops anything in an article from using the editor's API.
+ * The Content Security Policy of preview pages and their files: like the website's pages (its own files, and frames
+ * from the embed renderers' `frameSources`), but with no scripts, requests or forms at all. Previews are served from
+ * the editor's own address, so this is what stops anything in an article from using the editor's API.
+ *
+ * @example
+ * previewCsp([youtube]); // "default-src 'self'; script-src 'none'; frame-src https://www.youtube-nocookie.com; ..."
  */
-export const PREVIEW_CSP =
-  "default-src 'self'; script-src 'none'; frame-src https://www.youtube-nocookie.com https://bandcamp.com; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'";
+export const previewCsp = (renderers: readonly EmbedRenderer[]): string => {
+  const frames = [
+    ...new Set(renderers.flatMap((renderer) => renderer.frameSources ?? [])),
+  ];
+  return `default-src 'self'; script-src 'none'; frame-src ${frames.join(" ") || "'none'"}; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'`;
+};
+
+/** The preview pages' Content Security Policy with the built-in embed renderers (see previewCsp) */
+export const PREVIEW_CSP = previewCsp(EMBED_RENDERERS);
 
 /**
  * Create the article editor's local API. Requests that change files must come from the editor's own page (checked
@@ -46,19 +63,34 @@ export const PREVIEW_CSP =
  * - `POST /api/preview`: remember unsaved article data (`{ data, location? }`) for a preview page, and give its URL
  *   (`{ url }`); answers 400 if it can't be rendered
  * - `GET /preview/:id/`: render a remembered preview with its type's "single" template, and `GET /<path>`: one of the
- *   blog's static files (e.g. `/site.css`), both with a Content Security Policy that forbids scripts (`PREVIEW_CSP`)
+ *   blog's static files (e.g. `/site.css`), both with a Content Security Policy that forbids scripts (`previewCsp`)
+ *
+ * Embeds are rendered with the config file's `embeds`, then `embedRenderers`.
  *
  * @example
- * const app = createEditorApp(new ArticleStore("packages/blog"), { allowedOrigins: ["http://127.0.0.1:5180"] });
+ * const app = createEditorApp(new ArticleStore(await loadSiteConfig({ siteDir: "my-site" })), { allowedOrigins: ["http://127.0.0.1:5180"] });
  */
 export const createEditorApp = (
   store: ArticleStore,
   {
     allowedOrigins,
     fetch: fetchFn = (...args) => fetch(...args),
+    embedRenderers = EMBED_RENDERERS,
   }: EditorAppOptions,
 ): Hono => {
   const app = new Hono();
+
+  /** The embed renderers: the config file's, then the given ones */
+  const renderers = async () => [...(await store.embeds()), ...embedRenderers];
+
+  /**
+   * A new embed resolver, each time, so a fixed URL, a network failure or a changed renderer isn't remembered
+   */
+  const embedResolver = async (logger: Logger) =>
+    new EmbedResolver({ fetch: fetchFn, logger, renderers: await renderers() });
+
+  /** The preview pages' Content Security Policy, allowing the renderers' frames */
+  const csp = async () => previewCsp(await renderers());
 
   app.use(async (c, next) => {
     if (c.req.method !== "GET" && c.req.method !== "HEAD") {
@@ -86,10 +118,8 @@ export const createEditorApp = (
   app.get("/api/embed", async (c) => {
     const url = c.req.query("url") ?? "";
     const warnings: string[] = [];
-    // A new resolver each time, so a fixed URL or a network failure isn't remembered
-    const embeds = new EmbedResolver({
-      fetch: fetchFn,
-      logger: { warn: (message) => warnings.push(message) },
+    const embeds = await embedResolver({
+      warn: (message) => warnings.push(message),
     });
     return c.json<EmbedPreview>({
       html: await embeds.render(url, "Preview"),
@@ -122,11 +152,7 @@ export const createEditorApp = (
       data: EditorArticleData;
       location?: ArticleLocation;
     }>();
-    // A new resolver each time, so a fixed URL or a network failure isn't remembered
-    const embeds = new EmbedResolver({
-      fetch: fetchFn,
-      logger: { warn: () => undefined },
-    });
+    const embeds = await embedResolver({ warn: () => undefined });
     // Rendered now to report problems (e.g. a missing file), then again each time the page is shown
     await store.preview(data, location, embeds);
     return c.json({
@@ -191,11 +217,11 @@ export const createEditorApp = (
   app.get("/preview/:id/", async (c) => {
     const html = await store.renderPreview(
       c.req.param("id"),
-      new EmbedResolver({ fetch: fetchFn, logger: { warn: () => undefined } }),
+      await embedResolver({ warn: () => undefined }),
     );
     return c.html(html, 200, {
       "Cache-Control": "no-store",
-      "Content-Security-Policy": PREVIEW_CSP,
+      "Content-Security-Policy": await csp(),
     });
   });
 
@@ -208,7 +234,7 @@ export const createEditorApp = (
       {
         "Content-Type": mime.lookup(path) || "application/octet-stream",
         "Cache-Control": "no-store",
-        "Content-Security-Policy": PREVIEW_CSP,
+        "Content-Security-Policy": await csp(),
       },
     );
   });

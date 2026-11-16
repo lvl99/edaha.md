@@ -685,7 +685,7 @@ export class BlogArticle extends LitElement {
     else if (this.mode === "preview")
       // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. It
       // isn't sandboxed (a sandboxed page can't load anything from 127.0.0.1): its server sends a Content Security
-      // Policy that forbids scripts, which is what keeps it from using the editor's API (`PREVIEW_CSP`)
+      // Policy that forbids scripts, which is what keeps it from using the editor's API (`previewCsp`)
       body = html`<iframe
         class="preview"
         title="Preview"

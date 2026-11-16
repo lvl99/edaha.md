@@ -16,7 +16,11 @@ import {
   resolve,
   sep,
 } from "node:path";
-import { EmbedResolver, type EmbedRenderer } from "../../embeds/index.ts";
+import {
+  EMBED_RENDERERS,
+  EmbedResolver,
+  type EmbedRenderer,
+} from "../../embeds/index.ts";
 import { loadArticle } from "../article/index.ts";
 import {
   defaultTypeConfig,
@@ -68,7 +72,7 @@ export interface BuildOptions {
   logger?: Logger;
   /** Fetches extra data for embeds (defaults to the global fetch) */
   fetch?: typeof fetch;
-  /** Embed renderers (defaults to all) */
+  /** Embed renderers tried after the config file's `embeds` (defaults to the built-in ones, EMBED_RENDERERS) */
   embedRenderers?: readonly EmbedRenderer[];
 }
 
@@ -304,7 +308,10 @@ export const buildBlog = async (
   const embeds = new EmbedResolver({
     fetch: options.fetch ?? fetch,
     logger,
-    renderers: options.embedRenderers,
+    renderers: [
+      ...config.embeds,
+      ...(options.embedRenderers ?? EMBED_RENDERERS),
+    ],
   });
 
   // Remove what the previous build published, then empty the build folder

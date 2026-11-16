@@ -14,6 +14,7 @@ const PLAYER_ITEM = /EmbeddedPlayer\/(?:v=\d+\/)?(album|track)=(\d+)/;
  */
 export const bandcamp: EmbedRenderer = {
   name: "Bandcamp",
+  frameSources: ["https://bandcamp.com"],
   match: (url) =>
     url.hostname.endsWith(".bandcamp.com") && ITEM_PATH.test(url.pathname),
   render: async (url, { fetch }) => {
