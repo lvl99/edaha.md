@@ -14,7 +14,7 @@ import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { THEME_DIR } from "../../../theme";
 import {
-  buildBlog,
+  buildSite,
   DEFAULT_SITE_URL,
   resolveOutputDir,
   resolvePublishDir,
@@ -24,12 +24,12 @@ import {
 import { defaultTypeConfig, parseConfig } from "../../config";
 
 const FIXTURE = fileURLToPath(
-  new URL("../../../shared/tests/fixtures/blog", import.meta.url),
+  new URL("../../../shared/tests/fixtures/site", import.meta.url),
 );
-/** Copy the fixture blog into a temporary workspace; it uses the default theme's templates */
+/** Copy the fixture site into a temporary workspace; it uses the default theme's templates */
 const workspace = async () => {
-  const root = await mkdtemp(join(tmpdir(), "blog-build-"));
-  const siteDir = join(root, "blog");
+  const root = await mkdtemp(join(tmpdir(), "edaha-build-"));
+  const siteDir = join(root, "my-site");
   await cp(FIXTURE, siteDir, { recursive: true });
   return { root, siteDir };
 };
@@ -63,13 +63,13 @@ const writeArticle = async (
   await writeFile(join(siteDir, "articles", folder, "article.md"), source);
 };
 
-/** Build the workspace's blog without network access */
+/** Build the workspace's site without network access */
 const build = async ({ siteDir }: Space, siteUrl?: string) => {
   const logger = { warn: vi.fn() };
   const fetch = vi.fn(() =>
     Promise.reject(new Error("offline")),
   ) as unknown as typeof globalThis.fetch;
-  const result = await buildBlog({ siteDir, siteUrl, logger, fetch });
+  const result = await buildSite({ siteDir, siteUrl, logger, fetch });
   /** Read a published file */
   const read = (file: string) =>
     readFile(join(result.publishDir as string, file), "utf8");
@@ -78,7 +78,7 @@ const build = async ({ siteDir }: Space, siteUrl?: string) => {
 
 describe("resolveOutputDir", () => {
   it("should only allow folders inside the site folder, apart from its sources", () => {
-    expect(resolveOutputDir("/site", "dist/blog")).toBe("/site/dist/blog");
+    expect(resolveOutputDir("/site", "dist/www")).toBe("/site/dist/www");
     for (const dir of [".", "..", "../other", "/elsewhere"])
       expect(() => resolveOutputDir("/site", dir)).toThrow(
         '"outputDir" must be a folder inside the site folder',
@@ -125,12 +125,12 @@ describe("siteData", () => {
 
 describe("resolvePublishDir", () => {
   it("should allow any folder apart from the site folder", () => {
-    expect(resolvePublishDir("/work/blog", "../app/dist")).toBe(
+    expect(resolvePublishDir("/work/site", "../app/dist")).toBe(
       "/work/app/dist",
     );
-    expect(resolvePublishDir("/work/blog", "/srv/www")).toBe("/srv/www");
+    expect(resolvePublishDir("/work/site", "/srv/www")).toBe("/srv/www");
     for (const dir of [".", "dist", "..", "/"])
-      expect(() => resolvePublishDir("/work/blog", dir)).toThrow(
+      expect(() => resolvePublishDir("/work/site", dir)).toThrow(
         '"publishDir" must be a folder apart from the site folder',
       );
   });
@@ -138,7 +138,7 @@ describe("resolvePublishDir", () => {
 
 describe("staticFiles", () => {
   it("should list static files, later folders overriding earlier ones, and skip missing folders", async () => {
-    const root = await mkdtemp(join(tmpdir(), "blog-static-"));
+    const root = await mkdtemp(join(tmpdir(), "edaha-static-"));
     await mkdir(join(root, "theme/fonts"), { recursive: true });
     await mkdir(join(root, "site"), { recursive: true });
     await writeFile(join(root, "theme/site.css"), "theme");
@@ -159,7 +159,7 @@ describe("staticFiles", () => {
   });
 });
 
-describe("buildBlog", () => {
+describe("buildSite", () => {
   it("should build articles, lists and feeds at their types' paths and publish them", async () => {
     const space = await workspace();
     const { result, logger, read } = await build(space, "https://example.com/");
@@ -207,7 +207,7 @@ describe("buildBlog", () => {
     // The article page, its assets and the shared footer
     const first = await read("news/first/index.html");
     expect(first).toContain("<title>First article | Test News</title>");
-    // The article's excerpt, not the blog's description
+    // The article's excerpt, not the site's description
     expect(first).toMatch(
       /<meta name="description" content="Intro with a link/,
     );
@@ -380,7 +380,7 @@ describe("buildBlog", () => {
       "First article",
     );
 
-    // A file the blog didn't publish
+    // A file the build didn't publish
     await writeFile(join(result.publishDir!, "news/second.html"), "");
     await mkdir(join(result.publishDir!, "news/second"), { recursive: true });
     await writeFile(
@@ -389,7 +389,7 @@ describe("buildBlog", () => {
     );
     await writeFile(
       join(result.publishDir!, "news/second/index.html"),
-      "not the blog's",
+      "not the build's",
     );
     await expect(build(space, "https://example.com")).rejects.toThrow(
       'news/second/index.html is already in "publishDir" (../site)',
@@ -491,7 +491,7 @@ describe("buildBlog", () => {
     });
     await mkdir(join(theme, "static"));
     await writeFile(join(theme, "static/theme.css"), "other theme");
-    const result = await buildBlog({
+    const result = await buildSite({
       siteDir: space.siteDir,
       themeDir: theme,
       siteUrl: "https://example.com",
@@ -561,8 +561,8 @@ describe("buildBlog", () => {
   });
 
   it("should build nothing when there are no articles", async () => {
-    const root = await mkdtemp(join(tmpdir(), "blog-empty-"));
-    const siteDir = join(root, "blog");
+    const root = await mkdtemp(join(tmpdir(), "edaha-empty-"));
+    const siteDir = join(root, "my-site");
     await mkdir(siteDir);
     await cp(
       join(FIXTURE, "edahaconfig.yml"),
@@ -577,7 +577,7 @@ describe("buildBlog", () => {
     await cp(join(THEME_DIR, "templates"), join(theme, "templates"), {
       recursive: true,
     });
-    const bare = await buildBlog({
+    const bare = await buildSite({
       siteDir,
       themeDir: theme,
       siteUrl: "https://example.com",
@@ -618,7 +618,7 @@ describe("buildBlog", () => {
       JSON.stringify({ ...settings, articlesDir: "content" }),
     );
     const logger = { warn: vi.fn() };
-    const result = await buildBlog({
+    const result = await buildSite({
       configFile,
       siteUrl: "https://example.com",
       logger,
@@ -643,7 +643,7 @@ describe("buildBlog", () => {
         outputDir: "content/out",
       }),
     );
-    await expect(buildBlog({ configFile, logger })).rejects.toThrow(
+    await expect(buildSite({ configFile, logger })).rejects.toThrow(
       'settings.json: "outputDir" must be apart from content, templates, static, got "content/out"',
     );
   });
@@ -679,7 +679,7 @@ describe("buildBlog", () => {
     expect(html).toContain("youtube-nocookie.com/embed/aju_UB5VIf8");
 
     // Given renderers take the built-in ones' place, after the config file's
-    const result = await buildBlog({
+    const result = await buildSite({
       siteDir: space.siteDir,
       siteUrl: "https://example.com",
       logger: { warn: vi.fn() },
@@ -724,7 +724,7 @@ describe("buildBlog", () => {
       "<!--yaml\ndate: 2026-10-19\n-->\n# Only",
     );
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-    const result = await buildBlog({
+    const result = await buildSite({
       siteDir: space.siteDir,
       siteUrl: "https://example.com",
     });

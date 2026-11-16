@@ -29,14 +29,14 @@ export const folderUrl = (folder: string): string => `/${folder}`;
  * Check article types' URL paths: no two the same, and none clashing with the website's reserved paths at its root
  * (`reservedPaths` in the config file). Throws an Error describing the first problem.
  *
- * @param blogPath - the blog's URL path prefix
- * @param reservedPaths - paths at the website's root that the blog can't use, e.g. another app's routes
+ * @param sitePath - the site's URL path prefix
+ * @param reservedPaths - paths at the website's root that the site can't use, e.g. another app's routes
  *
  * @example
  * checkTypePaths("", { app: defaultTypeConfig("app") }, ["app"]); // throws: type "app" can't use the path "app"
  */
 export const checkTypePaths = (
-  blogPath: string,
+  sitePath: string,
   types: Record<string, ArticleTypeConfig>,
   reservedPaths: readonly string[] = [],
 ): void => {
@@ -48,7 +48,7 @@ export const checkTypePaths = (
         `types "${other}" and "${type}" have the same path "${path}"`,
       );
     seen.set(path, type);
-    if (!blogPath && reservedPaths.includes(path))
+    if (!sitePath && reservedPaths.includes(path))
       throw new Error(
         `type "${type}" can't use the path "${path}", which is reserved`,
       );
@@ -59,7 +59,7 @@ export const checkTypePaths = (
  * Why an article slug can't be used in a type, or undefined if it can. Slugs can't be the tag and author list folders
  * or numbers (list pages), and at the website's root, its reserved paths or another type's path.
  *
- * @param reservedPaths - paths at the website's root that the blog can't use (`reservedPaths` in the config file)
+ * @param reservedPaths - paths at the website's root that the site can't use (`reservedPaths` in the config file)
  *
  * @example
  * slugProblem("tags", "news", "", types); // 'the slug "tags" is used by tag lists'
@@ -67,7 +67,7 @@ export const checkTypePaths = (
 export const slugProblem = (
   slug: string,
   type: string,
-  blogPath: string,
+  sitePath: string,
   types: Record<string, ArticleTypeConfig>,
   reservedPaths: readonly string[] = [],
 ): string | undefined => {
@@ -75,7 +75,7 @@ export const slugProblem = (
     return `the slug "${slug}" is used by ${slug === "tags" ? "tag" : "author"} lists`;
   if (/^\d+$/.test(slug)) return `the slug "${slug}" is used by list pages`;
   // A type that isn't configured is at its own name
-  const atRoot = !blogPath && !(types[type]?.path ?? type);
+  const atRoot = !sitePath && !(types[type]?.path ?? type);
   if (atRoot && reservedPaths.includes(slug))
     return `the slug "${slug}" is reserved`;
   if (atRoot) {

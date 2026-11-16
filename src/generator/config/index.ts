@@ -18,7 +18,7 @@ export interface GenerateConfig {
 
 /** Settings of an article type */
 export interface ArticleTypeConfig {
-  /** The type's URL path ("" for the blog's root), e.g. "news" */
+  /** The type's URL path ("" for the site's root), e.g. "news" */
   path: string;
   /** Label for one article, e.g. "Article" */
   labelSingle: string;
@@ -28,8 +28,8 @@ export interface ArticleTypeConfig {
   generate: GenerateConfig;
 }
 
-/** Blog-level settings from the config file */
-export interface BlogConfig {
+/** The site's settings from the config file */
+export interface EdahaConfig {
   /** The name of the website */
   name: string;
   /** The description of the website */
@@ -48,7 +48,7 @@ export interface BlogConfig {
   publishDir?: string | undefined;
   /** Optional; the website's absolute URL for feeds, used when the `SITE_URL` environment variable isn't set */
   siteUrl?: string | undefined;
-  /** Paths at the website's root that the blog can't use, e.g. another app's routes. Default: none */
+  /** Paths at the website's root that the site can't use, e.g. another app's routes. Default: none */
   reservedPaths: string[];
   /** Article type settings, by type */
   types: Record<string, ArticleTypeConfig>;
@@ -68,7 +68,7 @@ const GENERATE_KEYS: (keyof GenerateConfig)[] = [
 /** Settings of an article type */
 const TYPE_KEYS = ["labelSingle", "labelPlural", "path", "generate"];
 
-/** Blog settings */
+/** The site's settings */
 const CONFIG_KEYS = [
   "name",
   "description",
@@ -317,11 +317,11 @@ const parseReservedPaths = (data: Record<string, unknown>): string[] => {
 };
 
 /**
- * Validate the settings read from the blog's config file and fill in defaults.
+ * Validate the settings read from the site's config file and fill in defaults.
  */
-const validateConfig = (data: unknown): BlogConfig => {
+const validateConfig = (data: unknown): EdahaConfig => {
   const fields = asMap(data, "the config file");
-  checkKeys(fields, CONFIG_KEYS, "blog");
+  checkKeys(fields, CONFIG_KEYS, "site");
   const types =
     fields.types === undefined || fields.types === null
       ? {}
@@ -346,7 +346,7 @@ const validateConfig = (data: unknown): BlogConfig => {
 };
 
 /**
- * Validate the settings read from the blog's config file (YAML, JSON or JavaScript) and fill in defaults. Errors start
+ * Validate the settings read from the site's config file (YAML, JSON or JavaScript) and fill in defaults. Errors start
  * with the config file's name.
  *
  * @param source - the config file's name, for errors
@@ -357,7 +357,7 @@ const validateConfig = (data: unknown): BlogConfig => {
 export const parseConfig = (
   data: unknown,
   source: string = "config",
-): BlogConfig => {
+): EdahaConfig => {
   try {
     return validateConfig(data);
   } catch (error) {

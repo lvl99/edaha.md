@@ -8,13 +8,13 @@ import { ArticleStore } from "../../store";
 import { loadSiteConfig } from "../../../generator/configFile";
 
 const FIXTURE = fileURLToPath(
-  new URL("../../../shared/tests/fixtures/blog", import.meta.url),
+  new URL("../../../shared/tests/fixtures/site", import.meta.url),
 );
 const ORIGIN = "http://127.0.0.1:5180";
 
-/** An editor app over a copy of the fixture blog */
+/** An editor app over a copy of the fixture site */
 const setup = async () => {
-  const dir = await mkdtemp(join(tmpdir(), "blog-app-"));
+  const dir = await mkdtemp(join(tmpdir(), "edaha-app-"));
   await cp(FIXTURE, dir, { recursive: true });
   const store = new ArticleStore(await loadSiteConfig({ siteDir: dir }));
   return {

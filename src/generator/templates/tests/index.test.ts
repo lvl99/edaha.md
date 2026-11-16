@@ -6,7 +6,7 @@ import { REQUIRED_TEMPLATES, Templates, absoluteUrls } from "..";
 
 /** A templates folder containing the given files */
 const templatesDir = async (files: Record<string, string>) => {
-  const dir = await mkdtemp(join(tmpdir(), "blog-templates-"));
+  const dir = await mkdtemp(join(tmpdir(), "edaha-templates-"));
   for (const [file, contents] of Object.entries(files)) {
     await mkdir(join(dir, file, ".."), { recursive: true });
     await writeFile(join(dir, file), contents);

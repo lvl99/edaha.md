@@ -1,6 +1,6 @@
 // edaha.md's public API: build a site from Markdown articles, run the article editor, and add embed renderers
 export {
-  buildBlog,
+  buildSite,
   DEFAULT_SITE_URL,
   type BuildOptions,
   type BuildResult,
@@ -8,7 +8,7 @@ export {
 export {
   parseConfig,
   type ArticleTypeConfig,
-  type BlogConfig,
+  type EdahaConfig,
   type GenerateConfig,
 } from "./generator/config/index.ts";
 export {

@@ -15,12 +15,12 @@ import {
 } from "..";
 
 const FIXTURE = fileURLToPath(
-  new URL("../../shared/tests/fixtures/blog", import.meta.url),
+  new URL("../../shared/tests/fixtures/site", import.meta.url),
 );
 
 /** A copy of the fixture site and a folder of built editor files */
 const setup = async () => {
-  const root = await mkdtemp(join(tmpdir(), "blog-editor-"));
+  const root = await mkdtemp(join(tmpdir(), "edaha-editor-"));
   const siteDir = join(root, "site");
   const clientDir = join(root, "client");
   await cp(FIXTURE, siteDir, { recursive: true });

@@ -27,7 +27,7 @@ import {
   RESERVED_TYPES,
   SOURCE_FOLDERS,
   type ArticleTypeConfig,
-  type BlogConfig,
+  type EdahaConfig,
 } from "../config/index.ts";
 import { loadSiteConfig } from "../configFile/index.ts";
 import { collectLists, PAGE_SIZE, pageFile, paginate } from "../lists/index.ts";
@@ -54,7 +54,7 @@ export { RESERVED_TYPES } from "../config/index.ts";
 /** Used for feeds when neither `SITE_URL` nor `siteUrl` in the config file is set */
 export const DEFAULT_SITE_URL = "http://localhost";
 
-/** Options for building the blog */
+/** Options for building the site */
 export interface BuildOptions {
   /**
    * The folder to look for a config file in, before the nearest package.json's folder (see findConfigFile). Default:
@@ -166,7 +166,7 @@ export const resolveOutputDir = (
  * another app's build folder.
  *
  * @example
- * resolvePublishDir("/work/blog", "../app/dist"); // "/work/app/dist"
+ * resolvePublishDir("/work/site", "../app/dist"); // "/work/app/dist"
  */
 export const resolvePublishDir = (siteDir: string, folder: string): string => {
   const dir = resolve(siteDir, folder);
@@ -198,11 +198,11 @@ export const staticFiles = async (
  * An article type's template data: its settings and URL.
  */
 const typeData = (
-  blogPath: string,
+  sitePath: string,
   config: ArticleTypeConfig,
 ): TemplateDataArticleType => ({
   ...config,
-  url: folderUrl(folderPath(blogPath, config.path)),
+  url: folderUrl(folderPath(sitePath, config.path)),
 });
 
 /**
@@ -216,7 +216,7 @@ const typeData = (
  * siteData(config, config.types, "https://example.com").types.news.url; // "/news/"
  */
 export const siteData = (
-  config: BlogConfig,
+  config: EdahaConfig,
   typeConfigs: Record<string, ArticleTypeConfig>,
   url: string,
 ): TemplateDataSite => ({
@@ -233,16 +233,16 @@ export const siteData = (
 });
 
 /**
- * Build the blog: render every published and unlisted article with its assets, then each type's paginated list and
+ * Build the site: render every published and unlisted article with its assets, then each type's paginated list and
  * RSS feed, and its tag and author lists, and copy the static files (the theme's, overridden by the site's `static/`)
  * as they are. Files are written to `outputDir` (emptied first). If `publishDir` is set, they are then copied into it
  * (the website's root): the files published by the previous build are removed from it first, and the build stops if a
  * file is already there.
  *
  * @example
- * await buildBlog({ siteDir: "my-site", siteUrl: "https://example.com" });
+ * await buildSite({ siteDir: "my-site", siteUrl: "https://example.com" });
  */
-export const buildBlog = async (
+export const buildSite = async (
   options: BuildOptions,
 ): Promise<BuildResult> => {
   const logger = options.logger ?? console;

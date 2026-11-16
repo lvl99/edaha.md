@@ -23,7 +23,7 @@ const site: TemplateDataSite = {
 
 const FIRST_DIR = fileURLToPath(
   new URL(
-    "../../../shared/tests/fixtures/blog/articles/article/first",
+    "../../../shared/tests/fixtures/site/articles/article/first",
     import.meta.url,
   ),
 );

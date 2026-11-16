@@ -10,7 +10,7 @@ import {
   relative,
   resolve,
 } from "node:path";
-import { buildBlog } from "../src/generator/build/index.ts";
+import { buildSite } from "../src/generator/build/index.ts";
 import {
   CONFIG_FILES,
   loadSiteConfig,
@@ -54,7 +54,7 @@ const rebuild = async (): Promise<void> => {
   building = true;
   const started = performance.now();
   try {
-    const result = await buildBlog({
+    const result = await buildSite({
       siteDir: projectDir,
       // Feeds link to the local website
       siteUrl: server.url,

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { buildBlog } from "../generator/build/index.ts";
+import { buildSite } from "../generator/build/index.ts";
 import {
   EDITOR_PORT,
   startEditor,
@@ -37,7 +37,7 @@ export interface CliContext {
   log: (message: string) => void;
   /** Where errors and warnings go */
   error: (message: string) => void;
-  /** Builds the site (default: buildBlog) */
+  /** Builds the site (default: buildSite) */
   build?: (options: BuildOptions) => Promise<BuildResult>;
   /** Starts the editor (default: startEditor) */
   editor?: (options: EditorServerOptions) => Promise<EditorServer>;
@@ -109,7 +109,7 @@ export const runCli = async (
 
   try {
     if (command === "build") {
-      const result = await (context.build ?? buildBlog)({
+      const result = await (context.build ?? buildSite)({
         siteDir,
         configFile,
         siteUrl: values["site-url"] ?? context.env.SITE_URL,

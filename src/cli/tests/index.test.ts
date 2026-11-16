@@ -96,7 +96,7 @@ describe("runCli", () => {
     const ctx = context({
       env: { SITE_URL: "https://ignored.com" },
       build: vi.fn(async () => ({
-        outputDir: "/work/blog/dist",
+        outputDir: "/work/site/dist",
         publishDir: undefined,
         articles: [],
         files: [],
@@ -107,9 +107,9 @@ describe("runCli", () => {
         [
           "build",
           "--dir",
-          "blog",
+          "site",
           "-c",
-          "blog/edaha.config.json",
+          "site/edaha.config.json",
           "--site-url",
           "https://example.com",
         ],
@@ -118,13 +118,13 @@ describe("runCli", () => {
     ).toBe(0);
     expect(ctx.build).toHaveBeenCalledWith(
       expect.objectContaining({
-        siteDir: "/work/blog",
-        configFile: "/work/blog/edaha.config.json",
+        siteDir: "/work/site",
+        configFile: "/work/site/edaha.config.json",
         siteUrl: "https://example.com",
       }),
     );
     expect(ctx.log).toHaveBeenCalledWith(
-      "Built 0 articles (0 files) into /work/blog/dist",
+      "Built 0 articles (0 files) into /work/site/dist",
     );
   });
 

@@ -36,7 +36,7 @@ describe("parseConfig", () => {
       types: {},
       embeds: [],
     });
-    expect(parseYaml(`${VALID}path: blog\n`).path).toBe("blog");
+    expect(parseYaml(`${VALID}path: docs\n`).path).toBe("docs");
   });
 
   it("should reject anything but a map", () => {
@@ -164,11 +164,11 @@ describe("parseConfig", () => {
   });
 
   it("should require a kebab-case path, and reject unknown settings", () => {
-    expect(() => parseYaml(`${VALID}path: My Blog\n`)).toThrow(
+    expect(() => parseYaml(`${VALID}path: My Docs\n`)).toThrow(
       'edahaconfig.yml: "path" must be lowercase kebab-case, or "" for the root',
     );
     expect(() => parseYaml(`${VALID}slug: news\n`)).toThrow(
-      'edahaconfig.yml: unknown blog setting "slug"',
+      'edahaconfig.yml: unknown site setting "slug"',
     );
   });
 });

@@ -46,7 +46,7 @@ export const absoluteUrls = (html: string, siteUrl: string): string =>
   html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${siteUrl}/`);
 
 /**
- * Loads and renders the blog's Nunjucks templates from one or more folders. A file in an earlier folder overrides the
+ * Loads and renders the site's Nunjucks templates from one or more folders. A file in an earlier folder overrides the
  * same file in later ones (e.g. a site's templates over the default theme's). Falls back to the `article` templates
  * (with a warning) when an article type has none of its own. Names starting with THEME_PREFIX (`@theme/`) load from
  * the last folder only.

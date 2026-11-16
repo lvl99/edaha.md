@@ -2,7 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse } from "yaml";
-import { parseConfig, type BlogConfig } from "../config/index.ts";
+import { parseConfig, type EdahaConfig } from "../config/index.ts";
 import type { Logger } from "../types/index.ts";
 
 /** Config file names (without extension), in the order they are looked for */
@@ -29,7 +29,7 @@ export interface SiteConfig {
   /** The site folder: the config file's folder, which the paths in its settings are relative to */
   siteDir: string;
   /** The validated settings */
-  config: BlogConfig;
+  config: EdahaConfig;
 }
 
 /** Options for finding and reading a site's config file */

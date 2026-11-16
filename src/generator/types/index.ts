@@ -1,4 +1,4 @@
-// Data given to the Nunjucks templates. See collaboration/20261019-blog/BRIEF.md ("Template data").
+// Data given to the Nunjucks templates (see the Templating docs).
 // All URLs are root-relative paths on the website (e.g. "/news/article/hello/"), except `site.url` and
 // absolute URLs given in an article's config.
 import type { ArticleTypeConfig, GenerateConfig } from "../config/index.ts";
