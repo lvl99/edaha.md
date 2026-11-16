@@ -6,6 +6,10 @@ import { Hono } from "hono";
 import mime from "mime-types";
 import { createEditorApp } from "../server/app/index.ts";
 import { ArticleStore } from "../server/store/index.ts";
+import {
+  loadSiteConfig,
+  type SiteConfigOptions,
+} from "../generator/configFile/index.ts";
 
 /** The editor only listens on this computer's own address, so nothing else on the network can reach it */
 export const EDITOR_HOST = "127.0.0.1";
@@ -20,9 +24,7 @@ export const EDITOR_BASE = "/_editor/";
 export const CLIENT_DIR = fileURLToPath(new URL("../client", import.meta.url));
 
 /** Options for the article editor's server */
-export interface EditorServerOptions {
-  /** The site folder (holds config.yml and articles/) */
-  siteDir: string;
+export interface EditorServerOptions extends SiteConfigOptions {
   /** The default theme folder that the site's templates and static files override. Default: THEME_DIR */
   themeDir?: string;
   /** The port to listen on. Default: EDITOR_PORT */
@@ -54,7 +56,7 @@ export const editorUrl = (port: number): string =>
  * The port an editor listens on: the given one, or EDITOR_PORT.
  *
  * @example
- * editorPort({ siteDir: "my-site" }); // 5180
+ * editorPort({}); // 5180
  */
 export const editorPort = (options: EditorServerOptions): number =>
   options.port ?? EDITOR_PORT;
@@ -80,16 +82,22 @@ const clientFile = async (
 
 /**
  * Create the article editor's web app: the editor page at `/`, its files under `EDITOR_BASE`, and the editor API,
- * previews and the site's static files (see createEditorApp) everywhere else.
+ * previews and the site's static files (see createEditorApp) everywhere else. Throws if the site's config file can't be
+ * found or read.
  *
  * @example
- * const app = createEditorServer({ siteDir: "my-site" });
+ * const app = await createEditorServer({ siteDir: "my-site" });
  * await app.request("/"); // the editor page
  */
-export const createEditorServer = (options: EditorServerOptions): Hono => {
+export const createEditorServer = async (
+  options: EditorServerOptions,
+): Promise<Hono> => {
   const port = editorPort(options);
   const clientDir = options.clientDir ?? CLIENT_DIR;
-  const store = new ArticleStore(options.siteDir, options.themeDir);
+  const store = new ArticleStore(
+    await loadSiteConfig(options),
+    options.themeDir,
+  );
   const editorApp = createEditorApp(store, {
     allowedOrigins: [editorUrl(port)],
     fetch: options.fetch,
@@ -129,11 +137,11 @@ export const createEditorServer = (options: EditorServerOptions): Hono => {
  * console.log(`Open ${editor.url}`);
  * await editor.close();
  */
-export const startEditor = (
+export const startEditor = async (
   options: EditorServerOptions,
 ): Promise<EditorServer> => {
   const port = editorPort(options);
-  const app = createEditorServer(options);
+  const app = await createEditorServer(options);
   return new Promise((resolve, reject) => {
     const server: ServerType = serve(
       { fetch: app.fetch, hostname: EDITOR_HOST, port },

@@ -21,16 +21,21 @@ import {
   serializeArticle,
 } from "..";
 import type { EditorArticleData } from "../../types";
+import { loadSiteConfig } from "../../../generator/configFile";
 
 const FIXTURE = fileURLToPath(
   new URL("../../../shared/tests/fixtures/blog", import.meta.url),
 );
 
+/** An article store for the site in a folder, over the given theme */
+const openStore = async (dir: string, themeDir?: string) =>
+  new ArticleStore(await loadSiteConfig({ siteDir: dir }), themeDir);
+
 /** A copy of the fixture blog to edit */
 const blog = async () => {
   const dir = await mkdtemp(join(tmpdir(), "blog-store-"));
   await cp(FIXTURE, dir, { recursive: true });
-  return { dir, store: new ArticleStore(dir) };
+  return { dir, store: await openStore(dir) };
 };
 
 const DATE = "2026-10-19T09:54:00.000Z";
@@ -207,7 +212,8 @@ describe("ArticleStore", () => {
 
   it("should list nothing when there is no articles folder", async () => {
     const dir = await mkdtemp(join(tmpdir(), "blog-empty-"));
-    expect(await new ArticleStore(dir).list()).toEqual([]);
+    await cp(join(FIXTURE, "edahaconfig.yml"), join(dir, "edahaconfig.yml"));
+    expect(await (await openStore(dir)).list()).toEqual([]);
   });
 
   it("should list an article titled by its slug when it has no title", async () => {
@@ -549,7 +555,7 @@ describe("ArticleStore previews", () => {
   it("should read static files only inside the static folders, the site's over the theme's", async () => {
     const { dir } = await blog();
     const theme = await mkdtemp(join(tmpdir(), "blog-theme-"));
-    const store = new ArticleStore(dir, theme);
+    const store = await openStore(dir, theme);
     expect(store.staticDirs).toEqual([
       join(dir, "static"),
       join(theme, "static"),
@@ -569,7 +575,7 @@ describe("ArticleStore previews", () => {
     for (const path of [
       "missing.css",
       ".hidden",
-      "../config.yml",
+      "../edahaconfig.yml",
       "fonts//f.ttf",
       "fonts",
       "",

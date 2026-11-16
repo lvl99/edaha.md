@@ -1,4 +1,3 @@
-import { parse } from "yaml";
 import { isSlug } from "../slug/index.ts";
 
 /** What is built for an article type */
@@ -27,7 +26,7 @@ export interface ArticleTypeConfig {
   generate: GenerateConfig;
 }
 
-/** Blog-level settings from `config.yml` */
+/** Blog-level settings from the config file */
 export interface BlogConfig {
   /** The name of the website */
   name: string;
@@ -99,7 +98,7 @@ export const defaultTypeConfig = (type: string): ArticleTypeConfig => {
 /** Check a value is a map, throwing a config error if not */
 const asMap = (value: unknown, what: string): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new Error(`config.yml: ${what} must be a map`);
+    throw new Error(`${what} must be a map of settings`);
   return value as Record<string, unknown>;
 };
 
@@ -109,9 +108,7 @@ const asMap = (value: unknown, what: string): Record<string, unknown> => {
 const parsePath = (value: unknown, what: string): string | undefined => {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== "string" || (value !== "" && !isSlug(value)))
-    throw new Error(
-      `config.yml: ${what} must be lowercase kebab-case, or "" for the root`,
-    );
+    throw new Error(`${what} must be lowercase kebab-case, or "" for the root`);
   return value;
 };
 
@@ -124,7 +121,7 @@ const checkKeys = (
   const unknown = Object.keys(map).filter((key) => !allowed.includes(key));
   if (unknown.length)
     throw new Error(
-      `config.yml: unknown ${what} setting${unknown.length > 1 ? "s" : ""} ${unknown.map((key) => `"${key}"`).join(", ")}`,
+      `unknown ${what} setting${unknown.length > 1 ? "s" : ""} ${unknown.map((key) => `"${key}"`).join(", ")}`,
     );
 };
 
@@ -134,7 +131,7 @@ const checkKeys = (
 const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
   if (!isSlug(type) || RESERVED_TYPES.includes(type))
     throw new Error(
-      `config.yml: type "${type}" must be lowercase kebab-case and not ${RESERVED_TYPES.join(" or ")}`,
+      `type "${type}" must be lowercase kebab-case and not ${RESERVED_TYPES.join(" or ")}`,
     );
   const config = defaultTypeConfig(type);
   if (value === null || value === undefined) return config;
@@ -144,9 +141,7 @@ const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
     const text = fields[label];
     if (text === undefined) continue;
     if (typeof text !== "string" || !text.trim())
-      throw new Error(
-        `config.yml: "types.${type}.${label}" must be a non-empty string`,
-      );
+      throw new Error(`"types.${type}.${label}" must be a non-empty string`);
     config[label] = text.trim();
   }
   config.path = parsePath(fields.path, `"types.${type}.path"`) ?? type;
@@ -161,7 +156,7 @@ const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
       if (flag === undefined) continue;
       if (typeof flag !== "boolean")
         throw new Error(
-          `config.yml: "types.${type}.generate.${key}" must be true or false`,
+          `"types.${type}.generate.${key}" must be true or false`,
         );
       config.generate[key] = flag;
     }
@@ -178,7 +173,7 @@ const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
 const requireString = (data: Record<string, unknown>, field: string) => {
   const value = data[field];
   if (typeof value !== "string" || value.trim() === "")
-    throw new Error(`config.yml: "${field}" must be a non-empty string`);
+    throw new Error(`"${field}" must be a non-empty string`);
   return value.trim();
 };
 
@@ -197,7 +192,7 @@ const parseSiteUrl = (data: Record<string, unknown>) => {
   const value = optionalString(data, "siteUrl");
   if (value !== undefined && !/^https?:\/\/[^/]/.test(value))
     throw new Error(
-      'config.yml: "siteUrl" must be an absolute http(s) URL, e.g. "https://example.com"',
+      '"siteUrl" must be an absolute http(s) URL, e.g. "https://example.com"',
     );
   return value;
 };
@@ -216,28 +211,22 @@ const parseReservedPaths = (data: Record<string, unknown>): string[] => {
     )
   )
     throw new Error(
-      'config.yml: "reservedPaths" must be a list of lowercase paths at the website\'s root, e.g. ["app", "api"]',
+      '"reservedPaths" must be a list of lowercase paths at the website\'s root, e.g. ["app", "api"]',
     );
   return value as string[];
 };
 
 /**
- * Parse and validate the contents of the blog's `config.yml`.
- *
- * @example
- * parseConfig("name: News\ndescription: Updates\noutputDir: dist");
+ * Validate the settings read from the blog's config file and fill in defaults.
  */
-export const parseConfig = (text: string): BlogConfig => {
-  const data: unknown = parse(text);
-  if (!data || typeof data !== "object" || Array.isArray(data))
-    throw new Error("config.yml: expected a map of settings");
-  const fields = data as Record<string, unknown>;
+const validateConfig = (data: unknown): BlogConfig => {
+  const fields = asMap(data, "the config file");
   checkKeys(fields, CONFIG_KEYS, "blog");
   const types =
     fields.types === undefined || fields.types === null
       ? {}
       : asMap(fields.types, '"types"');
-  const config = {
+  return {
     name: requireString(fields, "name"),
     description: requireString(fields, "description"),
     path: parsePath(fields.path, '"path"') ?? "",
@@ -252,5 +241,24 @@ export const parseConfig = (text: string): BlogConfig => {
       ]),
     ),
   };
-  return config;
+};
+
+/**
+ * Validate the settings read from the blog's config file (YAML, JSON or JavaScript) and fill in defaults. Errors start
+ * with the config file's name.
+ *
+ * @param source - the config file's name, for errors
+ *
+ * @example
+ * parseConfig({ name: "News", description: "Updates" }, "edaha.config.json");
+ */
+export const parseConfig = (
+  data: unknown,
+  source: string = "config",
+): BlogConfig => {
+  try {
+    return validateConfig(data);
+  } catch (error) {
+    throw new Error(`${source}: ${(error as Error).message}`, { cause: error });
+  }
 };

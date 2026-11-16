@@ -34,7 +34,7 @@ export const PREVIEW_CSP =
  *
  * Routes:
  * - `GET /api/articles`: list articles
- * - `GET /api/types`: the article types from config.yml, with their labels
+ * - `GET /api/types`: the article types from the config file, with their labels
  * - `GET /api/templates/:type`: the template names an article of a type can use
  * - `POST /api/articles`: create an article
  * - `GET|PUT|DELETE /api/articles/:type/:slug`: load, save (and move) or delete an article

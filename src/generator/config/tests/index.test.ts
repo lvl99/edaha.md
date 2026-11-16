@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { defaultTypeConfig, parseConfig } from "..";
+
+/** Parse YAML settings and validate them */
+const parseYaml = (text: string) => parseConfig(parse(text), "edahaconfig.yml");
 
 const VALID =
   "name: News\ndescription: Updates\noutputDir: dist\npublishDir: ../app/dist\n";
 
 /** Parse a config with the given `types` YAML */
-const withTypes = (types: string) => parseConfig(`${VALID}types:\n${types}`);
+const withTypes = (types: string) => parseYaml(`${VALID}types:\n${types}`);
 
 const ALL = { article: true, list: true, feed: true, author: true, tag: true };
 const NONE = {
@@ -18,7 +22,7 @@ const NONE = {
 
 describe("parseConfig", () => {
   it("should parse a valid config", () => {
-    expect(parseConfig(VALID)).toEqual({
+    expect(parseYaml(VALID)).toEqual({
       name: "News",
       description: "Updates",
       path: "",
@@ -28,28 +32,33 @@ describe("parseConfig", () => {
       reservedPaths: [],
       types: {},
     });
-    expect(parseConfig(`${VALID}path: blog\n`).path).toBe("blog");
+    expect(parseYaml(`${VALID}path: blog\n`).path).toBe("blog");
   });
 
   it("should reject anything but a map", () => {
-    expect(() => parseConfig("- a")).toThrow("expected a map");
-    expect(() => parseConfig("")).toThrow("expected a map");
+    expect(() => parseYaml("- a")).toThrow(
+      "edahaconfig.yml: the config file must be a map of settings",
+    );
+    expect(() => parseYaml("")).toThrow("must be a map of settings");
+    expect(() => parseConfig(null)).toThrow(
+      "config: the config file must be a map of settings",
+    );
   });
 
   it("should require non-empty string fields", () => {
-    expect(() => parseConfig(VALID.replace("name: News", "name: ''"))).toThrow(
+    expect(() => parseYaml(VALID.replace("name: News", "name: ''"))).toThrow(
       '"name" must be a non-empty string',
     );
     expect(() =>
-      parseConfig(VALID.replace("outputDir: dist", "outputDir: 3")),
+      parseYaml(VALID.replace("outputDir: dist", "outputDir: 3")),
     ).toThrow('"outputDir" must be a non-empty string');
     expect(() =>
-      parseConfig(VALID.replace("publishDir: ../app/dist", "publishDir: ''")),
+      parseYaml(VALID.replace("publishDir: ../app/dist", "publishDir: ''")),
     ).toThrow('"publishDir" must be a non-empty string');
   });
 
   it("should default outputDir to dist, and leave publishDir and siteUrl unset", () => {
-    const config = parseConfig("name: News\ndescription: Updates\n");
+    const config = parseYaml("name: News\ndescription: Updates\n");
     expect(config.outputDir).toBe("dist");
     expect(config.publishDir).toBeUndefined();
     expect(config.siteUrl).toBeUndefined();
@@ -57,29 +66,29 @@ describe("parseConfig", () => {
 
   it("should read reserved paths and reject anything but a list of paths", () => {
     expect(
-      parseConfig(`${VALID}reservedPaths: [app, jwks.json]\n`).reservedPaths,
+      parseYaml(`${VALID}reservedPaths: [app, jwks.json]\n`).reservedPaths,
     ).toEqual(["app", "jwks.json"]);
     for (const value of ["app", "[App]", "['/app']", "[1]"])
-      expect(() => parseConfig(`${VALID}reservedPaths: ${value}\n`)).toThrow(
+      expect(() => parseYaml(`${VALID}reservedPaths: ${value}\n`)).toThrow(
         '"reservedPaths" must be a list of lowercase paths',
       );
   });
 
   it("should read an absolute siteUrl and reject anything else", () => {
-    expect(
-      parseConfig(`${VALID}siteUrl: http://127.0.0.1:5002\n`).siteUrl,
-    ).toBe("http://127.0.0.1:5002");
-    expect(() => parseConfig(`${VALID}siteUrl: /news\n`)).toThrow(
+    expect(parseYaml(`${VALID}siteUrl: http://127.0.0.1:5002\n`).siteUrl).toBe(
+      "http://127.0.0.1:5002",
+    );
+    expect(() => parseYaml(`${VALID}siteUrl: /news\n`)).toThrow(
       '"siteUrl" must be an absolute http(s) URL',
     );
   });
 
   it("should require a kebab-case path, and reject unknown settings", () => {
-    expect(() => parseConfig(`${VALID}path: My Blog\n`)).toThrow(
-      'config.yml: "path" must be lowercase kebab-case, or "" for the root',
+    expect(() => parseYaml(`${VALID}path: My Blog\n`)).toThrow(
+      'edahaconfig.yml: "path" must be lowercase kebab-case, or "" for the root',
     );
-    expect(() => parseConfig(`${VALID}slug: news\n`)).toThrow(
-      'config.yml: unknown blog setting "slug"',
+    expect(() => parseYaml(`${VALID}slug: news\n`)).toThrow(
+      'edahaconfig.yml: unknown blog setting "slug"',
     );
   });
 });
@@ -95,7 +104,7 @@ describe("article types", () => {
     expect(withTypes("  video:\n").types).toEqual({
       video: defaultTypeConfig("video"),
     });
-    expect(parseConfig(`${VALID}types:\n`).types).toEqual({});
+    expect(parseYaml(`${VALID}types:\n`).types).toEqual({});
   });
 
   it("should read paths, labels and generate settings", () => {
@@ -166,6 +175,8 @@ describe("article types", () => {
       ],
     ];
     for (const [types, message] of cases)
-      expect(() => withTypes(types), types).toThrow(`config.yml: ${message}`);
+      expect(() => withTypes(types), types).toThrow(
+        `edahaconfig.yml: ${message}`,
+      );
   });
 });

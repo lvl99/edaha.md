@@ -78,7 +78,7 @@ export interface EmbedPreview {
   warnings: string[];
 }
 
-/** An article type's labels from config.yml */
+/** An article type's labels from the config file */
 export interface ArticleTypeLabels {
   /** e.g. "Article" */
   labelSingle: string;

@@ -52,7 +52,7 @@ export class EditorApi {
     return this.request("/api/articles");
   }
 
-  /** The article types from config.yml, with their labels */
+  /** The article types from the config file, with their labels */
   types(): Promise<Record<string, ArticleTypeLabels>> {
     return this.request("/api/types");
   }

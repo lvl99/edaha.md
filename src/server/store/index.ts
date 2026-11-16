@@ -24,6 +24,10 @@ import {
   RESERVED_TYPES,
 } from "../../generator/config/index.ts";
 import {
+  readConfigFile,
+  type SiteConfig,
+} from "../../generator/configFile/index.ts";
+import {
   createMarkdown,
   renderMarkdown,
 } from "../../generator/markdown/index.ts";
@@ -174,11 +178,13 @@ export const serializeArticle = (
  * templates over the default theme's.
  *
  * @example
- * const store = new ArticleStore("my-site");
+ * const store = new ArticleStore(await loadSiteConfig({ siteDir: "my-site" }));
  * await store.list();
  */
 export class ArticleStore {
   private readonly articlesDir: string;
+
+  private readonly configFile: string;
 
   /** Previews' unsaved data by ID, the newest last (see `rememberPreview`) */
   private readonly previews = new Map<string, Preview>();
@@ -188,13 +194,14 @@ export class ArticleStore {
   private readonly themeDir: string;
 
   /**
-   * @param siteDir - the site folder (holds config.yml and articles/, and optionally templates/ and static/)
+   * @param site - the site's config file and folder (which holds articles/, and optionally templates/ and static/)
    * @param themeDir - the default theme folder that the site's templates and static files override
    */
-  constructor(siteDir: string, themeDir: string = THEME_DIR) {
-    this.siteDir = siteDir;
+  constructor(site: SiteConfig, themeDir: string = THEME_DIR) {
+    this.configFile = site.configFile;
+    this.siteDir = site.siteDir;
     this.themeDir = themeDir;
-    this.articlesDir = join(siteDir, "articles");
+    this.articlesDir = join(site.siteDir, "articles");
   }
 
   /** The site's templates over the theme's */
@@ -205,10 +212,11 @@ export class ArticleStore {
     );
   }
 
-  /** Read config.yml */
+  /** Read the config file again, so changes to it show without restarting the editor */
   private async config() {
     return parseConfig(
-      await readFile(join(this.siteDir, "config.yml"), "utf8"),
+      await readConfigFile(this.configFile),
+      basename(this.configFile),
     );
   }
 
@@ -220,7 +228,7 @@ export class ArticleStore {
   }
 
   /**
-   * The article types from config.yml, with their labels.
+   * The article types from the config file, with their labels.
    */
   async types(): Promise<Record<string, ArticleTypeLabels>> {
     const config = await this.config();

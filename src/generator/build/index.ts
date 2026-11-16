@@ -7,16 +7,24 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { EmbedResolver, type EmbedRenderer } from "../../embeds/index.ts";
 import { loadArticle } from "../article/index.ts";
 import {
   defaultTypeConfig,
-  parseConfig,
   RESERVED_TYPES,
   type ArticleTypeConfig,
   type BlogConfig,
 } from "../config/index.ts";
+import { loadSiteConfig } from "../configFile/index.ts";
 import { collectLists, PAGE_SIZE, pageFile, paginate } from "../lists/index.ts";
 import { createMarkdown, renderMarkdown } from "../markdown/index.ts";
 import { isSlug } from "../slug/index.ts";
@@ -39,7 +47,7 @@ import {
 
 export { RESERVED_TYPES } from "../config/index.ts";
 
-/** Used for feeds when neither `SITE_URL` nor `siteUrl` in config.yml is set */
+/** Used for feeds when neither `SITE_URL` nor `siteUrl` in the config file is set */
 export const DEFAULT_SITE_URL = "http://localhost";
 
 /** The site's folders that hold its sources, which built files must never be written into */
@@ -47,11 +55,17 @@ const SOURCE_FOLDERS = ["articles", "templates", "static"];
 
 /** Options for building the blog */
 export interface BuildOptions {
-  /** The site folder: holds config.yml and articles/, and optionally templates/ and static/ */
-  siteDir: string;
+  /**
+   * The folder to look for a config file in, before the nearest package.json's folder (see findConfigFile). Default:
+   * the current folder. The site folder is the config file's folder: it holds articles/, and optionally templates/ and
+   * static/.
+   */
+  siteDir?: string | undefined;
+  /** The config file to use instead of looking for one */
+  configFile?: string | undefined;
   /** The default theme folder (holds templates/ and static/) that the site's own files override. Default: THEME_DIR */
   themeDir?: string;
-  /** The website's absolute URL, for feeds. Defaults to `siteUrl` in config.yml, then DEFAULT_SITE_URL with a warning. */
+  /** The website's absolute URL, for feeds. Defaults to `siteUrl` in the config file, then DEFAULT_SITE_URL with a warning. */
   siteUrl?: string | undefined;
   /** Where warnings go (defaults to console) */
   logger?: Logger;
@@ -65,7 +79,7 @@ export interface BuildOptions {
 export interface BuildResult {
   /** The absolute output directory */
   outputDir: string;
-  /** The absolute folder the files were copied to, if config.yml sets `publishDir` */
+  /** The absolute folder the files were copied to, if the config file sets `publishDir` */
   publishDir: string | undefined;
   /** Rendered articles (published and unlisted) */
   articles: TemplateDataArticle[];
@@ -119,7 +133,7 @@ const overlaps = (a: string, b: string) => {
 };
 
 /**
- * Resolve `outputDir` from config.yml: a folder inside the site folder, apart from its source folders, as it is
+ * Resolve `outputDir` from the config file: a folder inside the site folder, apart from its source folders, as it is
  * emptied on every build.
  *
  * @example
@@ -130,17 +144,17 @@ export const resolveOutputDir = (siteDir: string, folder: string): string => {
   const fromSite = relative(resolve(siteDir), dir);
   if (!fromSite || fromSite.startsWith("..") || isAbsolute(fromSite))
     throw new Error(
-      `config.yml: "outputDir" must be a folder inside the site folder, got "${folder}"`,
+      `"outputDir" must be a folder inside the site folder, got "${folder}"`,
     );
   if (SOURCE_FOLDERS.some((source) => overlaps(join(siteDir, source), dir)))
     throw new Error(
-      `config.yml: "outputDir" must be apart from ${SOURCE_FOLDERS.join(", ")}, got "${folder}"`,
+      `"outputDir" must be apart from ${SOURCE_FOLDERS.join(", ")}, got "${folder}"`,
     );
   return dir;
 };
 
 /**
- * Resolve `publishDir` from config.yml, relative to the site folder: any folder apart from the site folder, e.g.
+ * Resolve `publishDir` from the config file, relative to the site folder: any folder apart from the site folder, e.g.
  * another app's build folder.
  *
  * @example
@@ -150,7 +164,7 @@ export const resolvePublishDir = (siteDir: string, folder: string): string => {
   const dir = resolve(siteDir, folder);
   if (overlaps(resolve(siteDir), dir))
     throw new Error(
-      `config.yml: "publishDir" must be a folder apart from the site folder, got "${folder}"`,
+      `"publishDir" must be a folder apart from the site folder, got "${folder}"`,
     );
   return dir;
 };
@@ -221,16 +235,32 @@ export const buildBlog = async (
   options: BuildOptions,
 ): Promise<BuildResult> => {
   const logger = options.logger ?? console;
-  const siteDir = resolve(options.siteDir);
+  const { configFile, siteDir, config } = await loadSiteConfig({
+    siteDir: options.siteDir,
+    configFile: options.configFile,
+    logger,
+  });
+  const configName = basename(configFile);
   const themeDir = options.themeDir ?? THEME_DIR;
-  const config = parseConfig(
-    await readFile(join(siteDir, "config.yml"), "utf8"),
+  /** Run a check of the config's settings, naming the config file in its error */
+  const checkConfig = <T>(check: () => T): T => {
+    try {
+      return check();
+    } catch (error) {
+      throw new Error(`${configName}: ${(error as Error).message}`, {
+        cause: error,
+      });
+    }
+  };
+  const outputDir = checkConfig(() =>
+    resolveOutputDir(siteDir, config.outputDir),
   );
-  const outputDir = resolveOutputDir(siteDir, config.outputDir);
   const publishDir =
     config.publishDir === undefined
       ? undefined
-      : resolvePublishDir(siteDir, config.publishDir);
+      : checkConfig(() =>
+          resolvePublishDir(siteDir, config.publishDir as string),
+        );
   const templates = new Templates(
     [join(siteDir, "templates"), join(themeDir, "templates")],
     logger,
@@ -239,7 +269,7 @@ export const buildBlog = async (
   const siteUrl = options.siteUrl || config.siteUrl;
   if (!siteUrl)
     logger.warn(
-      `SITE_URL is not set and config.yml has no "siteUrl"; feeds will link to ${DEFAULT_SITE_URL}`,
+      `SITE_URL is not set and ${configName} has no "siteUrl"; feeds will link to ${DEFAULT_SITE_URL}`,
     );
   const site: TemplateDataSite = {
     url: (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, ""),
@@ -256,12 +286,14 @@ export const buildBlog = async (
       );
     if (!typeConfigs[type]) {
       logger.warn(
-        `articles/${type}: type "${type}" is not in config.yml; using the default settings`,
+        `articles/${type}: type "${type}" is not in ${configName}; using the default settings`,
       );
       typeConfigs[type] = defaultTypeConfig(type);
     }
   }
-  checkTypePaths(config.path, typeConfigs, config.reservedPaths);
+  checkConfig(() =>
+    checkTypePaths(config.path, typeConfigs, config.reservedPaths),
+  );
   const blog = blogData(config, typeConfigs);
 
   const markdown = createMarkdown();

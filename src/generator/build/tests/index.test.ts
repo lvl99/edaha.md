@@ -35,11 +35,11 @@ const writeSiteFile = async (
 
 type Space = Awaited<ReturnType<typeof workspace>>;
 
-/** Add settings for the page type to the workspace's config.yml */
+/** Add settings for the page type to the workspace's edahaconfig.yml */
 const configurePages = async ({ siteDir }: Space, settings: string) =>
   writeFile(
-    join(siteDir, "config.yml"),
-    `${await readFile(join(FIXTURE, "config.yml"), "utf8")}  page:\n${settings}`,
+    join(siteDir, "edahaconfig.yml"),
+    `${await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8")}  page:\n${settings}`,
   );
 
 /** Write an article into the workspace */
@@ -153,7 +153,7 @@ describe("buildBlog", () => {
       "site.css",
     ]);
     expect(logger.warn.mock.calls.map(([message]) => message)).toEqual([
-      'articles/page: type "page" is not in config.yml; using the default settings',
+      'articles/page: type "page" is not in edahaconfig.yml; using the default settings',
       "articles/article/no-article: no article.md; skipped",
       // The page type has its own templates folder, without a list template
       "Template page/list.njk not found; using article/list.njk",
@@ -228,7 +228,7 @@ describe("buildBlog", () => {
     );
     const { result, logger, read } = await build(space, "https://example.com");
     expect(logger.warn.mock.calls.flat().join()).not.toContain(
-      "is not in config.yml",
+      "is not in edahaconfig.yml",
     );
     // The page is built, but in no lists or feeds
     expect(result.files.filter((file) => file.startsWith("page/"))).toEqual([
@@ -269,8 +269,8 @@ describe("buildBlog", () => {
   it("should leave out tag links and feeds when a type isn't in tag lists or feeds", async () => {
     const space = await workspace();
     await writeFile(
-      join(space.siteDir, "config.yml"),
-      (await readFile(join(FIXTURE, "config.yml"), "utf8")).replace(
+      join(space.siteDir, "edahaconfig.yml"),
+      (await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8")).replace(
         "path: news\n",
         "path: news\n    generate:\n      tag: false\n      feed: false\n",
       ),
@@ -373,8 +373,8 @@ describe("buildBlog", () => {
     const space = await workspace();
     for (const publishDir of ["dist", ".", "out", ".."]) {
       await writeFile(
-        join(space.siteDir, "config.yml"),
-        (await readFile(join(FIXTURE, "config.yml"), "utf8")).replace(
+        join(space.siteDir, "edahaconfig.yml"),
+        (await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8")).replace(
           "publishDir: ../site",
           `publishDir: ${publishDir}`,
         ),
@@ -383,7 +383,7 @@ describe("buildBlog", () => {
         build(space, "https://example.com"),
         publishDir,
       ).rejects.toThrow(
-        'config.yml: "publishDir" must be a folder apart from the site folder',
+        'edahaconfig.yml: "publishDir" must be a folder apart from the site folder',
       );
     }
   });
@@ -391,8 +391,8 @@ describe("buildBlog", () => {
   it("should only write to the output folder when there is no publish folder", async () => {
     const space = await workspace();
     await writeFile(
-      join(space.siteDir, "config.yml"),
-      (await readFile(join(FIXTURE, "config.yml"), "utf8")).replace(
+      join(space.siteDir, "edahaconfig.yml"),
+      (await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8")).replace(
         "publishDir: ../site\n",
         "",
       ),
@@ -451,8 +451,8 @@ describe("buildBlog", () => {
 
     const app = await workspace();
     await writeFile(
-      join(app.siteDir, "config.yml"),
-      `reservedPaths: [app]\n${await readFile(join(FIXTURE, "config.yml"), "utf8")}  page:\n    path: ''\n`,
+      join(app.siteDir, "edahaconfig.yml"),
+      `reservedPaths: [app]\n${await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8")}  page:\n    path: ''\n`,
     );
     await writeArticle(
       app,
@@ -466,7 +466,7 @@ describe("buildBlog", () => {
     const same = await workspace();
     await configurePages(same, "    path: news\n");
     await expect(build(same, "https://example.com")).rejects.toThrow(
-      'config.yml: types "article" and "page" have the same path "news"',
+      'edahaconfig.yml: types "article" and "page" have the same path "news"',
     );
   });
 
@@ -474,18 +474,18 @@ describe("buildBlog", () => {
     const space = await workspace();
     const { logger, read } = await build(space);
     expect(logger.warn).toHaveBeenCalledWith(
-      `SITE_URL is not set and config.yml has no "siteUrl"; feeds will link to ${DEFAULT_SITE_URL}`,
+      `SITE_URL is not set and edahaconfig.yml has no "siteUrl"; feeds will link to ${DEFAULT_SITE_URL}`,
     );
     expect(await read("news/feed.xml")).toContain(
       `<link>${DEFAULT_SITE_URL}/news/</link>`,
     );
   });
 
-  it("should use siteUrl from config.yml when SITE_URL is missing", async () => {
+  it("should use siteUrl from edahaconfig.yml when SITE_URL is missing", async () => {
     const space = await workspace();
     await writeFile(
-      join(space.siteDir, "config.yml"),
-      `siteUrl: http://127.0.0.1:5002\n${await readFile(join(FIXTURE, "config.yml"), "utf8")}`,
+      join(space.siteDir, "edahaconfig.yml"),
+      `siteUrl: http://127.0.0.1:5002\n${await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8")}`,
     );
     const { logger, read } = await build(space);
     expect(logger.warn).not.toHaveBeenCalledWith(
@@ -500,7 +500,10 @@ describe("buildBlog", () => {
     const root = await mkdtemp(join(tmpdir(), "blog-empty-"));
     const siteDir = join(root, "blog");
     await mkdir(siteDir);
-    await cp(join(FIXTURE, "config.yml"), join(siteDir, "config.yml"));
+    await cp(
+      join(FIXTURE, "edahaconfig.yml"),
+      join(siteDir, "edahaconfig.yml"),
+    );
     const { result } = await build({ root, siteDir }, "https://example.com");
     // Only the theme's static files
     expect(result.files).toEqual(["site.css"]);

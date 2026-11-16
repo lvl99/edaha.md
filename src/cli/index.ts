@@ -14,12 +14,14 @@ import type { BuildOptions, BuildResult } from "../generator/build/index.ts";
 export const USAGE = `Usage: edaha <command> [options]
 
 Commands:
-  build    Build the site into config.yml's outputDir (and copy it into publishDir, if set)
+  build    Build the site into the config file's outputDir (and copy it into publishDir, if set)
   editor   Run the local article editor (only reachable from this computer)
 
 Options:
-  --dir <folder>       The site folder, which holds config.yml and articles/ (default: the current folder)
-  --site-url <url>     build: the website's absolute URL for feeds (default: SITE_URL, then config.yml's siteUrl)
+  -c, --config <file>  The config file (default: the first edahaconfig file found in --dir, then in the nearest
+                       package.json's folder). The site folder is the config file's folder.
+  --dir <folder>       The folder to look for a config file in (default: the current folder)
+  --site-url <url>     build: the website's absolute URL for feeds (default: SITE_URL, then the config's siteUrl)
   --port <number>      editor: the port to listen on (default: ${EDITOR_PORT})
   -h, --help           Show this help
   -v, --version        Show edaha.md's version
@@ -100,11 +102,16 @@ export const runCli = async (
     return 1;
   }
   const siteDir = resolve(context.cwd, values.dir ?? ".");
+  const configFile =
+    values.config === undefined
+      ? undefined
+      : resolve(context.cwd, values.config);
 
   try {
     if (command === "build") {
       const result = await (context.build ?? buildBlog)({
         siteDir,
+        configFile,
         siteUrl: values["site-url"] ?? context.env.SITE_URL,
         logger: { warn: context.error },
       });
@@ -119,10 +126,11 @@ export const runCli = async (
     if (command === "editor") {
       const editor = await (context.editor ?? startEditor)({
         siteDir,
+        configFile,
         port: values.port === undefined ? EDITOR_PORT : parsePort(values.port),
       });
       context.log(
-        `Article editor for ${siteDir} running at ${editor.url} (press Ctrl+C to stop)`,
+        `Article editor running at ${editor.url} (press Ctrl+C to stop)`,
       );
       return 0;
     }
@@ -140,6 +148,7 @@ const parse = (args: string[]) =>
     args,
     allowPositionals: true,
     options: {
+      config: { type: "string", short: "c" },
       dir: { type: "string" },
       "site-url": { type: "string" },
       port: { type: "string" },

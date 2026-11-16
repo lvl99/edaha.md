@@ -28,13 +28,13 @@ describe("checkTypePaths", () => {
         ...types,
         other: { ...defaultTypeConfig("other"), path: "news" },
       }),
-    ).toThrow('config.yml: types "news" and "other" have the same path "news"');
+    ).toThrow('types "news" and "other" have the same path "news"');
   });
 
   it("should reject reserved paths at the website's root only", () => {
     const app = { app: defaultTypeConfig("app") };
     expect(() => checkTypePaths("", app, ["app"])).toThrow(
-      'config.yml: type "app" can\'t use the path "app", which is reserved',
+      'type "app" can\'t use the path "app", which is reserved',
     );
     expect(() => checkTypePaths("", app)).not.toThrow();
     expect(() => checkTypePaths("blog", app, ["app"])).not.toThrow();

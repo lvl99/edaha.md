@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { getRequestListener } from "@hono/node-server";
 import { defineConfig } from "vite";
 import { EDITOR_BASE, EDITOR_HOST, EDITOR_PORT } from "./src/editor/index.ts";
+import { loadSiteConfig } from "./src/generator/configFile/index.ts";
 import { createEditorApp } from "./src/server/app/index.ts";
 import { ArticleStore } from "./src/server/store/index.ts";
 
@@ -26,13 +27,14 @@ export default defineConfig({
   plugins: [
     {
       name: "edaha-editor-api",
-      configureServer(server) {
+      async configureServer(server) {
         const siteDir = process.env.EDAHA_SITE_DIR;
         if (!siteDir)
           throw new Error(
-            "Set EDAHA_SITE_DIR to the site folder to edit, e.g. EDAHA_SITE_DIR=../my-site pnpm dev:editor",
+            "Set EDAHA_SITE_DIR to the folder with the site's config file, e.g. EDAHA_SITE_DIR=../my-site pnpm dev:editor",
           );
-        const app = createEditorApp(new ArticleStore(resolve(siteDir)), {
+        const site = await loadSiteConfig({ siteDir: resolve(siteDir) });
+        const app = createEditorApp(new ArticleStore(site), {
           allowedOrigins: [`http://${EDITOR_HOST}:${EDITOR_PORT}`],
         });
         const listener = getRequestListener(app.fetch);

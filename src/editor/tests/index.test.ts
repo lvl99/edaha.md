@@ -42,7 +42,7 @@ describe("editorUrl and CLIENT_DIR", () => {
 describe("createEditorServer", () => {
   it("should serve the editor page and its files", async () => {
     const { siteDir, clientDir } = await setup();
-    const app = createEditorServer({ siteDir, clientDir });
+    const app = await createEditorServer({ siteDir, clientDir });
     const page = await app.request("/");
     expect(page.status).toBe(200);
     expect(page.headers.get("Content-Type")).toBe("text/html; charset=utf-8");
@@ -63,7 +63,7 @@ describe("createEditorServer", () => {
 
   it("should serve the built editor page from CLIENT_DIR by default", async () => {
     const { siteDir } = await setup();
-    const page = await createEditorServer({ siteDir }).request("/");
+    const page = await (await createEditorServer({ siteDir })).request("/");
     // dist/client exists once the package is built
     expect(page.status).toBe(
       existsSync(join(CLIENT_DIR, "index.html")) ? 200 : 500,
@@ -72,7 +72,10 @@ describe("createEditorServer", () => {
 
   it("should explain when the editor page hasn't been built", async () => {
     const { root, siteDir } = await setup();
-    const app = createEditorServer({ siteDir, clientDir: join(root, "none") });
+    const app = await createEditorServer({
+      siteDir,
+      clientDir: join(root, "none"),
+    });
     const page = await app.request("/");
     expect(page.status).toBe(500);
     expect(await page.text()).toContain("build edaha.md");
@@ -80,7 +83,7 @@ describe("createEditorServer", () => {
 
   it("should serve the API, the site's static files and the theme's, allowing changes only from its own address", async () => {
     const { siteDir, clientDir } = await setup();
-    const app = createEditorServer({
+    const app = await createEditorServer({
       siteDir,
       clientDir,
       port: 5555,
@@ -101,13 +104,13 @@ describe("createEditorServer", () => {
 
   it("should allow changes from the default port's address when no port is given", async () => {
     const { siteDir, clientDir } = await setup();
-    const app = createEditorServer({ siteDir, clientDir });
+    const app = await createEditorServer({ siteDir, clientDir });
     const response = await app.request("/api/articles/article/first", {
       method: "DELETE",
       headers: { Origin: editorUrl(EDITOR_PORT) },
     });
     expect(response.status).toBe(204);
-    expect(editorPort({ siteDir })).toBe(EDITOR_PORT);
+    expect(editorPort({})).toBe(EDITOR_PORT);
   });
 });
 

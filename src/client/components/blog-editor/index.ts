@@ -52,7 +52,7 @@ export interface ArticleGroup {
 }
 
 /**
- * Group articles by type, newest first within each group: configured types in config.yml's order, then any other types
+ * Group articles by type, newest first within each group: configured types in the config file's order, then any other types
  * alphabetically. Types without articles are left out. With a type, only that type's group is given.
  *
  * @example
@@ -104,7 +104,7 @@ export class BlogEditor extends LitElement {
 
   declare api: EditorApi;
   declare articles: ArticleSummary[];
-  /** Article types from config.yml */
+  /** Article types from the config file */
   declare types: Record<string, ArticleTypeLabels>;
   /** The selected article's location */
   declare selected?: ArticleLocation | undefined;

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { PREVIEW_CSP, createEditorApp } from "..";
 import { ArticleStore } from "../../store";
+import { loadSiteConfig } from "../../../generator/configFile";
 
 const FIXTURE = fileURLToPath(
   new URL("../../../shared/tests/fixtures/blog", import.meta.url),
@@ -15,7 +16,7 @@ const ORIGIN = "http://127.0.0.1:5180";
 const setup = async () => {
   const dir = await mkdtemp(join(tmpdir(), "blog-app-"));
   await cp(FIXTURE, dir, { recursive: true });
-  const store = new ArticleStore(dir);
+  const store = new ArticleStore(await loadSiteConfig({ siteDir: dir }));
   return {
     dir,
     store,
