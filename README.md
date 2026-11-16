@@ -272,6 +272,7 @@ pnpm format:check
 EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for the site whose config file is found from there
 pnpm site:build     # build edaha.md's own website (site/) into site/build
 pnpm site:serve     # serve site/build at http://127.0.0.1:5181 (PORT=... for another port)
+pnpm site:dev       # build and serve site/ at http://127.0.0.1:5181, rebuilding and reloading pages on changes
 ```
 
 ### Project layout

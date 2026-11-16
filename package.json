@@ -46,6 +46,7 @@
     "dev:editor": "vite",
     "site:build": "node src/cli/bin.ts build",
     "site:serve": "node scripts/serve-site.ts",
+    "site:dev": "node scripts/dev-site.ts",
     "typecheck": "tsc -p .",
     "test": "vitest --run",
     "test:coverage": "vitest --run --coverage",
