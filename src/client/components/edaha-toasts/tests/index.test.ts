@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "..";
-import { showToast, TOAST_EVENT, type BlogToasts, type ToastMessage } from "..";
+import {
+  showToast,
+  TOAST_EVENT,
+  type EdahaToasts,
+  type ToastMessage,
+} from "..";
 import { button, mount } from "../../../../shared/tests/helpers";
 
 afterEach(() => {
@@ -10,17 +15,17 @@ afterEach(() => {
 });
 
 /** The toasts shown, as [role, class, message] */
-const shown = (element: BlogToasts) =>
+const shown = (element: EdahaToasts) =>
   [...element.querySelectorAll(".toast")].map((toast) => [
     toast.getAttribute("role"),
     toast.className.trim(),
     toast.querySelector("span")?.textContent,
   ]);
 
-describe("blog-toasts", () => {
+describe("edaha-toasts", () => {
   it("should show successes for a while and errors until dismissed", async () => {
     vi.useFakeTimers();
-    const element = await mount<BlogToasts>("blog-toasts");
+    const element = await mount<EdahaToasts>("edaha-toasts");
     expect(element.duration).toBe(4000);
     element.show({ kind: "success", message: "Saved" });
     element.show({ kind: "error", message: "Not found" });
@@ -45,7 +50,7 @@ describe("blog-toasts", () => {
       received.push((event as CustomEvent<ToastMessage>).detail),
     );
     showToast(target, { kind: "error", message: "Oops" });
-    expect(TOAST_EVENT).toBe("blog-toast");
+    expect(TOAST_EVENT).toBe("edaha-toast");
     expect(received).toEqual([{ kind: "error", message: "Oops" }]);
   });
 });

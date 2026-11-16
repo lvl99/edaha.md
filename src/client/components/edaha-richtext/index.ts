@@ -27,9 +27,9 @@ const inTable = (editor: Editor) => editor.isActive("table");
  * editable area fires too); read the HTML from `value`.
  *
  * @example
- * html`<blog-richtext .value=${body} .uploadImage=${upload} @richtext-change=${onChange}></blog-richtext>`
+ * html`<edaha-richtext .value=${body} .uploadImage=${upload} @richtext-change=${onChange}></edaha-richtext>`
  */
-export class BlogRichtext extends LitElement {
+export class EdahaRichtext extends LitElement {
   static override properties = {
     value: { attribute: false },
     uploadImage: { attribute: false },
@@ -318,4 +318,4 @@ export class BlogRichtext extends LitElement {
   }
 }
 
-defineElement("blog-richtext", BlogRichtext);
+defineElement("edaha-richtext", EdahaRichtext);

@@ -25,7 +25,10 @@ const setup = async () => {
   const clientDir = join(root, "client");
   await cp(FIXTURE, siteDir, { recursive: true });
   await mkdir(join(clientDir, "assets"), { recursive: true });
-  await writeFile(join(clientDir, "index.html"), "<blog-editor></blog-editor>");
+  await writeFile(
+    join(clientDir, "index.html"),
+    "<edaha-editor></edaha-editor>",
+  );
   await writeFile(join(clientDir, "assets/main.js"), "console.log(1)");
   await writeFile(join(clientDir, "assets/data.unknownext"), "data");
   await writeFile(join(clientDir, ".hidden"), "secret");
@@ -46,7 +49,7 @@ describe("createEditorServer", () => {
     const page = await app.request("/");
     expect(page.status).toBe(200);
     expect(page.headers.get("Content-Type")).toBe("text/html; charset=utf-8");
-    expect(await page.text()).toBe("<blog-editor></blog-editor>");
+    expect(await page.text()).toBe("<edaha-editor></edaha-editor>");
     const script = await app.request(`${EDITOR_BASE}assets/main.js`);
     expect(script.headers.get("Content-Type")).toBe("text/javascript");
     expect(await script.text()).toBe("console.log(1)");

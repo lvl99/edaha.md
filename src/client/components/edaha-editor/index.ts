@@ -5,17 +5,17 @@ import type {
   ArticleTypeLabels,
   EditorArticle,
 } from "../../../server/types/index.ts";
-import type { FieldOption } from "../blog-article-data-field/index.ts";
+import type { FieldOption } from "../edaha-article-data-field/index.ts";
 import { EditorApi, type ArticleLocation } from "../../editorApi/index.ts";
 import { defineElement } from "../define/index.ts";
-import "../blog-article/index.ts";
-import type { BlogArticle } from "../blog-article/index.ts";
-import "../blog-toasts/index.ts";
+import "../edaha-article/index.ts";
+import type { EdahaArticle } from "../edaha-article/index.ts";
+import "../edaha-toasts/index.ts";
 import {
   TOAST_EVENT,
-  type BlogToasts,
+  type EdahaToasts,
   type ToastMessage,
-} from "../blog-toasts/index.ts";
+} from "../edaha-toasts/index.ts";
 
 /**
  * Describe an article in the list, e.g. "article/hello · published · 2026-10-19".
@@ -86,9 +86,9 @@ export const groupArticles = (
  * own question.
  *
  * @example
- * html`<blog-editor></blog-editor>`
+ * html`<edaha-editor></edaha-editor>`
  */
-export class BlogEditor extends LitElement {
+export class EdahaEditor extends LitElement {
   static override properties = {
     api: { attribute: false },
     articles: { state: true },
@@ -158,13 +158,13 @@ export class BlogEditor extends LitElement {
   }
 
   /** The article form, while shown */
-  private form(): BlogArticle | null {
-    return this.querySelector<BlogArticle>("blog-article");
+  private form(): EdahaArticle | null {
+    return this.querySelector<EdahaArticle>("edaha-article");
   }
 
   /** Show a toast */
   private toast(toast: ToastMessage): void {
-    this.querySelector<BlogToasts>("blog-toasts")?.show(toast);
+    this.querySelector<EdahaToasts>("edaha-toasts")?.show(toast);
   }
 
   /** Ask whether to save unsaved changes first, and resolve with the answer */
@@ -349,21 +349,21 @@ export class BlogEditor extends LitElement {
           this.editing
             ? keyed(
                 this.formKey,
-                html`<blog-article
+                html`<edaha-article
                   .api=${this.api}
                   .article=${this.article}
                   .typeOptions=${this.typeOptions()}
                   @article-saved=${(event: CustomEvent<ArticleLocation>) => void this.onSaved(event)}
                   @article-deleted=${() => void this.onDeleted()}
-                ></blog-article>`,
+                ></edaha-article>`,
               )
             : html`<p>Choose an article or write a new one.</p>`
         }
       </section>
       ${this.renderUnsaved()}
-      <blog-toasts></blog-toasts>
+      <edaha-toasts></edaha-toasts>
     `;
   }
 }
 
-defineElement("blog-editor", BlogEditor);
+defineElement("edaha-editor", EdahaEditor);

@@ -9,7 +9,7 @@ export interface ToastMessage {
 }
 
 /** The event other components fire (bubbling) to show a toast; its detail is a {@link ToastMessage} */
-export const TOAST_EVENT = "blog-toast";
+export const TOAST_EVENT = "edaha-toast";
 
 /** A toast on screen */
 interface Toast extends ToastMessage {
@@ -36,9 +36,9 @@ export const showToast = (from: EventTarget, toast: ToastMessage): void => {
  * light DOM.
  *
  * @example
- * html`<blog-toasts></blog-toasts>`; // then toasts.show({ kind: "error", message: "Not found" })
+ * html`<edaha-toasts></edaha-toasts>`; // then toasts.show({ kind: "error", message: "Not found" })
  */
-export class BlogToasts extends LitElement {
+export class EdahaToasts extends LitElement {
   static override properties = {
     toasts: { state: true },
   };
@@ -94,4 +94,4 @@ export class BlogToasts extends LitElement {
   }
 }
 
-defineElement("blog-toasts", BlogToasts);
+defineElement("edaha-toasts", EdahaToasts);

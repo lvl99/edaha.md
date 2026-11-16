@@ -8,13 +8,13 @@ import type {
 import type { ArticleLocation, EditorApi } from "../../editorApi/index.ts";
 import { fromLocalInput, toLocalInput } from "../../dates/index.ts";
 import { defineElement } from "../define/index.ts";
-import "../blog-article-data-field/index.ts";
-import "../blog-article-data-group/index.ts";
+import "../edaha-article-data-field/index.ts";
+import "../edaha-article-data-group/index.ts";
 import type {
   FieldChange,
   FieldOption,
-} from "../blog-article-data-field/index.ts";
-import { showToast } from "../blog-toasts/index.ts";
+} from "../edaha-article-data-field/index.ts";
+import { showToast } from "../edaha-toasts/index.ts";
 
 const STATUS_OPTIONS: FieldOption[] = [
   { value: "published", label: "Published" },
@@ -160,7 +160,7 @@ const normalise = (value: unknown): unknown => {
 
 /**
  * The fields (and groups: "author", "tags" and "attachments") whose values differ between an article's data and its
- * saved data. The body isn't compared, as its HTML is reformatted by the editor (see `BlogArticle.bodyChanged`).
+ * saved data. The body isn't compared, as its HTML is reformatted by the editor (see `EdahaArticle.bodyChanged`).
  *
  * @example
  * changedFields({ ...saved, title: "New" }, saved); // Set { "title" }
@@ -187,13 +187,13 @@ export const RESET_QUESTION =
  * would show the article with its type's "single" template. Saving a changed type or slug moves the article's folder.
  * Fields changed since the last save are marked with an asterisk, and "Reset…" puts back the last saved version.
  *
- * Fires `article-saved` (detail: the article's location), `article-deleted`, and `blog-toast` for success and error
+ * Fires `article-saved` (detail: the article's location), `article-deleted`, and `edaha-toast` for success and error
  * messages (see `showToast`).
  *
  * @example
- * html`<blog-article .api=${api} .article=${article} .typeOptions=${[{ value: "article", label: "Article" }]}></blog-article>`
+ * html`<edaha-article .api=${api} .article=${article} .typeOptions=${[{ value: "article", label: "Article" }]}></edaha-article>`
  */
-export class BlogArticle extends LitElement {
+export class EdahaArticle extends LitElement {
   static override properties = {
     api: { attribute: false },
     article: { attribute: false },
@@ -551,38 +551,38 @@ export class BlogArticle extends LitElement {
   /** Render the author fields */
   private renderAuthor() {
     const author = this.data.author;
-    return html`<blog-article-data-group
+    return html`<edaha-article-data-group
       name="author"
       label="Author"
       ?changed=${this.isChanged("author")}
       allowclear
       @group-clear=${() => (this.data = { ...this.data, author: undefined })}
     >
-      <blog-article-data-field
+      <edaha-article-data-field
         name="author[name]"
         label="Name"
-        placeholder="Defaults to the blog name"
+        placeholder="Defaults to the site name"
         .value=${author?.name ?? ""}
-      ></blog-article-data-field>
-      <blog-article-data-field
+      ></edaha-article-data-field>
+      <edaha-article-data-field
         name="author[email]"
         type="email"
         label="Email address"
         .value=${author?.email ?? ""}
-      ></blog-article-data-field>
-      <blog-article-data-field
+      ></edaha-article-data-field>
+      <edaha-article-data-field
         name="author[url]"
         type="url"
         label="Homepage"
         placeholder="https://example.com"
         .value=${author?.url ?? ""}
-      ></blog-article-data-field>
-    </blog-article-data-group>`;
+      ></edaha-article-data-field>
+    </edaha-article-data-group>`;
   }
 
   /** Render the tag fields */
   private renderTags() {
-    return html`<blog-article-data-group
+    return html`<edaha-article-data-group
       name="tags"
       label="Tags"
       ?changed=${this.isChanged("tags")}
@@ -592,10 +592,10 @@ export class BlogArticle extends LitElement {
       ${this.data.tags.map(
         (tag, i) =>
           html`<div class="tag">
-            <blog-article-data-field
+            <edaha-article-data-field
               name="tags[${i}]"
               .value=${tag}
-            ></blog-article-data-field>
+            ></edaha-article-data-field>
             <button
               type="button"
               class="remove"
@@ -609,13 +609,13 @@ export class BlogArticle extends LitElement {
             </button>
           </div>`,
       )}
-    </blog-article-data-group>`;
+    </edaha-article-data-group>`;
   }
 
   /** Render the attachment fields */
   private renderAttachments() {
     const noUploads = !this.location;
-    return html`<blog-article-data-group
+    return html`<edaha-article-data-group
       name="attachments"
       label="Attachments"
       ?changed=${this.isChanged("attachments")}
@@ -628,8 +628,8 @@ export class BlogArticle extends LitElement {
     >
       ${this.data.attachments.map(
         (attachment, i) =>
-          html`<blog-article-data-group name="attachments[${i}]">
-            <blog-article-data-field
+          html`<edaha-article-data-group name="attachments[${i}]">
+            <edaha-article-data-field
               name="attachments[${i}][url]"
               type="file"
               label="Upload file"
@@ -639,21 +639,21 @@ export class BlogArticle extends LitElement {
               .previewUrl=${this.fileUrl(attachment.url)}
               allowchange
               ?disabled=${noUploads}
-            ></blog-article-data-field>
-            <blog-article-data-field
+            ></edaha-article-data-field>
+            <edaha-article-data-field
               name="attachments[${i}][url]"
               type="text"
               label="File name or link"
               placeholder="https://example.com/file.pdf"
               .value=${attachment.url}
-            ></blog-article-data-field>
-            <blog-article-data-field
+            ></edaha-article-data-field>
+            <edaha-article-data-field
               name="attachments[${i}][name]"
               label="Name"
               placeholder="Defaults to the file name"
               .value=${attachment.name ?? ""}
               allowclear
-            ></blog-article-data-field>
+            ></edaha-article-data-field>
             <button
               type="button"
               class="remove"
@@ -665,23 +665,23 @@ export class BlogArticle extends LitElement {
             >
               Remove attachment
             </button>
-          </blog-article-data-group>`,
+          </edaha-article-data-group>`,
       )}
-    </blog-article-data-group>`;
+    </edaha-article-data-group>`;
   }
 
   /** Render the body in its mode, with the buttons switching modes */
   private renderBody() {
     let body;
     if (this.mode === "markdown")
-      body = html`<blog-article-data-field
+      body = html`<edaha-article-data-field
         name="bodyMarkdown"
         type="textarea"
         label="Body"
         rows="20"
         ?changed=${this.bodyChanged}
         .value=${this.bodyMarkdown}
-      ></blog-article-data-field>`;
+      ></edaha-article-data-field>`;
     else if (this.mode === "preview")
       // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. It
       // isn't sandboxed (a sandboxed page can't load anything from 127.0.0.1): its server sends a Content Security
@@ -692,7 +692,7 @@ export class BlogArticle extends LitElement {
         src=${this.previewUrl}
       ></iframe>`;
     else
-      body = html`<blog-article-data-field
+      body = html`<edaha-article-data-field
         name="body"
         type="richtext"
         label="Body"
@@ -700,7 +700,7 @@ export class BlogArticle extends LitElement {
         .value=${this.data.bodyHtml}
         .uploadImage=${this.location ? this.uploadImage : undefined}
         .loadEmbedPreview=${this.loadEmbedPreview}
-      ></blog-article-data-field>`;
+      ></edaha-article-data-field>`;
     return html`<div class="body-modes" role="group" aria-label="Body mode">
         ${BODY_MODES.map(
           ({ mode, label }) =>
@@ -736,17 +736,17 @@ export class BlogArticle extends LitElement {
       }}
     >
       <main>
-        <blog-article-data-field
+        <edaha-article-data-field
           name="title"
           label="Title"
           ?changed=${changed.has("title")}
           placeholder="New article title"
           .value=${data.title}
-        ></blog-article-data-field>
+        ></edaha-article-data-field>
         ${this.renderBody()}
       </main>
       <aside>
-        <div class="blog-article-controls">
+        <div class="edaha-article-controls">
           <button type="submit" ?disabled=${this.busy}>Save</button>
           <button
             type="button"
@@ -770,15 +770,15 @@ export class BlogArticle extends LitElement {
           }
         </div>
         <h2>Configuration</h2>
-        <blog-article-data-field
+        <edaha-article-data-field
           name="type"
           ?changed=${changed.has("type")}
           type="select"
           label="Type"
           .options=${typeOptions}
           .value=${data.type}
-        ></blog-article-data-field>
-        <blog-article-data-field
+        ></edaha-article-data-field>
+        <edaha-article-data-field
           name="template"
           ?changed=${changed.has("template")}
           type="select"
@@ -791,31 +791,31 @@ export class BlogArticle extends LitElement {
             ]),
           ].map((template) => ({ value: template, label: template }))}
           .value=${data.template ?? "single"}
-        ></blog-article-data-field>
-        <blog-article-data-field
+        ></edaha-article-data-field>
+        <edaha-article-data-field
           name="status"
           ?changed=${changed.has("status")}
           type="select"
           label="Status"
           .options=${STATUS_OPTIONS}
           .value=${data.status}
-        ></blog-article-data-field>
-        <blog-article-data-field
+        ></edaha-article-data-field>
+        <edaha-article-data-field
           name="slug"
           ?changed=${changed.has("slug")}
           label="Slug"
           placeholder=${slugify(data.title) || "title-converted-to-slug"}
           .value=${data.slug}
-        ></blog-article-data-field>
-        <blog-article-data-field
+        ></edaha-article-data-field>
+        <edaha-article-data-field
           name="date"
           ?changed=${changed.has("date")}
           type="datetime-local"
           label="Publication date"
           .value=${toLocalInput(data.date)}
-        ></blog-article-data-field>
+        ></edaha-article-data-field>
         ${this.renderAuthor()}
-        <blog-article-data-field
+        <edaha-article-data-field
           name="excerpt"
           ?changed=${changed.has("excerpt")}
           type="textarea"
@@ -823,8 +823,8 @@ export class BlogArticle extends LitElement {
           placeholder="Defaults to the text before the read more break"
           .value=${data.excerpt ?? ""}
           allowclear
-        ></blog-article-data-field>
-        <blog-article-data-field
+        ></edaha-article-data-field>
+        <edaha-article-data-field
           name="thumbnail"
           ?changed=${changed.has("thumbnail")}
           type="file"
@@ -836,7 +836,7 @@ export class BlogArticle extends LitElement {
           allowchange
           allowclear
           ?disabled=${!this.location}
-        ></blog-article-data-field>
+        ></edaha-article-data-field>
         ${this.renderTags()} ${this.renderAttachments()}
         ${this.location ? nothing : html`<p class="hint">Save the article before uploading files.</p>`}
         ${
@@ -856,4 +856,4 @@ export class BlogArticle extends LitElement {
   }
 }
 
-defineElement("blog-article", BlogArticle);
+defineElement("edaha-article", EdahaArticle);

@@ -2,7 +2,7 @@
  * Define a custom element once (modules can be loaded more than once, e.g. in tests).
  *
  * @example
- * defineElement("blog-editor", BlogEditor);
+ * defineElement("edaha-editor", EdahaEditor);
  */
 export const defineElement = (
   name: string,

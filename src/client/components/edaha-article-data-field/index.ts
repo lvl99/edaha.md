@@ -1,7 +1,7 @@
 import { html, LitElement, nothing } from "lit";
 import { defineElement } from "../define/index.ts";
-import "../blog-richtext/index.ts";
-import type { ImageUploader } from "../blog-richtext/index.ts";
+import "../edaha-richtext/index.ts";
+import type { ImageUploader } from "../edaha-richtext/index.ts";
 import type { EmbedPreview } from "../../../server/types/index.ts";
 
 /** Kinds of field */
@@ -38,9 +38,9 @@ const IMAGE = /\.(png|jpe?g|gif|webp|svg)$/i;
  * (detail: the chosen File) so the article can upload it and set the value to the saved file name.
  *
  * @example
- * html`<blog-article-data-field name="title" type="text" label="Title" .value=${title}></blog-article-data-field>`
+ * html`<edaha-article-data-field name="title" type="text" label="Title" .value=${title}></edaha-article-data-field>`
  */
-export class BlogArticleDataField extends LitElement {
+export class EdahaArticleDataField extends LitElement {
   static override properties = {
     name: {},
     type: {},
@@ -156,7 +156,7 @@ export class BlogArticleDataField extends LitElement {
           )}
         </select>`;
       case "richtext":
-        return html`<blog-richtext
+        return html`<edaha-richtext
           id=${this.inputId}
           .value=${this.value}
           .uploadImage=${this.uploadImage}
@@ -167,7 +167,7 @@ export class BlogArticleDataField extends LitElement {
               (event.currentTarget as HTMLElement & { value: string }).value,
             );
           }}
-        ></blog-richtext>`;
+        ></edaha-richtext>`;
       case "file":
         return this.renderFile();
       default:
@@ -258,4 +258,4 @@ export class BlogArticleDataField extends LitElement {
   }
 }
 
-defineElement("blog-article-data-field", BlogArticleDataField);
+defineElement("edaha-article-data-field", EdahaArticleDataField);

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "..";
-import type { BlogRichtext } from "..";
+import type { EdahaRichtext } from "..";
 import {
   button,
   chooseFile,
@@ -17,17 +17,17 @@ const setup = async (
   value = "<p>Hello world</p>",
   answers: (string | null)[] = [],
 ) => {
-  const element = await mount<BlogRichtext>("blog-richtext", { value });
+  const element = await mount<EdahaRichtext>("edaha-richtext", { value });
   await element.updateComplete;
   element.prompt = vi.fn(() => (answers.length ? answers.shift()! : null));
   return element;
 };
 
 /** Select all text in the editor */
-const selectAll = (element: BlogRichtext) =>
+const selectAll = (element: EdahaRichtext) =>
   element.editor!.commands.selectAll();
 
-describe("blog-richtext", () => {
+describe("edaha-richtext", () => {
   it("should show the content and fire richtext-change with the new HTML", async () => {
     const element = await setup();
     const onInput = vi.fn();
@@ -300,7 +300,7 @@ describe("blog-richtext", () => {
   });
 
   it("should render a disabled toolbar before the editor exists, and default to an empty value", () => {
-    const element = document.createElement("blog-richtext") as BlogRichtext;
+    const element = document.createElement("edaha-richtext") as EdahaRichtext;
     expect(element.value).toBe("");
     const prompt = vi.spyOn(window, "prompt").mockReturnValue("x");
     expect(element.prompt("Question", "default")).toBe("x");

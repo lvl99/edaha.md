@@ -9,9 +9,9 @@ import { defineElement } from "../define/index.ts";
  * isn't saved yet.
  *
  * @example
- * html`<blog-article-data-group label="Tags" multiple @group-add=${addTag}>...</blog-article-data-group>`
+ * html`<edaha-article-data-group label="Tags" multiple @group-add=${addTag}>...</edaha-article-data-group>`
  */
-export class BlogArticleDataGroup extends LitElement {
+export class EdahaArticleDataGroup extends LitElement {
   static override properties = {
     name: {},
     label: {},
@@ -93,4 +93,4 @@ export class BlogArticleDataGroup extends LitElement {
   }
 }
 
-defineElement("blog-article-data-group", BlogArticleDataGroup);
+defineElement("edaha-article-data-group", EdahaArticleDataGroup);

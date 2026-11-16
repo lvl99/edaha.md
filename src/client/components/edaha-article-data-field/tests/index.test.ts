@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "..";
-import type { BlogArticleDataField, FieldChange } from "..";
-import type { BlogRichtext } from "../../blog-richtext";
+import type { EdahaArticleDataField, FieldChange } from "..";
+import type { EdahaRichtext } from "../../edaha-richtext";
 import {
   button,
   chooseFile,
@@ -26,14 +26,17 @@ const record = (element: HTMLElement) => {
   return { changes, files };
 };
 
-describe("blog-article-data-field", () => {
+describe("edaha-article-data-field", () => {
   it("should render a labelled text input and report changes", async () => {
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "author[name]",
-      label: "Name",
-      placeholder: "John",
-      value: "Matt",
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "author[name]",
+        label: "Name",
+        placeholder: "John",
+        value: "Matt",
+      },
+    );
     const { changes } = record(field);
     const control = find<HTMLInputElement>(field, "input");
     expect(find(field, "label").getAttribute("for")).toBe("field-author-name-");
@@ -47,10 +50,13 @@ describe("blog-article-data-field", () => {
   });
 
   it("should mark a changed field's label with an asterisk", async () => {
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "title",
-      label: "Title",
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "title",
+        label: "Title",
+      },
+    );
     expect(field.querySelector(".changed")).toBeNull();
     field.changed = true;
     await field.updateComplete;
@@ -63,11 +69,14 @@ describe("blog-article-data-field", () => {
   });
 
   it("should render other input types without a label", async () => {
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "date",
-      type: "datetime-local",
-      disabled: true,
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "date",
+        type: "datetime-local",
+        disabled: true,
+      },
+    );
     expect(field.querySelector("label")).toBeNull();
     const control = find<HTMLInputElement>(field, "input");
     expect(control.type).toBe("datetime-local");
@@ -75,12 +84,15 @@ describe("blog-article-data-field", () => {
   });
 
   it("should render textareas", async () => {
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "excerpt",
-      type: "textarea",
-      rows: 5,
-      value: "Short",
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "excerpt",
+        type: "textarea",
+        rows: 5,
+        value: "Short",
+      },
+    );
     const { changes } = record(field);
     const control = find<HTMLTextAreaElement>(field, "textarea");
     expect(control.rows).toBe(5);
@@ -89,15 +101,18 @@ describe("blog-article-data-field", () => {
   });
 
   it("should render selects with the current option selected", async () => {
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "status",
-      type: "select",
-      options: [
-        { value: "published", label: "Published" },
-        { value: "draft", label: "Draft" },
-      ],
-      value: "draft",
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "status",
+        type: "select",
+        options: [
+          { value: "published", label: "Published" },
+          { value: "draft", label: "Draft" },
+        ],
+        value: "draft",
+      },
+    );
     const { changes } = record(field);
     const control = find<HTMLSelectElement>(field, "select");
     expect(control.value).toBe("draft");
@@ -108,17 +123,20 @@ describe("blog-article-data-field", () => {
   it("should render rich text and report its HTML", async () => {
     const uploadImage = vi.fn();
     const loadEmbedPreview = vi.fn();
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "body",
-      type: "richtext",
-      value: "<p>Hi</p>",
-      uploadImage,
-      loadEmbedPreview,
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "body",
+        type: "richtext",
+        value: "<p>Hi</p>",
+        uploadImage,
+        loadEmbedPreview,
+      },
+    );
     const { changes } = record(field);
     const outer = vi.fn();
     document.body.addEventListener("richtext-change", outer);
-    const richtext = find<BlogRichtext>(field, "blog-richtext");
+    const richtext = find<EdahaRichtext>(field, "edaha-richtext");
     expect(richtext.uploadImage).toBe(uploadImage);
     expect(richtext.loadEmbedPreview).toBe(loadEmbedPreview);
     richtext.value = "<p>Changed</p>";
@@ -135,11 +153,14 @@ describe("blog-article-data-field", () => {
   });
 
   it("should offer a file chooser for empty file fields", async () => {
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "thumbnail",
-      type: "file",
-      accept: "image/png",
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "thumbnail",
+        type: "file",
+        accept: "image/png",
+      },
+    );
     const { files } = record(field);
     const chooser = find<HTMLInputElement>(field, "input[type=file]");
     expect(chooser.accept).toBe("image/png");
@@ -151,13 +172,16 @@ describe("blog-article-data-field", () => {
   });
 
   it("should show the current file with an image preview", async () => {
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "thumbnail",
-      type: "file",
-      value: "thumb.png",
-      preview: true,
-      previewUrl: "/files/article/a/thumb.png",
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "thumbnail",
+        type: "file",
+        value: "thumb.png",
+        preview: true,
+        previewUrl: "/files/article/a/thumb.png",
+      },
+    );
     expect(find(field, ".file-current span").textContent).toBe("thumb.png");
     expect(
       find<HTMLImageElement>(field, ".file-current img").getAttribute("src"),
@@ -167,24 +191,30 @@ describe("blog-article-data-field", () => {
   });
 
   it("should only preview images, and allow changing files", async () => {
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "attachments[0][url]",
-      type: "file",
-      value: "guide.pdf",
-      preview: true,
-      previewUrl: "/files/article/a/guide.pdf",
-      allowchange: true,
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "attachments[0][url]",
+        type: "file",
+        value: "guide.pdf",
+        preview: true,
+        previewUrl: "/files/article/a/guide.pdf",
+        allowchange: true,
+      },
+    );
     expect(field.querySelector("img")).toBeNull();
     expect(field.querySelector("input[type=file]")).not.toBeNull();
   });
 
   it("should clear the value", async () => {
-    const field = await mount<BlogArticleDataField>("blog-article-data-field", {
-      name: "excerpt",
-      value: "Text",
-      allowclear: true,
-    });
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "excerpt",
+        value: "Text",
+        allowclear: true,
+      },
+    );
     const { changes } = record(field);
     button(field, "Clear").click();
     await field.updateComplete;

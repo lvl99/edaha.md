@@ -11,13 +11,13 @@ import {
   cleanArticleData,
   RESET_QUESTION,
   newArticleData,
-  type BlogArticle,
+  type EdahaArticle,
 } from "..";
 import "..";
-import type { BlogArticleDataField } from "../../blog-article-data-field";
-import type { BlogArticleDataGroup } from "../../blog-article-data-group";
-import type { BlogRichtext } from "../../blog-richtext";
-import type { ToastMessage } from "../../blog-toasts";
+import type { EdahaArticleDataField } from "../../edaha-article-data-field";
+import type { EdahaArticleDataGroup } from "../../edaha-article-data-group";
+import type { EdahaRichtext } from "../../edaha-richtext";
+import type { ToastMessage } from "../../edaha-toasts";
 import {
   button,
   find,
@@ -86,7 +86,7 @@ const fakeApi = () =>
 
 /** Toasts fired by the form */
 let toasts: ToastMessage[] = [];
-document.addEventListener("blog-toast", (event) =>
+document.addEventListener("edaha-toast", (event) =>
   toasts.push((event as CustomEvent<ToastMessage>).detail),
 );
 
@@ -95,7 +95,7 @@ const setup = async (...args: [article?: EditorArticle]) => {
   toasts = [];
   const article = args.length ? args[0] : ARTICLE;
   const api = fakeApi();
-  const element = await mount<BlogArticle>("blog-article", {
+  const element = await mount<EdahaArticle>("edaha-article", {
     api,
     article,
     typeOptions: [
@@ -108,9 +108,9 @@ const setup = async (...args: [article?: EditorArticle]) => {
 
 /** A data field by name */
 const field = (element: HTMLElement, name: string) =>
-  find<BlogArticleDataField>(
+  find<EdahaArticleDataField>(
     element,
-    `blog-article-data-field[name="${name}"]`,
+    `edaha-article-data-field[name="${name}"]`,
   );
 
 describe("applyFieldChange", () => {
@@ -210,11 +210,11 @@ describe("cleanArticleData", () => {
   });
 });
 
-describe("blog-article", () => {
+describe("edaha-article", () => {
   it("should show a loaded article's fields", async () => {
     const { element } = await setup();
     expect(field(element, "title").value).toBe("Hello");
-    expect(find<BlogRichtext>(element, "blog-richtext").value).toBe(
+    expect(find<EdahaRichtext>(element, "edaha-richtext").value).toBe(
       "<p>Body</p>",
     );
     expect(field(element, "type").options).toEqual([
@@ -249,7 +249,7 @@ describe("blog-article", () => {
     expect(field(element, "slug").placeholder).toBe("title-converted-to-slug");
     expect(field(element, "thumbnail").disabled).toBe(true);
     expect(
-      find<BlogRichtext>(element, "blog-richtext").uploadImage,
+      find<EdahaRichtext>(element, "edaha-richtext").uploadImage,
     ).toBeUndefined();
     expect(find(element, ".hint").textContent).toContain(
       "Save the article before uploading files",
@@ -344,9 +344,9 @@ describe("blog-article", () => {
 
   it("should upload images for the body and report failures", async () => {
     const { element, api } = await setup();
-    const uploadImage = find<BlogRichtext>(
+    const uploadImage = find<EdahaRichtext>(
       element,
-      "blog-richtext",
+      "edaha-richtext",
     ).uploadImage!;
     expect(await uploadImage(new File(["x"], "Pic.png"))).toBe(
       "/files/article/hello/pic.png",
@@ -363,9 +363,9 @@ describe("blog-article", () => {
     (api as unknown as { embedPreview: unknown }).embedPreview = vi.fn(
       async () => preview,
     );
-    const loadEmbedPreview = find<BlogRichtext>(
+    const loadEmbedPreview = find<EdahaRichtext>(
       element,
-      "blog-richtext",
+      "edaha-richtext",
     ).loadEmbedPreview!;
     expect(await loadEmbedPreview("https://youtu.be/x")).toBe(preview);
     expect(api.embedPreview).toHaveBeenCalledWith("https://youtu.be/x");
@@ -386,9 +386,9 @@ describe("blog-article", () => {
   it("should add and remove tags, attachments and the author", async () => {
     const { element } = await setup();
     const group = (name: string) =>
-      find<BlogArticleDataGroup>(
+      find<EdahaArticleDataGroup>(
         element,
-        `blog-article-data-group[name="${name}"]`,
+        `edaha-article-data-group[name="${name}"]`,
       );
     group("tags").dispatchEvent(
       new CustomEvent("group-add", { bubbles: true }),
@@ -554,13 +554,13 @@ describe("blog-article", () => {
   });
 });
 
-describe("blog-article body modes", () => {
+describe("edaha-article body modes", () => {
   /** A body mode's button */
   const modeButton = (element: HTMLElement, mode: string) =>
     find<HTMLButtonElement>(element, `.body-modes [data-mode="${mode}"]`);
 
   /** Switch the body's mode and wait for it */
-  const switchTo = async (element: BlogArticle, mode: string) => {
+  const switchTo = async (element: EdahaArticle, mode: string) => {
     modeButton(element, mode).click();
     await settle(element);
   };
@@ -588,7 +588,7 @@ describe("blog-article body modes", () => {
       "textarea",
     );
     expect(textarea.value).toBe("Body");
-    expect(element.querySelector("blog-richtext")).toBeNull();
+    expect(element.querySelector("edaha-richtext")).toBeNull();
     input(textarea, "**New** body");
     await switchTo(element, "wysiwyg");
     expect(api.toHtml).toHaveBeenCalledWith("**New** body", {
@@ -596,7 +596,7 @@ describe("blog-article body modes", () => {
       slug: "hello",
     });
     expect(element.data.bodyHtml).toBe("<p>**New** body</p>");
-    expect(find(element, "blog-richtext")).toBeDefined();
+    expect(find(element, "edaha-richtext")).toBeDefined();
     // Choosing the current mode does nothing
     const calls = api.toHtml.mock.calls.length;
     await switchTo(element, "wysiwyg");
@@ -698,7 +698,7 @@ describe("changedFields", () => {
   });
 });
 
-describe("blog-article changes", () => {
+describe("edaha-article changes", () => {
   /** Mount the form with body checks that don't wait */
   const changesSetup = async (...args: [article?: EditorArticle]) => {
     const result = await setup(...args);
@@ -710,15 +710,15 @@ describe("blog-article changes", () => {
   /** The labels of the fields and groups marked as changed */
   const marked = (element: HTMLElement) =>
     [
-      ...element.querySelectorAll<BlogArticleDataField | BlogArticleDataGroup>(
-        "blog-article-data-field, blog-article-data-group",
-      ),
+      ...element.querySelectorAll<
+        EdahaArticleDataField | EdahaArticleDataGroup
+      >("edaha-article-data-field, edaha-article-data-group"),
     ]
       .filter((item) => item.changed)
       .map((item) => item.label);
 
   /** Change the body as the rich text editor would */
-  const editBody = async (element: BlogArticle, html: string) => {
+  const editBody = async (element: EdahaArticle, html: string) => {
     field(element, "body").dispatchEvent(
       new CustomEvent("field-change", {
         detail: { name: "body", value: html },
@@ -794,7 +794,7 @@ describe("blog-article changes", () => {
         }
       },
     );
-    const element = document.createElement("blog-article") as BlogArticle;
+    const element = document.createElement("edaha-article") as EdahaArticle;
     vi.unstubAllGlobals();
     expect(element.savedData).toEqual(element.data);
     expect(element.dirty).toBe(false);
@@ -892,7 +892,7 @@ describe("blog-article changes", () => {
     });
     // Reset sits between Save and Delete…
     expect(
-      [...element.querySelectorAll(".blog-article-controls button")].map((b) =>
+      [...element.querySelectorAll(".edaha-article-controls button")].map((b) =>
         b.textContent?.trim(),
       ),
     ).toEqual(["Save", "Reset…", "Delete…"]);

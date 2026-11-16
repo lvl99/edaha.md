@@ -1,16 +1,19 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "..";
-import type { BlogArticleDataGroup } from "..";
+import type { EdahaArticleDataGroup } from "..";
 import { button, mount } from "../../../../shared/tests/helpers";
 
 afterEach(() => document.body.replaceChildren());
 
-describe("blog-article-data-group", () => {
+describe("edaha-article-data-group", () => {
   it("should show its label and children in a fieldset", async () => {
-    const group = await mount<BlogArticleDataGroup>("blog-article-data-group", {
-      label: "Author",
-    });
+    const group = await mount<EdahaArticleDataGroup>(
+      "edaha-article-data-group",
+      {
+        label: "Author",
+      },
+    );
     const root = group.shadowRoot!;
     expect(root.querySelector("legend")?.textContent?.trim()).toBe("Author");
     expect(root.querySelector(".changed")).toBeNull();
@@ -24,11 +27,14 @@ describe("blog-article-data-group", () => {
   });
 
   it("should fire add and clear events", async () => {
-    const group = await mount<BlogArticleDataGroup>("blog-article-data-group", {
-      name: "tags",
-      multiple: true,
-      allowclear: true,
-    });
+    const group = await mount<EdahaArticleDataGroup>(
+      "edaha-article-data-group",
+      {
+        name: "tags",
+        multiple: true,
+        allowclear: true,
+      },
+    );
     const events: string[] = [];
     const record = (event: Event) =>
       events.push(`${event.type}:${(event as CustomEvent<string>).detail}`);
@@ -43,9 +49,12 @@ describe("blog-article-data-group", () => {
   });
 
   it("should disable its fieldset", async () => {
-    const group = await mount<BlogArticleDataGroup>("blog-article-data-group", {
-      disabled: true,
-    });
+    const group = await mount<EdahaArticleDataGroup>(
+      "edaha-article-data-group",
+      {
+        disabled: true,
+      },
+    );
     expect(group.shadowRoot!.querySelector("fieldset")!.disabled).toBe(true);
     vi.restoreAllMocks();
   });

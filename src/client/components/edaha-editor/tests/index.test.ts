@@ -2,9 +2,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ArticleSummary, EditorArticle } from "../../../../server/types";
 import type { EditorApi } from "../../../editorApi";
-import type { BlogArticle } from "../../blog-article";
+import type { EdahaArticle } from "../../edaha-article";
 import "..";
-import { groupArticles, UNSAVED_DIALOG, type BlogEditor } from "..";
+import { groupArticles, UNSAVED_DIALOG, type EdahaEditor } from "..";
 import { button, find, input, settle } from "../../../../shared/tests/helpers";
 
 afterEach(() => document.body.replaceChildren());
@@ -61,14 +61,14 @@ const setup = async (list = vi.fn(async () => SUMMARIES)) => {
     read: ReturnType<typeof vi.fn>;
     save: ReturnType<typeof vi.fn>;
   };
-  const element = document.createElement("blog-editor") as BlogEditor;
+  const element = document.createElement("edaha-editor") as EdahaEditor;
   element.api = api;
   document.body.append(element);
   await settle(element);
   return { api, element };
 };
 
-describe("blog-editor", () => {
+describe("edaha-editor", () => {
   it("should list articles with their details and errors", async () => {
     const { element } = await setup();
     const items = [...element.querySelectorAll("nav li")];
@@ -130,7 +130,7 @@ describe("blog-editor", () => {
     find(element, "nav li a").click();
     await settle(element);
     expect(api.read).toHaveBeenCalledWith(SUMMARIES[0]);
-    const form = find<BlogArticle>(element, "blog-article");
+    const form = find<EdahaArticle>(element, "edaha-article");
     expect(form.article).toBe(ARTICLE);
     // Configured types first, then other types articles use
     expect(form.typeOptions).toEqual([
@@ -149,25 +149,27 @@ describe("blog-editor", () => {
     expect(find(element, ".toast.error span").textContent).toBe(
       "Article page/broken not found",
     );
-    expect(element.querySelector("blog-article")).toBeNull();
+    expect(element.querySelector("edaha-article")).toBeNull();
   });
 
   it("should start a new article", async () => {
     const { element } = await setup();
     button(element, "New article").click();
     await settle(element);
-    expect(find<BlogArticle>(element, "blog-article").article).toBeUndefined();
+    expect(
+      find<EdahaArticle>(element, "edaha-article").article,
+    ).toBeUndefined();
   });
 
   it("should start a fresh form for each new article", async () => {
     const { element } = await setup();
     button(element, "New article").click();
     await settle(element);
-    const first = find<BlogArticle>(element, "blog-article");
+    const first = find<EdahaArticle>(element, "edaha-article");
     button(element, "New article").click();
     // Checking the open form for changes waits for its body, which can take a few turns
     await vi.waitFor(() =>
-      expect(find<BlogArticle>(element, "blog-article")).not.toBe(first),
+      expect(find<EdahaArticle>(element, "edaha-article")).not.toBe(first),
     );
   });
 
@@ -175,7 +177,7 @@ describe("blog-editor", () => {
     const { element, api } = await setup();
     await element.open(SUMMARIES[0]!);
     await element.updateComplete;
-    const form = find<BlogArticle>(element, "blog-article");
+    const form = find<EdahaArticle>(element, "edaha-article");
     form.dispatchEvent(
       new CustomEvent("article-saved", {
         detail: { type: "article", slug: "moved" },
@@ -189,12 +191,12 @@ describe("blog-editor", () => {
     form.dispatchEvent(new CustomEvent("article-deleted", { bubbles: true }));
     await settle(element);
     expect(api.list).toHaveBeenCalledTimes(3);
-    expect(element.querySelector("blog-article")).toBeNull();
+    expect(element.querySelector("edaha-article")).toBeNull();
     expect(element.selected).toBeUndefined();
   });
 
   it("should create its own API by default", () => {
-    const element = document.createElement("blog-editor") as BlogEditor;
+    const element = document.createElement("edaha-editor") as EdahaEditor;
     expect(element.api).toBeDefined();
   });
 });
@@ -207,7 +209,7 @@ describe("groupArticles", () => {
     summary("news", "old", "2026-10-02"),
     summary("zines", "z", "2026-10-03"),
     summary("news", "new", "2026-10-20"),
-    summary("blog", "b", "2026-10-04"),
+    summary("docs", "b", "2026-10-04"),
     summary("news", "broken", ""),
   ];
   const types = {
@@ -226,7 +228,7 @@ describe("groupArticles", () => {
     ).toEqual([
       ["news", "News", ["new", "old", "broken"]],
       ["page", "Pages", ["about"]],
-      ["blog", "blog", ["b"]],
+      ["docs", "docs", ["b"]],
       ["zines", "zines", ["z"]],
     ]);
   });
@@ -239,17 +241,20 @@ describe("groupArticles", () => {
   });
 });
 
-describe("blog-editor unsaved changes", () => {
+describe("edaha-editor unsaved changes", () => {
   /** Open the first article and change its title */
   const editTitle = async () => {
     const result = await setup();
     const { element } = result;
     await element.open(SUMMARIES[0]!);
     await settle(element);
-    const form = find<BlogArticle>(element, "blog-article");
+    const form = find<EdahaArticle>(element, "edaha-article");
     form.bodyCheckDelay = 0;
     input(
-      find<HTMLInputElement>(form, "blog-article-data-field[name=title] input"),
+      find<HTMLInputElement>(
+        form,
+        "edaha-article-data-field[name=title] input",
+      ),
       "Changed",
     );
     await settle(element);
@@ -257,7 +262,7 @@ describe("blog-editor unsaved changes", () => {
   };
 
   /** Answer the "Save changes first?" question */
-  const answer = async (element: BlogEditor, choice: string) => {
+  const answer = async (element: EdahaEditor, choice: string) => {
     await vi.waitFor(() => find(element, ".unsaved"));
     find(element, `.unsaved [data-choice="${choice}"]`).click();
     await settle(element);
@@ -278,7 +283,7 @@ describe("blog-editor unsaved changes", () => {
     await opening;
     expect(element.querySelector(".unsaved")).toBeNull();
     expect(api.read).toHaveBeenCalledOnce();
-    expect(find(element, "blog-article")).toBe(form);
+    expect(find(element, "edaha-article")).toBe(form);
   });
 
   it("should open the other article without saving on Don't save", async () => {
@@ -296,14 +301,16 @@ describe("blog-editor unsaved changes", () => {
     const failing = element.create();
     await answer(element, "save");
     await failing;
-    expect(find<BlogArticle>(element, "blog-article").article).toBe(ARTICLE);
+    expect(find<EdahaArticle>(element, "edaha-article").article).toBe(ARTICLE);
     expect(find(element, ".toast.error span").textContent).toBe("Disk full");
 
     const creating = element.create();
     await answer(element, "save");
     await creating;
     expect(api.save).toHaveBeenCalledTimes(2);
-    expect(find<BlogArticle>(element, "blog-article").article).toBeUndefined();
+    expect(
+      find<EdahaArticle>(element, "edaha-article").article,
+    ).toBeUndefined();
     expect(find(element, ".toast.success span").textContent).toBe("Saved");
   });
 
@@ -331,7 +338,7 @@ describe("blog-editor unsaved changes", () => {
     input(
       find<HTMLInputElement>(
         element,
-        "blog-article-data-field[name=title] input",
+        "edaha-article-data-field[name=title] input",
       ),
       "Changed",
     );
