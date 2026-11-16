@@ -39,7 +39,7 @@ npx edaha build --dir my-site --site-url https://example.com
 npx edaha editor --dir my-site
 ```
 
-The build writes the website into `my-site/dist`. The editor runs at http://127.0.0.1:5180.
+The build writes the website into `my-site/build`. The editor runs at http://127.0.0.1:5180.
 
 ## Commands
 
@@ -88,8 +88,8 @@ description: News and notes.
 path: ""
 # Optional; the articles folder, inside the site folder (not in templates/ or static/). Default: articles
 articlesDir: articles
-# Optional; the build folder, inside the site folder and apart from the articles folder. It is emptied on every build. Default: dist
-outputDir: dist
+# Optional; the build folder, inside the site folder and apart from the articles folder. It is emptied on every build. Default: build
+outputDir: build
 # Optional; a folder outside the site folder that the built files are copied into, e.g. another app's build folder
 publishDir: ../app/dist
 # Optional; the website's absolute URL for feeds, used when SITE_URL isn't set. Default: http://localhost (with a warning)

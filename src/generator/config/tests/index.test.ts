@@ -59,9 +59,9 @@ describe("parseConfig", () => {
     ).toThrow('"publishDir" must be a non-empty string');
   });
 
-  it("should default outputDir to dist, and leave publishDir and siteUrl unset", () => {
+  it("should default outputDir to build, and leave publishDir and siteUrl unset", () => {
     const config = parseYaml("name: News\ndescription: Updates\n");
-    expect(config.outputDir).toBe("dist");
+    expect(config.outputDir).toBe("build");
     expect(config.publishDir).toBeUndefined();
     expect(config.siteUrl).toBeUndefined();
   });

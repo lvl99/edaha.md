@@ -135,7 +135,8 @@ describe("buildBlog", () => {
     const space = await workspace();
     const { result, logger, read } = await build(space, "https://example.com/");
 
-    expect(result.outputDir).toBe(join(space.siteDir, "dist"));
+    // The default build folder
+    expect(result.outputDir).toBe(join(space.siteDir, "build"));
     expect(result.publishDir).toBe(join(space.root, "site"));
     expect(result.articles.map((a) => `${a.type}/${a.slug}`)).toEqual([
       "article/first",

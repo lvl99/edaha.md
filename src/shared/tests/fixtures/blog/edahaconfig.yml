@@ -1,6 +1,5 @@
 name: Test News
 description: Test articles.
-outputDir: dist
 publishDir: ../site
 types:
   article:

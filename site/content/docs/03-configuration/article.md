@@ -21,7 +21,7 @@ A typical project looks like this:
         article.md
   templates/            # Optional; your own templates
   static/               # Optional; your own static files (stylesheets, fonts, images)
-  dist/                 # The generated website
+  build/                # The generated website
 ```
 
 ## The config file
@@ -148,7 +148,7 @@ articlesDir: content
 The folder the website is built into, relative to the site folder. It is **emptied on every build**, so keep nothing else in it.
 
 - **Accepted values:** a folder inside the site folder, apart from the articles folder, `templates/` and `static/`.
-- **Default:** `dist`
+- **Default:** `build`
 
 ```yaml
 outputDir: build

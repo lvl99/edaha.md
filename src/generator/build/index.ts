@@ -140,7 +140,7 @@ const overlaps = (a: string, b: string) => {
  * @param articlesDir - the articles folder, relative to the site folder
  *
  * @example
- * resolveOutputDir("/site", "dist"); // "/site/dist"
+ * resolveOutputDir("/site", "build"); // "/site/build"
  */
 export const resolveOutputDir = (
   siteDir: string,

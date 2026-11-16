@@ -27,7 +27,7 @@ You write each article as a Markdown file, in a folder named after its slug, ins
         photo.jpg       # The article's images and attachments
   templates/            # Optional; your own templates, over the default theme's
   static/               # Optional; your own stylesheets, fonts and other files, over the default theme's
-  dist/                 # Where the generated website is written
+  build/                # Where the generated website is written
 ```
 
 Running `edaha build` turns this into a website:

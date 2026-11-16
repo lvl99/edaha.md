@@ -36,7 +36,7 @@ export interface BlogConfig {
   description: string;
   /** The URL path prefix of every article type ("" for the website's root) */
   path: string;
-  /** The build folder, relative to the site folder and inside it (emptied on every build). Default: "dist" */
+  /** The build folder, relative to the site folder and inside it (emptied on every build). Default: "build" */
   outputDir: string;
   /** The articles folder, relative to the site folder and inside it, apart from templates/ and static/. Default: "articles" */
   articlesDir: string;
@@ -295,7 +295,7 @@ const validateConfig = (data: unknown): BlogConfig => {
     name: requireString(fields, "name"),
     description: requireString(fields, "description"),
     path: parsePath(fields.path, '"path"') ?? "",
-    outputDir: optionalString(fields, "outputDir") ?? "dist",
+    outputDir: optionalString(fields, "outputDir") ?? "build",
     articlesDir: parseArticlesDir(fields),
     publishDir: optionalString(fields, "publishDir"),
     siteUrl: parseSiteUrl(fields),

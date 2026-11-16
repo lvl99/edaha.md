@@ -47,7 +47,7 @@ Everything after the read more break is only shown on the article's own page.
 
 - `news` is the article type. Types that aren't in the config file get default settings, with a warning.
 - `hello-world` is the article's slug, used in its URL.
-- The header at the top holds the article's settings. Only `date` is required. See [Articles](/docs/04-articles/).
+- The header at the top holds the article's metadata. Only `date` is required. See [Articles](/docs/04-articles/).
 
 Your project now looks like this:
 
@@ -65,19 +65,21 @@ Your project now looks like this:
 
 ```sh
 npx edaha build --site-url https://myblog.example.com
+yarn edaha build --site-url https://myblog.example.com
+pnpx edaha build --site-url https://myblog.example.com
 ```
 
-The website is written into `dist/`:
+The website is written into `build/`:
 
-- `dist/news/hello-world/index.html`: the article;
-- `dist/news/index.html`: the list of news articles;
-- `dist/news/feed.xml`: the RSS feed;
-- `dist/news/tags/welcome/`: the list (and feed) of articles tagged "Welcome";
-- `dist/site.css`: the default theme's stylesheet.
+- `build/news/hello-world/index.html`: the article;
+- `build/news/index.html`: the list of news articles;
+- `build/news/feed.xml`: the RSS feed;
+- `build/news/tags/welcome/`: the list (and feed) of articles tagged "Welcome";
+- `build/site.css`: the default theme's stylesheet.
 
 `--site-url` is your website's address, which RSS feeds need for their links. You can set it once in the config file instead, with `siteUrl`.
 
-To look at the website on your computer, serve the folder with any static file server, e.g. `npx serve dist`.
+To look at the website on your computer, serve the folder with any static file server, e.g. `npx serve build`.
 
 ## 5. Edit articles in the editor (optional)
 

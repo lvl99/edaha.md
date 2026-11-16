@@ -18,7 +18,7 @@ npx edaha build --site-url https://example.com
 It finds your [config file](/docs/03-configuration/#where-it-is-found), renders every published and unlisted article, list and feed, and copies your static files and the theme's. You get a summary when it's done:
 
 ```
-Built 12 articles (48 files) into /my-project/dist
+Built 12 articles (48 files) into /my-project/build
 ```
 
 Problems that would make a broken website stop the build with an error naming the file, e.g. an article without a date. Problems the website can live with are warnings, e.g. an embed that couldn't be rendered.
@@ -37,7 +37,7 @@ To add it to your project's scripts, in `package.json`:
 
 | Setting                                            | What it does                                                           |
 | -------------------------------------------------- | ---------------------------------------------------------------------- |
-| [`outputDir`](/docs/03-configuration/#outputdir)   | Where the website is built. Emptied on every build. Default: `dist`.   |
+| [`outputDir`](/docs/03-configuration/#outputdir)   | Where the website is built. Emptied on every build. Default: `build`.  |
 | [`siteUrl`](/docs/03-configuration/#siteurl)       | The website's address, for RSS feed links.                             |
 | [`publishDir`](/docs/03-configuration/#publishdir) | Another folder the website is copied into, e.g. an app's build folder. |
 | [`path`](/docs/03-configuration/#path)             | A URL path every article type's URLs start with.                       |
@@ -54,7 +54,7 @@ SITE_URL=https://staging.example.com npx edaha build
 The build folder is a complete website. Serve it with any static file server and open it in your browser:
 
 ```sh
-npx serve dist
+npx serve build
 ```
 
 ## Deploying
@@ -98,7 +98,7 @@ jobs:
       - run: npx edaha build
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: build
       - id: deploy
         uses: actions/deploy-pages@v4
 ```
