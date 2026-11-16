@@ -32,6 +32,25 @@ templates/
 
 Your site's static files folder (`static/`, or [`staticDir`](/docs/03-configuration/#staticdir)) works the same way: its files are copied to the website's root over the theme's, so a `static/site.css` replaces the theme's stylesheet.
 
+## Building on the theme's templates
+
+A template can extend, include or import any other by its name, e.g. `{% extends "article/single.njk" %}`. Names are looked for in your templates folder first, then in the theme's, so this gets the theme's file as long as you haven't overridden it.
+
+To build on the theme's version of a template you **have** overridden, start its name with `@theme/`. It always loads the theme's file. For example, a `templates/article/single.njk` that adds to the theme's sidebar instead of replacing the whole page:
+
+```njk
+{% extends "@theme/article/single.njk" %}
+
+{% block aside %}
+<p>Thanks for reading!</p>
+{{ super() }}
+{% endblock %}
+```
+
+`{{ super() }}` outputs the theme's own content for that block. `@theme/` works the same in `include` and `import`.
+
+Relative paths such as `../theme/article/single.njk` don't work: they're looked for inside your templates folder, and the theme's folder can be anywhere (e.g. in `node_modules`).
+
 ## Templates for article types
 
 The templates in `templates/article/` are the defaults for every article type. A folder named after a type overrides them for that type:

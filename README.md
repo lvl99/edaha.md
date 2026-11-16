@@ -199,7 +199,7 @@ export default {
 
 edaha.md ships a neutral default theme in `theme/`: Nunjucks templates in `theme/templates/` and a stylesheet in `theme/static/site.css`.
 
-- **Templates:** a site's own templates folder (`templates/`, or `templatesDir`) overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type. A type's own folder (e.g. `templates/page/`) overrides them, and an article's `template` setting picks another one (e.g. `page/home.njk`).
+- **Templates:** a site's own templates folder (`templates/`, or `templatesDir`) overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type. A type's own folder (e.g. `templates/page/`) overrides them, and an article's `template` setting picks another one (e.g. `page/home.njk`). Names starting with `@theme/` always load the theme's file, so a template can override the theme's and still extend it: `{% extends "@theme/article/single.njk" %}`.
 - **Static files:** a site's own static files folder (`static/`, or `staticDir`) is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
 
 Templates get these variables:
