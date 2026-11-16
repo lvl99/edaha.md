@@ -6,8 +6,52 @@ import {
   formatDate,
   formatRfc822,
   isRelativeUrl,
+  maskCode,
+  replaceOutsideCode,
   stripHtml,
 } from "..";
+
+describe("maskCode", () => {
+  it("should blank out fenced code blocks and inline code, keeping positions", () => {
+    const markdown =
+      "A `<!-- x -->` and ``a ` b``\n\n```md\n<!-- x -->\n```\n\n~~~~\n~~~\n<!-- x -->\n~~~~~\nB <!-- x -->";
+    const masked = maskCode(markdown);
+    expect(masked).toHaveLength(markdown.length);
+    expect(masked.match(/<!-- x -->/g)).toHaveLength(1);
+    expect(masked.endsWith("B <!-- x -->")).toBe(true);
+    expect(masked.startsWith("A ")).toBe(true);
+  });
+
+  it("should blank out an unclosed code block to the end", () => {
+    expect(maskCode("A\n```\n<!-- x -->").trim()).toBe("A");
+  });
+
+  it("should leave text without code as it is", () => {
+    expect(maskCode("A <!-- x --> B")).toBe("A <!-- x --> B");
+  });
+});
+
+describe("replaceOutsideCode", () => {
+  it("should replace matches outside code only, with their groups from the original text", () => {
+    expect(
+      replaceOutsideCode(
+        "<!-- e -->a<!-- /e --> `<!-- e -->b<!-- /e -->` <!-- e -->c<!-- /e -->",
+        /<!-- e -->(.*?)<!-- \/e -->/g,
+        ([, value]) => `[${value}]`,
+      ),
+    ).toBe("[a] `<!-- e -->b<!-- /e -->` [c]");
+  });
+
+  it("should take the original text of a match around code", () => {
+    expect(
+      replaceOutsideCode(
+        "<!-- e -->`code`<!-- /e -->",
+        /<!-- e -->(.*?)<!-- \/e -->/,
+        ([, value]) => `[${value}]`,
+      ),
+    ).toBe("[`code`]");
+  });
+});
 
 describe("formatBytes", () => {
   it("should format sizes in bytes, KB, MB and GB", () => {

@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import mime from "mime-types";
 import { parse } from "yaml";
 import {
+  maskCode,
   formatBytes,
   isRelativeUrl,
   stripHtml,
@@ -257,13 +258,17 @@ export interface ArticleContent {
 export const splitContent = (content: string): ArticleContent => {
   const heading = ANY_H1.exec(content)?.[1];
   const withoutTitle = content.replace(LEADING_H1, "");
-  const readmore = READMORE.exec(withoutTitle);
+  // The first break outside code (code may show the shortcode itself)
+  const readmore = READMORE.exec(maskCode(withoutTitle));
+  if (!readmore)
+    return { heading, body: withoutTitle.trim(), beforeReadmore: undefined };
+  const before = withoutTitle.slice(0, readmore.index);
   return {
     heading,
-    body: withoutTitle.replace(READMORE, "").trim(),
-    beforeReadmore: readmore
-      ? withoutTitle.slice(0, readmore.index).trim()
-      : undefined,
+    body: (
+      before + withoutTitle.slice(readmore.index + readmore[0].length)
+    ).trim(),
+    beforeReadmore: before.trim(),
   };
 };
 

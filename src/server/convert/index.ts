@@ -1,7 +1,10 @@
 import TurndownService from "turndown";
 import { EMBED_BLOCK } from "../../embeds/index.ts";
 import { READMORE } from "../../generator/article/index.ts";
-import { escapeHtml } from "../../generator/format/index.ts";
+import {
+  escapeHtml,
+  replaceOutsideCode,
+} from "../../generator/format/index.ts";
 import {
   createMarkdown,
   renderMarkdown,
@@ -21,7 +24,7 @@ export const filesUrl = (type: string, slug: string): string =>
 
 /**
  * Convert article markdown to HTML for the editor: `<!-- readmore -->` becomes `<hr class="readmore">`,
- * embed blocks become `<div class="embed">URL</div>`, and relative URLs point at the editor's file URL.
+ * embed blocks become `<div class="embed">URL</div>` (except in code), and relative URLs point at the editor's file URL.
  *
  * @example
  * markdownToEditorHtml("Intro <!-- readmore -->Rest", "/files/article/hello/");
@@ -30,13 +33,16 @@ export const filesUrl = (type: string, slug: string): string =>
 export const markdownToEditorHtml = (source: string, baseUrl: string): string =>
   renderMarkdown(
     markdown,
-    source
-      .replace(READMORE, '\n\n<hr class="readmore">\n\n')
-      .replace(
-        EMBED_BLOCK,
-        (_, url: string) =>
-          `\n\n<div class="embed">${escapeHtml(url.trim())}</div>\n\n`,
+    replaceOutsideCode(
+      replaceOutsideCode(
+        source,
+        READMORE,
+        () => '\n\n<hr class="readmore">\n\n',
       ),
+      EMBED_BLOCK,
+      ([, url]) =>
+        `\n\n<div class="embed">${escapeHtml((url as string).trim())}</div>\n\n`,
+    ),
     baseUrl,
   );
 

@@ -115,3 +115,44 @@ export const cropText = (text: string, maxLength: number): string => {
  */
 export const isRelativeUrl = (url: string): boolean =>
   url !== "" && !/^([a-z][a-z0-9+.-]*:|\/|#|\?)/i.test(url);
+
+/**
+ * Fenced code blocks (``` or ~~~, to their closing fence or the end of the text) and inline code spans in Markdown
+ */
+const MARKDOWN_CODE =
+  /^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^ {0,3}\1[`~]*[ \t]*$|(?![\s\S]))|(`+)(?:(?!\2)[\s\S])+?\2(?!`)/gm;
+
+/**
+ * Blank out Markdown's code blocks and inline code with spaces, keeping every other character where it was, so
+ * markers like `<!-- readmore -->` can be found outside code only.
+ *
+ * @example
+ * maskCode("Intro `<!-- readmore -->` rest"); // "Intro                      rest"
+ */
+export const maskCode = (markdown: string): string =>
+  markdown.replace(MARKDOWN_CODE, (code) => " ".repeat(code.length));
+
+/**
+ * Replace a pattern's matches in Markdown, except in code blocks and inline code. The replacer gets each match as
+ * `exec` gives it (from the original text, groups included).
+ *
+ * @example
+ * replaceOutsideCode("a <!-- x --> `<!-- x -->`", /<!-- x -->/g, () => "X"); // "a X `<!-- x -->`"
+ */
+export const replaceOutsideCode = (
+  markdown: string,
+  pattern: RegExp,
+  replacer: (match: RegExpExecArray) => string,
+): string => {
+  const single = new RegExp(pattern.source, pattern.flags.replace("g", ""));
+  let result = "";
+  let last = 0;
+  for (const { index, 0: text } of maskCode(markdown).matchAll(
+    new RegExp(single.source, `${single.flags}g`),
+  )) {
+    const match = single.exec(markdown.slice(index, index + text.length));
+    result += markdown.slice(last, index) + replacer(match as RegExpExecArray);
+    last = index + text.length;
+  }
+  return result + markdown.slice(last);
+};

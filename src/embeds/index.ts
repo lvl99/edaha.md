@@ -1,4 +1,4 @@
-import { escapeHtml } from "../generator/format/index.ts";
+import { escapeHtml, replaceOutsideCode } from "../generator/format/index.ts";
 import type { Logger } from "../generator/types/index.ts";
 import { bandcamp } from "./bandcamp/index.ts";
 import type { EmbedContext, EmbedRenderer } from "./types/index.ts";
@@ -51,16 +51,20 @@ export class EmbedResolver {
 
   /**
    * Replace every `<!-- embed -->URL<!-- /embed -->` block in markdown with its rendered HTML, as its own block.
+   * Blocks in code blocks and inline code are left as they are.
    *
    * @param source - where the markdown is from, for warnings
    */
   async replaceBlocks(markdown: string, source: string): Promise<string> {
-    const urls = [...markdown.matchAll(EMBED_BLOCK)].map(([, url]) =>
-      (url as string).trim(),
-    );
+    const urls: string[] = [];
+    replaceOutsideCode(markdown, EMBED_BLOCK, ([, url]) => {
+      urls.push((url as string).trim());
+      return "";
+    });
     const html = await Promise.all(urls.map((url) => this.render(url, source)));
     let index = 0;
-    return markdown.replace(
+    return replaceOutsideCode(
+      markdown,
       EMBED_BLOCK,
       () => `\n\n${html[index++] as string}\n\n`,
     );

@@ -246,6 +246,24 @@ describe("splitContent", () => {
     });
   });
 
+  it("should ignore readmore shortcodes in code", () => {
+    expect(
+      splitContent(
+        "Intro `<!-- readmore -->`\n\n```md\nA <!-- readmore -->B\n```\n\nMore <!-- readmore -->rest",
+      ),
+    ).toEqual({
+      heading: undefined,
+      body: "Intro `<!-- readmore -->`\n\n```md\nA <!-- readmore -->B\n```\n\nMore rest",
+      beforeReadmore:
+        "Intro `<!-- readmore -->`\n\n```md\nA <!-- readmore -->B\n```\n\nMore",
+    });
+    expect(splitContent("```\n<!-- readmore -->\n```")).toEqual({
+      heading: undefined,
+      body: "```\n<!-- readmore -->\n```",
+      beforeReadmore: undefined,
+    });
+  });
+
   it("should keep an H1 that isn't at the start in the body", () => {
     expect(splitContent("Intro\n\n# Later")).toEqual({
       heading: "Later",
