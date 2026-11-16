@@ -50,15 +50,12 @@ export { RESERVED_TYPES } from "../config/index.ts";
 /** Used for feeds when neither `SITE_URL` nor `siteUrl` in the config file is set */
 export const DEFAULT_SITE_URL = "http://localhost";
 
-/** The site's folders that hold its sources, which built files must never be written into */
-const SOURCE_FOLDERS = ["articles", "templates", "static"];
-
 /** Options for building the blog */
 export interface BuildOptions {
   /**
    * The folder to look for a config file in, before the nearest package.json's folder (see findConfigFile). Default:
-   * the current folder. The site folder is the config file's folder: it holds articles/, and optionally templates/ and
-   * static/.
+   * the current folder. The site folder is the config file's folder: it holds the articles folder (`articlesDir`), and
+   * optionally templates/ and static/.
    */
   siteDir?: string | undefined;
   /** The config file to use instead of looking for one */
@@ -133,22 +130,29 @@ const overlaps = (a: string, b: string) => {
 };
 
 /**
- * Resolve `outputDir` from the config file: a folder inside the site folder, apart from its source folders, as it is
- * emptied on every build.
+ * Resolve `outputDir` from the config file: a folder inside the site folder, apart from its source folders (the
+ * articles folder, templates/ and static/), as it is emptied on every build.
+ *
+ * @param articlesDir - the articles folder, relative to the site folder
  *
  * @example
  * resolveOutputDir("/site", "dist"); // "/site/dist"
  */
-export const resolveOutputDir = (siteDir: string, folder: string): string => {
+export const resolveOutputDir = (
+  siteDir: string,
+  folder: string,
+  articlesDir: string = "articles",
+): string => {
+  const sources = [articlesDir, "templates", "static"];
   const dir = resolve(siteDir, folder);
   const fromSite = relative(resolve(siteDir), dir);
   if (!fromSite || fromSite.startsWith("..") || isAbsolute(fromSite))
     throw new Error(
       `"outputDir" must be a folder inside the site folder, got "${folder}"`,
     );
-  if (SOURCE_FOLDERS.some((source) => overlaps(join(siteDir, source), dir)))
+  if (sources.some((source) => overlaps(join(siteDir, source), dir)))
     throw new Error(
-      `"outputDir" must be apart from ${SOURCE_FOLDERS.join(", ")}, got "${folder}"`,
+      `"outputDir" must be apart from ${sources.join(", ")}, got "${folder}"`,
     );
   return dir;
 };
@@ -253,7 +257,7 @@ export const buildBlog = async (
     }
   };
   const outputDir = checkConfig(() =>
-    resolveOutputDir(siteDir, config.outputDir),
+    resolveOutputDir(siteDir, config.outputDir, config.articlesDir),
   );
   const publishDir =
     config.publishDir === undefined
@@ -276,17 +280,17 @@ export const buildBlog = async (
   };
 
   // Article types: configured ones, plus any other type folders (with defaults)
-  const articlesDir = join(siteDir, "articles");
+  const articlesDir = join(siteDir, config.articlesDir);
   const typeFolders = await subfolders(articlesDir);
   const typeConfigs = { ...config.types };
   for (const type of typeFolders) {
     if (!isSlug(type) || RESERVED_TYPES.includes(type))
       throw new Error(
-        `articles/${type}: article types must be lowercase kebab-case and not ${RESERVED_TYPES.join(" or ")}`,
+        `${config.articlesDir}/${type}: article types must be lowercase kebab-case and not ${RESERVED_TYPES.join(" or ")}`,
       );
     if (!typeConfigs[type]) {
       logger.warn(
-        `articles/${type}: type "${type}" is not in ${configName}; using the default settings`,
+        `${config.articlesDir}/${type}: type "${type}" is not in ${configName}; using the default settings`,
       );
       typeConfigs[type] = defaultTypeConfig(type);
     }
@@ -327,7 +331,7 @@ export const buildBlog = async (
     const built = typeConfig.generate.article;
     const typeFolder = typeConfig.url.slice(1);
     for (const slug of await subfolders(join(articlesDir, type))) {
-      const source = `articles/${type}/${slug}`;
+      const source = `${config.articlesDir}/${type}/${slug}`;
       if (!isSlug(slug))
         throw new Error(`${source}: folder names must be lowercase kebab-case`);
       const problem = slugProblem(

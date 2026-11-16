@@ -3,6 +3,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  rename,
   readdir,
   writeFile,
 } from "node:fs/promises";
@@ -208,6 +209,24 @@ describe("ArticleStore", () => {
       await readFile(join(dir, "articles/article/new-one/article.md"), "utf8"),
     ).toContain("template: home\n");
     expect((await store.read("article", "new-one")).template).toBe("home");
+  });
+
+  it("should read and write articles in the articlesDir folder", async () => {
+    const { dir } = await blog();
+    await rename(join(dir, "articles"), join(dir, "content"));
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `articlesDir: content\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
+    );
+    const store = await openStore(dir);
+    expect((await store.list()).length).toBeGreaterThan(0);
+    await store.save(data({ slug: "in-content" }));
+    expect(
+      await readFile(
+        join(dir, "content/article/in-content/article.md"),
+        "utf8",
+      ),
+    ).toContain("# ");
   });
 
   it("should list nothing when there is no articles folder", async () => {

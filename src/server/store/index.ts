@@ -174,7 +174,7 @@ export const serializeArticle = (
 };
 
 /**
- * Reads and writes articles in the site's `articles/` folder for the editor, and renders previews with the site's
+ * Reads and writes articles in the site's articles folder (`articlesDir`) for the editor, and renders previews with the site's
  * templates over the default theme's.
  *
  * @example
@@ -194,14 +194,15 @@ export class ArticleStore {
   private readonly themeDir: string;
 
   /**
-   * @param site - the site's config file and folder (which holds articles/, and optionally templates/ and static/)
+   * @param site - the site's config file, folder (which holds the articles folder, and optionally templates/ and
+   *   static/) and settings
    * @param themeDir - the default theme folder that the site's templates and static files override
    */
   constructor(site: SiteConfig, themeDir: string = THEME_DIR) {
     this.configFile = site.configFile;
     this.siteDir = site.siteDir;
     this.themeDir = themeDir;
-    this.articlesDir = join(site.siteDir, "articles");
+    this.articlesDir = join(site.siteDir, site.config.articlesDir);
   }
 
   /** The site's templates over the theme's */

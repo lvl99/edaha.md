@@ -1,3 +1,4 @@
+import { isAbsolute, normalize, sep } from "node:path";
 import { isSlug } from "../slug/index.ts";
 
 /** What is built for an article type */
@@ -36,6 +37,8 @@ export interface BlogConfig {
   path: string;
   /** The build folder, relative to the site folder and inside it (emptied on every build). Default: "dist" */
   outputDir: string;
+  /** The articles folder, relative to the site folder and inside it, apart from templates/ and static/. Default: "articles" */
+  articlesDir: string;
   /** Optional; where built files are copied to, relative to the site folder (e.g. another app's build folder) */
   publishDir?: string | undefined;
   /** Optional; the website's absolute URL for feeds, used when the `SITE_URL` environment variable isn't set */
@@ -64,6 +67,7 @@ const CONFIG_KEYS = [
   "description",
   "path",
   "outputDir",
+  "articlesDir",
   "publishDir",
   "siteUrl",
   "reservedPaths",
@@ -200,6 +204,28 @@ const parseSiteUrl = (data: Record<string, unknown>) => {
 /**
  * Read the optional list of reserved paths: URL path segments or file names, e.g. "app" or "jwks.json".
  */
+/** The site's folders that the articles folder must be apart from */
+const THEME_FOLDERS = ["templates", "static"];
+
+/**
+ * Read the optional articles folder: a folder inside the site folder, apart from its theme folders. Gives the folder
+ * with "/" separators.
+ */
+const parseArticlesDir = (data: Record<string, unknown>): string => {
+  const value = optionalString(data, "articlesDir") ?? "articles";
+  const folder = normalize(value).split(sep).join("/").replace(/\/$/, "");
+  if (
+    isAbsolute(value) ||
+    folder === "." ||
+    folder.split("/")[0] === ".." ||
+    THEME_FOLDERS.includes(folder.split("/")[0] as string)
+  )
+    throw new Error(
+      `"articlesDir" must be a folder inside the site folder, apart from ${THEME_FOLDERS.join(" and ")}, got "${value}"`,
+    );
+  return folder;
+};
+
 const parseReservedPaths = (data: Record<string, unknown>): string[] => {
   const value = data.reservedPaths;
   if (value === undefined || value === null) return [];
@@ -231,6 +257,7 @@ const validateConfig = (data: unknown): BlogConfig => {
     description: requireString(fields, "description"),
     path: parsePath(fields.path, '"path"') ?? "",
     outputDir: optionalString(fields, "outputDir") ?? "dist",
+    articlesDir: parseArticlesDir(fields),
     publishDir: optionalString(fields, "publishDir"),
     siteUrl: parseSiteUrl(fields),
     reservedPaths: parseReservedPaths(fields),

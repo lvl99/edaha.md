@@ -27,6 +27,7 @@ describe("parseConfig", () => {
       description: "Updates",
       path: "",
       outputDir: "dist",
+      articlesDir: "articles",
       publishDir: "../app/dist",
       siteUrl: undefined,
       reservedPaths: [],
@@ -62,6 +63,28 @@ describe("parseConfig", () => {
     expect(config.outputDir).toBe("dist");
     expect(config.publishDir).toBeUndefined();
     expect(config.siteUrl).toBeUndefined();
+  });
+
+  it("should read the articles folder inside the site folder, apart from templates and static", () => {
+    for (const [value, folder] of [
+      ["content", "content"],
+      ["./site/content/", "site/content"],
+      ["a/../posts", "posts"],
+    ])
+      expect(parseYaml(`${VALID}articlesDir: ${value}\n`).articlesDir).toBe(
+        folder,
+      );
+    for (const value of [
+      ".",
+      "..",
+      "../content",
+      "/content",
+      "templates",
+      "static/articles",
+    ])
+      expect(() => parseYaml(`${VALID}articlesDir: ${value}\n`), value).toThrow(
+        `edahaconfig.yml: "articlesDir" must be a folder inside the site folder, apart from templates and static, got "${value}"`,
+      );
   });
 
   it("should read reserved paths and reject anything but a list of paths", () => {

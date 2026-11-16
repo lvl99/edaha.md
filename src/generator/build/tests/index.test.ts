@@ -1,8 +1,17 @@
-import { cp, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import {
+  cp,
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
+import { parse } from "yaml";
 import { THEME_DIR } from "../../../theme";
 import {
   buildBlog,
@@ -76,6 +85,12 @@ describe("resolveOutputDir", () => {
       expect(() => resolveOutputDir("/site", dir)).toThrow(
         '"outputDir" must be apart from articles, templates, static',
       );
+    expect(resolveOutputDir("/site", "articles", "content")).toBe(
+      "/site/articles",
+    );
+    expect(() => resolveOutputDir("/site", "content/dist", "content")).toThrow(
+      '"outputDir" must be apart from content, templates, static, got "content/dist"',
+    );
   });
 });
 
@@ -520,6 +535,46 @@ describe("buildBlog", () => {
       logger: { warn: vi.fn() },
     });
     expect(bare.files).toEqual([]);
+  });
+
+  it("should read articles from the articlesDir folder, with a config file named in options", async () => {
+    const space = await workspace();
+    await rename(
+      join(space.siteDir, "articles"),
+      join(space.siteDir, "content"),
+    );
+    const settings = parse(
+      await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8"),
+    ) as Record<string, unknown>;
+    await rm(join(space.siteDir, "edahaconfig.yml"));
+    const configFile = join(space.siteDir, "settings.json");
+    await writeFile(
+      configFile,
+      JSON.stringify({ ...settings, articlesDir: "content" }),
+    );
+    const logger = { warn: vi.fn() };
+    const result = await buildBlog({
+      configFile,
+      siteUrl: "https://example.com",
+      logger,
+      fetch: vi.fn(() => Promise.reject(new Error("offline"))),
+    });
+    expect(result.articles).toHaveLength(4);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'content/page: type "page" is not in settings.json; using the default settings',
+    );
+
+    await writeFile(
+      configFile,
+      JSON.stringify({
+        ...settings,
+        articlesDir: "content",
+        outputDir: "content/out",
+      }),
+    );
+    await expect(buildBlog({ configFile, logger })).rejects.toThrow(
+      'settings.json: "outputDir" must be apart from content, templates, static, got "content/out"',
+    );
   });
 
   it("should reject invalid type and article folder names", async () => {
