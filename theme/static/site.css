@@ -64,6 +64,17 @@ pre {
   background: var(--colour-surface);
 }
 
+/* Raw content is shown as it is written: in the page's own font, keeping its spaces and line breaks */
+.raw {
+  font: inherit;
+  white-space: pre-wrap;
+}
+
+pre.raw {
+  padding: 0;
+  background: none;
+}
+
 table {
   border-collapse: collapse;
 }

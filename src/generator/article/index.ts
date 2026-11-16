@@ -4,6 +4,8 @@ import mime from "mime-types";
 import { parse } from "yaml";
 import {
   maskCode,
+  rawHtml,
+  replaceRawBlocks,
   formatBytes,
   isRelativeUrl,
   stripHtml,
@@ -250,14 +252,16 @@ export interface ArticleContent {
 }
 
 /**
- * Split article markdown into its title heading, body and the part before `<!-- readmore -->`.
+ * Split article markdown into its title heading, body and the part before `<!-- readmore -->`. Raw blocks become HTML
+ * that shows their content as it is (see rawHtml) first, so nothing inside them is read as a title or shortcode.
  *
  * @example
  * splitContent("# Hi\n\nIntro <!-- readmore -->rest"); // { heading: "Hi", body: "\nIntro rest", beforeReadmore: "\nIntro" }
  */
 export const splitContent = (content: string): ArticleContent => {
-  const heading = ANY_H1.exec(content)?.[1];
-  const withoutTitle = content.replace(LEADING_H1, "");
+  const markdown = replaceRawBlocks(content, rawHtml);
+  const heading = ANY_H1.exec(markdown)?.[1];
+  const withoutTitle = markdown.replace(LEADING_H1, "");
   // The first break outside code (code may show the shortcode itself)
   const readmore = READMORE.exec(maskCode(withoutTitle));
   if (!readmore)

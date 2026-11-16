@@ -246,6 +246,19 @@ describe("splitContent", () => {
     });
   });
 
+  it("should turn raw blocks into HTML first, so nothing in them is a title or shortcode", () => {
+    expect(
+      splitContent(
+        "<!-- raw -->\n# Not a title\n<!-- readmore -->\n<!-- /raw -->\n\nIntro <!-- readmore -->rest",
+      ),
+    ).toEqual({
+      heading: undefined,
+      body: '<pre class="raw">&#35; Not a title&#10;&#60;&#33;&#45;&#45; readmore &#45;&#45;&#62;</pre>\n\n\n\nIntro rest',
+      beforeReadmore:
+        '<pre class="raw">&#35; Not a title&#10;&#60;&#33;&#45;&#45; readmore &#45;&#45;&#62;</pre>\n\n\n\nIntro',
+    });
+  });
+
   it("should ignore readmore shortcodes in code", () => {
     expect(
       splitContent(
@@ -304,6 +317,23 @@ describe("loadArticle", () => {
     expect(article?.tags.map((tag) => tag.name)).toEqual(["News"]);
     expect(article?.bodyHtml).not.toContain("<!--");
     expect(article?.bodyHtml).not.toContain(DATE);
+  });
+
+  it("should show raw blocks exactly as they are written", async () => {
+    const article = await loadArticle(
+      `<!--yaml\ndate: ${DATE}\n-->\n# Raw\n\nSee <!-- raw -->*this* -- "here"<!-- /raw -->.\n\n<!-- raw -->\n\`\`\`\n<!-- readmore -->\n\`\`\`\n<!-- embed -->https://youtu.be/x<!-- /embed -->\n<!-- /raw -->\n`,
+      "article",
+      context({
+        replaceEmbeds: async (md) => md.replace(/<!-- embed -->/g, "EMBED"),
+      }),
+    );
+    expect(article?.bodyHtml).toContain(
+      '<p>See <span class="raw">*this* -- &quot;here&quot;</span>.</p>\n<pre class="raw">&#96;&#96;&#96;&#10;&#60;&#33;&#45;&#45; readmore &#45;&#45;&#62;&#10;&#96;&#96;&#96;&#10;&#60;&#33;&#45;&#45; embed &#45;&#45;&#62;https&#58;&#47;&#47;youtu&#46;be&#47;x&#60;&#33;&#45;&#45; &#47;embed &#45;&#45;&#62;</pre>',
+    );
+    expect(article?.bodyHtml).not.toContain("EMBED");
+    // The readmore shortcode in the raw block doesn't make an excerpt
+    expect(article?.excerptText).toContain("<!-- readmore -->");
+    expect(article?.bodyText).toContain('See *this* -- "here"');
   });
 
   it("should name the article when its header can't be read", async () => {
