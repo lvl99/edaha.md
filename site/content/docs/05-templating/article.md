@@ -15,7 +15,7 @@ When you build, edaha.md loads each article, works out its lists, and renders:
 - each page of each list with its type's `list` template;
 - each RSS feed with `layouts/rssfeed.njk`.
 
-Templates are looked for in your site's `templates/` folder first, then in the default theme's. So to change one, copy it from the theme into your `templates/` folder at the same path and edit it. The theme's files are in `node_modules/@lvl99dotcom/edaha.md/theme/templates/`:
+Templates are looked for in your site's templates folder first (`templates/`, or the [`templatesDir`](/docs/03-configuration/#templatesdir) setting), then in the default theme's. So to change one, copy it from the theme into your `templates/` folder at the same path and edit it. The theme's files are in `node_modules/@lvl99dotcom/edaha.md/theme/templates/`:
 
 ```
 templates/
@@ -30,7 +30,7 @@ templates/
     home.njk          # The home page
 ```
 
-Your site's `static/` folder works the same way: its files are copied to the website's root over the theme's, so a `static/site.css` replaces the theme's stylesheet.
+Your site's static files folder (`static/`, or [`staticDir`](/docs/03-configuration/#staticdir)) works the same way: its files are copied to the website's root over the theme's, so a `static/site.css` replaces the theme's stylesheet.
 
 ## Templates for article types
 

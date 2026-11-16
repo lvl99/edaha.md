@@ -19,8 +19,8 @@ A typical project looks like this:
     news/
       example-article/  # An article: the folder name is its slug
         article.md
-  templates/            # Optional; your own templates
-  static/               # Optional; your own static files (stylesheets, fonts, images)
+  templates/            # Optional; your own templates (templatesDir)
+  static/               # Optional; your own static files (staticDir)
   build/                # The generated website
 ```
 
@@ -86,7 +86,7 @@ edaha build --config config/edaha.config.json
 
 If no config file is found, the command stops with an error that lists the names it looked for.
 
-The folder that holds the config file is the **site folder**. Every folder in the config file (`articlesDir`, `outputDir`, `publishDir`) is relative to it, and so are `templates/` and `static/`.
+The folder that holds the config file is the **site folder**. Every folder in the config file (`articlesDir`, `templatesDir`, `staticDir`, `outputDir`, `publishDir`) is relative to it.
 
 ## Settings
 
@@ -96,6 +96,8 @@ The folder that holds the config file is the **site folder**. Every folder in th
 | [`description`](#description)     | Yes      | The website's description.                                                       |
 | [`path`](#path)                   | No       | A URL path that every article type's URLs start with.                            |
 | [`articlesDir`](#articlesdir)     | No       | The folder that holds the articles.                                              |
+| [`templatesDir`](#templatesdir)   | No       | The folder that holds your own templates.                                        |
+| [`staticDir`](#staticdir)         | No       | The folder that holds your own static files.                                     |
 | [`outputDir`](#outputdir)         | No       | The folder the website is built into.                                            |
 | [`publishDir`](#publishdir)       | No       | A folder outside the site folder that the built website is copied into.          |
 | [`siteUrl`](#siteurl)             | No       | The website's absolute URL, for links in RSS feeds.                              |
@@ -136,18 +138,49 @@ path: blog # news articles are at /blog/news/<slug>/
 
 The folder that holds the articles, relative to the site folder. Each folder inside it is an [article type](#types).
 
-- **Accepted values:** a folder inside the site folder. It can't be the site folder itself, or inside `templates/` or `static/`.
+- **Accepted values:** a folder inside the site folder. It can't be the site folder itself, and must be apart from the templates and static files folders.
 - **Default:** `articles`
 
 ```yaml
 articlesDir: content
 ```
 
+### `templatesDir`
+
+The folder that holds your own [templates](/docs/05-templating/), relative to the site folder. Templates in it are used over the default theme's, one file at a time.
+
+- **Accepted values:** a folder inside the site folder, apart from the articles and static files folders.
+- **Default:** `templates`
+
+```yaml
+templatesDir: site/templates
+```
+
+### `staticDir`
+
+The folder that holds your own static files: stylesheets, fonts, images and anything else copied to the website's root as it is. Its files are used over the default theme's, e.g. a `site.css` replaces the theme's stylesheet.
+
+- **Accepted values:** a folder inside the site folder, apart from the articles and templates folders.
+- **Default:** `static`
+
+```yaml
+staticDir: site/static
+```
+
+A whole site can live in one folder of a bigger project, with the config file at the project's root:
+
+```yaml
+articlesDir: site/content
+templatesDir: site/templates
+staticDir: site/static
+outputDir: site/build
+```
+
 ### `outputDir`
 
 The folder the website is built into, relative to the site folder. It is **emptied on every build**, so keep nothing else in it.
 
-- **Accepted values:** a folder inside the site folder, apart from the articles folder, `templates/` and `static/`.
+- **Accepted values:** a folder inside the site folder, apart from the articles, templates and static files folders.
 - **Default:** `build`
 
 ```yaml

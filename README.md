@@ -66,7 +66,7 @@ The config file can be YAML, JSON or JavaScript. Without `--config`, the command
 
 If there is none, they stop with an error. If a folder has several, the first is used with a warning.
 
-The site folder is the config file's folder: `articlesDir`, `templates/`, `static/`, `outputDir` and `publishDir` are relative to it.
+The site folder is the config file's folder: `articlesDir`, `templatesDir`, `staticDir`, `outputDir` and `publishDir` are relative to it.
 
 A JavaScript config file exports a plain object:
 
@@ -86,9 +86,12 @@ name: My Site
 description: News and notes.
 # Optional; the URL path prefix of every article type. Default: "" (the website's root)
 path: ""
-# Optional; the articles folder, inside the site folder (not in templates/ or static/). Default: articles
+# Optional; the articles, templates and static files folders, inside the site folder and apart from each other
+# Defaults: articles, templates and static
 articlesDir: articles
-# Optional; the build folder, inside the site folder and apart from the articles folder. It is emptied on every build. Default: build
+templatesDir: templates
+staticDir: static
+# Optional; the build folder, inside the site folder and apart from the articles, templates and static folders. It is emptied on every build. Default: build
 outputDir: build
 # Optional; a folder outside the site folder that the built files are copied into, e.g. another app's build folder
 publishDir: ../app/dist
@@ -196,8 +199,8 @@ export default {
 
 edaha.md ships a neutral default theme in `theme/`: Nunjucks templates in `theme/templates/` and a stylesheet in `theme/static/site.css`.
 
-- **Templates:** a site's own `templates/` folder overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type. A type's own folder (e.g. `templates/page/`) overrides them, and an article's `template` setting picks another one (e.g. `page/home.njk`).
-- **Static files:** a site's own `static/` folder is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
+- **Templates:** a site's own templates folder (`templates/`, or `templatesDir`) overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type. A type's own folder (e.g. `templates/page/`) overrides them, and an article's `template` setting picks another one (e.g. `page/home.njk`).
+- **Static files:** a site's own static files folder (`static/`, or `staticDir`) is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
 
 Templates get these variables:
 

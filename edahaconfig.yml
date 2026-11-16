@@ -1,7 +1,9 @@
-name: edaha.md
+name: edaha.md 🍂
 description: Static site generator powered by TypeScript and markdown
 path: ""
 articlesDir: site/content
+templatesDir: site/templates
+staticDir: site/static
 outputDir: site/build
 siteUrl: https://lvl99.github.io/edaha.md
 types:
