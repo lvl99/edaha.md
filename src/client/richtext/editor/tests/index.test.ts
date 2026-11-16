@@ -55,6 +55,32 @@ describe("createRichtextEditor", () => {
     expect(result).toMatch(/<hr>$/);
   });
 
+  it("should keep raw blocks and raw text as they are, without other formatting", () => {
+    const html =
+      '<p>A <span class="raw">*a*\u00a0\u00a0b</span> c</p><pre class="raw">x\n\n  &lt;!-- readmore --&gt;</pre><pre><code>code</code></pre>';
+    const { editor } = create(html);
+    const result = editor.getHTML();
+    expect(result).toContain('<span class="raw">*a*&nbsp;&nbsp;b</span>');
+    expect(result).toContain(
+      '<pre class="raw">x\n\n  &lt;!-- readmore --&gt;</pre>',
+    );
+    expect(result).toContain("<pre><code>code</code></pre>");
+    // Raw text can't have other formatting
+    editor.commands.selectAll();
+    editor.commands.toggleBold();
+    expect(editor.getHTML()).not.toMatch(/<strong>[^<]*\*a\*/);
+  });
+
+  it("should turn a paragraph into a raw block and back", () => {
+    const { editor } = create("<p>Text</p>");
+    editor.commands.toggleRaw();
+    // With a paragraph after it, to carry on writing
+    expect(editor.getHTML()).toBe('<pre class="raw">Text</pre><p></p>');
+    editor.commands.setTextSelection(1);
+    editor.commands.toggleRaw();
+    expect(editor.getHTML()).toBe("<p>Text</p><p></p>");
+  });
+
   it("should allow only one readmore break, at the cursor", () => {
     const { editor, onUpdate } = create(
       '<p>One</p><hr class="readmore"><p>Two</p><hr class="readmore"><p>Three</p>',

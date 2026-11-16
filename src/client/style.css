@@ -60,6 +60,22 @@ blog-article .preview {
 .richtext-content .ProseMirror {
   min-height: 20rem;
 }
+/* Raw text, shown exactly as it is written: labelled, so it isn't mistaken for code */
+.richtext-content pre.raw {
+  padding: 0.5rem;
+  border: 1px dashed;
+  white-space: pre-wrap;
+}
+.richtext-content pre.raw::before {
+  content: "Raw";
+  display: block;
+  font-family: system-ui, sans-serif;
+  font-weight: bold;
+}
+.richtext-content span.raw {
+  outline: 1px dashed;
+  white-space: pre-wrap;
+}
 .richtext-content img {
   max-width: 100%;
 }

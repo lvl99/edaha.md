@@ -172,6 +172,12 @@ export class BlogRichtext extends LitElement {
       active: (e) => e.isActive("embed"),
     },
     {
+      label: "Raw",
+      // Text shown exactly as it is written, with no formatting
+      run: (e) => e.chain().focus().toggleRaw().run(),
+      active: (e) => e.isActive("raw"),
+    },
+    {
       label: "Read more",
       // A selected break is removed; otherwise one is inserted at the cursor
       run: (e) =>

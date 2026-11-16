@@ -61,6 +61,7 @@ describe("blog-richtext", () => {
       ["Small", "<small>"],
       ["Big", "<big>"],
       ["Details", "<details>"],
+      ["Raw", '<pre class="raw">'],
     ];
     for (const [label, tag] of blocks) {
       const fresh = await setup();

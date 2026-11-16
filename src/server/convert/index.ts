@@ -3,7 +3,9 @@ import { EMBED_BLOCK } from "../../embeds/index.ts";
 import { READMORE } from "../../generator/article/index.ts";
 import {
   escapeHtml,
+  rawHtml,
   replaceOutsideCode,
+  replaceRawBlocks,
 } from "../../generator/format/index.ts";
 import {
   createMarkdown,
@@ -24,7 +26,8 @@ export const filesUrl = (type: string, slug: string): string =>
 
 /**
  * Convert article markdown to HTML for the editor: `<!-- readmore -->` becomes `<hr class="readmore">`,
- * embed blocks become `<div class="embed">URL</div>` (except in code), and relative URLs point at the editor's file URL.
+ * embed blocks become `<div class="embed">URL</div>` (except in code), raw blocks become `<pre class="raw">` or
+ * `<span class="raw">` holding their content as it is, and relative URLs point at the editor's file URL.
  *
  * @example
  * markdownToEditorHtml("Intro <!-- readmore -->Rest", "/files/article/hello/");
@@ -35,7 +38,14 @@ export const markdownToEditorHtml = (source: string, baseUrl: string): string =>
     markdown,
     replaceOutsideCode(
       replaceOutsideCode(
-        source,
+        // Spaces in raw text are non-breaking while it is edited, so the editor keeps repeated ones
+        replaceRawBlocks(source, (raw) =>
+          rawHtml(
+            raw.block
+              ? raw
+              : { ...raw, content: raw.content.replace(/ /g, "\u00a0") },
+          ),
+        ),
         READMORE,
         () => '\n\n<hr class="readmore">\n\n',
       ),
@@ -60,6 +70,16 @@ const createTurndown = () => {
       node.nodeName === "HR" &&
       (node as HTMLElement).classList.contains("readmore"),
     replacement: () => "\n\n<!-- readmore -->\n\n",
+  });
+  // Raw blocks are written back as they are, without escaping
+  turndown.addRule("raw", {
+    filter: (node) =>
+      (node.nodeName === "PRE" || node.nodeName === "SPAN") &&
+      (node as HTMLElement).classList.contains("raw"),
+    replacement: (_, node) =>
+      node.nodeName === "PRE"
+        ? `\n\n<!-- raw -->\n${String(node.textContent)}\n<!-- /raw -->\n\n`
+        : `<!-- raw -->${String(node.textContent).replace(/\u00a0/g, " ")}<!-- /raw -->`,
   });
   turndown.addRule("embed", {
     filter: (node) =>
