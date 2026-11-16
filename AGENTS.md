@@ -89,7 +89,7 @@ Unit tests validate all functionality; aim for 100% test coverage:
 
 Any changes or updates to how project is installed and quickly utilised (plus any developer/contributor setup and notes) need to be documented in [README.md](README.md).
 
-Configuration, article format, templates, embeds and the editor are documented in [README.md](README.md) too, until they need a [docs/] folder.
+Extended documentation about the project will be located at [site/content/docs]. Ensure that all content within the articles here are updated in relation to any changes.
 
 ## Code management
 
@@ -145,4 +145,4 @@ Releases will be made via NPM, and only from the `main` branch, when human signa
 3. Push the commit and the tag: `git push --follow-tags`.
 4. Publish to NPM: `pnpm publish`. Please note that this will require human intervention to complete. You need to trigger the command in an interactive terminal and then get the human to follow the rest of the process to complete. Don't bother verifying that the new version is updated in npm as it will take at least 5 minutes for the release to be verified by npm before it will be available.
 
-Code will be provided only as ESM with TypeScript definitions in released NPM package.
+Code will be provided only as ESM with TypeScript definitions in released NPM package. Ensure that [site] is not included in the NPM package.
