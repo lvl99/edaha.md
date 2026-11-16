@@ -14,11 +14,11 @@ pnpm add -D @lvl99dotcom/edaha.md
 
 ## Quick start
 
-A site is a folder with a `config.yml` and an `articles/` folder:
+A site is a folder with a config file (e.g. `edahaconfig.yml`) and an `articles/` folder:
 
 ```
 my-site/
-  config.yml
+  edahaconfig.yml
   articles/
     news/
       hello-world/
@@ -29,7 +29,7 @@ my-site/
 ```
 
 ```yaml
-# config.yml
+# edahaconfig.yml
 name: My Site
 description: News and notes.
 ```
@@ -44,19 +44,41 @@ The build writes the website into `my-site/dist`. The editor runs at http://127.
 ## Commands
 
 ```
-edaha build    Build the site into config.yml's outputDir (and copy it into publishDir, if set)
+edaha build    Build the site into the config file's outputDir (and copy it into publishDir, if set)
 edaha editor   Run the local article editor (only reachable from this computer)
 ```
 
-| Option             | Command | Description                                                                          |
-| ------------------ | ------- | ------------------------------------------------------------------------------------ |
-| `--dir <folder>`   | both    | The site folder. Default: the current folder                                         |
-| `--site-url <url>` | build   | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl` in config |
-| `--port <number>`  | editor  | The port to listen on. Default: 5180                                                 |
-| `-h`, `--help`     |         | Show help                                                                            |
-| `-v`, `--version`  |         | Show the version                                                                     |
+| Option                  | Command | Description                                                                          |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `-c`, `--config <file>` | both    | The config file. Default: the first one found (see [Config file](#config-file))      |
+| `--dir <folder>`        | both    | The folder to look for a config file in. Default: the current folder                 |
+| `--site-url <url>`      | build   | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl` in config |
+| `--port <number>`       | editor  | The port to listen on. Default: 5180                                                 |
+| `-h`, `--help`          |         | Show help                                                                            |
+| `-v`, `--version`       |         | Show the version                                                                     |
 
-## config.yml
+## Config file
+
+The config file can be YAML, JSON or JavaScript. Without `--config`, the commands look for the first of these names in the `--dir` folder, then in the folder of the nearest `package.json`:
+
+- `.edahaconfigrc`, `.edahaconfig`, `edahaconfigrc`, `edahaconfig` or `edaha.config`
+- ending in `.yml`, `.yaml`, `.json`, `.js`, `.cjs` or `.mjs` (in that order)
+
+If there is none, they stop with an error. If a folder has several, the first is used with a warning.
+
+The site folder is the config file's folder: `articlesDir`, `templates/`, `static/`, `outputDir` and `publishDir` are relative to it.
+
+A JavaScript config file exports a plain object:
+
+```js
+// edaha.config.mjs
+export default {
+  name: "My Site",
+  description: "News and notes.",
+};
+```
+
+All settings, in YAML:
 
 ```yaml
 # Required: the website's name and description
@@ -64,7 +86,9 @@ name: My Site
 description: News and notes.
 # Optional; the URL path prefix of every article type. Default: "" (the website's root)
 path: ""
-# Optional; the build folder, inside the site folder. It is emptied on every build. Default: dist
+# Optional; the articles folder, inside the site folder (not in templates/ or static/). Default: articles
+articlesDir: articles
+# Optional; the build folder, inside the site folder and apart from the articles folder. It is emptied on every build. Default: dist
 outputDir: dist
 # Optional; a folder outside the site folder that the built files are copied into, e.g. another app's build folder
 publishDir: ../app/dist
@@ -72,7 +96,7 @@ publishDir: ../app/dist
 siteUrl: https://example.com
 # Optional; paths at the website's root that articles and types can't use, e.g. another app's routes
 reservedPaths: [app, api]
-# Optional; settings for each article type (a folder in articles/)
+# Optional; settings for each article type (a folder in the articles folder)
 types:
   news:
     labelSingle: News
@@ -89,7 +113,7 @@ types:
       tag: false
 ```
 
-- **Article types:** each folder in `articles/` is a type. `types` sets:
+- **Article types:** each folder in the articles folder is a type. `types` sets:
   - its URL `path` (default: its name; `""` for the root);
   - its labels (`labelSingle`, `labelPlural`);
   - what is built for it (`generate`: `article`, `list`, `feed`, `author`, `tag`, all `true` by default, or `generate: false` for nothing).
@@ -100,7 +124,9 @@ types:
 
 ## Articles
 
-Each article is a folder `articles/<type>/<slug>/` with an `article.md`. Its images and attachments go in the same folder. Folder names are lowercase kebab-case.
+Each article is a folder `<articlesDir>/<type>/<slug>/` (e.g. `articles/news/hello-world/`) with an `article.md`. Its images and attachments go in the same folder. Folder names are lowercase kebab-case.
+
+The config header at the top is YAML (`<!--yaml` or `<!--yml`) or JSON (`<!--json`). It is never written into the built files.
 
 ```md
 <!--yaml
@@ -196,7 +222,7 @@ The full types are exported as `TemplateData*`.
 - **Moving:** changing an article's type or slug moves its folder.
 - **Views:** "WYSIWYG", "Markdown" and "Preview" switch between rich text, the body's Markdown, and the unsaved article rendered with its type's "single" template. The preview uses the site's templates and static files over the theme's. It is sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API.
 - **Safety:** its API only accepts changes from the editor page itself.
-- **Saving:** saving rewrites `article.md` in a normalised form (e.g. the read more break on its own line).
+- **Saving:** saving rewrites `article.md` in a normalised form (e.g. the read more break on its own line). The config header keeps its format (`yaml`, `yml` or `json`); new articles get `yaml`.
 
 ## API
 
@@ -215,16 +241,17 @@ console.log(`Open ${editor.url}`);
 
 `buildBlog` options:
 
-- `siteDir` (required)
+- `siteDir`: the folder to look for a config file in. Default: the current folder
+- `configFile`: the config file to use instead
 - `siteUrl`
 - `themeDir`: another theme folder
 - `logger`
 - `fetch`
 - `embedRenderers`
 
-`startEditor` options:
+`startEditor` (and `createEditorServer`) options:
 
-- `siteDir` (required)
+- `siteDir`, `configFile`: as for `buildBlog`
 - `port`
 - `themeDir`
 - `fetch`
@@ -239,12 +266,12 @@ pnpm test:coverage  # unit tests with coverage
 pnpm typecheck
 pnpm lint
 pnpm format:check
-EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for a site
+EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for the site whose config file is found from there
 ```
 
 ### Project layout
 
-- `src/generator/`: reads `config.yml` and articles, renders templates and builds the site (`buildBlog`).
+- `src/generator/`: finds and reads the config file and articles, renders templates and builds the site (`buildBlog`).
 - `src/embeds/`: embed renderers.
 - `src/server/`: the editor's API, article store and Markdown conversion.
 - `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`.
