@@ -2,7 +2,7 @@ import type {
   ListKind,
   TemplateDataArticle,
   TemplateDataArticleType,
-  TemplateDataBlog,
+  TemplateDataSite,
   TemplateDataList,
   TemplateDataPaginationPage,
 } from "../types/index.ts";
@@ -62,11 +62,11 @@ export const sortArticles = (
  * @param withIndex - article types that have an index article
  *
  * @example
- * collectLists(published, blog, new Set()).map((list) => list.url); // ["/news/", "/news/tags/art/", ...]
+ * collectLists(published, site, new Set()).map((list) => list.url); // ["/news/", "/news/tags/art/", ...]
  */
 export const collectLists = (
   articles: readonly TemplateDataArticle[],
-  blog: TemplateDataBlog,
+  site: TemplateDataSite,
   withIndex: ReadonlySet<string>,
 ): ListDefinition[] => {
   const lists = new Map<string, ListDefinition>();
@@ -87,7 +87,7 @@ export const collectLists = (
   };
   /** A type's own list */
   const typeList = (type: string) => {
-    const config = blog.types[type] as TemplateDataArticleType;
+    const config = site.types[type] as TemplateDataArticleType;
     return list({
       kind: "type",
       name: config.labelPlural,
@@ -102,7 +102,7 @@ export const collectLists = (
 
   for (const type of withIndex) typeList(type);
   for (const article of sortArticles(articles)) {
-    const config = blog.types[article.type] as TemplateDataArticleType;
+    const config = site.types[article.type] as TemplateDataArticleType;
     const settings = config.generate;
     /** Add the article to a list, and to its feed if the type allows feeds */
     const add = (entry: ListDefinition) => {

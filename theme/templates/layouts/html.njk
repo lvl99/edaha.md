@@ -3,17 +3,17 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block head_title %}{{ blog.name }}{% endblock %}</title>
-    <meta name="description" content="{% block head_description %}{{ blog.description }}{% endblock %}" />
+    <title>{% block head_title %}{{ site.name }}{% endblock %}</title>
+    <meta name="description" content="{% block head_description %}{{ site.description }}{% endblock %}" />
     {% if list and list.hasFeed %}
-    <link rel="alternate" type="application/rss+xml" title="{{ list.name }} | {{ blog.name }}" href="{{ list.feedUrl }}" />
+    <link rel="alternate" type="application/rss+xml" title="{{ list.name }} | {{ site.name }}" href="{{ list.feedUrl }}" />
     {% endif %}
     <link rel="stylesheet" href="/site.css" />
   </head>
   <body class="{% block bodyClass %}{% endblock %}">
     {% block header %}
     <header class="site-header">
-      <p class="site-title"><a href="{{ blog.url }}">{{ blog.name }}</a></p>
+      <p class="site-title"><a href="{{ site.path }}">{{ site.name }}</a></p>
     </header>
     {% endblock %}
 
@@ -22,7 +22,7 @@
         {% block breadcrumb %}
           <nav class="site-breadcrumb" aria-label="Breadcrumb">
             <ul>
-              <li><a href="{{ blog.url }}">{{ blog.name }}</a></li>
+              <li><a href="{{ site.path }}">{{ site.name }}</a></li>
               {% block breadcrumbItems %}{% endblock %}
             </ul>
           </nav>
@@ -37,13 +37,13 @@
     {% block footer %}
     <footer class="site-footer">
       <nav aria-label="Sections">
-        {% for name, type in blog.types %}
+        {% for name, type in site.types %}
         {% if type.generate.list %}
         <a href="{{ type.url }}">{{ type.labelPlural }}</a>
         {% endif %}
         {% endfor %}
       </nav>
-      <p class="colophon">{{ blog.name }}</p>
+      <p class="colophon">{{ site.name }}</p>
     </footer>
     {% endblock %}
   </body>

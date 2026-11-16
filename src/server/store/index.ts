@@ -20,7 +20,7 @@ import {
   splitContent,
   type HeaderFormat,
 } from "../../generator/article/index.ts";
-import { blogData, DEFAULT_SITE_URL } from "../../generator/build/index.ts";
+import { DEFAULT_SITE_URL, siteData } from "../../generator/build/index.ts";
 import {
   defaultTypeConfig,
   parseConfig,
@@ -441,10 +441,11 @@ export class ArticleStore {
       );
     const baseUrl = bodyBaseUrl(location);
     const config = await this.config();
-    const blog = blogData(config, {
-      [data.type]: defaultTypeConfig(data.type),
-      ...config.types,
-    });
+    const site = siteData(
+      config,
+      { [data.type]: defaultTypeConfig(data.type), ...config.types },
+      DEFAULT_SITE_URL,
+    );
     const source = serializeArticle(
       { ...data, status: "published", title: data.title.trim() || "Untitled" },
       editorHtmlToMarkdown(data.bodyHtml, baseUrl),
@@ -454,22 +455,21 @@ export class ArticleStore {
     try {
       // Published, so always rendered
       const article = (await loadArticle(source, data.type, {
-        blog,
+        site,
         // An unsaved article has no folder, so any file it names isn't found
         dir: location
           ? this.dir(location.type, location.slug)
           : join(this.articlesDir, data.type, ".unsaved"),
         slug: data.slug,
         url: baseUrl,
-        typeUrl: (blog.types[data.type] as TemplateDataArticleType).url,
+        typeUrl: (site.types[data.type] as TemplateDataArticleType).url,
         source: name,
         replaceEmbeds: (md) => embeds.replaceBlocks(md, name),
         renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
       return templates.render(templates.resolve(data.type, "single"), {
-        site: { url: DEFAULT_SITE_URL },
-        blog,
+        site,
         article,
       });
     } catch (error) {

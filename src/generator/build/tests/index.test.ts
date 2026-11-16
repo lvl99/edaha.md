@@ -18,8 +18,10 @@ import {
   DEFAULT_SITE_URL,
   resolveOutputDir,
   resolvePublishDir,
+  siteData,
   staticFiles,
 } from "..";
+import { defaultTypeConfig, parseConfig } from "../../config";
 
 const FIXTURE = fileURLToPath(
   new URL("../../../shared/tests/fixtures/blog", import.meta.url),
@@ -96,6 +98,28 @@ describe("resolveOutputDir", () => {
       expect(() => resolveOutputDir("/site", dir, sources)).toThrow(
         `"outputDir" must be apart from site/content, site/templates, site/static, got "${dir}"`,
       );
+  });
+});
+
+describe("siteData", () => {
+  it("should give the website's name, description, absolute URL, home URL and types", () => {
+    const config = parseConfig({
+      name: "Site",
+      description: "Updates",
+      path: "docs",
+    });
+    expect(
+      siteData(config, { news: defaultTypeConfig("news") }, "https://e.com/"),
+    ).toEqual({
+      name: "Site",
+      description: "Updates",
+      url: "https://e.com",
+      path: "/docs/",
+      types: { news: { ...defaultTypeConfig("news"), url: "/docs/news/" } },
+    });
+    expect(siteData({ ...config, path: "" }, {}, "https://e.com").path).toBe(
+      "/",
+    );
   });
 });
 

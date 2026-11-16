@@ -90,17 +90,16 @@ describe("Templates", () => {
     const dir = await templatesDir({
       ...REQUIRED,
       "test.njk":
-        "{{ blog.name }}|{{ blog.description | safe }}|{{ site.url | date }}|{{ site.url | rfc822 }}|{{ blog.url | absoluteUrls(blog.path) | safe }}",
+        '{{ site.name }}|{{ site.description | safe }}|{{ site.url | date }}|{{ site.url | rfc822 }}|{{ site.path | absoluteUrls("https://example.com") | safe }}',
     });
     const templates = new Templates(dir, { warn: vi.fn() });
     expect(
       templates.render("test.njk", {
-        site: { url: "2026-10-19T09:54:00.000Z" },
-        blog: {
+        site: {
           name: "<News>",
           description: "<b>Bold</b>",
-          path: "https://example.com",
-          url: ' src="/a.png"',
+          url: "2026-10-19T09:54:00.000Z",
+          path: ' src="/a.png"',
           types: {},
         },
       }),

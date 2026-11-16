@@ -18,7 +18,7 @@ import type {
   TemplateDataArticle,
   TemplateDataAttachment,
   TemplateDataAuthor,
-  TemplateDataBlog,
+  TemplateDataSite,
   TemplateDataTag,
 } from "../types/index.ts";
 
@@ -278,8 +278,8 @@ export const splitContent = (content: string): ArticleContent => {
 
 /** Where an article is and how to render its parts */
 export interface ArticleContext {
-  /** The blog the article belongs to */
-  blog: TemplateDataBlog;
+  /** The website the article belongs to */
+  site: TemplateDataSite;
   /** The article's folder on disk */
   dir: string;
   /** The article's slug (its folder name) */
@@ -297,7 +297,7 @@ export interface ArticleContext {
 }
 
 /**
- * Build an author's template data. Authors without a config are the website itself (the blog's name).
+ * Build an author's template data. Authors without a config are the website itself (the site's name).
  *
  * @param typeUrl - the URL of the article type, which its author lists are under
  *
@@ -306,10 +306,10 @@ export interface ArticleContext {
  */
 export const authorData = (
   author: AuthorConfig | undefined,
-  blogName: string,
+  siteName: string,
   typeUrl: string,
 ): TemplateDataAuthor => {
-  const name = author?.name ?? blogName;
+  const name = author?.name ?? siteName;
   const slug = slugify(name);
   return {
     name,
@@ -447,7 +447,7 @@ export const loadArticle = async (
     template: config.template ?? "single",
     url,
     title,
-    author: authorData(config.author, context.blog.name, context.typeUrl),
+    author: authorData(config.author, context.site.name, context.typeUrl),
     thumbnail: config.thumbnail
       ? (await resolveFile(config.thumbnail, url, context)).url
       : undefined,

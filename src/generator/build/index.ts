@@ -39,7 +39,6 @@ import type {
   Logger,
   TemplateDataArticle,
   TemplateDataArticleType,
-  TemplateDataBlog,
   TemplateDataList,
   TemplateDataSite,
 } from "../types/index.ts";
@@ -207,21 +206,24 @@ const typeData = (
 });
 
 /**
- * The blog's template data: its name, description and URL, and each article type's settings and URL.
+ * The website's template data: its name, description, absolute URL and home URL, and each article type's settings and
+ * URL.
  *
  * @param typeConfigs - the article types' settings (configured ones, plus defaults for any others)
+ * @param url - the website's absolute URL (a trailing slash is removed)
  *
  * @example
- * blogData(config, config.types).types.news.url; // "/news/"
+ * siteData(config, config.types, "https://example.com").types.news.url; // "/news/"
  */
-export const blogData = (
+export const siteData = (
   config: BlogConfig,
   typeConfigs: Record<string, ArticleTypeConfig>,
-): TemplateDataBlog => ({
+  url: string,
+): TemplateDataSite => ({
   name: config.name,
   description: config.description,
-  path: config.path,
-  url: folderUrl(folderPath(config.path)),
+  url: url.replace(/\/+$/, ""),
+  path: folderUrl(folderPath(config.path)),
   types: Object.fromEntries(
     Object.entries(typeConfigs).map(([type, typeConfig]) => [
       type,
@@ -284,9 +286,6 @@ export const buildBlog = async (
     logger.warn(
       `SITE_URL is not set and ${configName} has no "siteUrl"; feeds will link to ${DEFAULT_SITE_URL}`,
     );
-  const site: TemplateDataSite = {
-    url: (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, ""),
-  };
 
   // Article types: configured ones, plus any other type folders (with defaults)
   const articlesDir = join(siteDir, config.articlesDir);
@@ -307,7 +306,7 @@ export const buildBlog = async (
   checkConfig(() =>
     checkTypePaths(config.path, typeConfigs, config.reservedPaths),
   );
-  const blog = blogData(config, typeConfigs);
+  const site = siteData(config, typeConfigs, siteUrl || DEFAULT_SITE_URL);
 
   const markdown = createMarkdown();
   const embeds = new EmbedResolver({
@@ -339,7 +338,7 @@ export const buildBlog = async (
     folder: string;
   }[] = [];
   for (const type of typeFolders) {
-    const typeConfig = blog.types[type] as TemplateDataArticleType;
+    const typeConfig = site.types[type] as TemplateDataArticleType;
     const built = typeConfig.generate.article;
     const typeFolder = typeConfig.url.slice(1);
     for (const slug of await subfolders(join(articlesDir, type))) {
@@ -365,7 +364,7 @@ export const buildBlog = async (
       // An index article is its type's front page
       const folder = slug === "index" ? typeFolder : `${typeFolder}${slug}/`;
       const article = await loadArticle(text, type, {
-        blog,
+        site,
         dir,
         slug,
         url: folderUrl(folder),
@@ -392,7 +391,7 @@ export const buildBlog = async (
     .filter(
       (article) => article.status === "published" && article.slug !== "index",
     );
-  const lists = collectLists(listed, blog, withIndex);
+  const lists = collectLists(listed, site, withIndex);
   const firstPages = new Map<string, TemplateDataList>();
   for (const list of lists) {
     const pages = paginate(list);
@@ -403,7 +402,7 @@ export const buildBlog = async (
       for (const page of pages)
         await write(
           list.dir + pageFile(page.pagination.page.index),
-          templates.render(listTemplate, { site, blog, list: page }),
+          templates.render(listTemplate, { site, list: page }),
         );
     }
     if (list.feed)
@@ -411,7 +410,6 @@ export const buildBlog = async (
         `${list.dir}feed.xml`,
         templates.render("layouts/rssfeed.njk", {
           site,
-          blog,
           // The feed has the newest articles that can be in feeds
           list: {
             ...(pages[0] as TemplateDataList),
@@ -431,7 +429,6 @@ export const buildBlog = async (
       `${folder}index.html`,
       templates.render(templates.resolve(article.type, article.template), {
         site,
-        blog,
         article,
         ...(article.slug === "index"
           ? { list: firstPages.get(article.type) }

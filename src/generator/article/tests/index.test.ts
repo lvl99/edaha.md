@@ -11,13 +11,13 @@ import {
   type ArticleContext,
 } from "..";
 import { createMarkdown, renderMarkdown } from "../../markdown";
-import type { TemplateDataBlog } from "../../types";
+import type { TemplateDataSite } from "../../types";
 
-const blog: TemplateDataBlog = {
+const site: TemplateDataSite = {
   name: "Test News",
   description: "Test articles.",
-  path: "",
-  url: "/",
+  url: "https://example.com",
+  path: "/",
   types: {},
 };
 
@@ -32,7 +32,7 @@ const FIRST_DIR = fileURLToPath(
 const context = (overrides: Partial<ArticleContext> = {}): ArticleContext => {
   const markdown = createMarkdown();
   return {
-    blog,
+    site,
     dir: FIRST_DIR,
     slug: "first",
     url: "/news/first/",
