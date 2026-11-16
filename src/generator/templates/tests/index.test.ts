@@ -129,4 +129,29 @@ describe("Templates", () => {
     expect(templates.resolve("page", "about")).toBe("page/about.njk");
     expect(templates.names("page")).toEqual(["about", "home", "single"]);
   });
+
+  it("should load @theme/ templates from the last folder, so a site's template can build on the theme's", async () => {
+    const theme = await templatesDir({
+      ...REQUIRED,
+      "article/single.njk":
+        "<main>{% block main %}theme main{% endblock %}</main>",
+      "partials/note.njk": "theme note",
+    });
+    const site = await templatesDir({
+      "article/single.njk":
+        '{% extends "@theme/article/single.njk" %}{% block main %}site, then {{ super() }}, {% include "@theme/partials/note.njk" %}{% endblock %}',
+      "partials/note.njk": "site note",
+    });
+    const templates = new Templates([site, theme], { warn: vi.fn() });
+    expect(templates.render("article/single.njk", {} as never)).toBe(
+      "<main>site, then theme main, theme note</main>",
+    );
+    // Without the prefix, the site's file comes first
+    expect(templates.render("partials/note.njk", {} as never)).toBe(
+      "site note",
+    );
+    expect(() => templates.render("@theme/missing.njk", {} as never)).toThrow(
+      "template not found: @theme/missing.njk",
+    );
+  });
 });
