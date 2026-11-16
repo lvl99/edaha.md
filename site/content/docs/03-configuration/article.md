@@ -90,18 +90,18 @@ The folder that holds the config file is the **site folder**. Every folder in th
 
 ## Settings
 
-| Setting                           | Required | Description                                                                         |
-| --------------------------------- | -------- | ----------------------------------------------------------------------------------- |
-| [`name`](#name)                   | Yes      | The website's name.                                                                 |
-| [`description`](#description)     | Yes      | The website's description.                                                          |
-| [`path`](#path)                   | No       | A URL path that every article type's URLs start with.                               |
-| [`articlesDir`](#articlesdir)     | No       | The folder that holds the articles.                                                 |
-| [`outputDir`](#outputdir)         | No       | The folder the website is built into.                                               |
-| [`publishDir`](#publishdir)       | No       | A folder outside the site folder that the built website is copied into.             |
-| [`siteUrl`](#siteurl)             | No       | The website's absolute URL, for links in RSS feeds.                                 |
-| [`reservedPaths`](#reservedpaths) | No       | Paths at the website's root that articles and article types can't use.              |
-| [`types`](#types)                 | No       | Settings for each article type: URL path, labels and what is built.                 |
-| [`embeds`](#embeds)               | No       | Custom embed renderers, tried before the built-in ones (JavaScript config only).    |
+| Setting                           | Required | Description                                                                      |
+| --------------------------------- | -------- | -------------------------------------------------------------------------------- |
+| [`name`](#name)                   | Yes      | The website's name.                                                              |
+| [`description`](#description)     | Yes      | The website's description.                                                       |
+| [`path`](#path)                   | No       | A URL path that every article type's URLs start with.                            |
+| [`articlesDir`](#articlesdir)     | No       | The folder that holds the articles.                                              |
+| [`outputDir`](#outputdir)         | No       | The folder the website is built into.                                            |
+| [`publishDir`](#publishdir)       | No       | A folder outside the site folder that the built website is copied into.          |
+| [`siteUrl`](#siteurl)             | No       | The website's absolute URL, for links in RSS feeds.                              |
+| [`reservedPaths`](#reservedpaths) | No       | Paths at the website's root that articles and article types can't use.           |
+| [`types`](#types)                 | No       | Settings for each article type: URL path, labels and what is built.              |
+| [`embeds`](#embeds)               | No       | Custom embed renderers, tried before the built-in ones (JavaScript config only). |
 
 Unknown settings stop the build, so a typo doesn't go unnoticed.
 
@@ -193,22 +193,22 @@ reservedPaths: [app, api, jwks.json]
 
 Settings for each article type, by its folder name. Each type can set:
 
-| Setting       | Description                                                               | Default                       |
-| ------------- | ------------------------------------------------------------------------- | ----------------------------- |
+| Setting       | Description                                                              | Default                       |
+| ------------- | ------------------------------------------------------------------------ | ----------------------------- |
 | `path`        | The type's URL path: lowercase kebab-case, or `""` for the website root. | The type's name               |
-| `labelSingle` | The label for one article, e.g. "Article".                                | The name, capitalised         |
-| `labelPlural` | The label for several articles, e.g. "Articles".                          | `labelSingle` followed by "s" |
-| `generate`    | What is built for the type (see below), or `false` to build nothing.      | Everything                    |
+| `labelSingle` | The label for one article, e.g. "Article".                               | The name, capitalised         |
+| `labelPlural` | The label for several articles, e.g. "Articles".                         | `labelSingle` followed by "s" |
+| `generate`    | What is built for the type (see below), or `false` to build nothing.     | Everything                    |
 
 `generate` has these settings, all `true` by default:
 
-| Setting   | Builds                                                                    |
-| --------- | ------------------------------------------------------------------------- |
-| `article` | The type's article pages. Without them, nothing else is built either.    |
-| `list`    | The type's [list pages](/docs/06-lists/).                                 |
-| `feed`    | The type's RSS feed, and its articles in the tag and author feeds.        |
-| `author`  | The type's author lists.                                                  |
-| `tag`     | The type's tag lists.                                                     |
+| Setting   | Builds                                                                |
+| --------- | --------------------------------------------------------------------- |
+| `article` | The type's article pages. Without them, nothing else is built either. |
+| `list`    | The type's [list pages](/docs/06-lists/).                             |
+| `feed`    | The type's RSS feed, and its articles in the tag and author feeds.    |
+| `author`  | The type's author lists.                                              |
+| `tag`     | The type's tag lists.                                                 |
 
 ```yaml
 types:
@@ -263,20 +263,20 @@ See [Embeds](/docs/07-embeds/) for how to write one.
 
 Builds the website into `outputDir`, and copies it into `publishDir` if that is set. See [Build & deploy](/docs/08-build-and-deploy/).
 
-| Option                  | Description                                                                         |
-| ----------------------- | ----------------------------------------------------------------------------------- |
+| Option                  | Description                                                                                  |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
 | `-c`, `--config <file>` | The config file. Default: the first one found (see [Where it is found](#where-it-is-found)). |
-| `--dir <folder>`        | The folder to look for a config file in. Default: the current folder.               |
-| `--site-url <url>`      | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl`.          |
+| `--dir <folder>`        | The folder to look for a config file in. Default: the current folder.                        |
+| `--site-url <url>`      | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl`.                  |
 
 ### `edaha editor`
 
 Runs the [WYSIWYG editor](/docs/09-wysiwyg-editor/) on your computer.
 
-| Option                  | Description                                                     |
-| ----------------------- | --------------------------------------------------------------- |
-| `-c`, `--config <file>` | The config file, as for `edaha build`.                          |
-| `--dir <folder>`        | The folder to look for a config file in, as for `edaha build`.  |
-| `--port <number>`       | The port the editor listens on. Default: `5180`.                |
+| Option                  | Description                                                    |
+| ----------------------- | -------------------------------------------------------------- |
+| `-c`, `--config <file>` | The config file, as for `edaha build`.                         |
+| `--dir <folder>`        | The folder to look for a config file in, as for `edaha build`. |
+| `--port <number>`       | The port the editor listens on. Default: `5180`.               |
 
 Both commands also take `-h` / `--help` and `-v` / `--version`.

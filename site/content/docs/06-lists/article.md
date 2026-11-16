@@ -9,11 +9,11 @@ A list is a collection of articles, newest first. edaha.md builds lists of each 
 
 ## Kinds of lists
 
-| List          | URL                         | Holds                                                     |
-| ------------- | --------------------------- | --------------------------------------------------------- |
-| Article type  | `/news/`                    | Every published article of the type.                      |
-| Tag           | `/news/tags/<tag>/`         | The type's articles with that tag.                        |
-| Author        | `/news/authors/<author>/`   | The type's articles by that author.                       |
+| List         | URL                       | Holds                                |
+| ------------ | ------------------------- | ------------------------------------ |
+| Article type | `/news/`                  | Every published article of the type. |
+| Tag          | `/news/tags/<tag>/`       | The type's articles with that tag.   |
+| Author       | `/news/authors/<author>/` | The type's articles by that author.  |
 
 Tag and author names become kebab-case in URLs, e.g. "Release notes" is `/news/tags/release-notes/`.
 
@@ -59,12 +59,12 @@ types:
       tag: false
 ```
 
-| Setting  | When `false`                                                                                      |
-| -------- | ------------------------------------------------------------------------------------------------- |
-| `list`   | No list pages for the type. Its feed can still be built.                                          |
-| `feed`   | No feed for the type, and its articles are left out of the tag and author feeds.                 |
-| `author` | No author lists for the type.                                                                     |
-| `tag`    | No tag lists for the type.                                                                        |
+| Setting  | When `false`                                                                     |
+| -------- | -------------------------------------------------------------------------------- |
+| `list`   | No list pages for the type. Its feed can still be built.                         |
+| `feed`   | No feed for the type, and its articles are left out of the tag and author feeds. |
+| `author` | No author lists for the type.                                                    |
+| `tag`    | No tag lists for the type.                                                       |
 
 See [Configuration](/docs/03-configuration/#types) for every type setting.
 

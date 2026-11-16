@@ -21,10 +21,10 @@ When the site is built, the URL is replaced with the embed's HTML. In the [WYSIW
 
 edaha.md comes with two embeds:
 
-| Embed    | URLs                                                   | Notes                                                                       |
-| -------- | ------------------------------------------------------ | --------------------------------------------------------------------------- |
-| YouTube  | `youtube.com/watch?v=…`, `youtu.be/…` and similar      | Always uses youtube-nocookie.com.                                           |
-| Bandcamp | Album and track pages, e.g. `artist.bandcamp.com/album/…` | Reads the page when building, so the build needs internet access.        |
+| Embed    | URLs                                                      | Notes                                                             |
+| -------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
+| YouTube  | `youtube.com/watch?v=…`, `youtu.be/…` and similar         | Always uses youtube-nocookie.com.                                 |
+| Bandcamp | Album and track pages, e.g. `artist.bandcamp.com/album/…` | Reads the page when building, so the build needs internet access. |
 
 A URL that no embed recognises, or that fails to render, gives a warning and is shown as a plain link instead, so the build carries on.
 
@@ -49,12 +49,12 @@ const vimeo = {
 };
 ```
 
-| Property       | Description                                                                                              |
-| -------------- | -------------------------------------------------------------------------------------------------------- |
-| `name`         | The embed's name, shown in warnings and used in its wrapper's class. Use one word, e.g. `Vimeo`.        |
-| `match(url)`   | Whether it handles a URL. Gets a [`URL`](https://developer.mozilla.org/docs/Web/API/URL) object.        |
+| Property               | Description                                                                                                                              |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                 | The embed's name, shown in warnings and used in its wrapper's class. Use one word, e.g. `Vimeo`.                                         |
+| `match(url)`           | Whether it handles a URL. Gets a [`URL`](https://developer.mozilla.org/docs/Web/API/URL) object.                                         |
 | `render(url, context)` | Returns a promise of the HTML. `context.fetch` fetches other data, e.g. an oEmbed response. Throw an error if the URL can't be embedded. |
-| `frameSources` | Optional; the `https://` origins its iframes load from.                                                  |
+| `frameSources`         | Optional; the `https://` origins its iframes load from.                                                                                  |
 
 Escape anything from the URL that you put into the HTML. Each URL is rendered once per build, however many articles use it.
 

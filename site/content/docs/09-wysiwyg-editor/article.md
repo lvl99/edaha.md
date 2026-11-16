@@ -37,15 +37,15 @@ The list of articles shows every article, including drafts, grouped by type with
 
 The **Configuration** section holds the article's settings:
 
-| Setting              | What it does                                                                                 |
-| -------------------- | -------------------------------------------------------------------------------------------- |
-| **Type**             | The kind of article, e.g. News or Page.                                                      |
-| **Template**         | How the article is laid out, if your website has more than one layout for it.               |
-| **Status**           | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website).  |
-| **Slug**             | The last part of the article's address. Left empty, it is made from the title.              |
-| **Publication date** | The article's date.                                                                          |
+| Setting              | What it does                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| **Type**             | The kind of article, e.g. News or Page.                                                          |
+| **Template**         | How the article is laid out, if your website has more than one layout for it.                    |
+| **Status**           | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website).      |
+| **Slug**             | The last part of the article's address. Left empty, it is made from the title.                   |
+| **Publication date** | The article's date.                                                                              |
 | **Excerpt**          | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
-| **Thumbnail**        | An image shown in lists.                                                                     |
+| **Thumbnail**        | An image shown in lists.                                                                         |
 
 The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file** or linked by address. Uploads need the article to be saved first.
 
