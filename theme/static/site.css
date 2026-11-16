@@ -34,12 +34,7 @@ body {
   margin: 0;
   background: var(--colour-background);
   color: var(--colour-text);
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: "Andale Mono", mono;
   font-size: 1.0625rem;
   line-height: 1.6;
 }

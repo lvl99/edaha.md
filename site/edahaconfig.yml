@@ -1,0 +1,24 @@
+name: edaha.md
+description: Static site generator powered by TypeScript and markdown
+path: ""
+articlesDir: content
+outputDir: dist
+siteUrl: https://lvl99.github.io/edaha.md
+types:
+  news:
+    labelSingle: News
+    labelPlural: News
+  page:
+    labelSingle: Page
+    labelPlural: Pages
+    path: ""
+    generate:
+      list: false
+      feed: false
+      author: false
+      tag: false
+  docs:
+    labelSingle: Documentation
+    labelPlural: Documentation
+    generate:
+      author: false
