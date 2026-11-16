@@ -151,7 +151,7 @@ The excerpt shown in lists. <!-- readmore -->The rest of the article.
 
 - **Heading IDs:** headings get IDs from their text, so they can be linked to. "This?! Is an, example..." becomes `#this-is-an-example`. A repeated heading gets `-2`, `-3`…, and a heading without letters or numbers gets none.
 - **Extra HTML:** `<small>`, `<big>` and `<details><summary>…</summary>…</details>` can be used. Leave a blank line after `<summary>…</summary>` and before `</details>`, so the content between them is read as Markdown.
-- **Raw content:** anything between `<!-- raw -->` and `<!-- /raw -->` is shown exactly as it is written: no Markdown, embeds, read more breaks or typography. On its own lines it is a `<pre class="raw">` block; within a line, a `<span class="raw">`.
+- **Raw content:** anything between `<!-- raw -->` and `<!-- /raw -->` is shown exactly as it is written: no Markdown, embeds, read more breaks or typography. On its own lines it is a `<pre class="raw">` block; within a line, a `<span class="raw">`. Code formatters such as Prettier may change raw content (and Markdown in ` ```md ` code blocks): wrap it in `<!-- prettier-ignore-start -->` and `<!-- prettier-ignore-end -->`, or leave the articles folder out of formatting.
 - **Code:** read more breaks, embeds and raw markers in code blocks and inline code are left as they are.
 - **Output:**
   - Each type's list is at its path (e.g. `/news/`, 20 per page: `/news/2`, …), with a `feed.xml` RSS feed.

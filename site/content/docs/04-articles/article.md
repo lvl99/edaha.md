@@ -139,6 +139,23 @@ Shows on the page as:
 
 In the [WYSIWYG editor](/docs/09-wysiwyg-editor/), the **Raw** button turns a block into raw content.
 
+### Raw content and code formatters
+
+If your project formats Markdown with a tool like [Prettier](https://prettier.io/), it may change the content of raw blocks, e.g. turn `*text*` into `_text_` or add blank lines, which changes what the page shows. It also formats Markdown inside ` ```md ` code blocks.
+
+Tell it to leave them alone. For Prettier, wrap raw blocks in `prettier-ignore-start` and `prettier-ignore-end` comments, or put `<!-- prettier-ignore -->` just before a code block:
+
+<!-- prettier-ignore -->
+```md
+<!-- prettier-ignore-start -->
+<!-- raw -->
+*Shown with its stars*
+<!-- /raw -->
+<!-- prettier-ignore-end -->
+```
+
+These comments are kept in the built page's HTML, where visitors don't see them. You can also leave your articles folder out of formatting altogether, e.g. by adding it to `.prettierignore`.
+
 ## Excerpts
 
 Lists and RSS feeds show a short excerpt of each article. It is, in order of preference:
