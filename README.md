@@ -227,6 +227,7 @@ The full types are exported as `TemplateData*`.
 - **Moving:** changing an article's type or slug moves its folder.
 - **Views:** "WYSIWYG", "Markdown" and "Preview" switch between rich text, the body's Markdown, and the unsaved article rendered with its type's "single" template. The preview uses the site's templates and static files over the theme's. It is sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API.
 - **Safety:** its API only accepts changes from the editor page itself.
+- **Theme:** it follows the device's light or dark setting, and its theme switcher swaps them, remembering the choice in the browser.
 - **Saving:** saving rewrites `article.md` in a normalised form (e.g. the read more break on its own line). The config header keeps its format (`yaml`, `yml` or `json`); new articles get `yaml`.
 
 ## API
