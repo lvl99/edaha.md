@@ -464,6 +464,30 @@ describe("buildSite", () => {
     expect(await read("site.css")).toBe("site");
   });
 
+  it("should give templates the page's type and whether it is an article or a list", async () => {
+    const space = await workspace();
+    const flags =
+      '{{ type }} article={{ isArticle }} list={{ isList }}{% if type == "article" and isArticle %} news article{% endif %}';
+    for (const file of [
+      "templates/article/single.njk",
+      "templates/article/list.njk",
+      "templates/page/single.njk",
+      "templates/layouts/rssfeed.njk",
+    ])
+      await writeSiteFile(space, file, flags);
+    const { read } = await build(space, "https://example.com");
+    expect(await read("news/first/index.html")).toBe(
+      "article article=true list=false news article",
+    );
+    expect(await read("news/index.html")).toBe(
+      "article article=false list=true",
+    );
+    expect(await read("news/feed.xml")).toBe("article article=false list=true");
+    expect(await read("page/about-us/index.html")).toBe(
+      "page article=true list=false",
+    );
+  });
+
   it("should use the templatesDir and staticDir folders", async () => {
     const space = await workspace();
     await writeFile(

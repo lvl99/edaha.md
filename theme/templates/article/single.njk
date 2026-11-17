@@ -5,9 +5,9 @@
 {% block head_description %}{{ article.excerptText }}{% endblock %}
 
 {% block breadcrumbItems %}
-{% set type = site.types[article.type] %}
-{% if type.generate.list %}
-<li><a href="{{ type.url }}">{{ type.labelPlural }}</a></li>
+{% set typeSettings = site.types[article.type] %}
+{% if typeSettings.generate.list %}
+<li><a href="{{ typeSettings.url }}">{{ typeSettings.labelPlural }}</a></li>
 {% endif %}
 <li><a href="{{ article.url }}" aria-current="page">{{ article.title }}</a></li>
 {% endblock %}

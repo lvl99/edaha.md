@@ -82,6 +82,17 @@ Every template gets:
 - `site.url`: the website's absolute URL, e.g. `https://example.com`, for links that leave the website (e.g. in feeds).
 - `site.path`: the URL of the website's home page, e.g. `/` (or `/docs/` with the `path` setting `docs`).
 - `site.types`: each article type's settings (`labelSingle`, `labelPlural`, `path`, `generate`) and `url`.
+- `type`: the page's article type, e.g. `news`: the article's, or the list's.
+- `isArticle`: `true` on an article's page (index articles and the editor's previews included).
+- `isList`: `true` on a list's pages and its RSS feed.
+
+These make it easy to show something on some pages only, e.g. in your `layouts/html.njk`:
+
+```njk
+{% if type == "page" and isArticle %}
+<p>Last updated {{ article.date | date }}</p>
+{% endif %}
+```
 
 Article pages also get `article`:
 

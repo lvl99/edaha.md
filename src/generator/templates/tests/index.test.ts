@@ -102,6 +102,9 @@ describe("Templates", () => {
           path: ' src="/a.png"',
           types: {},
         },
+        type: "news",
+        isArticle: false,
+        isList: true,
       }),
     ).toBe(
       '&lt;News&gt;|<b>Bold</b>|19 October 2026|Mon, 19 Oct 2026 09:54:00 GMT| src="https://example.com/a.png"',

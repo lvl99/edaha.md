@@ -20,7 +20,11 @@ import {
   splitContent,
   type HeaderFormat,
 } from "../../generator/article/index.ts";
-import { DEFAULT_SITE_URL, siteData } from "../../generator/build/index.ts";
+import {
+  articlePageData,
+  DEFAULT_SITE_URL,
+  siteData,
+} from "../../generator/build/index.ts";
 import {
   defaultTypeConfig,
   parseConfig,
@@ -468,10 +472,10 @@ export class ArticleStore {
         renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
-      return templates.render(templates.resolve(data.type, "single"), {
-        site,
-        article,
-      });
+      return templates.render(
+        templates.resolve(data.type, "single"),
+        articlePageData(site, article),
+      );
     } catch (error) {
       throw new EditorError(400, (error as Error).message);
     }

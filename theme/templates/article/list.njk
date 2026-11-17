@@ -3,9 +3,9 @@
 {% block head_title %}{{ list.name }} | {% if list.pagination.page.index > 1 %}Page {{ list.pagination.page.index }} | {% endif %}{{ site.name }}{% endblock %}
 
 {% block breadcrumbItems %}
-{% set type = site.types[list.type] %}
+{% set typeSettings = site.types[list.type] %}
 {% if list.kind != "type" %}
-<li><a href="{{ type.url }}">{{ type.labelPlural }}</a></li>
+<li><a href="{{ typeSettings.url }}">{{ typeSettings.labelPlural }}</a></li>
 {% endif %}
 <li><a href="{{ list.url }}" aria-current="page">{{ list.name }}</a></li>
 {% endblock %}

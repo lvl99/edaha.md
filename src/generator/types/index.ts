@@ -158,6 +158,12 @@ export interface TemplateDataList {
 export interface TemplateData {
   /** Website data, always provided */
   site: TemplateDataSite;
+  /** The page's article type, e.g. "news": the article's or the list's */
+  type: string;
+  /** Whether the page is an article's page (index articles and editor previews included) */
+  isArticle: boolean;
+  /** Whether the page is a list's page or feed */
+  isList: boolean;
   /** List data, provided when rendering list and feed templates, and index articles (the first page of their type's list) */
   list?: TemplateDataList;
   /** Article data, only provided when rendering single templates */

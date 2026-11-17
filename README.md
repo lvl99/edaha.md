@@ -205,6 +205,7 @@ edaha.md ships a neutral default theme in `theme/`: Nunjucks templates in `theme
 Templates get these variables:
 
 - `site`: the website's `name`, `description`, `url` (its absolute URL), `path` (its home URL, e.g. `/`) and `types` (each type's settings and `url`).
+- `type`, `isArticle` and `isList`: the page's article type, and whether it is an article's page or a list's page (or feed), e.g. `{% if type == "page" and isArticle %}`.
 - `article` (on article pages): its settings, `bodyHtml`, `excerptHtml`, `author`, `tags` and `attachments`.
 - `list` (on list pages and index articles): its `articles` and `pagination`.
 

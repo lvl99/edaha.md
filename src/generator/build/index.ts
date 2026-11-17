@@ -37,6 +37,7 @@ import { THEME_DIR } from "../../theme/index.ts";
 import { Templates } from "../templates/index.ts";
 import type {
   Logger,
+  TemplateData,
   TemplateDataArticle,
   TemplateDataArticleType,
   TemplateDataList,
@@ -233,6 +234,42 @@ export const siteData = (
 });
 
 /**
+ * The template data for an article's page, with its type's list for an index article.
+ *
+ * @example
+ * articlePageData(site, article); // { site, type: "news", isArticle: true, isList: false, article }
+ */
+export const articlePageData = (
+  site: TemplateDataSite,
+  article: TemplateDataArticle,
+  list?: TemplateDataList,
+): TemplateData => ({
+  site,
+  type: article.type,
+  isArticle: true,
+  isList: false,
+  article,
+  ...(list ? { list } : {}),
+});
+
+/**
+ * The template data for a list's page or feed.
+ *
+ * @example
+ * listPageData(site, list); // { site, type: "news", isArticle: false, isList: true, list }
+ */
+export const listPageData = (
+  site: TemplateDataSite,
+  list: TemplateDataList,
+): TemplateData => ({
+  site,
+  type: list.type,
+  isArticle: false,
+  isList: true,
+  list,
+});
+
+/**
  * Build the site: render every published and unlisted article with its assets, then each type's paginated list and
  * RSS feed, and its tag and author lists, and copy the static files (the theme's, overridden by the site's `static/`)
  * as they are. Files are written to `outputDir` (emptied first). If `publishDir` is set, they are then copied into it
@@ -402,20 +439,20 @@ export const buildSite = async (
       for (const page of pages)
         await write(
           list.dir + pageFile(page.pagination.page.index),
-          templates.render(listTemplate, { site, list: page }),
+          templates.render(listTemplate, listPageData(site, page)),
         );
     }
     if (list.feed)
       await write(
         `${list.dir}feed.xml`,
-        templates.render("layouts/rssfeed.njk", {
-          site,
+        templates.render(
+          "layouts/rssfeed.njk",
           // The feed has the newest articles that can be in feeds
-          list: {
+          listPageData(site, {
             ...(pages[0] as TemplateDataList),
             articles: list.feedArticles.slice(0, PAGE_SIZE),
-          },
-        }),
+          }),
+        ),
       );
   }
 
@@ -427,13 +464,14 @@ export const buildSite = async (
     });
     await write(
       `${folder}index.html`,
-      templates.render(templates.resolve(article.type, article.template), {
-        site,
-        article,
-        ...(article.slug === "index"
-          ? { list: firstPages.get(article.type) }
-          : {}),
-      }),
+      templates.render(
+        templates.resolve(article.type, article.template),
+        articlePageData(
+          site,
+          article,
+          article.slug === "index" ? firstPages.get(article.type) : undefined,
+        ),
+      ),
     );
   }
 
