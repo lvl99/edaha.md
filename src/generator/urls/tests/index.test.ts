@@ -10,7 +10,7 @@ const types = {
 describe("folderPath and folderUrl", () => {
   it("should join non-empty segments into folders", () => {
     expect(folderPath("", "news")).toBe("news/");
-    expect(folderPath("blog", "news")).toBe("blog/news/");
+    expect(folderPath("docs", "news")).toBe("docs/news/");
     expect(folderPath("", "")).toBe("");
     expect(folderUrl("news/")).toBe("/news/");
     expect(folderUrl("")).toBe("/");
@@ -28,16 +28,16 @@ describe("checkTypePaths", () => {
         ...types,
         other: { ...defaultTypeConfig("other"), path: "news" },
       }),
-    ).toThrow('config.yml: types "news" and "other" have the same path "news"');
+    ).toThrow('types "news" and "other" have the same path "news"');
   });
 
   it("should reject reserved paths at the website's root only", () => {
     const app = { app: defaultTypeConfig("app") };
     expect(() => checkTypePaths("", app, ["app"])).toThrow(
-      'config.yml: type "app" can\'t use the path "app", which is reserved',
+      'type "app" can\'t use the path "app", which is reserved',
     );
     expect(() => checkTypePaths("", app)).not.toThrow();
-    expect(() => checkTypePaths("blog", app, ["app"])).not.toThrow();
+    expect(() => checkTypePaths("docs", app, ["app"])).not.toThrow();
   });
 });
 
@@ -64,8 +64,8 @@ describe("slugProblem", () => {
       'the slug "news" is the path of type "news"',
     );
     expect(slugProblem("about", "page", "", types)).toBeUndefined();
-    // Not at the root: under a blog path or a type path
-    expect(slugProblem("app", "page", "blog", types, ["app"])).toBeUndefined();
+    // Not at the root: under a site path or a type path
+    expect(slugProblem("app", "page", "docs", types, ["app"])).toBeUndefined();
     expect(slugProblem("app", "news", "", types, ["app"])).toBeUndefined();
     // A type that isn't configured is at its own path
     expect(slugProblem("app", "video", "", types, ["app"])).toBeUndefined();

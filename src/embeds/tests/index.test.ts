@@ -73,6 +73,13 @@ describe("EmbedResolver", () => {
     );
   });
 
+  it("should leave embed blocks in code as they are", async () => {
+    const { resolver } = setup();
+    const code =
+      "`<!-- embed -->https://example.com/a<!-- /embed -->`\n\n```md\n<!-- embed -->https://example.com/b<!-- /embed -->\n```\n";
+    expect(await resolver.replaceBlocks(code, "a")).toBe(code);
+  });
+
   it("should leave markdown without embeds unchanged", async () => {
     const { resolver } = setup();
     expect(await resolver.replaceBlocks("No embeds", "a")).toBe("No embeds");

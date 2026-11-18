@@ -7,16 +7,29 @@ import {
   stat,
   writeFile,
 } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { EmbedResolver, type EmbedRenderer } from "../../embeds/index.ts";
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
+import {
+  EMBED_RENDERERS,
+  EmbedResolver,
+  type EmbedRenderer,
+} from "../../embeds/index.ts";
 import { loadArticle } from "../article/index.ts";
 import {
   defaultTypeConfig,
-  parseConfig,
   RESERVED_TYPES,
+  SOURCE_FOLDERS,
   type ArticleTypeConfig,
-  type BlogConfig,
+  type EdahaConfig,
 } from "../config/index.ts";
+import { loadSiteConfig } from "../configFile/index.ts";
 import { collectLists, PAGE_SIZE, pageFile, paginate } from "../lists/index.ts";
 import { createMarkdown, renderMarkdown } from "../markdown/index.ts";
 import { isSlug } from "../slug/index.ts";
@@ -24,9 +37,9 @@ import { THEME_DIR } from "../../theme/index.ts";
 import { Templates } from "../templates/index.ts";
 import type {
   Logger,
+  TemplateData,
   TemplateDataArticle,
   TemplateDataArticleType,
-  TemplateDataBlog,
   TemplateDataList,
   TemplateDataSite,
 } from "../types/index.ts";
@@ -39,25 +52,28 @@ import {
 
 export { RESERVED_TYPES } from "../config/index.ts";
 
-/** Used for feeds when neither `SITE_URL` nor `siteUrl` in config.yml is set */
+/** Used for feeds when neither `SITE_URL` nor `siteUrl` in the config file is set */
 export const DEFAULT_SITE_URL = "http://localhost";
 
-/** The site's folders that hold its sources, which built files must never be written into */
-const SOURCE_FOLDERS = ["articles", "templates", "static"];
-
-/** Options for building the blog */
+/** Options for building the site */
 export interface BuildOptions {
-  /** The site folder: holds config.yml and articles/, and optionally templates/ and static/ */
-  siteDir: string;
+  /**
+   * The folder to look for a config file in, before the nearest package.json's folder (see findConfigFile). Default:
+   * the current folder. The site folder is the config file's folder: it holds the articles folder (`articlesDir`), and
+   * optionally the templates and static files folders (`templatesDir` and `staticDir`).
+   */
+  siteDir?: string | undefined;
+  /** The config file to use instead of looking for one */
+  configFile?: string | undefined;
   /** The default theme folder (holds templates/ and static/) that the site's own files override. Default: THEME_DIR */
   themeDir?: string;
-  /** The website's absolute URL, for feeds. Defaults to `siteUrl` in config.yml, then DEFAULT_SITE_URL with a warning. */
+  /** The website's absolute URL, for feeds. Defaults to `siteUrl` in the config file, then DEFAULT_SITE_URL with a warning. */
   siteUrl?: string | undefined;
   /** Where warnings go (defaults to console) */
   logger?: Logger;
   /** Fetches extra data for embeds (defaults to the global fetch) */
   fetch?: typeof fetch;
-  /** Embed renderers (defaults to all) */
+  /** Embed renderers tried after the config file's `embeds` (defaults to the built-in ones, EMBED_RENDERERS) */
   embedRenderers?: readonly EmbedRenderer[];
 }
 
@@ -65,7 +81,7 @@ export interface BuildOptions {
 export interface BuildResult {
   /** The absolute output directory */
   outputDir: string;
-  /** The absolute folder the files were copied to, if config.yml sets `publishDir` */
+  /** The absolute folder the files were copied to, if the config file sets `publishDir` */
   publishDir: string | undefined;
   /** Rendered articles (published and unlisted) */
   articles: TemplateDataArticle[];
@@ -119,38 +135,45 @@ const overlaps = (a: string, b: string) => {
 };
 
 /**
- * Resolve `outputDir` from config.yml: a folder inside the site folder, apart from its source folders, as it is
- * emptied on every build.
+ * Resolve `outputDir` from the config file: a folder inside the site folder, apart from its source folders (the
+ * articles, templates and static files folders), as it is emptied on every build.
+ *
+ * @param sources - the source folders, relative to the site folder (default: the default ones)
  *
  * @example
- * resolveOutputDir("/site", "dist"); // "/site/dist"
+ * resolveOutputDir("/site", "build"); // "/site/build"
+ * resolveOutputDir("/site", "site/build", ["site/content", "site/templates", "site/static"]); // "/site/site/build"
  */
-export const resolveOutputDir = (siteDir: string, folder: string): string => {
+export const resolveOutputDir = (
+  siteDir: string,
+  folder: string,
+  sources: readonly string[] = Object.values(SOURCE_FOLDERS),
+): string => {
   const dir = resolve(siteDir, folder);
   const fromSite = relative(resolve(siteDir), dir);
   if (!fromSite || fromSite.startsWith("..") || isAbsolute(fromSite))
     throw new Error(
-      `config.yml: "outputDir" must be a folder inside the site folder, got "${folder}"`,
+      `"outputDir" must be a folder inside the site folder, got "${folder}"`,
     );
-  if (SOURCE_FOLDERS.some((source) => overlaps(join(siteDir, source), dir)))
+  if (sources.some((source) => overlaps(join(siteDir, source), dir)))
     throw new Error(
-      `config.yml: "outputDir" must be apart from ${SOURCE_FOLDERS.join(", ")}, got "${folder}"`,
+      `"outputDir" must be apart from ${sources.join(", ")}, got "${folder}"`,
     );
   return dir;
 };
 
 /**
- * Resolve `publishDir` from config.yml, relative to the site folder: any folder apart from the site folder, e.g.
+ * Resolve `publishDir` from the config file, relative to the site folder: any folder apart from the site folder, e.g.
  * another app's build folder.
  *
  * @example
- * resolvePublishDir("/work/blog", "../app/dist"); // "/work/app/dist"
+ * resolvePublishDir("/work/site", "../app/dist"); // "/work/app/dist"
  */
 export const resolvePublishDir = (siteDir: string, folder: string): string => {
   const dir = resolve(siteDir, folder);
   if (overlaps(resolve(siteDir), dir))
     throw new Error(
-      `config.yml: "publishDir" must be a folder apart from the site folder, got "${folder}"`,
+      `"publishDir" must be a folder apart from the site folder, got "${folder}"`,
     );
   return dir;
 };
@@ -176,29 +199,32 @@ export const staticFiles = async (
  * An article type's template data: its settings and URL.
  */
 const typeData = (
-  blogPath: string,
+  sitePath: string,
   config: ArticleTypeConfig,
 ): TemplateDataArticleType => ({
   ...config,
-  url: folderUrl(folderPath(blogPath, config.path)),
+  url: folderUrl(folderPath(sitePath, config.path)),
 });
 
 /**
- * The blog's template data: its name, description and URL, and each article type's settings and URL.
+ * The website's template data: its name, description, absolute URL and home URL, and each article type's settings and
+ * URL.
  *
  * @param typeConfigs - the article types' settings (configured ones, plus defaults for any others)
+ * @param url - the website's absolute URL (a trailing slash is removed)
  *
  * @example
- * blogData(config, config.types).types.news.url; // "/news/"
+ * siteData(config, config.types, "https://example.com").types.news.url; // "/news/"
  */
-export const blogData = (
-  config: BlogConfig,
+export const siteData = (
+  config: EdahaConfig,
   typeConfigs: Record<string, ArticleTypeConfig>,
-): TemplateDataBlog => ({
+  url: string,
+): TemplateDataSite => ({
   name: config.name,
   description: config.description,
-  path: config.path,
-  url: folderUrl(folderPath(config.path)),
+  url: url.replace(/\/+$/, ""),
+  path: folderUrl(folderPath(config.path)),
   types: Object.fromEntries(
     Object.entries(typeConfigs).map(([type, typeConfig]) => [
       type,
@@ -208,67 +234,125 @@ export const blogData = (
 });
 
 /**
- * Build the blog: render every published and unlisted article with its assets, then each type's paginated list and
+ * The template data for an article's page, with its type's list for an index article.
+ *
+ * @example
+ * articlePageData(site, article); // { site, type: "news", isArticle: true, isList: false, article }
+ */
+export const articlePageData = (
+  site: TemplateDataSite,
+  article: TemplateDataArticle,
+  list?: TemplateDataList,
+): TemplateData => ({
+  site,
+  type: article.type,
+  isArticle: true,
+  isList: false,
+  article,
+  ...(list ? { list } : {}),
+});
+
+/**
+ * The template data for a list's page or feed.
+ *
+ * @example
+ * listPageData(site, list); // { site, type: "news", isArticle: false, isList: true, list }
+ */
+export const listPageData = (
+  site: TemplateDataSite,
+  list: TemplateDataList,
+): TemplateData => ({
+  site,
+  type: list.type,
+  isArticle: false,
+  isList: true,
+  list,
+});
+
+/**
+ * Build the site: render every published and unlisted article with its assets, then each type's paginated list and
  * RSS feed, and its tag and author lists, and copy the static files (the theme's, overridden by the site's `static/`)
  * as they are. Files are written to `outputDir` (emptied first). If `publishDir` is set, they are then copied into it
  * (the website's root): the files published by the previous build are removed from it first, and the build stops if a
  * file is already there.
  *
  * @example
- * await buildBlog({ siteDir: "my-site", siteUrl: "https://example.com" });
+ * await buildSite({ siteDir: "my-site", siteUrl: "https://example.com" });
  */
-export const buildBlog = async (
+export const buildSite = async (
   options: BuildOptions,
 ): Promise<BuildResult> => {
   const logger = options.logger ?? console;
-  const siteDir = resolve(options.siteDir);
+  const { configFile, siteDir, config } = await loadSiteConfig({
+    siteDir: options.siteDir,
+    configFile: options.configFile,
+    logger,
+  });
+  const configName = basename(configFile);
   const themeDir = options.themeDir ?? THEME_DIR;
-  const config = parseConfig(
-    await readFile(join(siteDir, "config.yml"), "utf8"),
+  /** Run a check of the config's settings, naming the config file in its error */
+  const checkConfig = <T>(check: () => T): T => {
+    try {
+      return check();
+    } catch (error) {
+      throw new Error(`${configName}: ${(error as Error).message}`, {
+        cause: error,
+      });
+    }
+  };
+  const outputDir = checkConfig(() =>
+    resolveOutputDir(siteDir, config.outputDir, [
+      config.articlesDir,
+      config.templatesDir,
+      config.staticDir,
+    ]),
   );
-  const outputDir = resolveOutputDir(siteDir, config.outputDir);
   const publishDir =
     config.publishDir === undefined
       ? undefined
-      : resolvePublishDir(siteDir, config.publishDir);
+      : checkConfig(() =>
+          resolvePublishDir(siteDir, config.publishDir as string),
+        );
   const templates = new Templates(
-    [join(siteDir, "templates"), join(themeDir, "templates")],
+    [join(siteDir, config.templatesDir), join(themeDir, "templates")],
     logger,
   );
 
   const siteUrl = options.siteUrl || config.siteUrl;
   if (!siteUrl)
     logger.warn(
-      `SITE_URL is not set and config.yml has no "siteUrl"; feeds will link to ${DEFAULT_SITE_URL}`,
+      `SITE_URL is not set and ${configName} has no "siteUrl"; feeds will link to ${DEFAULT_SITE_URL}`,
     );
-  const site: TemplateDataSite = {
-    url: (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, ""),
-  };
 
   // Article types: configured ones, plus any other type folders (with defaults)
-  const articlesDir = join(siteDir, "articles");
+  const articlesDir = join(siteDir, config.articlesDir);
   const typeFolders = await subfolders(articlesDir);
   const typeConfigs = { ...config.types };
   for (const type of typeFolders) {
     if (!isSlug(type) || RESERVED_TYPES.includes(type))
       throw new Error(
-        `articles/${type}: article types must be lowercase kebab-case and not ${RESERVED_TYPES.join(" or ")}`,
+        `${config.articlesDir}/${type}: article types must be lowercase kebab-case and not ${RESERVED_TYPES.join(" or ")}`,
       );
     if (!typeConfigs[type]) {
       logger.warn(
-        `articles/${type}: type "${type}" is not in config.yml; using the default settings`,
+        `${config.articlesDir}/${type}: type "${type}" is not in ${configName}; using the default settings`,
       );
       typeConfigs[type] = defaultTypeConfig(type);
     }
   }
-  checkTypePaths(config.path, typeConfigs, config.reservedPaths);
-  const blog = blogData(config, typeConfigs);
+  checkConfig(() =>
+    checkTypePaths(config.path, typeConfigs, config.reservedPaths),
+  );
+  const site = siteData(config, typeConfigs, siteUrl || DEFAULT_SITE_URL);
 
   const markdown = createMarkdown();
   const embeds = new EmbedResolver({
     fetch: options.fetch ?? fetch,
     logger,
-    renderers: options.embedRenderers,
+    renderers: [
+      ...config.embeds,
+      ...(options.embedRenderers ?? EMBED_RENDERERS),
+    ],
   });
 
   // Remove what the previous build published, then empty the build folder
@@ -291,11 +375,11 @@ export const buildBlog = async (
     folder: string;
   }[] = [];
   for (const type of typeFolders) {
-    const typeConfig = blog.types[type] as TemplateDataArticleType;
+    const typeConfig = site.types[type] as TemplateDataArticleType;
     const built = typeConfig.generate.article;
     const typeFolder = typeConfig.url.slice(1);
     for (const slug of await subfolders(join(articlesDir, type))) {
-      const source = `articles/${type}/${slug}`;
+      const source = `${config.articlesDir}/${type}/${slug}`;
       if (!isSlug(slug))
         throw new Error(`${source}: folder names must be lowercase kebab-case`);
       const problem = slugProblem(
@@ -317,7 +401,7 @@ export const buildBlog = async (
       // An index article is its type's front page
       const folder = slug === "index" ? typeFolder : `${typeFolder}${slug}/`;
       const article = await loadArticle(text, type, {
-        blog,
+        site,
         dir,
         slug,
         url: folderUrl(folder),
@@ -344,7 +428,7 @@ export const buildBlog = async (
     .filter(
       (article) => article.status === "published" && article.slug !== "index",
     );
-  const lists = collectLists(listed, blog, withIndex);
+  const lists = collectLists(listed, site, withIndex);
   const firstPages = new Map<string, TemplateDataList>();
   for (const list of lists) {
     const pages = paginate(list);
@@ -355,21 +439,20 @@ export const buildBlog = async (
       for (const page of pages)
         await write(
           list.dir + pageFile(page.pagination.page.index),
-          templates.render(listTemplate, { site, blog, list: page }),
+          templates.render(listTemplate, listPageData(site, page)),
         );
     }
     if (list.feed)
       await write(
         `${list.dir}feed.xml`,
-        templates.render("layouts/rssfeed.njk", {
-          site,
-          blog,
+        templates.render(
+          "layouts/rssfeed.njk",
           // The feed has the newest articles that can be in feeds
-          list: {
+          listPageData(site, {
             ...(pages[0] as TemplateDataList),
             articles: list.feedArticles.slice(0, PAGE_SIZE),
-          },
-        }),
+          }),
+        ),
       );
   }
 
@@ -381,26 +464,26 @@ export const buildBlog = async (
     });
     await write(
       `${folder}index.html`,
-      templates.render(templates.resolve(article.type, article.template), {
-        site,
-        blog,
-        article,
-        ...(article.slug === "index"
-          ? { list: firstPages.get(article.type) }
-          : {}),
-      }),
+      templates.render(
+        templates.resolve(article.type, article.template),
+        articlePageData(
+          site,
+          article,
+          article.slug === "index" ? firstPages.get(article.type) : undefined,
+        ),
+      ),
     );
   }
 
   // Static files (stylesheet, fonts) at the website's root, beside the articles
   const statics = await staticFiles([
     join(themeDir, "static"),
-    join(siteDir, "static"),
+    join(siteDir, config.staticDir),
   ]);
   for (const file of statics.keys())
     if (await exists(join(outputDir, file)))
       throw new Error(
-        `static/${file} has the same path as an article's file; rename one of them`,
+        `${config.staticDir}/${file} has the same path as an article's file; rename one of them`,
       );
   for (const [file, source] of statics) {
     await mkdir(dirname(join(outputDir, file)), { recursive: true });

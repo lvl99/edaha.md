@@ -10,19 +10,30 @@ import {
 } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { stringify } from "yaml";
-import type { EmbedResolver } from "../../embeds/index.ts";
+import type { EmbedRenderer, EmbedResolver } from "../../embeds/index.ts";
 import {
+  DEFAULT_HEADER_FORMAT,
+  headerFormat,
   loadArticle,
   parseArticleConfig,
   splitArticle,
   splitContent,
+  type HeaderFormat,
 } from "../../generator/article/index.ts";
-import { blogData, DEFAULT_SITE_URL } from "../../generator/build/index.ts";
+import {
+  articlePageData,
+  DEFAULT_SITE_URL,
+  siteData,
+} from "../../generator/build/index.ts";
 import {
   defaultTypeConfig,
   parseConfig,
   RESERVED_TYPES,
 } from "../../generator/config/index.ts";
+import {
+  readConfigFile,
+  type SiteConfig,
+} from "../../generator/configFile/index.ts";
 import {
   createMarkdown,
   renderMarkdown,
@@ -132,15 +143,19 @@ export const safeFileName = (name: string): string => {
 };
 
 /**
- * Write an article's markdown source: the YAML config header, the title as an H1 and the body.
+ * Write an article's markdown source: the config header (YAML by default, or JSON), the title as an H1 and the body.
  * The type (always the article's folder) and defaults (empty lists) are left out to keep the header short.
+ *
+ * @param format - the config header's format
  *
  * @example
  * serializeArticle({ type: "article", slug: "hi", status: "published", date, title: "Hi", tags: [], attachments: [] }, "Body");
+ * serializeArticle(data, "Body", "json"); // '<!--json\n{\n  "status": "published", ...'
  */
 export const serializeArticle = (
   data: EditorArticleData,
   body: string,
+  format: HeaderFormat = DEFAULT_HEADER_FORMAT,
 ): string => {
   const author =
     data.author && (data.author.email || data.author.url)
@@ -166,19 +181,31 @@ export const serializeArticle = (
       tags: data.tags.length ? data.tags : undefined,
     }).filter(([, value]) => value !== undefined && value !== ""),
   );
-  return `<!--yaml\n${stringify(config)}-->\n\n# ${data.title.trim()}\n\n${body}\n`;
+  const header =
+    format === "json"
+      ? `${JSON.stringify(config, null, 2)}\n`
+      : stringify(config);
+  return `<!--${format}\n${header}-->\n\n# ${data.title.trim()}\n\n${body}\n`;
 };
 
 /**
- * Reads and writes articles in the site's `articles/` folder for the editor, and renders previews with the site's
+ * Reads and writes articles in the site's articles folder (`articlesDir`) for the editor, and renders previews with the site's
  * templates over the default theme's.
  *
  * @example
- * const store = new ArticleStore("my-site");
+ * const store = new ArticleStore(await loadSiteConfig({ siteDir: "my-site" }));
  * await store.list();
  */
 export class ArticleStore {
   private readonly articlesDir: string;
+
+  private readonly configFile: string;
+
+  /** The site's templates folder, relative to the site folder */
+  private readonly templatesDir: string;
+
+  /** The site's static files folder, relative to the site folder */
+  private readonly staticDir: string;
 
   /** Previews' unsaved data by ID, the newest last (see `rememberPreview`) */
   private readonly previews = new Map<string, Preview>();
@@ -188,27 +215,32 @@ export class ArticleStore {
   private readonly themeDir: string;
 
   /**
-   * @param siteDir - the site folder (holds config.yml and articles/, and optionally templates/ and static/)
+   * @param site - the site's config file, folder (which holds the articles, templates and static files folders) and
+   *   settings
    * @param themeDir - the default theme folder that the site's templates and static files override
    */
-  constructor(siteDir: string, themeDir: string = THEME_DIR) {
-    this.siteDir = siteDir;
+  constructor(site: SiteConfig, themeDir: string = THEME_DIR) {
+    this.configFile = site.configFile;
+    this.siteDir = site.siteDir;
     this.themeDir = themeDir;
-    this.articlesDir = join(siteDir, "articles");
+    this.articlesDir = join(site.siteDir, site.config.articlesDir);
+    this.templatesDir = site.config.templatesDir;
+    this.staticDir = site.config.staticDir;
   }
 
   /** The site's templates over the theme's */
   private loadTemplates() {
     return new Templates(
-      [join(this.siteDir, "templates"), join(this.themeDir, "templates")],
+      [join(this.siteDir, this.templatesDir), join(this.themeDir, "templates")],
       console,
     );
   }
 
-  /** Read config.yml */
+  /** Read the config file again, so changes to it show without restarting the editor */
   private async config() {
     return parseConfig(
-      await readFile(join(this.siteDir, "config.yml"), "utf8"),
+      await readConfigFile(this.configFile),
+      basename(this.configFile),
     );
   }
 
@@ -220,7 +252,14 @@ export class ArticleStore {
   }
 
   /**
-   * The article types from config.yml, with their labels.
+   * The config file's custom embed renderers (read again each time, so changes show without restarting the editor).
+   */
+  async embeds(): Promise<EmbedRenderer[]> {
+    return (await this.config()).embeds;
+  }
+
+  /**
+   * The article types from the config file, with their labels.
    */
   async types(): Promise<Record<string, ArticleTypeLabels>> {
     const config = await this.config();
@@ -356,19 +395,18 @@ export class ArticleStore {
         409,
         `Article ${data.type}/${data.slug} already exists`,
       );
+    // A saved article keeps its config header's format; new ones get the default
+    const format = from
+      ? headerFormat(await this.source(from.type, from.slug))
+      : DEFAULT_HEADER_FORMAT;
     const fromDir = from ? this.dir(from.type, from.slug) : undefined;
-    if (fromDir && !(await exists(join(fromDir, "article.md"))))
-      throw new EditorError(
-        404,
-        `Article ${from?.type}/${from?.slug} not found`,
-      );
 
     // Files referenced from the body keep working after a move, as they are saved relative to the folder
     const body = editorHtmlToMarkdown(
       data.bodyHtml,
       filesUrl(from?.type ?? data.type, from?.slug ?? data.slug),
     );
-    const source = serializeArticle(data, body);
+    const source = serializeArticle(data, body, format);
     try {
       parseArticleConfig(
         splitArticle(source).header,
@@ -407,10 +445,11 @@ export class ArticleStore {
       );
     const baseUrl = bodyBaseUrl(location);
     const config = await this.config();
-    const blog = blogData(config, {
-      [data.type]: defaultTypeConfig(data.type),
-      ...config.types,
-    });
+    const site = siteData(
+      config,
+      { [data.type]: defaultTypeConfig(data.type), ...config.types },
+      DEFAULT_SITE_URL,
+    );
     const source = serializeArticle(
       { ...data, status: "published", title: data.title.trim() || "Untitled" },
       editorHtmlToMarkdown(data.bodyHtml, baseUrl),
@@ -420,24 +459,23 @@ export class ArticleStore {
     try {
       // Published, so always rendered
       const article = (await loadArticle(source, data.type, {
-        blog,
+        site,
         // An unsaved article has no folder, so any file it names isn't found
         dir: location
           ? this.dir(location.type, location.slug)
           : join(this.articlesDir, data.type, ".unsaved"),
         slug: data.slug,
         url: baseUrl,
-        typeUrl: (blog.types[data.type] as TemplateDataArticleType).url,
+        typeUrl: (site.types[data.type] as TemplateDataArticleType).url,
         source: name,
         replaceEmbeds: (md) => embeds.replaceBlocks(md, name),
         renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
-      return templates.render(templates.resolve(data.type, "single"), {
-        site: { url: DEFAULT_SITE_URL },
-        blog,
-        article,
-      });
+      return templates.render(
+        templates.resolve(data.type, "single"),
+        articlePageData(site, article),
+      );
     } catch (error) {
       throw new EditorError(400, (error as Error).message);
     }
@@ -520,7 +558,7 @@ export class ArticleStore {
 
   /** The static folders (stylesheet, fonts) published at the website's root: the site's, then the theme's */
   get staticDirs(): string[] {
-    return [join(this.siteDir, "static"), join(this.themeDir, "static")];
+    return [join(this.siteDir, this.staticDir), join(this.themeDir, "static")];
   }
 
   /**

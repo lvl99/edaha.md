@@ -15,17 +15,20 @@ import {
 } from "..";
 
 const FIXTURE = fileURLToPath(
-  new URL("../../shared/tests/fixtures/blog", import.meta.url),
+  new URL("../../shared/tests/fixtures/site", import.meta.url),
 );
 
 /** A copy of the fixture site and a folder of built editor files */
 const setup = async () => {
-  const root = await mkdtemp(join(tmpdir(), "blog-editor-"));
+  const root = await mkdtemp(join(tmpdir(), "edaha-editor-"));
   const siteDir = join(root, "site");
   const clientDir = join(root, "client");
   await cp(FIXTURE, siteDir, { recursive: true });
   await mkdir(join(clientDir, "assets"), { recursive: true });
-  await writeFile(join(clientDir, "index.html"), "<blog-editor></blog-editor>");
+  await writeFile(
+    join(clientDir, "index.html"),
+    "<edaha-editor></edaha-editor>",
+  );
   await writeFile(join(clientDir, "assets/main.js"), "console.log(1)");
   await writeFile(join(clientDir, "assets/data.unknownext"), "data");
   await writeFile(join(clientDir, ".hidden"), "secret");
@@ -42,11 +45,11 @@ describe("editorUrl and CLIENT_DIR", () => {
 describe("createEditorServer", () => {
   it("should serve the editor page and its files", async () => {
     const { siteDir, clientDir } = await setup();
-    const app = createEditorServer({ siteDir, clientDir });
+    const app = await createEditorServer({ siteDir, clientDir });
     const page = await app.request("/");
     expect(page.status).toBe(200);
     expect(page.headers.get("Content-Type")).toBe("text/html; charset=utf-8");
-    expect(await page.text()).toBe("<blog-editor></blog-editor>");
+    expect(await page.text()).toBe("<edaha-editor></edaha-editor>");
     const script = await app.request(`${EDITOR_BASE}assets/main.js`);
     expect(script.headers.get("Content-Type")).toBe("text/javascript");
     expect(await script.text()).toBe("console.log(1)");
@@ -63,7 +66,7 @@ describe("createEditorServer", () => {
 
   it("should serve the built editor page from CLIENT_DIR by default", async () => {
     const { siteDir } = await setup();
-    const page = await createEditorServer({ siteDir }).request("/");
+    const page = await (await createEditorServer({ siteDir })).request("/");
     // dist/client exists once the package is built
     expect(page.status).toBe(
       existsSync(join(CLIENT_DIR, "index.html")) ? 200 : 500,
@@ -72,7 +75,10 @@ describe("createEditorServer", () => {
 
   it("should explain when the editor page hasn't been built", async () => {
     const { root, siteDir } = await setup();
-    const app = createEditorServer({ siteDir, clientDir: join(root, "none") });
+    const app = await createEditorServer({
+      siteDir,
+      clientDir: join(root, "none"),
+    });
     const page = await app.request("/");
     expect(page.status).toBe(500);
     expect(await page.text()).toContain("build edaha.md");
@@ -80,7 +86,7 @@ describe("createEditorServer", () => {
 
   it("should serve the API, the site's static files and the theme's, allowing changes only from its own address", async () => {
     const { siteDir, clientDir } = await setup();
-    const app = createEditorServer({
+    const app = await createEditorServer({
       siteDir,
       clientDir,
       port: 5555,
@@ -101,13 +107,13 @@ describe("createEditorServer", () => {
 
   it("should allow changes from the default port's address when no port is given", async () => {
     const { siteDir, clientDir } = await setup();
-    const app = createEditorServer({ siteDir, clientDir });
+    const app = await createEditorServer({ siteDir, clientDir });
     const response = await app.request("/api/articles/article/first", {
       method: "DELETE",
       headers: { Origin: editorUrl(EDITOR_PORT) },
     });
     expect(response.status).toBe(204);
-    expect(editorPort({ siteDir })).toBe(EDITOR_PORT);
+    expect(editorPort({})).toBe(EDITOR_PORT);
   });
 });
 

@@ -1,9 +1,0 @@
-name: Test News
-description: Test articles.
-outputDir: dist
-publishDir: ../site
-types:
-  article:
-    labelSingle: Article
-    labelPlural: Articles
-    path: news

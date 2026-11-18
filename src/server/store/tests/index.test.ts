@@ -3,6 +3,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  rename,
   readdir,
   writeFile,
 } from "node:fs/promises";
@@ -21,16 +22,21 @@ import {
   serializeArticle,
 } from "..";
 import type { EditorArticleData } from "../../types";
+import { loadSiteConfig } from "../../../generator/configFile";
 
 const FIXTURE = fileURLToPath(
-  new URL("../../../shared/tests/fixtures/blog", import.meta.url),
+  new URL("../../../shared/tests/fixtures/site", import.meta.url),
 );
 
-/** A copy of the fixture blog to edit */
-const blog = async () => {
-  const dir = await mkdtemp(join(tmpdir(), "blog-store-"));
+/** An article store for the site in a folder, over the given theme */
+const openStore = async (dir: string, themeDir?: string) =>
+  new ArticleStore(await loadSiteConfig({ siteDir: dir }), themeDir);
+
+/** A copy of the fixture site to edit */
+const copySite = async () => {
+  const dir = await mkdtemp(join(tmpdir(), "edaha-store-"));
   await cp(FIXTURE, dir, { recursive: true });
-  return { dir, store: new ArticleStore(dir) };
+  return { dir, store: await openStore(dir) };
 };
 
 const DATE = "2026-10-19T09:54:00.000Z";
@@ -89,6 +95,15 @@ describe("serializeArticle", () => {
     );
   });
 
+  it("should write the header as JSON or YAML in the given format", () => {
+    expect(serializeArticle(data({ tags: ["News"] }), "Body", "json")).toBe(
+      `<!--json\n{\n  "status": "draft",\n  "date": "${DATE}",\n  "tags": [\n    "News"\n  ]\n}\n-->\n\n# New one\n\nBody\n`,
+    );
+    expect(serializeArticle(data(), "Body", "yml")).toBe(
+      `<!--yml\nstatus: draft\ndate: ${DATE}\n-->\n\n# New one\n\nBody\n`,
+    );
+  });
+
   it("should write every field, with a plain author name when that is all there is", () => {
     expect(
       serializeArticle(
@@ -113,7 +128,7 @@ describe("serializeArticle", () => {
 
 describe("ArticleStore", () => {
   it("should list every article newest first, with unreadable ones and their errors", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     await mkdir(join(dir, "articles/article/broken"));
     await writeFile(
       join(dir, "articles/article/broken/article.md"),
@@ -167,14 +182,14 @@ describe("ArticleStore", () => {
   });
 
   it("should give the configured article types with their labels", async () => {
-    const { store } = await blog();
+    const { store } = await copySite();
     expect(await store.types()).toEqual({
       article: { labelSingle: "Article", labelPlural: "Articles" },
     });
   });
 
   it("should list the templates an article of a type can use, the site's and the theme's", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     expect(store.templates("page")).toEqual(["home", "single"]);
     expect(store.templates("article")).toEqual(["single"]);
     await mkdir(join(dir, "templates/article"), { recursive: true });
@@ -183,7 +198,7 @@ describe("ArticleStore", () => {
   });
 
   it("should refuse slugs that clash with other URLs", async () => {
-    const { store } = await blog();
+    const { store } = await copySite();
     await rejectsWith(
       store.save(data({ slug: "tags" })),
       400,
@@ -197,7 +212,7 @@ describe("ArticleStore", () => {
   });
 
   it("should save and read an article's template", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     await store.save(data({ template: "home" }));
     expect(
       await readFile(join(dir, "articles/article/new-one/article.md"), "utf8"),
@@ -205,13 +220,32 @@ describe("ArticleStore", () => {
     expect((await store.read("article", "new-one")).template).toBe("home");
   });
 
+  it("should read and write articles in the articlesDir folder", async () => {
+    const { dir } = await copySite();
+    await rename(join(dir, "articles"), join(dir, "content"));
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `articlesDir: content\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
+    );
+    const store = await openStore(dir);
+    expect((await store.list()).length).toBeGreaterThan(0);
+    await store.save(data({ slug: "in-content" }));
+    expect(
+      await readFile(
+        join(dir, "content/article/in-content/article.md"),
+        "utf8",
+      ),
+    ).toContain("# ");
+  });
+
   it("should list nothing when there is no articles folder", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "blog-empty-"));
-    expect(await new ArticleStore(dir).list()).toEqual([]);
+    const dir = await mkdtemp(join(tmpdir(), "edaha-empty-"));
+    await cp(join(FIXTURE, "edahaconfig.yml"), join(dir, "edahaconfig.yml"));
+    expect(await (await openStore(dir)).list()).toEqual([]);
   });
 
   it("should list an article titled by its slug when it has no title", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     await mkdir(join(dir, "articles/article/untitled"));
     await writeFile(
       join(dir, "articles/article/untitled/article.md"),
@@ -223,7 +257,7 @@ describe("ArticleStore", () => {
   });
 
   it("should read an article for editing", async () => {
-    const { store } = await blog();
+    const { store } = await copySite();
     const article = await store.read("article", "first");
     expect(article).toMatchObject({
       type: "article",
@@ -254,7 +288,7 @@ describe("ArticleStore", () => {
   });
 
   it("should give an empty title when an article has none", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     await writeFile(
       join(dir, "articles/article/second/article.md"),
       `<!--yaml\ndate: ${DATE}\n-->\nText`,
@@ -263,7 +297,7 @@ describe("ArticleStore", () => {
   });
 
   it("should fail to read missing, invalid or badly named articles", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     await rejectsWith(
       store.read("article", "missing"),
       404,
@@ -286,7 +320,7 @@ describe("ArticleStore", () => {
   });
 
   it("should create an article", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     expect(
       await store.save(
         data({ bodyHtml: '<p>Hi</p><hr class="readmore"><p>Rest</p>' }),
@@ -303,7 +337,7 @@ describe("ArticleStore", () => {
   });
 
   it("should refuse to create over an existing article or without a title", async () => {
-    const { store } = await blog();
+    const { store } = await copySite();
     await rejectsWith(
       store.save(data({ slug: "first" })),
       409,
@@ -322,7 +356,7 @@ describe("ArticleStore", () => {
   });
 
   it("should save an article in place, keeping relative file URLs", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     const article = await store.read("article", "first");
     await store.save(
       { ...article, title: "Renamed" },
@@ -336,8 +370,42 @@ describe("ArticleStore", () => {
     expect(source).toContain("![an image](thumb.png)");
   });
 
+  it("should keep a saved article's header format, and write new ones' as YAML", async () => {
+    const { dir, store } = await copySite();
+    const file = join(dir, "articles/article/first/article.md");
+    const yaml = await readFile(file, "utf8");
+    await writeFile(
+      file,
+      yaml.replace(
+        /^<!--yaml\n[\s\S]*?-->/,
+        `<!--json\n{ "date": "${DATE}" }\n-->`,
+      ),
+    );
+    const article = await store.read("article", "first");
+    await store.save(
+      { ...article, slug: "first-moved" },
+      { type: "article", slug: "first" },
+    );
+    const moved = await readFile(
+      join(dir, "articles/article/first-moved/article.md"),
+      "utf8",
+    );
+    expect(moved).toMatch(
+      /^<!--json\n\{\n {2}"status": "published",\n {2}"date": /,
+    );
+    expect((await store.read("article", "first-moved")).date).toBe(DATE);
+
+    await store.save(data({ slug: "brand-new" }));
+    expect(
+      await readFile(
+        join(dir, "articles/article/brand-new/article.md"),
+        "utf8",
+      ),
+    ).toMatch(/^<!--yaml\n/);
+  });
+
   it("should move an article's folder when its type or slug changes", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     const article = await store.read("article", "first");
     expect(
       await store.save(
@@ -360,7 +428,7 @@ describe("ArticleStore", () => {
   });
 
   it("should not move onto an existing article or from a missing one", async () => {
-    const { store } = await blog();
+    const { store } = await copySite();
     const article = await store.read("article", "first");
     await rejectsWith(
       store.save(
@@ -378,14 +446,14 @@ describe("ArticleStore", () => {
   });
 
   it("should delete an article and its files", async () => {
-    const { dir, store } = await blog();
+    const { dir, store } = await copySite();
     await store.remove("article", "first");
     expect(await readdir(join(dir, "articles/article"))).not.toContain("first");
     await rejectsWith(store.remove("article", "first"), 404, "not found");
   });
 
   it("should upload and read files", async () => {
-    const { store } = await blog();
+    const { store } = await copySite();
     expect(
       await store.upload(
         "article",
@@ -408,7 +476,7 @@ describe("ArticleStore", () => {
   });
 
   it("should only serve plain file names other than article.md", async () => {
-    const { store } = await blog();
+    const { store } = await copySite();
     for (const name of [
       "article.md",
       "../second/article.md",
@@ -443,9 +511,9 @@ describe("bodyBaseUrl", () => {
 });
 
 describe("ArticleStore.preview", () => {
-  /** A blog with templates, and a resolver whose embeds are links */
-  const previewBlog = async () => {
-    const { dir, store } = await blog();
+  /** A site with templates, and a resolver whose embeds are links */
+  const previewSite = async () => {
+    const { dir, store } = await copySite();
     const embeds = new EmbedResolver({
       fetch: (async () => new Response("")) as unknown as typeof fetch,
       logger: { warn: () => undefined },
@@ -455,7 +523,7 @@ describe("ArticleStore.preview", () => {
   };
 
   it("should render a draft as its type's single template, with files from its saved folder", async () => {
-    const { store, embeds } = await previewBlog();
+    const { store, embeds } = await previewSite();
     const html = await store.preview(
       data({
         slug: "first",
@@ -475,7 +543,7 @@ describe("ArticleStore.preview", () => {
   });
 
   it("should render an unsaved article of a type that isn't configured, titled Untitled when it has no title", async () => {
-    const { store, embeds } = await previewBlog();
+    const { store, embeds } = await previewSite();
     const html = await store.preview(
       data({ type: "page", slug: "", title: " " }),
       undefined,
@@ -485,7 +553,7 @@ describe("ArticleStore.preview", () => {
   });
 
   it("should refuse invalid types, and explain what can't be rendered", async () => {
-    const { store, embeds } = await previewBlog();
+    const { store, embeds } = await previewSite();
     await rejectsWith(
       store.preview(data({ type: "../x" }), undefined, embeds),
       400,
@@ -500,9 +568,9 @@ describe("ArticleStore.preview", () => {
 });
 
 describe("ArticleStore previews", () => {
-  /** A blog with templates, and a resolver whose embeds are links */
-  const previewBlog = async () => {
-    const { dir, store } = await blog();
+  /** A site with templates, and a resolver whose embeds are links */
+  const previewSite = async () => {
+    const { dir, store } = await copySite();
     const embeds = new EmbedResolver({
       fetch: (async () => new Response("")) as unknown as typeof fetch,
       logger: { warn: () => undefined },
@@ -512,7 +580,7 @@ describe("ArticleStore previews", () => {
   };
 
   it("should remember previews and render them each time, with templates as they are now", async () => {
-    const { dir, store, embeds } = await previewBlog();
+    const { dir, store, embeds } = await previewSite();
     const id = store.rememberPreview(data({ slug: "first", title: "First" }), {
       type: "article",
       slug: "first",
@@ -527,7 +595,7 @@ describe("ArticleStore previews", () => {
   });
 
   it(`should remember only the newest ${MAX_PREVIEWS} previews`, async () => {
-    const { store, embeds } = await previewBlog();
+    const { store, embeds } = await previewSite();
     const ids = Array.from({ length: MAX_PREVIEWS + 1 }, (_, i) =>
       store.rememberPreview(data({ title: `Preview ${i}` }), undefined),
     );
@@ -546,10 +614,23 @@ describe("ArticleStore previews", () => {
     );
   });
 
+  it("should use the templatesDir and staticDir folders", async () => {
+    const { dir } = await copySite();
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `templatesDir: site/templates\nstaticDir: site/static\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
+    );
+    await mkdir(join(dir, "site/templates/article"), { recursive: true });
+    await writeFile(join(dir, "site/templates/article/wide.njk"), "Wide");
+    const store = await openStore(dir);
+    expect(store.templates("article")).toContain("wide");
+    expect(store.staticDirs[0]).toBe(join(dir, "site/static"));
+  });
+
   it("should read static files only inside the static folders, the site's over the theme's", async () => {
-    const { dir } = await blog();
-    const theme = await mkdtemp(join(tmpdir(), "blog-theme-"));
-    const store = new ArticleStore(dir, theme);
+    const { dir } = await copySite();
+    const theme = await mkdtemp(join(tmpdir(), "edaha-theme-"));
+    const store = await openStore(dir, theme);
     expect(store.staticDirs).toEqual([
       join(dir, "static"),
       join(theme, "static"),
@@ -569,7 +650,7 @@ describe("ArticleStore previews", () => {
     for (const path of [
       "missing.css",
       ".hidden",
-      "../config.yml",
+      "../edahaconfig.yml",
       "fonts//f.ttf",
       "fonts",
       "",

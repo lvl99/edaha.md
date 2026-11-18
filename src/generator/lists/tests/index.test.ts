@@ -1,27 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { defaultTypeConfig, type GenerateConfig } from "../../config";
 import { collectLists, pageFile, paginate, sortArticles } from "..";
-import type { TemplateDataArticle, TemplateDataBlog } from "../../types";
+import type { TemplateDataArticle, TemplateDataSite } from "../../types";
 
-const blog: TemplateDataBlog = {
+const site: TemplateDataSite = {
   name: "Site",
   description: "Updates",
-  path: "",
-  url: "/",
+  url: "https://example.com",
+  path: "/",
   types: {
     news: { ...defaultTypeConfig("news"), labelPlural: "News", url: "/news/" },
     page: { ...defaultTypeConfig("page"), path: "", url: "/" },
   },
 };
 
-/** The blog with different generate settings for pages */
-const withPages = (generate: Partial<GenerateConfig>): TemplateDataBlog => ({
-  ...blog,
+/** The website with different generate settings for pages */
+const withPages = (generate: Partial<GenerateConfig>): TemplateDataSite => ({
+  ...site,
   types: {
-    ...blog.types,
+    ...site.types,
     page: {
-      ...blog.types.page!,
-      generate: { ...blog.types.page!.generate, ...generate },
+      ...site.types.page!,
+      generate: { ...site.types.page!.generate, ...generate },
     },
   },
 });
@@ -58,7 +58,7 @@ describe("sortArticles", () => {
 
 describe("collectLists", () => {
   it("should build no lists without articles or index articles", () => {
-    expect(collectLists([], blog, NONE)).toEqual([]);
+    expect(collectLists([], site, NONE)).toEqual([]);
   });
 
   const mixed = [
@@ -66,14 +66,14 @@ describe("collectLists", () => {
     article("two", "2026-02-01", "page", ["Art"], "Ana"),
   ];
   /** Summarise lists as "url (type): pages | feed" */
-  const summary = (b: TemplateDataBlog, withIndex = NONE) =>
+  const summary = (b: TemplateDataSite, withIndex = NONE) =>
     collectLists(mixed, b, withIndex).map(
       (l) =>
         `${l.url} ${l.kind} ${l.name} (${l.type}): ${l.pages ? l.articles.map((a) => a.slug).join(",") : "-"} | ${l.feed ? l.feedArticles.map((a) => a.slug).join(",") : "-"}`,
     );
 
   it("should group articles by type, and by tag and author within their type", () => {
-    expect(summary(blog)).toEqual([
+    expect(summary(site)).toEqual([
       "/ type Pages (page): two | two",
       "/tags/art/ tag Art (page): two | two",
       "/authors/ana/ author Ana (page): two | two",
@@ -117,7 +117,7 @@ describe("collectLists", () => {
   });
 
   it("should give types with an index article a list without pages, keeping their feed", () => {
-    expect(summary(blog, new Set(["news"])).slice(0, 1)).toEqual([
+    expect(summary(site, new Set(["news"])).slice(0, 1)).toEqual([
       "/news/ type News (news): - | one",
     ]);
     // Even a type with no list settings or articles gets one, for its index article to show
@@ -140,7 +140,7 @@ describe("paginate", () => {
 
   it("should give an empty list one page", () => {
     const [page, ...rest] = paginate(
-      collectLists([], blog, new Set(["news"]))[0]!,
+      collectLists([], site, new Set(["news"]))[0]!,
     );
     expect(rest).toEqual([]);
     expect(page!.pagination).toEqual({
@@ -163,7 +163,7 @@ describe("paginate", () => {
         article("b", "2026-02-01"),
         article("c", "2026-01-01"),
       ],
-      blog,
+      site,
       NONE,
     )[0]!;
     const pages = paginate(list, 2);
@@ -189,7 +189,7 @@ describe("paginate", () => {
       article(`a${i}`, `2026-01-${String(i + 1).padStart(2, "0")}`),
     );
     expect(
-      paginate(collectLists(many, blog, NONE)[0]!).map(
+      paginate(collectLists(many, site, NONE)[0]!).map(
         (p) => p.articles.length,
       ),
     ).toEqual([20, 1]);

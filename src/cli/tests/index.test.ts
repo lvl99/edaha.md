@@ -83,6 +83,7 @@ describe("runCli", () => {
     expect(await runCli(["build"], ctx)).toBe(0);
     expect(ctx.build).toHaveBeenCalledWith({
       siteDir: "/work",
+      configFile: undefined,
       siteUrl: "https://example.com",
       logger: { warn: ctx.error },
     });
@@ -95,7 +96,7 @@ describe("runCli", () => {
     const ctx = context({
       env: { SITE_URL: "https://ignored.com" },
       build: vi.fn(async () => ({
-        outputDir: "/work/blog/dist",
+        outputDir: "/work/site/dist",
         publishDir: undefined,
         articles: [],
         files: [],
@@ -103,43 +104,67 @@ describe("runCli", () => {
     });
     expect(
       await runCli(
-        ["build", "--dir", "blog", "--site-url", "https://example.com"],
+        [
+          "build",
+          "--dir",
+          "site",
+          "-c",
+          "site/edaha.config.json",
+          "--site-url",
+          "https://example.com",
+        ],
         ctx,
       ),
     ).toBe(0);
     expect(ctx.build).toHaveBeenCalledWith(
       expect.objectContaining({
-        siteDir: "/work/blog",
+        siteDir: "/work/site",
+        configFile: "/work/site/edaha.config.json",
         siteUrl: "https://example.com",
       }),
     );
     expect(ctx.log).toHaveBeenCalledWith(
-      "Built 0 articles (0 files) into /work/blog/dist",
+      "Built 0 articles (0 files) into /work/site/dist",
     );
   });
 
   it("should report build errors", async () => {
     const ctx = context({
       build: vi.fn(async () => {
-        throw new Error("config.yml: expected a map of settings");
+        throw new Error(
+          "edahaconfig.yml: the config file must be a map of settings",
+        );
       }),
     });
     expect(await runCli(["build"], ctx)).toBe(1);
     expect(ctx.error).toHaveBeenCalledWith(
-      "config.yml: expected a map of settings",
+      "edahaconfig.yml: the config file must be a map of settings",
     );
   });
 
   it("should start the editor on the default port or --port", async () => {
     const ctx = context();
     expect(await runCli(["editor"], ctx)).toBe(0);
-    expect(ctx.editor).toHaveBeenCalledWith({ siteDir: "/work", port: 5180 });
+    expect(ctx.editor).toHaveBeenCalledWith({
+      siteDir: "/work",
+      configFile: undefined,
+      port: 5180,
+    });
     expect(ctx.log).toHaveBeenCalledWith(
-      "Article editor for /work running at http://127.0.0.1:5180 (press Ctrl+C to stop)",
+      "Article editor running at http://127.0.0.1:5180 (press Ctrl+C to stop)",
     );
     const other = context();
-    expect(await runCli(["editor", "--port", "6000"], other)).toBe(0);
-    expect(other.editor).toHaveBeenCalledWith({ siteDir: "/work", port: 6000 });
+    expect(
+      await runCli(
+        ["editor", "--port", "6000", "--config", "/sites/edaha.config.mjs"],
+        other,
+      ),
+    ).toBe(0);
+    expect(other.editor).toHaveBeenCalledWith({
+      siteDir: "/work",
+      configFile: "/sites/edaha.config.mjs",
+      port: 6000,
+    });
     const bad = context();
     expect(await runCli(["editor", "--port", "x"], bad)).toBe(1);
     expect(bad.error).toHaveBeenCalledWith(
@@ -151,13 +176,19 @@ describe("runCli", () => {
     const ctx = context({ cwd: "/nonexistent-edaha-site" });
     delete (ctx as Partial<CliContext>).build;
     expect(await runCli(["build"], ctx)).toBe(1);
-    expect(ctx.error.mock.calls[0]?.[0]).toContain("ENOENT");
+    expect(ctx.error.mock.calls[0]?.[0]).toContain(
+      "No config file found in /nonexistent-edaha-site.",
+    );
   });
 
   it("should use the real editor when none is given", async () => {
     const ctx = context();
     delete (ctx as Partial<CliContext>).editor;
     expect(await runCli(["editor", "--port", "6001"], ctx)).toBe(0);
-    expect(startEditor).toHaveBeenCalledWith({ siteDir: "/work", port: 6001 });
+    expect(startEditor).toHaveBeenCalledWith({
+      siteDir: "/work",
+      configFile: undefined,
+      port: 6001,
+    });
   });
 });

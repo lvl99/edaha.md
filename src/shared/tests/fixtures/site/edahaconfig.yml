@@ -1,0 +1,8 @@
+name: Test News
+description: Test articles.
+publishDir: ../site
+types:
+  article:
+    labelSingle: Article
+    labelPlural: Articles
+    path: news

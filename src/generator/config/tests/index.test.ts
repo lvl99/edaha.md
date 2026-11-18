@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { defaultTypeConfig, parseConfig } from "..";
+
+/** Parse YAML settings and validate them */
+const parseYaml = (text: string) => parseConfig(parse(text), "edahaconfig.yml");
 
 const VALID =
   "name: News\ndescription: Updates\noutputDir: dist\npublishDir: ../app/dist\n";
 
 /** Parse a config with the given `types` YAML */
-const withTypes = (types: string) => parseConfig(`${VALID}types:\n${types}`);
+const withTypes = (types: string) => parseYaml(`${VALID}types:\n${types}`);
 
 const ALL = { article: true, list: true, feed: true, author: true, tag: true };
 const NONE = {
@@ -18,68 +22,153 @@ const NONE = {
 
 describe("parseConfig", () => {
   it("should parse a valid config", () => {
-    expect(parseConfig(VALID)).toEqual({
+    expect(parseYaml(VALID)).toEqual({
       name: "News",
       description: "Updates",
       path: "",
       outputDir: "dist",
+      articlesDir: "articles",
+      templatesDir: "templates",
+      staticDir: "static",
       publishDir: "../app/dist",
       siteUrl: undefined,
       reservedPaths: [],
       types: {},
+      embeds: [],
     });
-    expect(parseConfig(`${VALID}path: blog\n`).path).toBe("blog");
+    expect(parseYaml(`${VALID}path: docs\n`).path).toBe("docs");
   });
 
   it("should reject anything but a map", () => {
-    expect(() => parseConfig("- a")).toThrow("expected a map");
-    expect(() => parseConfig("")).toThrow("expected a map");
+    expect(() => parseYaml("- a")).toThrow(
+      "edahaconfig.yml: the config file must be a map of settings",
+    );
+    expect(() => parseYaml("")).toThrow("must be a map of settings");
+    expect(() => parseConfig(null)).toThrow(
+      "config: the config file must be a map of settings",
+    );
   });
 
   it("should require non-empty string fields", () => {
-    expect(() => parseConfig(VALID.replace("name: News", "name: ''"))).toThrow(
+    expect(() => parseYaml(VALID.replace("name: News", "name: ''"))).toThrow(
       '"name" must be a non-empty string',
     );
     expect(() =>
-      parseConfig(VALID.replace("outputDir: dist", "outputDir: 3")),
+      parseYaml(VALID.replace("outputDir: dist", "outputDir: 3")),
     ).toThrow('"outputDir" must be a non-empty string');
     expect(() =>
-      parseConfig(VALID.replace("publishDir: ../app/dist", "publishDir: ''")),
+      parseYaml(VALID.replace("publishDir: ../app/dist", "publishDir: ''")),
     ).toThrow('"publishDir" must be a non-empty string');
   });
 
-  it("should default outputDir to dist, and leave publishDir and siteUrl unset", () => {
-    const config = parseConfig("name: News\ndescription: Updates\n");
-    expect(config.outputDir).toBe("dist");
+  it("should default outputDir to build, and leave publishDir and siteUrl unset", () => {
+    const config = parseYaml("name: News\ndescription: Updates\n");
+    expect(config.outputDir).toBe("build");
     expect(config.publishDir).toBeUndefined();
     expect(config.siteUrl).toBeUndefined();
   });
 
+  it("should read the articles, templates and static folders inside the site folder", () => {
+    for (const field of ["articlesDir", "templatesDir", "staticDir"] as const) {
+      for (const [value, folder] of [
+        ["content", "content"],
+        ["./site/content/", "site/content"],
+        ["a/../posts", "posts"],
+      ])
+        expect(parseYaml(`${VALID}${field}: ${value}\n`)[field], field).toBe(
+          folder,
+        );
+      for (const value of [".", "..", "../content", "/content"])
+        expect(() => parseYaml(`${VALID}${field}: ${value}\n`), value).toThrow(
+          `edahaconfig.yml: "${field}" must be a folder inside the site folder, got "${value}"`,
+        );
+    }
+    const site = parseYaml(
+      `${VALID}articlesDir: site/content\ntemplatesDir: site/templates\nstaticDir: site/static\n`,
+    );
+    expect([site.articlesDir, site.templatesDir, site.staticDir]).toEqual([
+      "site/content",
+      "site/templates",
+      "site/static",
+    ]);
+  });
+
+  it("should keep the articles, templates and static folders apart from each other", () => {
+    for (const [settings, message] of [
+      [
+        "articlesDir: templates",
+        '"articlesDir" and "templatesDir" must be apart from each other, got "templates" and "templates"',
+      ],
+      [
+        "articlesDir: static/articles",
+        '"articlesDir" and "staticDir" must be apart from each other, got "static/articles" and "static"',
+      ],
+      [
+        "templatesDir: site\nstaticDir: site/static",
+        '"templatesDir" and "staticDir" must be apart from each other, got "site" and "site/static"',
+      ],
+    ])
+      expect(() => parseYaml(`${VALID}${settings}\n`), settings).toThrow(
+        `edahaconfig.yml: ${message}`,
+      );
+  });
+
+  it("should read custom embed renderers and reject anything else", () => {
+    const vimeo = {
+      name: "Vimeo",
+      frameSources: ["https://player.vimeo.com"],
+      match: () => true,
+      render: async () => "",
+    };
+    const plain = { name: "Plain", match: () => true, render: async () => "" };
+    expect(
+      parseConfig({ ...parse(VALID), embeds: [vimeo, plain] }).embeds,
+    ).toEqual([vimeo, plain]);
+    expect(parseConfig({ ...parse(VALID), embeds: null }).embeds).toEqual([]);
+    for (const embeds of [
+      vimeo,
+      ["https://vimeo.com"],
+      [null],
+      [{ ...vimeo, name: " " }],
+      [{ ...vimeo, match: "vimeo.com" }],
+      [{ ...vimeo, render: undefined }],
+      [{ ...vimeo, frameSources: "https://player.vimeo.com" }],
+      [{ ...vimeo, frameSources: ["http://player.vimeo.com"] }],
+      [{ ...vimeo, frameSources: ["https://player.vimeo.com/video"] }],
+      [{ ...vimeo, frameSources: [3] }],
+    ])
+      expect(() =>
+        parseConfig({ ...parse(VALID), embeds }, "edaha.config.mjs"),
+      ).toThrow(
+        'edaha.config.mjs: "embeds" must be a list of embed renderers ({ name, match(url), render(url, context), frameSources? } with https origins), set in a JavaScript config file',
+      );
+  });
+
   it("should read reserved paths and reject anything but a list of paths", () => {
     expect(
-      parseConfig(`${VALID}reservedPaths: [app, jwks.json]\n`).reservedPaths,
+      parseYaml(`${VALID}reservedPaths: [app, jwks.json]\n`).reservedPaths,
     ).toEqual(["app", "jwks.json"]);
     for (const value of ["app", "[App]", "['/app']", "[1]"])
-      expect(() => parseConfig(`${VALID}reservedPaths: ${value}\n`)).toThrow(
+      expect(() => parseYaml(`${VALID}reservedPaths: ${value}\n`)).toThrow(
         '"reservedPaths" must be a list of lowercase paths',
       );
   });
 
   it("should read an absolute siteUrl and reject anything else", () => {
-    expect(
-      parseConfig(`${VALID}siteUrl: http://127.0.0.1:5002\n`).siteUrl,
-    ).toBe("http://127.0.0.1:5002");
-    expect(() => parseConfig(`${VALID}siteUrl: /news\n`)).toThrow(
+    expect(parseYaml(`${VALID}siteUrl: http://127.0.0.1:5002\n`).siteUrl).toBe(
+      "http://127.0.0.1:5002",
+    );
+    expect(() => parseYaml(`${VALID}siteUrl: /news\n`)).toThrow(
       '"siteUrl" must be an absolute http(s) URL',
     );
   });
 
   it("should require a kebab-case path, and reject unknown settings", () => {
-    expect(() => parseConfig(`${VALID}path: My Blog\n`)).toThrow(
-      'config.yml: "path" must be lowercase kebab-case, or "" for the root',
+    expect(() => parseYaml(`${VALID}path: My Docs\n`)).toThrow(
+      'edahaconfig.yml: "path" must be lowercase kebab-case, or "" for the root',
     );
-    expect(() => parseConfig(`${VALID}slug: news\n`)).toThrow(
-      'config.yml: unknown blog setting "slug"',
+    expect(() => parseYaml(`${VALID}slug: news\n`)).toThrow(
+      'edahaconfig.yml: unknown site setting "slug"',
     );
   });
 });
@@ -95,7 +184,7 @@ describe("article types", () => {
     expect(withTypes("  video:\n").types).toEqual({
       video: defaultTypeConfig("video"),
     });
-    expect(parseConfig(`${VALID}types:\n`).types).toEqual({});
+    expect(parseYaml(`${VALID}types:\n`).types).toEqual({});
   });
 
   it("should read paths, labels and generate settings", () => {
@@ -166,6 +255,8 @@ describe("article types", () => {
       ],
     ];
     for (const [types, message] of cases)
-      expect(() => withTypes(types), types).toThrow(`config.yml: ${message}`);
+      expect(() => withTypes(types), types).toThrow(
+        `edahaconfig.yml: ${message}`,
+      );
   });
 });

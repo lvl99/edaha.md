@@ -115,3 +115,107 @@ export const cropText = (text: string, maxLength: number): string => {
  */
 export const isRelativeUrl = (url: string): boolean =>
   url !== "" && !/^([a-z][a-z0-9+.-]*:|\/|#|\?)/i.test(url);
+
+/**
+ * Fenced code blocks (``` or ~~~, to their closing fence or the end of the text) and inline code spans in Markdown
+ */
+const MARKDOWN_CODE =
+  /^ {0,3}(?<fence>`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^ {0,3}\k<fence>[`~]*[ \t]*$|(?![\s\S]))|(?<ticks>`+)(?:(?!\k<ticks>)[\s\S])+?\k<ticks>(?!`)/gm;
+
+/**
+ * Blank out Markdown's code blocks and inline code with spaces, keeping every other character where it was, so
+ * markers like `<!-- readmore -->` can be found outside code only.
+ *
+ * @example
+ * maskCode("Intro `<!-- readmore -->` rest"); // "Intro                      rest"
+ */
+export const maskCode = (markdown: string): string =>
+  markdown.replace(MARKDOWN_CODE, (code) => " ".repeat(code.length));
+
+/**
+ * Replace a pattern's matches in Markdown, except in code blocks and inline code. The replacer gets each match as
+ * `exec` gives it (from the original text, groups included).
+ *
+ * @example
+ * replaceOutsideCode("a <!-- x --> `<!-- x -->`", /<!-- x -->/g, () => "X"); // "a X `<!-- x -->`"
+ */
+export const replaceOutsideCode = (
+  markdown: string,
+  pattern: RegExp,
+  replacer: (match: RegExpExecArray) => string,
+): string => {
+  const single = new RegExp(pattern.source, pattern.flags.replace("g", ""));
+  let result = "";
+  let last = 0;
+  for (const { index, 0: text } of maskCode(markdown).matchAll(
+    new RegExp(single.source, `${single.flags}g`),
+  )) {
+    const match = single.exec(markdown.slice(index, index + text.length));
+    result += markdown.slice(last, index) + replacer(match as RegExpExecArray);
+    last = index + text.length;
+  }
+  return result + markdown.slice(last);
+};
+
+/** A `<!-- raw -->...<!-- /raw -->` block, whose content is shown exactly as it is written */
+export const RAW_BLOCK =
+  /<!--\s*raw\s*-->(?<rawContent>[\s\S]*?)<!--\s*\/raw\s*-->/;
+
+/**
+ * Raw blocks and code, whichever starts first: code can show raw markers as they are, and raw blocks can hold code
+ */
+const RAW_OR_CODE = new RegExp(
+  `(?<raw>${RAW_BLOCK.source})|${MARKDOWN_CODE.source}`,
+  "gm",
+);
+
+/** A raw block's content, and whether it is a block (on its own lines) or inline (within a line) */
+export interface RawContent {
+  content: string;
+  block: boolean;
+}
+
+/**
+ * Replace every raw block outside code in Markdown. A raw block on its own lines is a block, without the line breaks
+ * after its opening and before its closing marker; one within a line is inline.
+ *
+ * @example
+ * replaceRawBlocks("<!-- raw -->\n*a*\n<!-- /raw -->", ({ content }) => content); // "*a*"
+ */
+export const replaceRawBlocks = (
+  markdown: string,
+  replacer: (raw: RawContent) => string,
+): string =>
+  markdown.replace(RAW_OR_CODE, (...args: unknown[]) => {
+    const match = args[0] as string;
+    const groups = args.at(-1) as Record<string, string | undefined>;
+    if (groups.raw === undefined) return match;
+    const offset = args.at(-3) as number;
+    const block =
+      /(?:^|\n)[ \t]*$/.test(markdown.slice(0, offset)) &&
+      /^[ \t]*(?:\r?\n|$)/.test(markdown.slice(offset + match.length));
+    const content = groups.rawContent as string;
+    return replacer({
+      block,
+      content: block
+        ? content.replace(/^[ \t]*\r?\n/, "").replace(/\r?\n[ \t]*$/, "")
+        : content,
+    });
+  });
+
+/**
+ * The HTML that shows a raw block's content exactly as it is written: in `<pre class="raw">` for a block (which keeps
+ * its spaces and line breaks whatever the stylesheet), or `<span class="raw">` inline, on one line. Line breaks and punctuation are written as character references, so
+ * Markdown, shortcodes and typography never act on it.
+ *
+ * @example
+ * rawHtml({ content: "*a*", block: false }); // '<span class="raw">&#42;a&#42;</span>'
+ */
+export const rawHtml = ({ content, block }: RawContent): string => {
+  const tag = block ? "pre" : "span";
+  const text = content
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\n!-/:-@[-`{-~]/g, (char) => `&#${char.charCodeAt(0)};`);
+  const html = `<${tag} class="raw">${text}</${tag}>`;
+  return block ? `\n\n${html}\n\n` : html;
+};

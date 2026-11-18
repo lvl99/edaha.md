@@ -6,7 +6,7 @@ import { REQUIRED_TEMPLATES, Templates, absoluteUrls } from "..";
 
 /** A templates folder containing the given files */
 const templatesDir = async (files: Record<string, string>) => {
-  const dir = await mkdtemp(join(tmpdir(), "blog-templates-"));
+  const dir = await mkdtemp(join(tmpdir(), "edaha-templates-"));
   for (const [file, contents] of Object.entries(files)) {
     await mkdir(join(dir, file, ".."), { recursive: true });
     await writeFile(join(dir, file), contents);
@@ -70,7 +70,7 @@ describe("Templates", () => {
       warn: vi.fn(),
     });
     expect(() => templates.resolve("page", "missing")).toThrow(
-      'Template "missing" not found in templates/page/ or templates/article/',
+      /^Template "missing" not found: looked for page\/missing\.njk and article\/missing\.njk in \/.+$/,
     );
   });
 
@@ -90,19 +90,21 @@ describe("Templates", () => {
     const dir = await templatesDir({
       ...REQUIRED,
       "test.njk":
-        "{{ blog.name }}|{{ blog.description | safe }}|{{ site.url | date }}|{{ site.url | rfc822 }}|{{ blog.url | absoluteUrls(blog.path) | safe }}",
+        '{{ site.name }}|{{ site.description | safe }}|{{ site.url | date }}|{{ site.url | rfc822 }}|{{ site.path | absoluteUrls("https://example.com") | safe }}',
     });
     const templates = new Templates(dir, { warn: vi.fn() });
     expect(
       templates.render("test.njk", {
-        site: { url: "2026-10-19T09:54:00.000Z" },
-        blog: {
+        site: {
           name: "<News>",
           description: "<b>Bold</b>",
-          path: "https://example.com",
-          url: ' src="/a.png"',
+          url: "2026-10-19T09:54:00.000Z",
+          path: ' src="/a.png"',
           types: {},
         },
+        type: "news",
+        isArticle: false,
+        isList: true,
       }),
     ).toBe(
       '&lt;News&gt;|<b>Bold</b>|19 October 2026|Mon, 19 Oct 2026 09:54:00 GMT| src="https://example.com/a.png"',
@@ -128,5 +130,30 @@ describe("Templates", () => {
     );
     expect(templates.resolve("page", "about")).toBe("page/about.njk");
     expect(templates.names("page")).toEqual(["about", "home", "single"]);
+  });
+
+  it("should load @theme/ templates from the last folder, so a site's template can build on the theme's", async () => {
+    const theme = await templatesDir({
+      ...REQUIRED,
+      "article/single.njk":
+        "<main>{% block main %}theme main{% endblock %}</main>",
+      "partials/note.njk": "theme note",
+    });
+    const site = await templatesDir({
+      "article/single.njk":
+        '{% extends "@theme/article/single.njk" %}{% block main %}site, then {{ super() }}, {% include "@theme/partials/note.njk" %}{% endblock %}',
+      "partials/note.njk": "site note",
+    });
+    const templates = new Templates([site, theme], { warn: vi.fn() });
+    expect(templates.render("article/single.njk", {} as never)).toBe(
+      "<main>site, then theme main, theme note</main>",
+    );
+    // Without the prefix, the site's file comes first
+    expect(templates.render("partials/note.njk", {} as never)).toBe(
+      "site note",
+    );
+    expect(() => templates.render("@theme/missing.njk", {} as never)).toThrow(
+      "template not found: @theme/missing.njk",
+    );
   });
 });

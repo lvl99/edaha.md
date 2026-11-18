@@ -1,13 +1,13 @@
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ article.title }} | {{ blog.name }}{% endblock %}
+{% block head_title %}{{ article.title }} | {{ site.name }}{% endblock %}
 
 {% block head_description %}{{ article.excerptText }}{% endblock %}
 
 {% block breadcrumbItems %}
-{% set type = blog.types[article.type] %}
-{% if type.generate.list %}
-<li><a href="{{ type.url }}">{{ type.labelPlural }}</a></li>
+{% set typeSettings = site.types[article.type] %}
+{% if typeSettings.generate.list %}
+<li><a href="{{ typeSettings.url }}">{{ typeSettings.labelPlural }}</a></li>
 {% endif %}
 <li><a href="{{ article.url }}" aria-current="page">{{ article.title }}</a></li>
 {% endblock %}
@@ -17,9 +17,12 @@
   <h1 class="article-title">{{ article.title }}</h1>
 
   <div class="article-body">
-    {{ article.bodyHtml | safe }}
+    {% block body %}
+      {{ article.bodyHtml | safe }}
+    {% endblock %}
   </div>
 
+  {% block attachments %}
   {% if article.attachments.length %}
   <h2>Attachments</h2>
   <ul class="article-attachments">
@@ -34,6 +37,7 @@
     {% endfor %}
   </ul>
   {% endif %}
+  {% endblock %}
 </article>
 {% endblock %}
 
@@ -50,7 +54,7 @@
     {% if article.tags.length %}
     <dt>Tagged</dt>
     <dd>
-      {% for tag in article.tags %}{% if blog.types[article.type].generate.tag %}<a href="{{ tag.url }}">{{ tag.name }}</a>{% else %}{{ tag.name }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+      {% for tag in article.tags %}{% if site.types[article.type].generate.tag %}<a href="{{ tag.url }}">{{ tag.name }}</a>{% else %}{{ tag.name }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
     </dd>
     {% endif %}
   </dl>

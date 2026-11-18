@@ -3,6 +3,9 @@ import { basename, join } from "node:path";
 import mime from "mime-types";
 import { parse } from "yaml";
 import {
+  maskCode,
+  rawHtml,
+  replaceRawBlocks,
   formatBytes,
   isRelativeUrl,
   stripHtml,
@@ -15,12 +18,21 @@ import type {
   TemplateDataArticle,
   TemplateDataAttachment,
   TemplateDataAuthor,
-  TemplateDataBlog,
+  TemplateDataSite,
   TemplateDataTag,
 } from "../types/index.ts";
 
-/** The YAML config header at the start of an article: `<!--yaml ... -->` */
-const HEADER = /^\s*<!--yaml\s*?\n([\s\S]*?)-->/;
+/** Formats an article's config header can be written in */
+export const HEADER_FORMATS = ["yaml", "yml", "json"] as const;
+
+/** A format an article's config header can be written in */
+export type HeaderFormat = (typeof HEADER_FORMATS)[number];
+
+/** The format articles' config headers are written in by default */
+export const DEFAULT_HEADER_FORMAT: HeaderFormat = "yaml";
+
+/** The config header at the start of an article: `<!--yaml ... -->`, `<!--yml ... -->` or `<!--json ... -->` */
+const HEADER = /^\s*<!--(yaml|yml|json)[ \t]*\r?\n([\s\S]*?)-->/;
 
 /** The `<!-- readmore -->` shortcode */
 export const READMORE = /<!--\s*readmore\s*-->/;
@@ -66,18 +78,48 @@ export interface ArticleConfig {
 }
 
 /**
- * Split an article's source into its parsed YAML config header (empty if there is none) and its markdown content.
+ * The format of an article's config header, or DEFAULT_HEADER_FORMAT if it has none.
  *
  * @example
- * splitArticle("<!--yaml\ndate: 2026-10-19\n-->\n# Hi"); // { header: { date: "2026-10-19" }, content: "\n# Hi" }
+ * headerFormat("<!--json\n{}\n-->\n# Hi"); // "json"
+ */
+export const headerFormat = (source: string): HeaderFormat =>
+  (HEADER.exec(source)?.[1] as HeaderFormat | undefined) ??
+  DEFAULT_HEADER_FORMAT;
+
+/**
+ * Split an article's source into its parsed config header (empty if there is none), the header's format and its
+ * markdown content. The header is YAML (`<!--yaml` or `<!--yml`) or JSON (`<!--json`). Throws if it can't be read.
+ *
+ * @example
+ * splitArticle("<!--yaml\ndate: 2026-10-19\n-->\n# Hi"); // { header: { date: "2026-10-19" }, format: "yaml", content: "\n# Hi" }
+ * splitArticle('<!--json\n{ "date": "2026-10-19" }\n-->\n# Hi'); // { header: { date: "2026-10-19" }, format: "json", content: "\n# Hi" }
  */
 export const splitArticle = (
   source: string,
-): { header: unknown; content: string } => {
+): { header: unknown; format: HeaderFormat; content: string } => {
   const match = HEADER.exec(source);
-  if (!match) return { header: {}, content: source };
+  if (!match)
+    return { header: {}, format: DEFAULT_HEADER_FORMAT, content: source };
+  const format = match[1] as HeaderFormat;
+  const text = match[2] as string;
+  let header: unknown;
+  try {
+    header =
+      format === "json"
+        ? text.trim()
+          ? (JSON.parse(text) as unknown)
+          : null
+        : (parse(text) as unknown);
+  } catch (error) {
+    throw new Error(
+      `the ${format} config header can't be read: ${(error as Error).message}`,
+      { cause: error },
+    );
+  }
   return {
-    header: parse(match[1] as string) ?? {},
+    header: header ?? {},
+    format,
     content: source.slice(match[0].length),
   };
 };
@@ -210,28 +252,34 @@ export interface ArticleContent {
 }
 
 /**
- * Split article markdown into its title heading, body and the part before `<!-- readmore -->`.
+ * Split article markdown into its title heading, body and the part before `<!-- readmore -->`. Raw blocks become HTML
+ * that shows their content as it is (see rawHtml) first, so nothing inside them is read as a title or shortcode.
  *
  * @example
  * splitContent("# Hi\n\nIntro <!-- readmore -->rest"); // { heading: "Hi", body: "\nIntro rest", beforeReadmore: "\nIntro" }
  */
 export const splitContent = (content: string): ArticleContent => {
-  const heading = ANY_H1.exec(content)?.[1];
-  const withoutTitle = content.replace(LEADING_H1, "");
-  const readmore = READMORE.exec(withoutTitle);
+  const markdown = replaceRawBlocks(content, rawHtml);
+  const heading = ANY_H1.exec(markdown)?.[1];
+  const withoutTitle = markdown.replace(LEADING_H1, "");
+  // The first break outside code (code may show the shortcode itself)
+  const readmore = READMORE.exec(maskCode(withoutTitle));
+  if (!readmore)
+    return { heading, body: withoutTitle.trim(), beforeReadmore: undefined };
+  const before = withoutTitle.slice(0, readmore.index);
   return {
     heading,
-    body: withoutTitle.replace(READMORE, "").trim(),
-    beforeReadmore: readmore
-      ? withoutTitle.slice(0, readmore.index).trim()
-      : undefined,
+    body: (
+      before + withoutTitle.slice(readmore.index + readmore[0].length)
+    ).trim(),
+    beforeReadmore: before.trim(),
   };
 };
 
 /** Where an article is and how to render its parts */
 export interface ArticleContext {
-  /** The blog the article belongs to */
-  blog: TemplateDataBlog;
+  /** The website the article belongs to */
+  site: TemplateDataSite;
   /** The article's folder on disk */
   dir: string;
   /** The article's slug (its folder name) */
@@ -249,7 +297,7 @@ export interface ArticleContext {
 }
 
 /**
- * Build an author's template data. Authors without a config are the website itself (the blog's name).
+ * Build an author's template data. Authors without a config are the website itself (the site's name).
  *
  * @param typeUrl - the URL of the article type, which its author lists are under
  *
@@ -258,10 +306,10 @@ export interface ArticleContext {
  */
 export const authorData = (
   author: AuthorConfig | undefined,
-  blogName: string,
+  siteName: string,
   typeUrl: string,
 ): TemplateDataAuthor => {
-  const name = author?.name ?? blogName;
+  const name = author?.name ?? siteName;
   const slug = slugify(name);
   return {
     name,
@@ -350,7 +398,13 @@ export const loadArticle = async (
   type: string,
   context: ArticleContext,
 ): Promise<TemplateDataArticle | undefined> => {
-  const { header, content } = splitArticle(source);
+  let split: ReturnType<typeof splitArticle>;
+  try {
+    split = splitArticle(source);
+  } catch (error) {
+    return fail(context.source, (error as Error).message);
+  }
+  const { header, content } = split;
   const config = parseArticleConfig(header, type, context.source);
   if (config.status === "draft") return undefined;
 
@@ -393,7 +447,7 @@ export const loadArticle = async (
     template: config.template ?? "single",
     url,
     title,
-    author: authorData(config.author, context.blog.name, context.typeUrl),
+    author: authorData(config.author, context.site.name, context.typeUrl),
     thumbnail: config.thumbnail
       ? (await resolveFile(config.thumbnail, url, context)).url
       : undefined,

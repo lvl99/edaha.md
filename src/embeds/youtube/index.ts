@@ -45,6 +45,7 @@ export const extractYouTubeId = (url: URL): string => {
  */
 export const youtube: EmbedRenderer = {
   name: "YouTube",
+  frameSources: ["https://www.youtube-nocookie.com"],
   match: (url) => HOSTS.has(url.hostname),
   render: async (url) => {
     const src = `https://www.youtube-nocookie.com/embed/${extractYouTubeId(url)}`;

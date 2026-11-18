@@ -13,6 +13,30 @@ export const REQUIRED_TEMPLATES = [
 ];
 
 /**
+ * Template names starting with this always load from the last template folder (the default theme's), e.g.
+ * `{% extends "@theme/article/single.njk" %}` in a site's own `article/single.njk`, to build on the theme's version.
+ */
+export const THEME_PREFIX = "@theme/";
+
+/**
+ * A Nunjucks loader for template names starting with THEME_PREFIX, from one folder. Other names are left to the next
+ * loader.
+ *
+ * @example
+ * themeLoader("/theme/templates").getSource("@theme/article/single.njk"); // the theme's article/single.njk
+ */
+export const themeLoader = (dir: string): nunjucks.ILoader => {
+  const files = new nunjucks.FileSystemLoader(dir);
+  return {
+    getSource: (name) =>
+      name.startsWith(THEME_PREFIX)
+        ? files.getSource(name.slice(THEME_PREFIX.length))
+        : // Nunjucks' loaders answer null for templates they don't have
+          (null as unknown as nunjucks.LoaderSource),
+  };
+};
+
+/**
  * Make root-relative `href` and `src` URLs in HTML absolute, e.g. for RSS feeds read outside the website.
  *
  * @example
@@ -22,9 +46,10 @@ export const absoluteUrls = (html: string, siteUrl: string): string =>
   html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${siteUrl}/`);
 
 /**
- * Loads and renders the blog's Nunjucks templates from one or more folders. A file in an earlier folder overrides the
+ * Loads and renders the site's Nunjucks templates from one or more folders. A file in an earlier folder overrides the
  * same file in later ones (e.g. a site's templates over the default theme's). Falls back to the `article` templates
- * (with a warning) when an article type has none of its own.
+ * (with a warning) when an article type has none of its own. Names starting with THEME_PREFIX (`@theme/`) load from
+ * the last folder only.
  *
  * @example
  * const templates = new Templates(["site/templates", join(THEME_DIR, "templates")], console);
@@ -48,7 +73,10 @@ export class Templates {
       );
     this.logger = logger;
     this.env = new nunjucks.Environment(
-      new nunjucks.FileSystemLoader(this.dirs),
+      [
+        themeLoader(this.dirs.at(-1) as string),
+        new nunjucks.FileSystemLoader(this.dirs),
+      ],
       {
         autoescape: true,
         // Keep the generated HTML free of blank lines left by template tags
@@ -85,7 +113,7 @@ export class Templates {
     const fallback = `article/${name}.njk`;
     if (!this.exists(fallback))
       throw new Error(
-        `Template "${name}" not found in templates/${type}/ or templates/article/`,
+        `Template "${name}" not found: looked for ${file} and ${fallback} in ${this.dirs.join(" and ")}`,
       );
     if (this.exists(type) && !this.warned.has(file)) {
       this.warned.add(file);

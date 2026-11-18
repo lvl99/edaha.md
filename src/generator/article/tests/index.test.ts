@@ -4,25 +4,26 @@ import {
   authorData,
   loadArticle,
   parseArticleConfig,
+  headerFormat,
   splitArticle,
   splitContent,
   tagData,
   type ArticleContext,
 } from "..";
 import { createMarkdown, renderMarkdown } from "../../markdown";
-import type { TemplateDataBlog } from "../../types";
+import type { TemplateDataSite } from "../../types";
 
-const blog: TemplateDataBlog = {
+const site: TemplateDataSite = {
   name: "Test News",
   description: "Test articles.",
-  path: "",
-  url: "/",
+  url: "https://example.com",
+  path: "/",
   types: {},
 };
 
 const FIRST_DIR = fileURLToPath(
   new URL(
-    "../../../shared/tests/fixtures/blog/articles/article/first",
+    "../../../shared/tests/fixtures/site/articles/article/first",
     import.meta.url,
   ),
 );
@@ -31,7 +32,7 @@ const FIRST_DIR = fileURLToPath(
 const context = (overrides: Partial<ArticleContext> = {}): ArticleContext => {
   const markdown = createMarkdown();
   return {
-    blog,
+    site,
     dir: FIRST_DIR,
     slug: "first",
     url: "/news/first/",
@@ -53,16 +54,65 @@ describe("splitArticle", () => {
   it("should split the YAML header from the content", () => {
     expect(splitArticle("<!--yaml\ndate: 2026-10-19\n-->\n# Hi")).toEqual({
       header: { date: "2026-10-19" },
+      format: "yaml",
+      content: "\n# Hi",
+    });
+    expect(splitArticle("<!--yml\r\ndate: 2026-10-19\r\n-->\n# Hi")).toEqual({
+      header: { date: "2026-10-19" },
+      format: "yml",
+      content: "\n# Hi",
+    });
+  });
+
+  it("should split the JSON header from the content", () => {
+    expect(
+      splitArticle(
+        '<!--json \n{ "date": "2026-10-19", "tags": ["a"] }\n-->\n# Hi',
+      ),
+    ).toEqual({
+      header: { date: "2026-10-19", tags: ["a"] },
+      format: "json",
       content: "\n# Hi",
     });
   });
 
   it("should treat a missing or empty header as no config", () => {
-    expect(splitArticle("# Hi")).toEqual({ header: {}, content: "# Hi" });
-    expect(splitArticle("<!--yaml\n-->\nBody")).toEqual({
+    expect(splitArticle("# Hi")).toEqual({
       header: {},
-      content: "\nBody",
+      format: "yaml",
+      content: "# Hi",
     });
+    for (const format of ["yaml", "yml", "json"])
+      expect(splitArticle(`<!--${format}\n-->\nBody`)).toEqual({
+        header: {},
+        format,
+        content: "\nBody",
+      });
+  });
+
+  it("should leave other comments and unknown formats in the content", () => {
+    expect(splitArticle("<!--toml\na = 1\n-->\n# Hi")).toEqual({
+      header: {},
+      format: "yaml",
+      content: "<!--toml\na = 1\n-->\n# Hi",
+    });
+  });
+
+  it("should throw when the header can't be read", () => {
+    expect(() => splitArticle("<!--json\n{ date: 1 }\n-->\n# Hi")).toThrow(
+      /^the json config header can't be read: /,
+    );
+    expect(() => splitArticle("<!--yaml\na: [\n-->\n# Hi")).toThrow(
+      /^the yaml config header can't be read: /,
+    );
+  });
+});
+
+describe("headerFormat", () => {
+  it("should give the config header's format, or yaml when there is none", () => {
+    expect(headerFormat("<!--json\n{}\n-->\n# Hi")).toBe("json");
+    expect(headerFormat("<!--yml\na: [\n-->")).toBe("yml");
+    expect(headerFormat("# Hi")).toBe("yaml");
   });
 });
 
@@ -196,6 +246,37 @@ describe("splitContent", () => {
     });
   });
 
+  it("should turn raw blocks into HTML first, so nothing in them is a title or shortcode", () => {
+    expect(
+      splitContent(
+        "<!-- raw -->\n# Not a title\n<!-- readmore -->\n<!-- /raw -->\n\nIntro <!-- readmore -->rest",
+      ),
+    ).toEqual({
+      heading: undefined,
+      body: '<pre class="raw">&#35; Not a title&#10;&#60;&#33;&#45;&#45; readmore &#45;&#45;&#62;</pre>\n\n\n\nIntro rest',
+      beforeReadmore:
+        '<pre class="raw">&#35; Not a title&#10;&#60;&#33;&#45;&#45; readmore &#45;&#45;&#62;</pre>\n\n\n\nIntro',
+    });
+  });
+
+  it("should ignore readmore shortcodes in code", () => {
+    expect(
+      splitContent(
+        "Intro `<!-- readmore -->`\n\n```md\nA <!-- readmore -->B\n```\n\nMore <!-- readmore -->rest",
+      ),
+    ).toEqual({
+      heading: undefined,
+      body: "Intro `<!-- readmore -->`\n\n```md\nA <!-- readmore -->B\n```\n\nMore rest",
+      beforeReadmore:
+        "Intro `<!-- readmore -->`\n\n```md\nA <!-- readmore -->B\n```\n\nMore",
+    });
+    expect(splitContent("```\n<!-- readmore -->\n```")).toEqual({
+      heading: undefined,
+      body: "```\n<!-- readmore -->\n```",
+      beforeReadmore: undefined,
+    });
+  });
+
   it("should keep an H1 that isn't at the start in the body", () => {
     expect(splitContent("Intro\n\n# Later")).toEqual({
       heading: "Later",
@@ -226,6 +307,43 @@ describe("authorData and tagData", () => {
 });
 
 describe("loadArticle", () => {
+  it("should read JSON headers and leave them out of the article", async () => {
+    const article = await loadArticle(
+      `<!--json\n{ "date": "${DATE}", "tags": ["News"] }\n-->\n# Json\n\nBody`,
+      "article",
+      context(),
+    );
+    expect(article?.title).toBe("Json");
+    expect(article?.tags.map((tag) => tag.name)).toEqual(["News"]);
+    expect(article?.bodyHtml).not.toContain("<!--");
+    expect(article?.bodyHtml).not.toContain(DATE);
+  });
+
+  it("should show raw blocks exactly as they are written", async () => {
+    const article = await loadArticle(
+      `<!--yaml\ndate: ${DATE}\n-->\n# Raw\n\nSee <!-- raw -->*this* -- "here"<!-- /raw -->.\n\n<!-- raw -->\n\`\`\`\n<!-- readmore -->\n\`\`\`\n<!-- embed -->https://youtu.be/x<!-- /embed -->\n<!-- /raw -->\n`,
+      "article",
+      context({
+        replaceEmbeds: async (md) => md.replace(/<!-- embed -->/g, "EMBED"),
+      }),
+    );
+    expect(article?.bodyHtml).toContain(
+      '<p>See <span class="raw">*this* -- &quot;here&quot;</span>.</p>\n<pre class="raw">&#96;&#96;&#96;&#10;&#60;&#33;&#45;&#45; readmore &#45;&#45;&#62;&#10;&#96;&#96;&#96;&#10;&#60;&#33;&#45;&#45; embed &#45;&#45;&#62;https&#58;&#47;&#47;youtu&#46;be&#47;x&#60;&#33;&#45;&#45; &#47;embed &#45;&#45;&#62;</pre>',
+    );
+    expect(article?.bodyHtml).not.toContain("EMBED");
+    // The readmore shortcode in the raw block doesn't make an excerpt
+    expect(article?.excerptText).toContain("<!-- readmore -->");
+    expect(article?.bodyText).toContain('See *this* -- "here"');
+  });
+
+  it("should name the article when its header can't be read", async () => {
+    await expect(
+      loadArticle("<!--json\n{\n-->\n# Bad", "article", context()),
+    ).rejects.toThrow(
+      /^articles\/article\/first: the json config header can't be read: /,
+    );
+  });
+
   it("should return nothing for drafts", async () => {
     expect(
       await loadArticle(

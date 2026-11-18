@@ -22,6 +22,33 @@ describe("markdownToEditorHtml", () => {
   });
 });
 
+describe("raw blocks in the editor", () => {
+  it("should turn raw blocks into editor HTML holding their content as it is, and back", () => {
+    const source =
+      "A <!-- raw -->*a*  <b><!-- /raw --> b\n\n<!-- raw -->\n```\n<!-- readmore -->\n\n  # c\n<!-- /raw -->\n\nEnd";
+    const html = markdownToEditorHtml(source, BASE);
+    expect(html).toContain('<span class="raw">*a*\u00a0\u00a0&lt;b&gt;</span>');
+    expect(html).toContain(
+      '<pre class="raw">&#96;&#96;&#96;&#10;&#60;&#33;&#45;&#45; readmore',
+    );
+    expect(html).not.toContain('class="readmore"');
+    expect(editorHtmlToMarkdown(html, BASE)).toBe(source);
+  });
+});
+
+describe("markdownToEditorHtml in code", () => {
+  it("should leave shortcodes in code as they are", () => {
+    const html = markdownToEditorHtml(
+      "`<!-- readmore -->`\n\n```md\n<!-- embed -->https://youtu.be/x<!-- /embed -->\n```",
+      BASE,
+    );
+    expect(html).not.toContain('class="readmore"');
+    expect(html).not.toContain('class="embed"');
+    expect(html).toContain("&lt;!-- readmore --&gt;");
+    expect(html).toContain("&lt;!-- embed --&gt;https://youtu.be/x");
+  });
+});
+
 describe("editorHtmlToMarkdown", () => {
   it("should turn editor blocks back into shortcodes and file URLs into relative ones", () => {
     expect(

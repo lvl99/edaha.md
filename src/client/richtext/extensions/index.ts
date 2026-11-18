@@ -25,6 +25,10 @@ declare module "@tiptap/core" {
       /** Insert an embed block for a URL, or change the selected embed block's URL */
       setEmbed: (url: string) => ReturnType;
     };
+    raw: {
+      /** Turn the current block into a raw block, or a raw block back into a paragraph */
+      toggleRaw: () => ReturnType;
+    };
   }
 }
 
@@ -144,6 +148,44 @@ export const Readmore = Node.create({
         },
     };
   },
+});
+
+/**
+ * A raw block (`<!-- raw -->...<!-- /raw -->` on its own lines): plain text that the website shows exactly as it is
+ * written, with no Markdown, embeds or shortcodes. Saved as `<pre class="raw">`, and edited like a code block (Enter
+ * adds a line break, Mod-Enter leaves it).
+ */
+export const Raw = Node.create({
+  name: "raw",
+  group: "block",
+  content: "text*",
+  marks: "",
+  code: true,
+  defining: true,
+  // Parsed before code blocks, which are also `<pre>`
+  priority: 1000,
+  parseHTML: () => [{ tag: "pre.raw", preserveWhitespace: "full" }],
+  renderHTML: () => ["pre", { class: "raw" }, 0],
+  addCommands() {
+    return {
+      toggleRaw:
+        () =>
+        ({ commands }) =>
+          commands.toggleNode(this.name, "paragraph"),
+    };
+  },
+});
+
+/**
+ * Raw text within a line (`text <!-- raw -->...<!-- /raw --> text`), shown exactly as it is written. Saved as
+ * `<span class="raw">`; it can't have other formatting.
+ */
+export const RawInline = Mark.create({
+  name: "rawInline",
+  code: true,
+  excludes: "_",
+  parseHTML: () => [{ tag: "span.raw" }],
+  renderHTML: () => ["span", { class: "raw" }, 0],
 });
 
 /**

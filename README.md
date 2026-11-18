@@ -14,11 +14,11 @@ pnpm add -D @lvl99dotcom/edaha.md
 
 ## Quick start
 
-A site is a folder with a `config.yml` and an `articles/` folder:
+A site is a folder with a config file (e.g. `edahaconfig.yml`) and an `articles/` folder:
 
 ```
 my-site/
-  config.yml
+  edahaconfig.yml
   articles/
     news/
       hello-world/
@@ -29,7 +29,7 @@ my-site/
 ```
 
 ```yaml
-# config.yml
+# edahaconfig.yml
 name: My Site
 description: News and notes.
 ```
@@ -39,24 +39,46 @@ npx edaha build --dir my-site --site-url https://example.com
 npx edaha editor --dir my-site
 ```
 
-The build writes the website into `my-site/dist`. The editor runs at http://127.0.0.1:5180.
+The build writes the website into `my-site/build`. The editor runs at http://127.0.0.1:5180.
 
 ## Commands
 
 ```
-edaha build    Build the site into config.yml's outputDir (and copy it into publishDir, if set)
+edaha build    Build the site into the config file's outputDir (and copy it into publishDir, if set)
 edaha editor   Run the local article editor (only reachable from this computer)
 ```
 
-| Option             | Command | Description                                                                          |
-| ------------------ | ------- | ------------------------------------------------------------------------------------ |
-| `--dir <folder>`   | both    | The site folder. Default: the current folder                                         |
-| `--site-url <url>` | build   | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl` in config |
-| `--port <number>`  | editor  | The port to listen on. Default: 5180                                                 |
-| `-h`, `--help`     |         | Show help                                                                            |
-| `-v`, `--version`  |         | Show the version                                                                     |
+| Option                  | Command | Description                                                                          |
+| ----------------------- | ------- | ------------------------------------------------------------------------------------ |
+| `-c`, `--config <file>` | both    | The config file. Default: the first one found (see [Config file](#config-file))      |
+| `--dir <folder>`        | both    | The folder to look for a config file in. Default: the current folder                 |
+| `--site-url <url>`      | build   | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl` in config |
+| `--port <number>`       | editor  | The port to listen on. Default: 5180                                                 |
+| `-h`, `--help`          |         | Show help                                                                            |
+| `-v`, `--version`       |         | Show the version                                                                     |
 
-## config.yml
+## Config file
+
+The config file can be YAML, JSON or JavaScript. Without `--config`, the commands look for the first of these names in the `--dir` folder, then in the folder of the nearest `package.json`:
+
+- `.edahaconfigrc`, `.edahaconfig`, `edahaconfigrc`, `edahaconfig` or `edaha.config`
+- ending in `.yml`, `.yaml`, `.json`, `.js`, `.cjs` or `.mjs` (in that order)
+
+If there is none, they stop with an error. If a folder has several, the first is used with a warning.
+
+The site folder is the config file's folder: `articlesDir`, `templatesDir`, `staticDir`, `outputDir` and `publishDir` are relative to it.
+
+A JavaScript config file exports a plain object:
+
+```js
+// edaha.config.mjs
+export default {
+  name: "My Site",
+  description: "News and notes.",
+};
+```
+
+All settings, in YAML:
 
 ```yaml
 # Required: the website's name and description
@@ -64,15 +86,22 @@ name: My Site
 description: News and notes.
 # Optional; the URL path prefix of every article type. Default: "" (the website's root)
 path: ""
-# Optional; the build folder, inside the site folder. It is emptied on every build. Default: dist
-outputDir: dist
+# Optional; the articles, templates and static files folders, inside the site folder and apart from each other
+# Defaults: articles, templates and static
+articlesDir: articles
+templatesDir: templates
+staticDir: static
+# Optional; the build folder, inside the site folder and apart from the articles, templates and static folders. It is emptied on every build. Default: build
+outputDir: build
 # Optional; a folder outside the site folder that the built files are copied into, e.g. another app's build folder
 publishDir: ../app/dist
 # Optional; the website's absolute URL for feeds, used when SITE_URL isn't set. Default: http://localhost (with a warning)
 siteUrl: https://example.com
 # Optional; paths at the website's root that articles and types can't use, e.g. another app's routes
 reservedPaths: [app, api]
-# Optional; settings for each article type (a folder in articles/)
+# Optional; custom embed renderers, only in a JavaScript config file (see Embeds)
+# embeds: [vimeo]
+# Optional; settings for each article type (a folder in the articles folder)
 types:
   news:
     labelSingle: News
@@ -89,7 +118,7 @@ types:
       tag: false
 ```
 
-- **Article types:** each folder in `articles/` is a type. `types` sets:
+- **Article types:** each folder in the articles folder is a type. `types` sets:
   - its URL `path` (default: its name; `""` for the root);
   - its labels (`labelSingle`, `labelPlural`);
   - what is built for it (`generate`: `article`, `list`, `feed`, `author`, `tag`, all `true` by default, or `generate: false` for nothing).
@@ -100,7 +129,9 @@ types:
 
 ## Articles
 
-Each article is a folder `articles/<type>/<slug>/` with an `article.md`. Its images and attachments go in the same folder. Folder names are lowercase kebab-case.
+Each article is a folder `<articlesDir>/<type>/<slug>/` (e.g. `articles/news/hello-world/`) with an `article.md`. Its images and attachments go in the same folder. Folder names are lowercase kebab-case.
+
+The config header at the top is YAML (`<!--yaml` or `<!--yml`) or JSON (`<!--json`). It is never written into the built files.
 
 ```md
 <!--yaml
@@ -123,6 +154,8 @@ The excerpt shown in lists. <!-- readmore -->The rest of the article.
 
 - **Heading IDs:** headings get IDs from their text, so they can be linked to. "This?! Is an, example..." becomes `#this-is-an-example`. A repeated heading gets `-2`, `-3`…, and a heading without letters or numbers gets none.
 - **Extra HTML:** `<small>`, `<big>` and `<details><summary>…</summary>…</details>` can be used. Leave a blank line after `<summary>…</summary>` and before `</details>`, so the content between them is read as Markdown.
+- **Raw content:** anything between `<!-- raw -->` and `<!-- /raw -->` is shown exactly as it is written: no Markdown, embeds, read more breaks or typography. On its own lines it is a `<pre class="raw">` block; within a line, a `<span class="raw">`. Code formatters such as Prettier may change raw content (and Markdown in ` ```md ` code blocks): wrap it in `<!-- prettier-ignore-start -->` and `<!-- prettier-ignore-end -->`, or leave the articles folder out of formatting.
+- **Code:** read more breaks, embeds and raw markers in code blocks and inline code are left as they are.
 - **Output:**
   - Each type's list is at its path (e.g. `/news/`, 20 per page: `/news/2`, …), with a `feed.xml` RSS feed.
   - Tag and author lists are under it (`/news/tags/<tag>/`, `/news/authors/<author>/`).
@@ -139,42 +172,40 @@ Put a URL between `<!-- embed -->` and `<!-- /embed -->` to embed it:
 
 An unrecognised URL gives a warning and is rendered as a link.
 
-To add your own renderers, build from code:
+To add your own renderers, list them under `embeds` in a JavaScript config file. They are tried before the built-in ones, by `edaha build` and by the editor and its previews:
 
-```ts
-import {
-  buildBlog,
-  EMBED_RENDERERS,
-  type EmbedRenderer,
-} from "@lvl99dotcom/edaha.md";
-
-const vimeo: EmbedRenderer = {
+```js
+// edaha.config.mjs
+/** @type {import("@lvl99dotcom/edaha.md").EmbedRenderer} */
+const vimeo = {
   name: "Vimeo",
+  // Origins its iframes load from, which the editor's preview pages allow
+  frameSources: ["https://player.vimeo.com"],
   match: (url) => url.hostname === "vimeo.com",
   render: async (url) =>
     `<iframe src="https://player.vimeo.com/video${url.pathname}"></iframe>`,
 };
 
-await buildBlog({
-  siteDir: "my-site",
-  siteUrl: "https://example.com",
-  embedRenderers: [...EMBED_RENDERERS, vimeo],
-});
+export default {
+  name: "My Site",
+  description: "News and notes.",
+  embeds: [vimeo],
+};
 ```
 
-The editor's previews only use the built-in renderers.
+`render` gets the URL and `{ fetch }`, and returns HTML; it throws if the URL can't be embedded, which gives a warning and a link. From code, `buildSite` and `startEditor` also take `embedRenderers`: the renderers tried after the config file's (default: the built-in ones, `EMBED_RENDERERS`).
 
 ## Templates and the default theme
 
 edaha.md ships a neutral default theme in `theme/`: Nunjucks templates in `theme/templates/` and a stylesheet in `theme/static/site.css`.
 
-- **Templates:** a site's own `templates/` folder overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type. A type's own folder (e.g. `templates/page/`) overrides them, and an article's `template` setting picks another one (e.g. `page/home.njk`).
-- **Static files:** a site's own `static/` folder is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
+- **Templates:** a site's own templates folder (`templates/`, or `templatesDir`) overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type. A type's own folder (e.g. `templates/page/`) overrides them, and an article's `template` setting picks another one (e.g. `page/home.njk`). Names starting with `@theme/` always load the theme's file, so a template can override the theme's and still extend it: `{% extends "@theme/article/single.njk" %}`.
+- **Static files:** a site's own static files folder (`static/`, or `staticDir`) is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
 
 Templates get these variables:
 
-- `site.url`: the website's absolute URL.
-- `blog`: `name`, `description`, `url` and each type's settings and `url`.
+- `site`: the website's `name`, `description`, `url` (its absolute URL), `path` (its home URL, e.g. `/`) and `types` (each type's settings and `url`).
+- `type`, `isArticle` and `isList`: the page's article type, and whether it is an article's page or a list's page (or feed), e.g. `{% if type == "page" and isArticle %}`.
 - `article` (on article pages): its settings, `bodyHtml`, `excerptHtml`, `author`, `tags` and `attachments`.
 - `list` (on list pages and index articles): its `articles` and `pagination`.
 
@@ -191,19 +222,20 @@ The full types are exported as `TemplateData*`.
 `edaha editor` runs a local WYSIWYG editor for a site's articles. It only listens on `127.0.0.1` and must never be deployed.
 
 - **Articles:** it lists every article (including drafts), grouped by type with the newest first. It edits the title, template, body and settings.
-- **Body:** rich text with images, links, tables, small and big text, collapsible details blocks, embeds and the read more break.
+- **Body:** rich text with images, links, tables, small and big text, collapsible details blocks, raw blocks, embeds and the read more break.
 - **Files:** it uploads images and attachments into the article's folder. Uploads need the article to be saved first.
 - **Moving:** changing an article's type or slug moves its folder.
 - **Views:** "WYSIWYG", "Markdown" and "Preview" switch between rich text, the body's Markdown, and the unsaved article rendered with its type's "single" template. The preview uses the site's templates and static files over the theme's. It is sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API.
 - **Safety:** its API only accepts changes from the editor page itself.
-- **Saving:** saving rewrites `article.md` in a normalised form (e.g. the read more break on its own line).
+- **Theme:** it follows the device's light or dark setting, and its theme switcher swaps them, remembering the choice in the browser.
+- **Saving:** saving rewrites `article.md` in a normalised form (e.g. the read more break on its own line). The config header keeps its format (`yaml`, `yml` or `json`); new articles get `yaml`.
 
 ## API
 
 ```ts
-import { buildBlog, startEditor } from "@lvl99dotcom/edaha.md";
+import { buildSite, startEditor } from "@lvl99dotcom/edaha.md";
 
-const result = await buildBlog({
+const result = await buildSite({
   siteDir: "my-site",
   siteUrl: "https://example.com",
 });
@@ -213,21 +245,23 @@ const editor = await startEditor({ siteDir: "my-site", port: 5180 });
 console.log(`Open ${editor.url}`);
 ```
 
-`buildBlog` options:
+`buildSite` options:
 
-- `siteDir` (required)
+- `siteDir`: the folder to look for a config file in. Default: the current folder
+- `configFile`: the config file to use instead
 - `siteUrl`
 - `themeDir`: another theme folder
 - `logger`
 - `fetch`
-- `embedRenderers`
+- `embedRenderers`: tried after the config file's `embeds`. Default: `EMBED_RENDERERS`
 
-`startEditor` options:
+`startEditor` (and `createEditorServer`) options:
 
-- `siteDir` (required)
+- `siteDir`, `configFile`: as for `buildSite`
 - `port`
 - `themeDir`
 - `fetch`
+- `embedRenderers`
 
 ## Development
 
@@ -239,12 +273,15 @@ pnpm test:coverage  # unit tests with coverage
 pnpm typecheck
 pnpm lint
 pnpm format:check
-EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for a site
+EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for the site whose config file is found from there
+pnpm site:build     # build edaha.md's own website (site/) into site/build
+pnpm site:serve     # serve site/build at http://127.0.0.1:5181 (PORT=... for another port)
+pnpm site:dev       # build and serve site/ at http://127.0.0.1:8449, rebuilding and reloading pages on changes
 ```
 
 ### Project layout
 
-- `src/generator/`: reads `config.yml` and articles, renders templates and builds the site (`buildBlog`).
+- `src/generator/`: finds and reads the config file and articles, renders templates and builds the site (`buildSite`).
 - `src/embeds/`: embed renderers.
 - `src/server/`: the editor's API, article store and Markdown conversion.
 - `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`.

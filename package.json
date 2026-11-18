@@ -1,7 +1,7 @@
 {
   "name": "@lvl99dotcom/edaha.md",
   "version": "0.1.0",
-  "description": "Static blog and website generator using Markdown",
+  "description": "Static site generator using markdown.",
   "keywords": [
     "blog",
     "static-site-generator",
@@ -44,6 +44,9 @@
   "scripts": {
     "build": "node scripts/build.ts",
     "dev:editor": "vite",
+    "site:build": "node src/cli/bin.ts build",
+    "site:serve": "node scripts/serve-site.ts",
+    "site:dev": "node scripts/dev-site.ts",
     "typecheck": "tsc -p .",
     "test": "vitest --run",
     "test:coverage": "vitest --run --coverage",

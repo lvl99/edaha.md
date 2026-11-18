@@ -1,12 +1,20 @@
-// Data given to the Nunjucks templates. See collaboration/20261019-blog/BRIEF.md ("Template data").
+// Data given to the Nunjucks templates (see the Templating docs).
 // All URLs are root-relative paths on the website (e.g. "/news/article/hello/"), except `site.url` and
 // absolute URLs given in an article's config.
 import type { ArticleTypeConfig, GenerateConfig } from "../config/index.ts";
 
 /** Website data */
 export interface TemplateDataSite {
-  /** The website's absolute URL, without a trailing slash, e.g. "https://livecanvas.lvl99.com" */
+  /** The name of the website */
+  name: string;
+  /** The website description */
+  description: string;
+  /** The website's absolute URL, without a trailing slash, e.g. "https://example.com" */
   url: string;
+  /** The URL of the site's home: "/", or its `path` setting's folder, e.g. "/docs/" */
+  path: string;
+  /** Article type settings (configured types, plus any other types articles use) */
+  types: Record<string, TemplateDataArticleType>;
 }
 
 /** What is built for an article type */
@@ -16,20 +24,6 @@ export type TemplateDataArticleTypeGenerationConfig = GenerateConfig;
 export interface TemplateDataArticleType extends ArticleTypeConfig {
   /** The URL of the type's front page (its list or index article), e.g. "/news/" */
   url: string;
-}
-
-/** Blog data */
-export interface TemplateDataBlog {
-  /** The name of the website */
-  name: string;
-  /** The website description */
-  description: string;
-  /** The blog's URL path prefix ("" for the website's root) */
-  path: string;
-  /** The URL of the blog's root, e.g. "/" */
-  url: string;
-  /** Article type settings (configured types, plus any other types articles use) */
-  types: Record<string, TemplateDataArticleType>;
 }
 
 /** An article's author */
@@ -164,8 +158,12 @@ export interface TemplateDataList {
 export interface TemplateData {
   /** Website data, always provided */
   site: TemplateDataSite;
-  /** Blog data, always provided */
-  blog: TemplateDataBlog;
+  /** The page's article type, e.g. "news": the article's or the list's */
+  type: string;
+  /** Whether the page is an article's page (index articles and editor previews included) */
+  isArticle: boolean;
+  /** Whether the page is a list's page or feed */
+  isList: boolean;
   /** List data, provided when rendering list and feed templates, and index articles (the first page of their type's list) */
   list?: TemplateDataList;
   /** Article data, only provided when rendering single templates */
