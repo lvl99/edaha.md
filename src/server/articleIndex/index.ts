@@ -216,6 +216,8 @@ export interface ArticleIndexOptions {
 export class ArticleIndex {
   private readonly entries = new Map<string, ArticleSummary>();
 
+  private readonly articlesDir: string;
+
   private watcher?: FSWatcher | undefined;
 
   /** Changed folders waiting to be read again: articles ("news/hello"), whole types ("news"), or everything ("") */
@@ -230,10 +232,8 @@ export class ArticleIndex {
   /**
    * @param articlesDir - the site's articles folder, holding a folder per type, each holding a folder per article
    */
-  constructor(
-    private readonly articlesDir: string,
-    options: ArticleIndexOptions = {},
-  ) {
+  constructor(articlesDir: string, options: ArticleIndexOptions = {}) {
+    this.articlesDir = articlesDir;
     this.watchDelay = options.watchDelay ?? 100;
     this.onWatchUpdate = options.onWatchUpdate;
   }
