@@ -9,6 +9,7 @@ import {
   applyFieldChange,
   changedFields,
   cleanArticleData,
+  nextTabIndex,
   RESET_QUESTION,
   newArticleData,
   type EdahaArticle,
@@ -557,7 +558,7 @@ describe("edaha-article", () => {
 describe("edaha-article body modes", () => {
   /** A body mode's button */
   const modeButton = (element: HTMLElement, mode: string) =>
-    find<HTMLButtonElement>(element, `.body-modes [data-mode="${mode}"]`);
+    find<HTMLButtonElement>(element, `.body-tabs [data-mode="${mode}"]`);
 
   /** Switch the body's mode and wait for it */
   const switchTo = async (element: EdahaArticle, mode: string) => {
@@ -567,11 +568,11 @@ describe("edaha-article body modes", () => {
 
   it("should edit the body as Markdown and switch back to rich text", async () => {
     const { api, element } = await setup();
-    expect(modeButton(element, "wysiwyg").getAttribute("aria-pressed")).toBe(
+    expect(modeButton(element, "wysiwyg").getAttribute("aria-selected")).toBe(
       "true",
     );
     expect(
-      [...element.querySelectorAll(".body-modes button")].map((b) =>
+      [...element.querySelectorAll(".body-tabs button")].map((b) =>
         b.textContent?.trim(),
       ),
     ).toEqual(["WYSIWYG", "Markdown", "Preview"]);
@@ -580,7 +581,7 @@ describe("edaha-article body modes", () => {
       type: "article",
       slug: "hello",
     });
-    expect(modeButton(element, "markdown").getAttribute("aria-pressed")).toBe(
+    expect(modeButton(element, "markdown").getAttribute("aria-selected")).toBe(
       "true",
     );
     const textarea = find<HTMLTextAreaElement>(
@@ -601,6 +602,48 @@ describe("edaha-article body modes", () => {
     const calls = api.toHtml.mock.calls.length;
     await switchTo(element, "wysiwyg");
     expect(api.toHtml).toHaveBeenCalledTimes(calls);
+  });
+
+  it("should show the modes as tabs controlling the body's panel", async () => {
+    const { element } = await setup();
+    const tablist = find(element, '[role="tablist"]');
+    expect(tablist.getAttribute("aria-label")).toBe("Body");
+    const panel = find(element, '[role="tabpanel"]');
+    expect(panel.id).toBe("body-panel");
+    expect(panel.getAttribute("aria-labelledby")).toBe("body-tab-wysiwyg");
+    expect(modeButton(element, "wysiwyg").tabIndex).toBe(0);
+    expect(modeButton(element, "markdown").tabIndex).toBe(-1);
+    expect(modeButton(element, "markdown").getAttribute("aria-controls")).toBe(
+      "body-panel",
+    );
+    await switchTo(element, "markdown");
+    expect(panel.getAttribute("aria-labelledby")).toBe("body-tab-markdown");
+    expect(panel.classList.contains("body-panel-markdown")).toBe(true);
+    expect(modeButton(element, "markdown").tabIndex).toBe(0);
+  });
+
+  it("should move focus between tabs with the arrow keys, Home and End, without switching", async () => {
+    const { element } = await setup();
+    const press = (key: string) => {
+      const event = new KeyboardEvent("keydown", {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      (document.activeElement as HTMLElement).dispatchEvent(event);
+      return event;
+    };
+    modeButton(element, "wysiwyg").focus();
+    expect(press("ArrowRight").defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(modeButton(element, "markdown"));
+    press("End");
+    expect(document.activeElement).toBe(modeButton(element, "preview"));
+    press("Home");
+    expect(document.activeElement).toBe(modeButton(element, "wysiwyg"));
+    press("ArrowLeft");
+    expect(document.activeElement).toBe(modeButton(element, "preview"));
+    expect(press("a").defaultPrevented).toBe(false);
+    expect(element.mode).toBe("wysiwyg");
   });
 
   it("should save the Markdown as the body", async () => {
@@ -669,6 +712,18 @@ describe("edaha-article body modes", () => {
     element.article = { ...ARTICLE, slug: "other" };
     await settle(element);
     expect(element.mode).toBe("wysiwyg");
+  });
+});
+
+describe("nextTabIndex", () => {
+  it("should move to the previous or next tab, wrapping around, or the first or last", () => {
+    expect(nextTabIndex("ArrowRight", 0, 3)).toBe(1);
+    expect(nextTabIndex("ArrowRight", 2, 3)).toBe(0);
+    expect(nextTabIndex("ArrowLeft", 0, 3)).toBe(2);
+    expect(nextTabIndex("ArrowLeft", 2, 3)).toBe(1);
+    expect(nextTabIndex("Home", 2, 3)).toBe(0);
+    expect(nextTabIndex("End", 0, 3)).toBe(2);
+    expect(nextTabIndex("Enter", 0, 3)).toBeUndefined();
   });
 });
 

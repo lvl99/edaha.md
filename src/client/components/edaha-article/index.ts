@@ -26,12 +26,41 @@ const STATUS_OPTIONS: FieldOption[] = [
 /** How the body is shown: the rich text editor, its Markdown in a text box, or rendered as the website would */
 export type BodyMode = "wysiwyg" | "markdown" | "preview";
 
-/** The body modes' buttons */
+/** The body modes' tabs */
 export const BODY_MODES: readonly { mode: BodyMode; label: string }[] = [
   { mode: "wysiwyg", label: "WYSIWYG" },
   { mode: "markdown", label: "Markdown" },
   { mode: "preview", label: "Preview" },
 ];
+
+/** The id of a body mode's tab */
+const bodyTabId = (mode: BodyMode) => `body-tab-${mode}`;
+
+/**
+ * The index of the tab a key moves focus to among `count` tabs, from the tab at `current`: the arrow keys move to the
+ * previous or next tab (wrapping around), Home and End to the first or last. Undefined for other keys.
+ *
+ * @example
+ * nextTabIndex("ArrowRight", 2, 3); // 0
+ */
+export const nextTabIndex = (
+  key: string,
+  current: number,
+  count: number,
+): number | undefined => {
+  switch (key) {
+    case "ArrowRight":
+      return (current + 1) % count;
+    case "ArrowLeft":
+      return (current - 1 + count) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return undefined;
+  }
+};
 
 /**
  * Data for a new, empty article (a draft dated now).
@@ -671,7 +700,7 @@ export class EdahaArticle extends LitElement {
     </edaha-article-data-group>`;
   }
 
-  /** Render the body in its mode, with the buttons switching modes */
+  /** Render the body in its mode, in a tab panel under the tabs that switch modes */
   private renderBody() {
     let body;
     if (this.mode === "markdown")
@@ -702,13 +731,22 @@ export class EdahaArticle extends LitElement {
         .uploadImage=${this.location ? this.uploadImage : undefined}
         .loadEmbedPreview=${this.loadEmbedPreview}
       ></edaha-article-data-field>`;
-    return html`<div class="body-modes" role="group" aria-label="Body mode">
+    return html`<div
+        class="body-tabs"
+        role="tablist"
+        aria-label="Body"
+        @keydown=${this.onTabKey}
+      >
         ${BODY_MODES.map(
           ({ mode, label }) =>
             html`<button
               type="button"
+              role="tab"
+              id=${bodyTabId(mode)}
               data-mode=${mode}
-              aria-pressed=${this.mode === mode ? "true" : "false"}
+              aria-selected=${this.mode === mode ? "true" : "false"}
+              aria-controls="body-panel"
+              tabindex=${this.mode === mode ? 0 : -1}
               ?disabled=${this.busy}
               @click=${() => void this.setMode(mode)}
             >
@@ -716,7 +754,31 @@ export class EdahaArticle extends LitElement {
             </button>`,
         )}
       </div>
-      ${body}`;
+      <div
+        class="body-panel body-panel-${this.mode}"
+        id="body-panel"
+        role="tabpanel"
+        aria-labelledby=${bodyTabId(this.mode)}
+      >
+        ${body}
+      </div>`;
+  }
+
+  /**
+   * Move between the body's tabs with the arrow keys, Home and End. Enter or Space then shows the focused tab, as
+   * showing one can take a moment (converting or rendering the body).
+   */
+  private onTabKey(event: KeyboardEvent): void {
+    const tabs = [
+      ...(event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(
+        '[role="tab"]',
+      ),
+    ];
+    const current = tabs.indexOf(event.target as HTMLElement);
+    const next = nextTabIndex(event.key, current, tabs.length);
+    if (next === undefined) return;
+    event.preventDefault();
+    tabs[next]?.focus();
   }
 
   override render() {
