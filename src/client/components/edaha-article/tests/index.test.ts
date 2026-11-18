@@ -737,6 +737,7 @@ describe("edaha-article changes", () => {
     expect(marked(element)).toEqual([]);
     expect(element.dirty).toBe(false);
     expect(button(element, "Reset…").disabled).toBe(true);
+    expect(button(element, "Save").classList).not.toContain("btn-save-dirty");
 
     input(find<HTMLInputElement>(field(element, "title"), "input"), "Changed");
     input(find<HTMLInputElement>(field(element, "tags[0]"), "input"), "Other");
@@ -746,11 +747,14 @@ describe("edaha-article changes", () => {
     await editBody(element, "<p>New body</p>");
     expect(marked(element)).toEqual(["Title", "Body", "Tags"]);
     expect(button(element, "Reset…").disabled).toBe(false);
+    // The save button shows there are changes to save
+    expect(button(element, "Save").classList).toContain("btn-save-dirty");
 
     await element.save();
     await settle(element);
     expect(marked(element)).toEqual([]);
     expect(element.dirty).toBe(false);
+    expect(button(element, "Save").classList).not.toContain("btn-save-dirty");
     expect(api.toMarkdown).toHaveBeenLastCalledWith("<p>New body</p>", {
       type: "article",
       slug: "hello",

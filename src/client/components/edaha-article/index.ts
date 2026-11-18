@@ -1,4 +1,5 @@
 import { html, LitElement, nothing, type PropertyValues } from "lit";
+import { classMap } from "lit/directives/class-map.js";
 import { slugify } from "../../../generator/slug/index.ts";
 import type {
   EditorArticle,
@@ -747,7 +748,14 @@ export class EdahaArticle extends LitElement {
       </main>
       <aside>
         <div class="edaha-article-controls">
-          <button type="submit" ?disabled=${this.busy}>Save</button>
+          <!-- Marked while there are unsaved changes, to show the article should be saved -->
+          <button
+            type="submit"
+            class=${classMap({ "btn-save-dirty": this.dirty })}
+            ?disabled=${this.busy}
+          >
+            Save
+          </button>
           <button
             type="button"
             class="reset"
