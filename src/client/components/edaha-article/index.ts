@@ -17,6 +17,7 @@ import type {
   FieldOption,
 } from "../edaha-article-data-field/index.ts";
 import { showToast } from "../edaha-toasts/index.ts";
+import { onNarrowChange } from "../../narrow/index.ts";
 
 const STATUS_OPTIONS: FieldOption[] = [
   { value: "published", label: "Published" },
@@ -250,6 +251,7 @@ export class EdahaArticle extends LitElement {
     bodyMarkdown: { state: true },
     previewUrl: { state: true },
     previewWidth: { state: true },
+    metadataOpen: { state: true },
     savedData: { state: true },
     bodyChanged: { state: true },
   };
@@ -278,6 +280,8 @@ export class EdahaArticle extends LitElement {
   declare previewUrl: string;
   /** The width the preview is shown at */
   declare previewWidth: PreviewWidth;
+  /** Whether the article's settings are open full screen (on narrow screens) */
+  declare metadataOpen: boolean;
   /** The data as last saved (or loaded; empty for a new article), which changes are found against */
   declare savedData: EditorArticleData;
   /** Whether the body differs from the saved one, compared as Markdown */
@@ -315,6 +319,7 @@ export class EdahaArticle extends LitElement {
     this.bodyMarkdown = "";
     this.previewUrl = "";
     this.previewWidth = "full";
+    this.metadataOpen = false;
     // A copy, so both have the same date
     this.savedData = structuredClone(this.data);
     this.bodyChanged = false;
@@ -322,6 +327,20 @@ export class EdahaArticle extends LitElement {
 
   protected override createRenderRoot() {
     return this;
+  }
+
+  /** Stops closing the settings when the screen stops being narrow */
+  private stopWatchingNarrow?: () => void;
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    // On wide screens the settings are always shown beside the body, so they aren't left open over it
+    this.stopWatchingNarrow = onNarrowChange(() => (this.metadataOpen = false));
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.stopWatchingNarrow?.();
   }
 
   protected override willUpdate(changed: PropertyValues<this>): void {
@@ -847,7 +866,8 @@ export class EdahaArticle extends LitElement {
         void this.save();
       }}
     >
-      <main class="edaha-article-main">
+      <!-- Out of reach while the settings are open over it -->
+      <main class="edaha-article-main" ?inert=${this.metadataOpen}>
         <edaha-article-data-field
           name="title"
           label="Title"
@@ -857,7 +877,14 @@ export class EdahaArticle extends LitElement {
         ></edaha-article-data-field>
         ${this.renderBody()}
       </main>
-      <aside class="edaha-article-metadata">
+      <aside
+        class="edaha-article-metadata ${classMap({ open: this.metadataOpen })}"
+        aria-label="Article settings"
+        @keydown=${(event: KeyboardEvent) => {
+          if (event.key === "Escape") this.metadataOpen = false;
+        }}
+      >
+        <!-- On narrow screens, a bar at the bottom of the screen that opens the settings full screen -->
         <div class="edaha-article-controls">
           <!-- Marked while there are unsaved changes, to show the article should be saved -->
           <button
@@ -887,88 +914,101 @@ export class EdahaArticle extends LitElement {
                 </button>`
               : nothing
           }
+          <button
+            type="button"
+            class="btn btn-metadata-toggle"
+            title=${this.metadataOpen ? "Hide article settings" : "Show article settings"}
+            aria-expanded=${this.metadataOpen ? "true" : "false"}
+            aria-controls="article-metadata-fields"
+            @click=${() => (this.metadataOpen = !this.metadataOpen)}
+          >
+            <span aria-hidden="true">${this.metadataOpen ? "︾" : "︽"}</span>
+            <span class="visually-hidden">Article settings</span>
+          </button>
         </div>
-        <edaha-article-data-field
-          name="type"
-          ?changed=${changed.has("type")}
-          type="select"
-          label="Type"
-          .options=${typeOptions}
-          .value=${data.type}
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="template"
-          ?changed=${changed.has("template")}
-          type="select"
-          label="Template"
-          .options=${[
-            ...new Set([
-              "single",
-              ...this.templates,
-              data.template ?? "single",
-            ]),
-          ].map((template) => ({ value: template, label: template }))}
-          .value=${data.template ?? "single"}
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="status"
-          ?changed=${changed.has("status")}
-          type="select"
-          label="Status"
-          .options=${STATUS_OPTIONS}
-          .value=${data.status}
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="slug"
-          ?changed=${changed.has("slug")}
-          label="Slug"
-          placeholder=${slugify(data.title) || "title-converted-to-slug"}
-          .value=${data.slug}
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="date"
-          ?changed=${changed.has("date")}
-          type="datetime-local"
-          label="Publication date"
-          .value=${toLocalInput(data.date)}
-        ></edaha-article-data-field>
-        ${this.renderAuthor()}
-        <edaha-article-data-field
-          name="excerpt"
-          ?changed=${changed.has("excerpt")}
-          type="textarea"
-          label="Excerpt"
-          placeholder="Defaults to the text before the read more break"
-          .value=${data.excerpt ?? ""}
-          allowclear
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="thumbnail"
-          ?changed=${changed.has("thumbnail")}
-          type="file"
-          label="Thumbnail"
-          accept="image/png, image/jpeg"
-          .value=${data.thumbnail ?? ""}
-          preview
-          .previewUrl=${this.fileUrl(data.thumbnail)}
-          allowchange
-          allowclear
-          ?disabled=${!this.location}
-        ></edaha-article-data-field>
-        ${this.renderTags()} ${this.renderAttachments()}
-        ${this.location ? nothing : html`<p class="hint">Save the article before uploading files.</p>`}
-        ${
-          this.files.length
-            ? html`<details class="files">
-                <summary>
-                  Files in this article's folder (${this.files.length})
-                </summary>
-                <ul>
-                  ${this.files.map((file) => html`<li><a href=${this.fileUrl(file) as string} target="_blank">${file}</a></li>`)}
-                </ul>
-              </details>`
-            : nothing
-        }
+        <div class="edaha-article-metadata-fields" id="article-metadata-fields">
+          <edaha-article-data-field
+            name="type"
+            ?changed=${changed.has("type")}
+            type="select"
+            label="Type"
+            .options=${typeOptions}
+            .value=${data.type}
+          ></edaha-article-data-field>
+          <edaha-article-data-field
+            name="template"
+            ?changed=${changed.has("template")}
+            type="select"
+            label="Template"
+            .options=${[
+              ...new Set([
+                "single",
+                ...this.templates,
+                data.template ?? "single",
+              ]),
+            ].map((template) => ({ value: template, label: template }))}
+            .value=${data.template ?? "single"}
+          ></edaha-article-data-field>
+          <edaha-article-data-field
+            name="status"
+            ?changed=${changed.has("status")}
+            type="select"
+            label="Status"
+            .options=${STATUS_OPTIONS}
+            .value=${data.status}
+          ></edaha-article-data-field>
+          <edaha-article-data-field
+            name="slug"
+            ?changed=${changed.has("slug")}
+            label="Slug"
+            placeholder=${slugify(data.title) || "title-converted-to-slug"}
+            .value=${data.slug}
+          ></edaha-article-data-field>
+          <edaha-article-data-field
+            name="date"
+            ?changed=${changed.has("date")}
+            type="datetime-local"
+            label="Publication date"
+            .value=${toLocalInput(data.date)}
+          ></edaha-article-data-field>
+          ${this.renderAuthor()}
+          <edaha-article-data-field
+            name="excerpt"
+            ?changed=${changed.has("excerpt")}
+            type="textarea"
+            label="Excerpt"
+            placeholder="Defaults to the text before the read more break"
+            .value=${data.excerpt ?? ""}
+            allowclear
+          ></edaha-article-data-field>
+          <edaha-article-data-field
+            name="thumbnail"
+            ?changed=${changed.has("thumbnail")}
+            type="file"
+            label="Thumbnail"
+            accept="image/png, image/jpeg"
+            .value=${data.thumbnail ?? ""}
+            preview
+            .previewUrl=${this.fileUrl(data.thumbnail)}
+            allowchange
+            allowclear
+            ?disabled=${!this.location}
+          ></edaha-article-data-field>
+          ${this.renderTags()} ${this.renderAttachments()}
+          ${this.location ? nothing : html`<p class="hint">Save the article before uploading files.</p>`}
+          ${
+            this.files.length
+              ? html`<details class="files">
+                  <summary>
+                    Files in this article's folder (${this.files.length})
+                  </summary>
+                  <ul>
+                    ${this.files.map((file) => html`<li><a href=${this.fileUrl(file) as string} target="_blank">${file}</a></li>`)}
+                  </ul>
+                </details>`
+              : nothing
+          }
+        </div>
       </aside>
     </form>`;
   }

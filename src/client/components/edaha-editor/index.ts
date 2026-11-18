@@ -1,4 +1,5 @@
 import { html, LitElement, nothing } from "lit";
+import { classMap } from "lit/directives/class-map.js";
 import { keyed } from "lit/directives/keyed.js";
 import type {
   ArticleSummary,
@@ -21,9 +22,11 @@ import {
   themeSwitcherLabel,
   toggleTheme,
 } from "../../theme/index.ts";
+import { icon } from "../../icons/index.ts";
+import { onNarrowChange } from "../../narrow/index.ts";
 
 /**
- * Describe an article in the list, e.g. "article/hello · published · 2026-10-19".
+ * Describe an article in the list, e.g. "hello · published · 2026-10-19".
  */
 const describe = (article: ArticleSummary) =>
   [article.slug, article.status, article.date.slice(0, 10)]
@@ -88,7 +91,7 @@ export const groupArticles = (
  * The article editor: a list of all articles (including drafts), grouped by type and filterable by type, the selected
  * or new article's form, and toasts for success and error messages. Opening another article or starting a new one
  * while the form has unsaved changes asks whether to save them first; closing or reloading the page gets the browser's
- * own question.
+ * own question. On narrow screens, the article list opens over the page from a menu button.
  *
  * @example
  * html`<edaha-editor></edaha-editor>`
@@ -105,6 +108,7 @@ export class EdahaEditor extends LitElement {
     error: { state: true },
     typeFilter: { state: true },
     unsaved: { state: true },
+    navOpen: { state: true },
   };
 
   declare api: EditorApi;
@@ -124,6 +128,8 @@ export class EdahaEditor extends LitElement {
   declare typeFilter: string;
   /** The open "Save changes first?" question, with what to do with the answer */
   declare unsaved?: ((choice: UnsavedChoice) => void) | undefined;
+  /** Whether the article list is open over the page (on narrow screens) */
+  declare navOpen: boolean;
 
   /** Ask the browser before the page closes or reloads with unsaved changes (browsers word the question) */
   private readonly onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -132,6 +138,9 @@ export class EdahaEditor extends LitElement {
 
   /** Stops updating the theme switcher's label when the device's light or dark setting changes */
   private stopWatchingTheme?: () => void;
+
+  /** Stops closing the article list when the screen stops being narrow */
+  private stopWatchingNarrow?: () => void;
 
   /** Show toasts fired by the form */
   private readonly onToast = (event: Event) =>
@@ -146,6 +155,7 @@ export class EdahaEditor extends LitElement {
     this.formKey = 0;
     this.error = "";
     this.typeFilter = "";
+    this.navOpen = false;
   }
 
   protected override createRenderRoot() {
@@ -158,6 +168,8 @@ export class EdahaEditor extends LitElement {
     this.addEventListener(TOAST_EVENT, this.onToast);
     // The theme switcher's label says which theme it switches to, which follows the device until one is chosen
     this.stopWatchingTheme = onDeviceThemeChange(() => this.requestUpdate());
+    // On wide screens the article list is always shown, so it isn't left open over the page
+    this.stopWatchingNarrow = onNarrowChange(() => (this.navOpen = false));
     void this.refresh();
   }
 
@@ -166,6 +178,28 @@ export class EdahaEditor extends LitElement {
     window.removeEventListener("beforeunload", this.onBeforeUnload);
     this.removeEventListener(TOAST_EVENT, this.onToast);
     this.stopWatchingTheme?.();
+    this.stopWatchingNarrow?.();
+  }
+
+  /**
+   * Open the article list over the page (on narrow screens), moving focus into it.
+   */
+  async openNav(): Promise<void> {
+    this.navOpen = true;
+    await this.updateComplete;
+    this.querySelector<HTMLElement>(".nav-close")?.focus();
+  }
+
+  /**
+   * Close the article list, moving focus back to the menu button if it was in the list.
+   */
+  closeNav(): void {
+    if (!this.navOpen) return;
+    this.navOpen = false;
+    if (
+      this.querySelector(".edaha-editor-nav")?.contains(document.activeElement)
+    )
+      this.querySelector<HTMLElement>(".nav-toggle")?.focus();
   }
 
   /** The article form, while shown */
@@ -304,7 +338,39 @@ export class EdahaEditor extends LitElement {
       this.selected?.type === article.type &&
       this.selected.slug === article.slug;
     return html`
-      <nav class="edaha-editor-nav" aria-label="Articles">
+      <div class="edaha-editor-bar">
+        <button
+          type="button"
+          class="btn-icon nav-toggle"
+          title="Articles"
+          aria-expanded=${this.navOpen ? "true" : "false"}
+          aria-controls="edaha-editor-nav"
+          @click=${() => void this.openNav()}
+        >
+          ${icon("menu")}<span class="visually-hidden">Articles</span>
+        </button>
+        <span class="edaha-editor-bar-title">edaha.md</span>
+      </div>
+      <div
+        class="nav-backdrop ${classMap({ open: this.navOpen })}"
+        @click=${() => this.closeNav()}
+      ></div>
+      <nav
+        id="edaha-editor-nav"
+        class="edaha-editor-nav ${classMap({ open: this.navOpen })}"
+        aria-label="Articles"
+        @keydown=${(event: KeyboardEvent) => {
+          if (event.key === "Escape") this.closeNav();
+        }}
+      >
+        <button
+          type="button"
+          class="btn-icon nav-close"
+          title="Close articles"
+          @click=${() => this.closeNav()}
+        >
+          ${icon("close")}<span class="visually-hidden">Close articles</span>
+        </button>
         <button
           type="button"
           class="theme-switcher"
@@ -318,7 +384,14 @@ export class EdahaEditor extends LitElement {
         </button>
         <h1 class="edaha-title">edaha.md<span class="leaf-device"></span></h1>
         <div class="edaha-editor-new">
-          <button type="button" class="btn" @click=${() => void this.create()}>
+          <button
+            type="button"
+            class="btn"
+            @click=${() => {
+              this.closeNav();
+              void this.create();
+            }}
+          >
             New article
           </button>
         </div>
@@ -358,6 +431,7 @@ export class EdahaEditor extends LitElement {
                         aria-current=${isSelected(article) ? "page" : "false"}
                         @click=${(event: Event) => {
                           event.preventDefault();
+                          this.closeNav();
                           void this.open(article);
                         }}
                         >${article.title}</a
@@ -372,7 +446,8 @@ export class EdahaEditor extends LitElement {
             </div>`,
         )}
       </nav>
-      <section class="edaha-editor-composer">
+      <!-- Out of reach while the article list is open over it -->
+      <section class="edaha-editor-composer" ?inert=${this.navOpen}>
         ${
           this.editing
             ? keyed(

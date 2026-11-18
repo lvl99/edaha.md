@@ -91,10 +91,12 @@ describe("edaha-editor", () => {
   it("should group the list by type and filter it by type", async () => {
     const { element } = await setup();
     const groups = () =>
-      [...element.querySelectorAll(".edaha-editor-article-group")].map((group) => [
-        group.querySelector("h2")!.textContent,
-        [...group.querySelectorAll("li a")].map((a) => a.textContent),
-      ]);
+      [...element.querySelectorAll(".edaha-editor-article-group")].map(
+        (group) => [
+          group.querySelector("h2")!.textContent,
+          [...group.querySelectorAll("li a")].map((a) => a.textContent),
+        ],
+      );
     expect(groups()).toEqual([
       ["Articles", ["Hello"]],
       ["page", ["broken"]],
@@ -346,5 +348,117 @@ describe("edaha-editor unsaved changes", () => {
     expect(asks()).toBe(true);
     element.remove();
     expect(asks()).toBe(false);
+  });
+});
+
+describe("edaha-editor theme switcher", () => {
+  afterEach(() => {
+    delete document.documentElement.dataset.theme;
+    localStorage.clear();
+  });
+
+  it("should switch the theme and say which theme it switches to next", async () => {
+    const { element } = await setup();
+    const switcher = find<HTMLButtonElement>(element, ".theme-switcher");
+    expect(switcher.title).toBe("Switch to the dark theme");
+    switcher.click();
+    await settle(element);
+    expect(document.documentElement.dataset.theme).toBe("dark");
+    expect(switcher.title).toBe("Switch to the light theme");
+    expect(switcher.textContent?.trim()).toBe("Switch to the light theme");
+  });
+});
+
+describe("edaha-editor article list on narrow screens", () => {
+  afterEach(() => {
+    // @ts-expect-error -- jsdom has no matchMedia
+    delete window.matchMedia;
+  });
+
+  /** Fake matchMedia, keeping the narrow-screen listeners so a change can be fired */
+  const watchNarrow = () => {
+    const listeners: (() => void)[] = [];
+    const query = {
+      matches: true,
+      addEventListener: (_type: string, listener: () => void) =>
+        listeners.push(listener),
+      removeEventListener: vi.fn(),
+    };
+    window.matchMedia = vi.fn(
+      () => query,
+    ) as unknown as typeof window.matchMedia;
+    return { change: () => listeners.forEach((listener) => listener()), query };
+  };
+
+  /** Press a key in the page's focused element */
+  const press = (key: string) =>
+    document.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true }),
+    );
+
+  it("should open the list from the menu button and close it, moving focus between them", async () => {
+    const { element } = await setup();
+    const toggle = find<HTMLButtonElement>(element, ".nav-toggle");
+    const nav = find(element, "nav");
+    const composer = find(element, ".edaha-editor-composer");
+    expect(toggle.getAttribute("aria-controls")).toBe(nav.id);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.textContent?.trim()).toBe("Articles");
+    expect(toggle.querySelector(".icon-menu")).not.toBeNull();
+
+    toggle.click();
+    await settle(element);
+    expect(element.navOpen).toBe(true);
+    expect(nav.classList.contains("open")).toBe(true);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(composer.hasAttribute("inert")).toBe(true);
+    expect(document.activeElement).toBe(find(element, ".nav-close"));
+
+    // Escape, the close button and the backdrop close it
+    press("Tab");
+    expect(element.navOpen).toBe(true);
+    press("Escape");
+    await settle(element);
+    expect(element.navOpen).toBe(false);
+    expect(composer.hasAttribute("inert")).toBe(false);
+    expect(document.activeElement).toBe(toggle);
+    await element.openNav();
+    button(element, "Close articles").click();
+    await settle(element);
+    expect(element.navOpen).toBe(false);
+    await element.openNav();
+    find(element, ".nav-backdrop.open").click();
+    await settle(element);
+    expect(element.navOpen).toBe(false);
+    // Closing it from outside leaves focus where it is
+    await element.openNav();
+    toggle.focus();
+    element.closeNav();
+    element.closeNav();
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  it("should close the list when an article is chosen or a new one started", async () => {
+    const { element } = await setup();
+    await element.openNav();
+    find(element, "nav li a").click();
+    await settle(element);
+    expect(element.navOpen).toBe(false);
+    expect(element.querySelector("edaha-article")).not.toBeNull();
+    await element.openNav();
+    button(element, "New article").click();
+    await settle(element);
+    expect(element.navOpen).toBe(false);
+  });
+
+  it("should close the list when the screen stops being narrow, until removed", async () => {
+    const { change, query } = watchNarrow();
+    const { element } = await setup();
+    await element.openNav();
+    change();
+    await settle(element);
+    expect(element.navOpen).toBe(false);
+    element.remove();
+    expect(query.removeEventListener).toHaveBeenCalled();
   });
 });

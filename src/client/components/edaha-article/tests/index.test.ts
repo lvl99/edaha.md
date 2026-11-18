@@ -17,6 +17,7 @@ import {
 import "..";
 import type { EdahaArticleDataField } from "../../edaha-article-data-field";
 import type { EdahaArticleDataGroup } from "../../edaha-article-data-group";
+import type { EdahaMarkdown } from "../../edaha-markdown";
 import type { EdahaRichtext } from "../../edaha-richtext";
 import type { ToastMessage } from "../../edaha-toasts";
 import {
@@ -355,6 +356,28 @@ describe("edaha-article", () => {
     api.upload.mockRejectedValueOnce(new Error("Disk full"));
     await expect(uploadImage(new File(["x"], "Pic.png"))).rejects.toThrow(
       "Upload failed",
+    );
+  });
+
+  it("should upload images for the body's Markdown, referring to them by file name", async () => {
+    const { element, api } = await setup();
+    await element.setMode("markdown");
+    await settle(element);
+    const uploadImage = find<EdahaMarkdown>(
+      element,
+      "edaha-markdown",
+    ).uploadImage!;
+    expect(await uploadImage(new File(["x"], "Pic.png"))).toBe("pic.png");
+    api.upload.mockRejectedValueOnce(new Error("Disk full"));
+    await expect(uploadImage(new File(["x"], "Pic.png"))).rejects.toThrow(
+      "Upload failed",
+    );
+    // A new article has no folder to upload into until it is saved
+    const { element: fresh } = await setup(undefined);
+    await fresh.setMode("markdown");
+    await settle(fresh);
+    expect(find<EdahaMarkdown>(fresh, "edaha-markdown").uploadImage).toBe(
+      undefined,
     );
   });
 
@@ -749,6 +772,69 @@ describe("edaha-article body modes", () => {
   });
 });
 
+describe("edaha-article settings on narrow screens", () => {
+  afterEach(() => {
+    // @ts-expect-error -- jsdom has no matchMedia
+    delete window.matchMedia;
+  });
+
+  it("should open the settings full screen from the bar, and close them with the button or Escape", async () => {
+    const { element } = await setup();
+    const toggle = find<HTMLButtonElement>(element, ".btn-metadata-toggle");
+    const aside = find(element, "aside");
+    const main = find(element, "main");
+    const fields = find(element, "#article-metadata-fields");
+    expect(fields.contains(field(element, "type"))).toBe(true);
+    expect(toggle.getAttribute("aria-controls")).toBe(fields.id);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "︽ Article settings",
+    );
+    expect(toggle.title).toBe("Show article settings");
+
+    toggle.click();
+    await settle(element);
+    expect(aside.classList.contains("open")).toBe(true);
+    expect(main.hasAttribute("inert")).toBe(true);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.title).toBe("Hide article settings");
+    expect(toggle.textContent).toContain("︾");
+    toggle.click();
+    await settle(element);
+    expect(element.metadataOpen).toBe(false);
+    expect(main.hasAttribute("inert")).toBe(false);
+
+    toggle.click();
+    await settle(element);
+    find(element, "#field-slug").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", bubbles: true }),
+    );
+    expect(element.metadataOpen).toBe(true);
+    find(element, "#field-slug").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    await settle(element);
+    expect(element.metadataOpen).toBe(false);
+  });
+
+  it("should close the settings when the screen stops being narrow, until removed", async () => {
+    const listeners: (() => void)[] = [];
+    const removeEventListener = vi.fn();
+    window.matchMedia = vi.fn(() => ({
+      matches: true,
+      addEventListener: (_type: string, listener: () => void) =>
+        listeners.push(listener),
+      removeEventListener,
+    })) as unknown as typeof window.matchMedia;
+    const { element } = await setup();
+    element.metadataOpen = true;
+    listeners.forEach((listener) => listener());
+    expect(element.metadataOpen).toBe(false);
+    element.remove();
+    expect(removeEventListener).toHaveBeenCalled();
+  });
+});
+
 describe("nextTabIndex", () => {
   it("should move to the previous or next tab, wrapping around, or the first or last", () => {
     expect(nextTabIndex("ArrowRight", 0, 3)).toBe(1);
@@ -985,9 +1071,9 @@ describe("edaha-article changes", () => {
     });
     // Reset sits between Save and Delete…
     expect(
-      [...element.querySelectorAll(".edaha-article-controls button")].map((b) =>
-        b.textContent?.trim(),
+      [...element.querySelectorAll(".edaha-article-controls .btn")].map((b) =>
+        b.textContent?.replace(/\s+/g, " ").trim(),
       ),
-    ).toEqual(["Save", "Reset…", "Delete…"]);
+    ).toEqual(["Save", "Reset…", "Delete…", "︽ Article settings"]);
   });
 });
