@@ -77,10 +77,10 @@ describe("edaha-editor", () => {
       "broken",
     ]);
     expect(items[0]!.querySelector("small")!.textContent).toBe(
-      "article/hello · published · 2026-10-19",
+      "hello · published · 2026-10-19",
     );
     expect(items[1]!.querySelector("small")!.textContent).toBe(
-      "page/broken · draft",
+      "broken · draft",
     );
     expect(items[1]!.querySelector(".error")!.textContent).toBe("Bad date");
     expect(find(element, "section p").textContent).toBe(
@@ -91,7 +91,7 @@ describe("edaha-editor", () => {
   it("should group the list by type and filter it by type", async () => {
     const { element } = await setup();
     const groups = () =>
-      [...element.querySelectorAll(".article-group")].map((group) => [
+      [...element.querySelectorAll(".edaha-editor-article-group")].map((group) => [
         group.querySelector("h2")!.textContent,
         [...group.querySelectorAll("li a")].map((a) => a.textContent),
       ]);
@@ -99,7 +99,7 @@ describe("edaha-editor", () => {
       ["Articles", ["Hello"]],
       ["page", ["broken"]],
     ]);
-    const select = find<HTMLSelectElement>(element, "#type-filter");
+    const select = find<HTMLSelectElement>(element, "#filter-type");
     expect(
       [...select.options].map((o) => [o.value, o.textContent?.trim()]),
     ).toEqual([
