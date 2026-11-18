@@ -51,9 +51,20 @@ import {
   filesUrl,
   markdownToEditorHtml,
 } from "../convert/index.ts";
+import {
+  ArticleIndex,
+  articleFilters,
+  queryArticles,
+  recentArticles,
+  RECENT_COUNT,
+  type ArticleIndexOptions,
+} from "../articleIndex/index.ts";
 import type {
-  ArticleSummary,
+  ArticleFilters,
+  ArticlePage,
+  ArticleQuery,
   ArticleTypeLabels,
+  RecentArticles,
   EditorArticle,
   EditorArticleData,
   UploadResult,
@@ -69,18 +80,11 @@ export class EditorError extends Error {
   }
 }
 
-/** List the names of sub-folders in a folder (none if it doesn't exist) */
-const subfolders = async (dir: string): Promise<string[]> => {
-  try {
-    const entries = await readdir(dir, { withFileTypes: true });
-    return entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .sort();
-  } catch {
-    return [];
-  }
-};
+/** Options for an `ArticleStore` */
+export interface ArticleStoreOptions extends ArticleIndexOptions {
+  /** Whether the article index watches the articles folder for changes made outside the editor (default: true) */
+  watch?: boolean;
+}
 
 /** How many previews the editor remembers (the newest) */
 export const MAX_PREVIEWS = 20;
@@ -190,11 +194,14 @@ export const serializeArticle = (
 
 /**
  * Reads and writes articles in the site's articles folder (`articlesDir`) for the editor, and renders previews with the site's
- * templates over the default theme's.
+ * templates over the default theme's. Articles are listed and searched from an in-memory index (see `ArticleIndex`),
+ * read on first use and kept up to date as the editor saves and deletes articles, and (unless `watch` is false) as their
+ * files change outside the editor. Call `close` to stop watching.
  *
  * @example
  * const store = new ArticleStore(await loadSiteConfig({ siteDir: "my-site" }));
- * await store.list();
+ * await store.query({ search: "hello" });
+ * store.close();
  */
 export class ArticleStore {
   private readonly articlesDir: string;
@@ -214,12 +221,23 @@ export class ArticleStore {
 
   private readonly themeDir: string;
 
+  /** The article index, once its first load has started */
+  private indexLoad?: Promise<ArticleIndex> | undefined;
+
+  private readonly indexOptions: ArticleStoreOptions;
+
   /**
    * @param site - the site's config file, folder (which holds the articles, templates and static files folders) and
    *   settings
    * @param themeDir - the default theme folder that the site's templates and static files override
+   * @param options - how the article index watches for changes
    */
-  constructor(site: SiteConfig, themeDir: string = THEME_DIR) {
+  constructor(
+    site: SiteConfig,
+    themeDir: string = THEME_DIR,
+    options: ArticleStoreOptions = {},
+  ) {
+    this.indexOptions = options;
     this.configFile = site.configFile;
     this.siteDir = site.siteDir;
     this.themeDir = themeDir;
@@ -289,44 +307,45 @@ export class ArticleStore {
     }
   }
 
+  /** The article index, read on first use (and then watched, unless turned off) */
+  private index(): Promise<ArticleIndex> {
+    this.indexLoad ??= (async () => {
+      const index = new ArticleIndex(this.articlesDir, this.indexOptions);
+      await index.load();
+      if (this.indexOptions.watch !== false) index.watch();
+      return index;
+    })();
+    return this.indexLoad;
+  }
+
   /**
-   * List every article, including drafts, newest first. Articles that can't be read are listed with their error.
+   * Find articles by title, type, author, tag and status, sorted by title or date, a page at a time (see
+   * `queryArticles`).
+   *
+   * @example
+   * await store.query({ search: "hello", sort: "title", page: 2 });
    */
-  async list(): Promise<ArticleSummary[]> {
-    const summaries: ArticleSummary[] = [];
-    for (const type of await subfolders(this.articlesDir)) {
-      for (const slug of await subfolders(join(this.articlesDir, type))) {
-        let source: string;
-        try {
-          source = await this.source(type, slug);
-        } catch {
-          continue;
-        }
-        try {
-          const { header, content } = splitArticle(source);
-          const config = parseArticleConfig(header, type, `${type}/${slug}`);
-          summaries.push({
-            type,
-            slug,
-            title: config.title ?? splitContent(content).heading ?? slug,
-            status: config.status,
-            date: config.date,
-          });
-        } catch (error) {
-          summaries.push({
-            type,
-            slug,
-            title: slug,
-            status: "draft",
-            date: "",
-            error: (error as Error).message,
-          });
-        }
-      }
-    }
-    return summaries.sort(
-      (a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug),
-    );
+  async query(query: ArticleQuery): Promise<ArticlePage> {
+    return queryArticles((await this.index()).articles(), query);
+  }
+
+  /**
+   * Each type's most recently changed articles, for the editor's nav (see `recentArticles`).
+   */
+  async recent(count = RECENT_COUNT): Promise<RecentArticles[]> {
+    return recentArticles((await this.index()).articles(), count);
+  }
+
+  /**
+   * The types, authors and tags articles use, for the article browser's filters.
+   */
+  async filters(): Promise<ArticleFilters> {
+    return articleFilters((await this.index()).articles());
+  }
+
+  /** Stop watching the articles folder for changes */
+  close(): void {
+    void this.indexLoad?.then((index) => index.close());
   }
 
   /**
@@ -422,6 +441,9 @@ export class ArticleStore {
       await rename(fromDir, dir);
     } else await mkdir(dir, { recursive: true });
     await writeFile(join(dir, "article.md"), source);
+    const index = await this.index();
+    if (from && moving) index.delete(from.type, from.slug);
+    await index.update(data.type, data.slug);
     return { type: data.type, slug: data.slug };
   }
 
@@ -487,6 +509,7 @@ export class ArticleStore {
   async remove(type: string, slug: string): Promise<void> {
     await this.source(type, slug);
     await rm(this.dir(type, slug), { recursive: true });
+    (await this.index()).delete(type, slug);
   }
 
   /**

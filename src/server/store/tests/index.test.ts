@@ -5,12 +5,13 @@ import {
   readFile,
   rename,
   readdir,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EmbedResolver } from "../../../embeds";
 import {
   ArticleStore,
@@ -30,7 +31,12 @@ const FIXTURE = fileURLToPath(
 
 /** An article store for the site in a folder, over the given theme */
 const openStore = async (dir: string, themeDir?: string) =>
-  new ArticleStore(await loadSiteConfig({ siteDir: dir }), themeDir);
+  new ArticleStore(await loadSiteConfig({ siteDir: dir }), themeDir, {
+    watch: false,
+  });
+
+/** Every article the store finds, newest first */
+const listAll = async (store: ArticleStore) => (await store.query({})).articles;
 
 /** A copy of the fixture site to edit */
 const copySite = async () => {
@@ -127,14 +133,14 @@ describe("serializeArticle", () => {
 });
 
 describe("ArticleStore", () => {
-  it("should list every article newest first, with unreadable ones and their errors", async () => {
+  it("should find every article newest first, with unreadable ones and their errors", async () => {
     const { dir, store } = await copySite();
     await mkdir(join(dir, "articles/article/broken"));
     await writeFile(
       join(dir, "articles/article/broken/article.md"),
       "<!--yaml\ndate: nope\n-->",
     );
-    expect(await store.list()).toEqual([
+    expect(await listAll(store)).toMatchObject([
       {
         type: "article",
         slug: "wip",
@@ -177,8 +183,128 @@ describe("ArticleStore", () => {
         status: "draft",
         date: "",
         error: 'article/broken: "date" must be an ISO 8601 timestamp',
+        tags: [],
       },
     ]);
+  });
+
+  it("should summarise articles with their author, tags and when their file last changed", async () => {
+    const { dir, store } = await copySite();
+    const changed = new Date("2026-11-01T10:00:00.000Z");
+    await utimes(
+      join(dir, "articles/article/first/article.md"),
+      changed,
+      changed,
+    );
+    const { articles } = await store.query({ search: "first" });
+    expect(articles).toEqual([
+      {
+        type: "article",
+        slug: "first",
+        title: "First article",
+        status: "published",
+        date: DATE,
+        author: "Zoë Ångström",
+        tags: ["News", "Release Notes"],
+        updated: changed.toISOString(),
+      },
+    ]);
+  });
+
+  it("should search, filter, sort and page articles, and give each type's most recently changed ones and the filters' choices", async () => {
+    const { dir, store } = await copySite();
+    const touch = (path: string, iso: string) =>
+      utimes(
+        join(dir, "articles", path, "article.md"),
+        new Date(iso),
+        new Date(iso),
+      );
+    await touch("article/second", "2026-11-03T00:00:00.000Z");
+    await touch("article/wip", "2026-11-02T00:00:00.000Z");
+    await touch("article/first", "2026-11-01T00:00:00.000Z");
+    await touch("article/hidden", "2026-10-01T00:00:00.000Z");
+    await touch("page/about-us", "2026-10-01T00:00:00.000Z");
+    const titles = async (query: Parameters<ArticleStore["query"]>[0]) =>
+      (await store.query(query)).articles.map((article) => article.title);
+    expect(await titles({ tag: "news", sort: "title" })).toEqual([
+      "First article",
+      "Second article",
+    ]);
+    expect(await titles({ author: "zoe angstrom" })).toEqual(["First article"]);
+    expect(await titles({ type: "page" })).toEqual(["About us"]);
+    expect(await titles({ status: "draft" })).toEqual(["Not ready"]);
+    expect(await store.query({ perPage: 2, page: 2 })).toMatchObject({
+      total: 5,
+      page: 2,
+      pages: 3,
+      perPage: 2,
+    });
+    expect(
+      (await store.recent(2)).map(({ type, articles, total }) => [
+        type,
+        articles.map((article) => article.slug),
+        total,
+      ]),
+    ).toEqual([
+      ["article", ["second", "wip"], 4],
+      ["page", ["about-us"], 1],
+    ]);
+    expect((await store.recent())[0]?.articles).toHaveLength(4);
+    expect(await store.filters()).toEqual({
+      types: ["article", "page"],
+      authors: ["Matt Scheurich", "Zoë Ångström"],
+      tags: ["News", "Release Notes"],
+    });
+  });
+
+  it("should keep the index up to date as articles are saved, moved and deleted", async () => {
+    const { store } = await copySite();
+    const slugs = async () =>
+      (await listAll(store))
+        .map((article) => `${article.type}/${article.slug}`)
+        .sort();
+    const before = await slugs();
+    await store.save(data({ slug: "fresh", title: "Fresh" }));
+    expect(await slugs()).toEqual([...before, "article/fresh"].sort());
+    await store.save(data({ type: "page", slug: "moved", title: "Moved" }), {
+      type: "article",
+      slug: "fresh",
+    });
+    expect(await slugs()).toEqual([...before, "page/moved"].sort());
+    await store.save(data({ type: "page", slug: "moved", title: "Renamed" }), {
+      type: "page",
+      slug: "moved",
+    });
+    expect((await store.query({ search: "renamed" })).total).toBe(1);
+    await store.remove("page", "moved");
+    expect(await slugs()).toEqual(before);
+  });
+
+  it("should watch the articles folder for changes by default, until closed", async () => {
+    const { dir } = await copySite();
+    let updates = 0;
+    const store = new ArticleStore(
+      await loadSiteConfig({ siteDir: dir }),
+      undefined,
+      { watchDelay: 10, onWatchUpdate: () => updates++ },
+    );
+    expect((await store.query({ search: "outside" })).total).toBe(0);
+    await mkdir(join(dir, "articles/article/outside"));
+    // Written again until seen, as the watcher can take a moment to start
+    await vi.waitFor(
+      async () => {
+        await writeFile(
+          join(dir, "articles/article/outside/article.md"),
+          `<!--yaml\ndate: ${DATE}\n-->\n# Written outside`,
+        );
+        expect(updates).toBeGreaterThan(0);
+        expect((await store.query({ search: "outside" })).total).toBe(1);
+      },
+      { timeout: 5000, interval: 100 },
+    );
+    store.close();
+    // Closing a store that never read its index does nothing
+    (await openStore(dir)).close();
   });
 
   it("should give the configured article types with their labels", async () => {
@@ -228,7 +354,7 @@ describe("ArticleStore", () => {
       `articlesDir: content\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
     );
     const store = await openStore(dir);
-    expect((await store.list()).length).toBeGreaterThan(0);
+    expect((await listAll(store)).length).toBeGreaterThan(0);
     await store.save(data({ slug: "in-content" }));
     expect(
       await readFile(
@@ -238,10 +364,10 @@ describe("ArticleStore", () => {
     ).toContain("# ");
   });
 
-  it("should list nothing when there is no articles folder", async () => {
+  it("should find nothing when there is no articles folder", async () => {
     const dir = await mkdtemp(join(tmpdir(), "edaha-empty-"));
     await cp(join(FIXTURE, "edahaconfig.yml"), join(dir, "edahaconfig.yml"));
-    expect(await (await openStore(dir)).list()).toEqual([]);
+    expect(await listAll(await openStore(dir))).toEqual([]);
   });
 
   it("should list an article titled by its slug when it has no title", async () => {
@@ -251,9 +377,9 @@ describe("ArticleStore", () => {
       join(dir, "articles/article/untitled/article.md"),
       `<!--yaml\ndate: ${DATE}\n-->\nText`,
     );
-    expect((await store.list()).find((a) => a.slug === "untitled")?.title).toBe(
-      "untitled",
-    );
+    expect(
+      (await listAll(store)).find((a) => a.slug === "untitled")?.title,
+    ).toBe("untitled");
   });
 
   it("should read an article for editing", async () => {

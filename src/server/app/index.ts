@@ -13,9 +13,43 @@ import {
 import { bodyBaseUrl, EditorError, type ArticleStore } from "../store/index.ts";
 import type {
   ArticleLocation,
+  ArticleQuery,
+  ArticleStatus,
   EditorArticleData,
   EmbedPreview,
 } from "../types/index.ts";
+
+/** The statuses an article query can filter by */
+const STATUSES: readonly ArticleStatus[] = ["published", "draft", "unlisted"];
+
+/**
+ * Read an article query from a URL's search parameters, e.g. "?search=hello&type=news&sort=title&page=2". Unknown
+ * statuses and sorts, and pages that aren't numbers, are left out.
+ *
+ * @example
+ * articleQuery(new URLSearchParams("search=hello&page=2")); // { search: "hello", page: 2 }
+ */
+export const articleQuery = (params: URLSearchParams): ArticleQuery => {
+  const text = (name: string) => params.get(name) || undefined;
+  const number = (name: string) => {
+    const value = Number(params.get(name) || NaN);
+    return Number.isFinite(value) ? value : undefined;
+  };
+  const status = text("status") as ArticleStatus | undefined;
+  const sort = text("sort");
+  return Object.fromEntries(
+    Object.entries({
+      search: text("search"),
+      type: text("type"),
+      author: text("author"),
+      tag: text("tag"),
+      status: status && STATUSES.includes(status) ? status : undefined,
+      sort: sort === "title" || sort === "date" ? sort : undefined,
+      page: number("page"),
+      perPage: number("perPage"),
+    }).filter(([, value]) => value !== undefined),
+  );
+};
 
 /** Options for the editor API */
 export interface EditorAppOptions {
@@ -107,7 +141,13 @@ export const createEditorApp = (
       : c.json({ error: error.message }, 500),
   );
 
-  app.get("/api/articles", async (c) => c.json(await store.list()));
+  app.get("/api/articles", async (c) =>
+    c.json(await store.query(articleQuery(new URL(c.req.url).searchParams))),
+  );
+
+  app.get("/api/articles/recent", async (c) => c.json(await store.recent()));
+
+  app.get("/api/articles/filters", async (c) => c.json(await store.filters()));
 
   app.get("/api/types", async (c) => c.json(await store.types()));
 

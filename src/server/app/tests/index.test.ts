@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { PREVIEW_CSP, createEditorApp, previewCsp } from "..";
+import { PREVIEW_CSP, articleQuery, createEditorApp, previewCsp } from "..";
 import { ArticleStore } from "../../store";
 import { loadSiteConfig } from "../../../generator/configFile";
 
@@ -16,7 +16,11 @@ const ORIGIN = "http://127.0.0.1:5180";
 const setup = async () => {
   const dir = await mkdtemp(join(tmpdir(), "edaha-app-"));
   await cp(FIXTURE, dir, { recursive: true });
-  const store = new ArticleStore(await loadSiteConfig({ siteDir: dir }));
+  const store = new ArticleStore(
+    await loadSiteConfig({ siteDir: dir }),
+    undefined,
+    { watch: false },
+  );
   return {
     dir,
     store,
@@ -63,14 +67,39 @@ describe("createEditorApp", () => {
     expect(await (await app.request("/api/types")).json()).toEqual({
       article: { labelSingle: "Article", labelPlural: "Articles" },
     });
-    const list = (await (await app.request("/api/articles")).json()) as {
-      slug: string;
-    }[];
-    expect(list.map((a) => a.slug)).toContain("first");
+    const page = (await (await app.request("/api/articles")).json()) as {
+      articles: { slug: string }[];
+      total: number;
+    };
+    expect(page.articles.map((a) => a.slug)).toContain("first");
+    expect(page.total).toBe(5);
     const article = (await (
       await app.request("/api/articles/article/first")
     ).json()) as { title: string };
     expect(article.title).toBe("First article");
+  });
+
+  it("should search articles, and give each type's recent articles and the filters' choices", async () => {
+    const { app } = await setup();
+    const found = (await (
+      await app.request(
+        "/api/articles?search=article&tag=news&sort=title&perPage=1&page=2",
+      )
+    ).json()) as { articles: { slug: string }[]; total: number; page: number };
+    expect(found).toMatchObject({ total: 2, page: 2 });
+    expect(found.articles.map((a) => a.slug)).toEqual(["second"]);
+    const recent = (await (
+      await app.request("/api/articles/recent")
+    ).json()) as { type: string; total: number }[];
+    expect(recent.map(({ type, total }) => [type, total])).toEqual([
+      ["article", 4],
+      ["page", 1],
+    ]);
+    expect(await (await app.request("/api/articles/filters")).json()).toEqual({
+      types: ["article", "page"],
+      authors: ["Matt Scheurich", "Zoë Ångström"],
+      tags: ["News", "Release Notes"],
+    });
   });
 
   it("should create, save, move and delete articles", async () => {
@@ -103,7 +132,7 @@ describe("createEditorApp", () => {
 
   it("should answer unexpected errors with 500", async () => {
     const { app, store } = await setup();
-    vi.spyOn(store, "list").mockRejectedValue(new Error("disk on fire"));
+    vi.spyOn(store, "query").mockRejectedValue(new Error("disk on fire"));
     const response = await app.request("/api/articles");
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "disk on fire" });
@@ -375,6 +404,35 @@ export default {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: 'Expected a file in the "file" field',
+    });
+  });
+});
+
+describe("articleQuery", () => {
+  it("should read a query from search parameters, leaving out what it can't use", () => {
+    expect(
+      articleQuery(
+        new URLSearchParams(
+          "search=hi&type=news&author=Matt&tag=News&status=draft&sort=title&page=2&perPage=10",
+        ),
+      ),
+    ).toEqual({
+      search: "hi",
+      type: "news",
+      author: "Matt",
+      tag: "News",
+      status: "draft",
+      sort: "title",
+      page: 2,
+      perPage: 10,
+    });
+    expect(
+      articleQuery(
+        new URLSearchParams("search=&status=gone&sort=random&page=two"),
+      ),
+    ).toEqual({});
+    expect(articleQuery(new URLSearchParams("sort=date"))).toEqual({
+      sort: "date",
     });
   });
 });
