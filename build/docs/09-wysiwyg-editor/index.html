@@ -41,7 +41,13 @@
 <p>The editor fills the window in three columns, each scrolling on its own: the list of articles, the article’s title and body, and its buttons and settings.</p>
 <p>On a phone or a narrow window, the list of articles opens from the menu button at the top, and <strong>Save</strong>, <strong>Reset…</strong> and <strong>Delete…</strong> sit in a bar at the bottom of the screen. Its <strong>︽</strong> button opens the article’s settings over the whole screen; <strong>︾</strong> or Escape closes them.</p>
 <h2 id="finding-articles">Finding articles</h2>
-<p>The list of articles shows every article, including drafts, grouped by type with the newest first. Each shows its title, then its type and slug, status and date. Use <strong>Type</strong> to show one type only, and pick an article to open it.</p>
+<p>The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, <strong>Show all</strong> opens them all in the article browser.</p>
+<p>To find any other article:</p>
+<ul>
+<li>Type in <strong>Search titles</strong> to see up to 10 articles whose titles contain your text. <strong>See all results</strong> shows every match in the article browser. Press Escape to clear the search.</li>
+<li>Choose <strong>All articles</strong> (the button beside the search) to open the article browser. Search titles, filter by <strong>Type</strong>, <strong>Author</strong>, <strong>Tag</strong> and <strong>Status</strong>, and sort by date (newest first) or title (A–Z). It shows 50 articles at a time; <strong>Previous</strong> and <strong>Next</strong> move between pages.</li>
+</ul>
+<p>The list follows changes made outside the editor too, e.g. articles added by someone else or edited in a text editor.</p>
 <h2 id="writing-an-article">Writing an article</h2>
 <ol>
 <li>Choose <strong>New article</strong>, or open an existing one.</li>
@@ -123,6 +129,7 @@
 </code></pre>
 <p>It finds the site’s <a href="/docs/03-configuration/#where-it-is-found">config file</a> like <code>edaha build</code> does, and takes the same <code>--config</code> and <code>--dir</code> options, plus <code>--port</code> (default <code>5180</code>). It only listens on <code>127.0.0.1</code>, as it reads and writes the site’s files: <strong>never deploy it</strong>. Its API only accepts changes from the editor page itself.</p>
 <p>The editor reads and writes the same <code>article.md</code> files you would edit by hand. A saved article keeps its header format (<code>yaml</code>, <code>yml</code> or <code>json</code>); new articles get <code>yaml</code>. Settings edaha.md doesn’t know are left out when saving. Changes to the config file and templates show without restarting it.</p>
+<p>To list and search articles quickly, the editor keeps an index of every article’s settings in memory: it reads them all when it starts, updates an article’s entry when it saves, moves or deletes it, and watches the articles folder for changes made outside it. The article files stay the only source of truth: no database or index file is written. Recently changed means when an article’s <code>article.md</code> file last changed.</p>
 <p>Preview pages are sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor’s API. Frames are only allowed from the origins that embeds list in <code>frameSources</code>.</p>
 <h3 id="extending-the-editor-with-custom-embeds">Extending the editor with custom embeds</h3>
 <p>Embeds you add to a JavaScript config file’s <code>embeds</code> setting work in the editor too: the <strong>Embed</strong> button previews them, and the preview pages render them as the website will.</p>

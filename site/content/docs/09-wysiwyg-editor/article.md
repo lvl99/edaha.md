@@ -19,7 +19,14 @@ On a phone or a narrow window, the list of articles opens from the menu button a
 
 ## Finding articles
 
-The list of articles shows every article, including drafts, grouped by type with the newest first. Each shows its title, then its type and slug, status and date. Use **Type** to show one type only, and pick an article to open it.
+The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, **Show all** opens them all in the article browser.
+
+To find any other article:
+
+- Type in **Search titles** to see up to 10 articles whose titles contain your text. **See all results** shows every match in the article browser. Press Escape to clear the search.
+- Choose **All articles** (the button beside the search) to open the article browser. Search titles, filter by **Type**, **Author**, **Tag** and **Status**, and sort by date (newest first) or title (A–Z). It shows 50 articles at a time; **Previous** and **Next** move between pages.
+
+The list follows changes made outside the editor too, e.g. articles added by someone else or edited in a text editor.
 
 ## Writing an article
 
@@ -83,6 +90,8 @@ npx edaha editor
 It finds the site's [config file](/docs/03-configuration/#where-it-is-found) like `edaha build` does, and takes the same `--config` and `--dir` options, plus `--port` (default `5180`). It only listens on `127.0.0.1`, as it reads and writes the site's files: **never deploy it**. Its API only accepts changes from the editor page itself.
 
 The editor reads and writes the same `article.md` files you would edit by hand. A saved article keeps its header format (`yaml`, `yml` or `json`); new articles get `yaml`. Settings edaha.md doesn't know are left out when saving. Changes to the config file and templates show without restarting it.
+
+To list and search articles quickly, the editor keeps an index of every article's settings in memory: it reads them all when it starts, updates an article's entry when it saves, moves or deletes it, and watches the articles folder for changes made outside it. The article files stay the only source of truth: no database or index file is written. Recently changed means when an article's `article.md` file last changed.
 
 Preview pages are sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API. Frames are only allowed from the origins that embeds list in `frameSources`.
 

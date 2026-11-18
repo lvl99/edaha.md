@@ -221,7 +221,8 @@ The full types are exported as `TemplateData*`.
 
 `edaha editor` runs a local WYSIWYG editor for a site's articles. It only listens on `127.0.0.1` and must never be deployed.
 
-- **Articles:** it lists every article (including drafts), grouped by type with the newest first. It edits the title, template, body and settings.
+- **Articles:** the nav shows each type's 5 most recently changed articles (including drafts) and a title search. The article browser ("All articles") finds any article by title, type, author, tag and status, sorted by title or date, 50 at a time. It edits the title, template, body and settings.
+- **Index:** the editor keeps an index of the articles in memory, read when it starts and updated when it saves, moves or deletes an article. It watches the articles folder, so changes made outside the editor (e.g. a `git pull`) show too. Nothing is written besides the articles themselves.
 - **Body:** rich text with images, links, tables, small and big text, collapsible details blocks, raw blocks, embeds and the read more break.
 - **Files:** it uploads images and attachments into the article's folder. Uploads need the article to be saved first.
 - **Moving:** changing an article's type or slug moves its folder.
