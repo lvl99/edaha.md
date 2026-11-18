@@ -736,7 +736,7 @@ export class EdahaArticle extends LitElement {
         void this.save();
       }}
     >
-      <main>
+      <main class="edaha-article-main">
         <edaha-article-data-field
           name="title"
           label="Title"
