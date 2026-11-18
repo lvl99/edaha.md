@@ -160,7 +160,8 @@ export class EdahaMarkdown extends LitElement {
 
   /** Take the text box's text as the value, announcing it if it changed */
   private sync(): void {
-    const text = this.textarea?.value ?? this.value;
+    // Only called once the text box is rendered
+    const text = (this.textarea as HTMLTextAreaElement).value;
     if (text === this.value) return;
     this.value = text;
     this.dispatchEvent(new Event("markdown-change", { bubbles: true }));

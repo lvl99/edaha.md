@@ -258,8 +258,10 @@ export const setLink = (edit: TextEdit, url: string): TextEdit | undefined => {
   const { value, start, end } = edit;
   const selected = value.slice(start, end);
   const link = LINK.exec(selected);
-  if (!url) return link ? replace(value, start, end, link[1] ?? "") : undefined;
-  const text = link ? (link[1] ?? "") : selected || url;
+  // A link's text is always matched, if empty
+  if (!url)
+    return link ? replace(value, start, end, link[1] as string) : undefined;
+  const text = link ? (link[1] as string) : selected || url;
   return replace(value, start, end, `[${text}](${url})`, 1, 1 + text.length);
 };
 
@@ -324,12 +326,9 @@ const formatTable = (rows: string[][]) =>
  */
 export const tableAt = ({ value, start }: TextEdit): Table | undefined => {
   const lines = value.split("\n");
-  let offset = 0;
-  let line = 0;
-  while (offset + (lines[line]?.length ?? 0) < start) {
-    offset += (lines[line]?.length ?? 0) + 1;
-    line++;
-  }
+  // The cursor's line, and where it starts
+  const line = value.slice(0, start).split("\n").length - 1;
+  const offset = value.lastIndexOf("\n", start - 1) + 1;
   const isRow = (index: number) => lines[index]?.trim().startsWith("|");
   if (!isRow(line)) return undefined;
   let first = line;
@@ -337,14 +336,17 @@ export const tableAt = ({ value, start }: TextEdit): Table | undefined => {
   let last = line;
   while (isRow(last + 1)) last++;
   const rows = lines.slice(first, last + 1).map(tableCells);
-  if (rows.length < 2 || !rows[1]?.every((cell) => DELIMITER.test(cell)))
+  if (
+    rows.length < 2 ||
+    !(rows[1] as string[]).every((cell) => DELIMITER.test(cell))
+  )
     return undefined;
   const from = lines.slice(0, first).join("\n").length + (first ? 1 : 0);
   const to = from + lines.slice(first, last + 1).join("\n").length;
   // Columns are counted by the pipes before the cursor on its line, after the first
-  const beforeCursor = (lines[line] ?? "").slice(0, start - offset);
+  const beforeCursor = value.slice(offset, start);
   const pipes = beforeCursor.trim().split(/(?<!\\)\|/).length - 1;
-  const columns = rows[0]?.length ?? 1;
+  const columns = (rows[0] as string[]).length;
   return {
     from,
     to,
@@ -364,13 +366,13 @@ const replaceTable = (
 ): TextEdit => {
   const text = formatTable(rows);
   const lineStart = formatTable(rows.slice(0, row)).length + (row ? 1 : 0);
-  const cells = rows[row] ?? [];
+  const cells = rows[row] as string[];
   const cellEnd =
     2 +
     cells
       .slice(0, column)
       .reduce((length, cell) => length + cell.length + 3, 0) +
-    (cells[column]?.length ?? 0);
+    (cells[column] as string).length;
   return replace(
     value,
     from,
@@ -408,7 +410,7 @@ export const addTableRow = (edit: TextEdit): TextEdit | undefined => {
   if (!table) return undefined;
   const at = Math.max(table.row + 1, 2);
   const rows = [...table.rows];
-  rows.splice(at, 0, Array<string>(rows[0]?.length ?? 1).fill(""));
+  rows.splice(at, 0, Array<string>((rows[0] as string[]).length).fill(""));
   return replaceTable(edit.value, table, rows, at, 0);
 };
 
@@ -449,7 +451,7 @@ export const removeTableRow = (edit: TextEdit): TextEdit | undefined => {
 export const removeTableColumn = (edit: TextEdit): TextEdit | undefined => {
   const table = tableAt(edit);
   if (!table) return undefined;
-  if ((table.rows[0]?.length ?? 0) <= 1) return removeTable(edit);
+  if ((table.rows[0] as string[]).length <= 1) return removeTable(edit);
   const rows = table.rows.map((cells) =>
     cells.filter((_, c) => c !== table.column),
   );
@@ -458,7 +460,7 @@ export const removeTableColumn = (edit: TextEdit): TextEdit | undefined => {
     table,
     rows,
     table.row,
-    Math.min(table.column, (rows[0]?.length ?? 1) - 1),
+    Math.min(table.column, (rows[0] as string[]).length - 1),
   );
 };
 
