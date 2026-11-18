@@ -1,10 +1,10 @@
-name: edaha.md 🍂
+name: edaha.md
 description: Static site generator powered by TypeScript and markdown
 path: ""
 articlesDir: site/content
 templatesDir: site/templates
 staticDir: site/static
-outputDir: site/build
+outputDir: build
 siteUrl: https://lvl99.github.io/edaha.md
 types:
   news:
@@ -23,4 +23,7 @@ types:
     labelSingle: Documentation
     labelPlural: Documentation
     generate:
+      list: true
+      feed: true
       author: false
+      tag: false

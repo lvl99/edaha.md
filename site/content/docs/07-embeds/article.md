@@ -19,7 +19,7 @@ Here is the launch video:
 
 When the site is built, the URL is replaced with the embed's HTML. In the [WYSIWYG editor](/docs/09-wysiwyg-editor/), the **Embed** button inserts one and shows a preview.
 
-edaha.md comes with two embeds:
+edaha.md comes with two built-in embeds:
 
 | Embed    | URLs                                                      | Notes                                                             |
 | -------- | --------------------------------------------------------- | ----------------------------------------------------------------- |
@@ -32,7 +32,9 @@ Embed blocks inside code blocks and inline code are left alone, so you can write
 
 ## Creating your own
 
-An embed is an **embed renderer**: an object that says which URLs it handles and turns them into HTML. You can render anything from the URL: its host, path and query parameters are all yours to read.
+An embed is an **embed renderer**: an object that says which URLs it handles and turns them into HTML.
+
+You can render anything from the URL: its host, path and query parameters are all yours to read.
 
 ```js
 /** @type {import("@lvl99dotcom/edaha.md").EmbedRenderer} */

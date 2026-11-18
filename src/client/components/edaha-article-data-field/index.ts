@@ -246,7 +246,7 @@ export class EdahaArticleDataField extends LitElement {
         this.allowclear && this.value
           ? html`<button
               type="button"
-              class="clear"
+              class="btn clear"
               ?disabled=${this.disabled}
               @click=${() => this.change("")}
             >

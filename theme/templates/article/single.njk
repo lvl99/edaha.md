@@ -17,9 +17,12 @@
   <h1 class="article-title">{{ article.title }}</h1>
 
   <div class="article-body">
-    {{ article.bodyHtml | safe }}
+    {% block body %}
+      {{ article.bodyHtml | safe }}
+    {% endblock %}
   </div>
 
+  {% block attachments %}
   {% if article.attachments.length %}
   <h2>Attachments</h2>
   <ul class="article-attachments">
@@ -34,6 +37,7 @@
     {% endfor %}
   </ul>
   {% endif %}
+  {% endblock %}
 </article>
 {% endblock %}
 

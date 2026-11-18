@@ -3,48 +3,68 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{% block head_title %}{{ site.name }}{% endblock %}</title>
-    <meta name="description" content="{% block head_description %}{{ site.description }}{% endblock %}" />
+    <title>{% block headTitle %}{{ site.name }}{% endblock %}</title>
+    <meta name="description" content="{% block headDescription %}{{ site.description }}{% endblock %}" />
+
     {% if list and list.hasFeed %}
     <link rel="alternate" type="application/rss+xml" title="{{ list.name }} | {{ site.name }}" href="{{ list.feedUrl }}" />
     {% endif %}
-    <link rel="stylesheet" href="/site.css" />
+
+    {% block headImports %}
+      <link rel="stylesheet" href="{{ site.path }}/base.css" />
+    {% endblock %}
   </head>
-  <body class="{% block bodyClass %}{% endblock %}">
+  <body class="{% if type %}{{ type }} {% endif %}{% block bodyClass %}{% endblock %}">
     {% block header %}
-    <header class="site-header">
-      <p class="site-title"><a href="{{ site.path }}">{{ site.name }}</a></p>
-    </header>
+      <header class="site-header">
+        <h1 class="site-title">
+          <a href="{{ site.url }}">{{ site.name }}<span class="leaf-device"></span></a>
+        </h1>
+      </header>
+      {% block headerNav %}{% endblock %}
     {% endblock %}
 
-    <div class="site-content">
-      <main class="site-main">
-        {% block breadcrumb %}
-          <nav class="site-breadcrumb" aria-label="Breadcrumb">
-            <ul>
-              <li><a href="{{ site.path }}">{{ site.name }}</a></li>
-              {% block breadcrumbItems %}{% endblock %}
-            </ul>
+    {% block content %}
+      <div class="site-content">
+        <main class="site-main">
+          {% block breadcrumb %}
+            <nav class="site-breadcrumb" aria-label="Breadcrumb">
+              <ul>
+                <li><a href="{{ site.path }}">{{ site.name }}</a></li>
+                {% block breadcrumbItems %}{% endblock %}
+              </ul>
+            </nav>
+          {% endblock %}
+
+          {% block main %}{% endblock %}
+        </main>
+
+        {% block aside %}{% endblock %}
+      </div>
+    {% endblock %}
+
+    {% block footer %}
+      <footer class="site-footer">
+        {% block footerNav %}
+          <nav aria-label="Sections">
+            {% for name, type in site.types %}
+              {% if type.generate.list %}
+                <a href="{{ type.url }}">{{ type.labelPlural }}</a>
+              {% endif %}
+            {% endfor %}
           </nav>
         {% endblock %}
 
-        {% block main %}{% endblock %}
-      </main>
-
-      {% block aside %}{% endblock %}
-    </div>
-
-    {% block footer %}
-    <footer class="site-footer">
-      <nav aria-label="Sections">
-        {% for name, type in site.types %}
-        {% if type.generate.list %}
-        <a href="{{ type.url }}">{{ type.labelPlural }}</a>
-        {% endif %}
-        {% endfor %}
-      </nav>
-      <p class="colophon">{{ site.name }}</p>
-    </footer>
+        {% block colophon %}
+          <p class="colophon">
+            <a href="{{ site.url }}">{{ site.name }}</a>
+            &middot;
+            Built with <a href="https://lvl99.github.io/edaha.md" target="_blank" rel="noopener noreferrer">edaha.md</a>
+          </p>
+        {% endblock %}
+      </footer>
     {% endblock %}
+
+    {% block bodyImports %}{% endblock %}
   </body>
 </html>

@@ -6,22 +6,47 @@
   --colour-background: #ffffff;
   --colour-surface: #f4f4f6;
   --colour-border: #d8d8de;
-  --colour-link: #1f5fbf;
-  --colour-link-hover: #123d7d;
-  --colour-focus: #1f5fbf;
+  --colour-link: #bc4501;
+  --colour-link-hover: #db5a10;
+  --colour-focus: #db5a10;
+  --font-size-base: 16px;
+  --font-size-title: 48px;
+  --font-size-h1: 32px;
+  --font-size-h2: 28px;
+  --font-size-h3: 24px;
+  --font-size-h4: 20px;
+  --font-size-h5: 18px;
+  --font-size-h6: 16px;
 }
 
+/* Dark colours: the device's choice unless the theme switcher chose light, or the theme switcher's choice */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --colour-text: #ececf0;
     --colour-muted: #a6a6ae;
     --colour-background: #141416;
     --colour-surface: #1f1f23;
     --colour-border: #38383f;
-    --colour-link: #8ab4ff;
-    --colour-link-hover: #b8d1ff;
-    --colour-focus: #8ab4ff;
+    --colour-link: #dc6d2c;
+    --colour-link-hover: #fda26d;
+    --colour-focus: #fda26d;
   }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --colour-text: #ececf0;
+  --colour-muted: #a6a6ae;
+  --colour-background: #141416;
+  --colour-surface: #1f1f23;
+  --colour-border: #38383f;
+  --colour-link: #dc6d2c;
+  --colour-link-hover: #fda26d;
+  --colour-focus: #fda26d;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 *,
@@ -34,7 +59,7 @@ body {
   margin: 0;
   background: var(--colour-background);
   color: var(--colour-text);
-  font-family: "Andale Mono", mono;
+  font-family: Arial, sans-serif;
   font-size: 1.0625rem;
   line-height: 1.6;
 }
@@ -48,9 +73,34 @@ a:hover {
 }
 
 a:focus-visible,
+button:focus-visible,
 .button:focus-visible {
   outline: 3px solid var(--colour-focus);
   outline-offset: 2px;
+}
+
+h1 {
+  font-size: var(--font-size-h1);
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+}
+
+h3 {
+  font-size: var(--font-size-h3);
+}
+
+h4 {
+  font-size: var(--font-size-h4);
+}
+
+h5 {
+  font-size: var(--font-size-h5);
+}
+
+h6 {
+  font-size: var(--font-size-h6);
 }
 
 img {
@@ -62,6 +112,27 @@ pre {
   overflow-x: auto;
   padding: 1rem;
   background: var(--colour-surface);
+}
+
+code {
+  background: var(--colour-surface);
+  color: var(--colour-muted);
+  font-size: 0.9em;
+  padding: 0.2em;
+}
+
+/* Hidden on screen but read by screen readers, e.g. extra context for "Read more" links */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* Raw content is shown as it is written: in the page's own font, keeping its spaces and line breaks */
@@ -85,6 +156,20 @@ td {
   border: 1px solid var(--colour-border);
 }
 
+aside {
+  color: var(--colour-muted);
+}
+
+/* Switches between the light and dark theme (see theme-switcher.js) */
+.theme-switcher {
+  padding: 0.25rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
 .button {
   display: inline-block;
   padding: 0.5rem 1rem;
@@ -98,20 +183,6 @@ td {
 .button:hover {
   border-color: var(--colour-link);
   color: var(--colour-text);
-}
-
-/* Hidden on screen but read by screen readers, e.g. extra context for "Read more" links */
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  border: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 .site-header,
@@ -177,6 +248,20 @@ td {
   margin-inline: 0.5rem;
 }
 
+.site-breadcrumb,
+.site-breadcrumb a:link,
+.site-breadcrumb a:visited {
+  color: var(--colour-muted);
+  text-decoration: none;
+}
+
+.site-breadcrumb a:hover,
+.site-breadcrumb a:active,
+.site-breadcrumb a[aria-current] {
+  color: var(--colour-link-hover);
+  text-decoration: none;
+}
+
 .article-meta,
 .article-updated {
   color: var(--colour-muted);
@@ -228,4 +313,16 @@ nav[aria-label="Pages"] ul {
 
 .colophon {
   font-size: 0.875rem;
+}
+
+.colophon a:link,
+.colophon a:visited {
+  color: var(--colour-muted);
+  text-decoration: none;
+}
+
+.colophon a:hover,
+.colophon a:active {
+  color: var(--colour-link-hover);
+  text-decoration: none;
 }

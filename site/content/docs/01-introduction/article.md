@@ -41,7 +41,7 @@ You can choose what is generated for each article type, so the same tool builds 
 
 ## What's included
 
-- **Markdown articles** with settings in a short header: date, author, tags, thumbnail, attachments and more. See [Articles](/docs/04-articles/).
+- **Markdown articles** with a HTML comment metadata header: date, author, tags, thumbnail, attachments and more. See [Articles](/docs/04-articles/).
 - **Article types** with their own URL paths, labels and generated pages. See [Configuration](/docs/03-configuration/).
 - **Lists and RSS feeds** by type, tag and author. See [Lists](/docs/06-lists/).
 - **Nunjucks templates**: a neutral, accessible default theme that you can override one file at a time. See [Templating](/docs/05-templating/).

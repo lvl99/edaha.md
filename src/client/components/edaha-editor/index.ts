@@ -16,12 +16,17 @@ import {
   type EdahaToasts,
   type ToastMessage,
 } from "../edaha-toasts/index.ts";
+import {
+  onDeviceThemeChange,
+  themeSwitcherLabel,
+  toggleTheme,
+} from "../../theme/index.ts";
 
 /**
  * Describe an article in the list, e.g. "article/hello · published · 2026-10-19".
  */
 const describe = (article: ArticleSummary) =>
-  [`${article.type}/${article.slug}`, article.status, article.date.slice(0, 10)]
+  [article.slug, article.status, article.date.slice(0, 10)]
     .filter(Boolean)
     .join(" · ");
 
@@ -125,6 +130,9 @@ export class EdahaEditor extends LitElement {
     if (this.form()?.dirty) event.preventDefault();
   };
 
+  /** Stops updating the theme switcher's label when the device's light or dark setting changes */
+  private stopWatchingTheme?: () => void;
+
   /** Show toasts fired by the form */
   private readonly onToast = (event: Event) =>
     this.toast((event as CustomEvent<ToastMessage>).detail);
@@ -148,6 +156,8 @@ export class EdahaEditor extends LitElement {
     super.connectedCallback();
     window.addEventListener("beforeunload", this.onBeforeUnload);
     this.addEventListener(TOAST_EVENT, this.onToast);
+    // The theme switcher's label says which theme it switches to, which follows the device until one is chosen
+    this.stopWatchingTheme = onDeviceThemeChange(() => this.requestUpdate());
     void this.refresh();
   }
 
@@ -155,6 +165,7 @@ export class EdahaEditor extends LitElement {
     super.disconnectedCallback();
     window.removeEventListener("beforeunload", this.onBeforeUnload);
     this.removeEventListener(TOAST_EVENT, this.onToast);
+    this.stopWatchingTheme?.();
   }
 
   /** The article form, while shown */
@@ -293,17 +304,28 @@ export class EdahaEditor extends LitElement {
       this.selected?.type === article.type &&
       this.selected.slug === article.slug;
     return html`
-      <nav aria-label="Articles">
-        <h1>Articles</h1>
-        <p>
-          <button type="button" class="new" @click=${() => void this.create()}>
+      <nav class="edaha-editor-nav" aria-label="Articles">
+        <button
+          type="button"
+          class="theme-switcher"
+          title=${themeSwitcherLabel()}
+          @click=${() => {
+            toggleTheme();
+            this.requestUpdate();
+          }}
+        >
+          <span class="visually-hidden">${themeSwitcherLabel()}</span>
+        </button>
+        <h1 class="edaha-title">edaha.md<span class="leaf-device"></span></h1>
+        <div class="edaha-editor-new">
+          <button type="button" class="btn" @click=${() => void this.create()}>
             New article
           </button>
-        </p>
-        <p>
-          <label for="type-filter">Type</label>
+        </div>
+        <div class="edaha-editor-filters">
+          <label for="filter-type">View</label>
           <select
-            id="type-filter"
+            id="filter-type"
             @change=${(event: Event) =>
               (this.typeFilter = (event.target as HTMLSelectElement).value)}
           >
@@ -318,17 +340,21 @@ export class EdahaEditor extends LitElement {
                 </option>`,
             )}
           </select>
-        </p>
+        </div>
         ${groupArticles(this.articles, this.types, this.typeFilter).map(
           (group) =>
-            html`<div class="article-group" data-type=${group.type}>
-              <h2>${group.label}</h2>
-              <ul>
+            html`<div
+              class="edaha-editor-article-group"
+              data-type=${group.type}
+            >
+              <h2 class="edaha-editor-article-group-title">${group.label}</h2>
+              <ul class="edaha-editor-article-group-list">
                 ${group.articles.map(
                   (article) =>
-                    html`<li>
+                    html`<li class="edaha-editor-article-group-item">
                       <a
                         href="#${article.type}/${article.slug}"
+                        class="edaha-editor-article-group-item-title"
                         aria-current=${isSelected(article) ? "page" : "false"}
                         @click=${(event: Event) => {
                           event.preventDefault();
@@ -336,7 +362,9 @@ export class EdahaEditor extends LitElement {
                         }}
                         >${article.title}</a
                       >
-                      <small>${describe(article)}</small>
+                      <small class="edaha-editor-article-group-item-meta"
+                        >${describe(article)}</small
+                      >
                       ${article.error ? html`<small class="error">${article.error}</small>` : nothing}
                     </li>`,
                 )}
@@ -344,7 +372,7 @@ export class EdahaEditor extends LitElement {
             </div>`,
         )}
       </nav>
-      <section>
+      <section class="edaha-editor-composer">
         ${
           this.editing
             ? keyed(

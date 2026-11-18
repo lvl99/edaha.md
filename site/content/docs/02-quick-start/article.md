@@ -85,9 +85,11 @@ To look at the website on your computer, serve the folder with any static file s
 
 ```sh
 npx edaha editor
+yarn edaha editor
+pnpx edaha editor
 ```
 
-Open <http://127.0.0.1:5180> to write and edit articles without touching Markdown. See [WYSIWYG editor](/docs/09-wysiwyg-editor/).
+Open <http://127.0.0.1:8449> to write and edit articles without touching Markdown. See [WYSIWYG editor](/docs/09-wysiwyg-editor/).
 
 ## Next steps
 

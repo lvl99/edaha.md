@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>edaha.md</title>
+    <meta name="description" content="Static site generator powered by TypeScript and markdown" />
+
+
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body class="docs ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="http://127.0.0.1:8449">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/">Home</a></li>
+<li><a href="/docs/">Documentation</a></li>
+<li><a href="/docs/09-wysiwyg-editor/" aria-current="page">WYSIWYG editor</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">WYSIWYG editor</h1>
+
+  <div class="article-body">
+      <p>edaha.md comes with an editor that lets you write and manage your website’s articles in your browser, without editing Markdown files. What you see as you write is what your visitors will see.</p>
+<h2 id="opening-the-editor">Opening the editor</h2>
+<p>Someone who manages the project starts the editor on your computer (see <a href="#starting-the-editor">Starting the editor</a>). Then open <a href="http://127.0.0.1:5180">http://127.0.0.1:5180</a> in your browser.</p>
+<p>The editor only works on your own computer: nobody else can see it or use it.</p>
+<h2 id="finding-articles">Finding articles</h2>
+<p>The list of articles shows every article, including drafts, grouped by type with the newest first. Each shows its title, then its type and slug, status and date. Use <strong>Type</strong> to show one type only, and pick an article to open it.</p>
+<h2 id="writing-an-article">Writing an article</h2>
+<ol>
+<li>Choose <strong>New article</strong>, or open an existing one.</li>
+<li>Give it a <strong>Title</strong>.</li>
+<li>Write in the <strong>Body</strong>. The toolbar formats your text:
+<ul>
+<li><strong>Bold</strong>, <strong>Italic</strong>, <strong>Small</strong> and <strong>Big</strong> text;</li>
+<li><strong>Link</strong>, <strong>Heading</strong> and <strong>Subheading</strong>;</li>
+<li><strong>Bullet list</strong>, <strong>Numbered list</strong>, <strong>Quote</strong> and <strong>Code</strong>;</li>
+<li><strong>Details</strong>: a block readers can open and close;</li>
+<li><strong>Image URL</strong>, <strong>Upload image</strong> and <strong>Table</strong>;</li>
+<li><strong>Embed</strong>: a YouTube video, Bandcamp player or other <a href="/docs/07-embeds/">embed</a>, from its address;</li>
+<li><strong>Raw</strong>: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;</li>
+<li><strong>Read more</strong>: where the article’s summary in lists ends.</li>
+</ul>
+</li>
+<li>Choose <strong>Save</strong>.</li>
+</ol>
+<p><strong>Upload image</strong> saves the image into the article’s folder, so it needs the article to be saved first.</p>
+<h2 id="settings">Settings</h2>
+<p>The <strong>Configuration</strong> section holds the article’s settings:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Type</strong></td>
+<td>The kind of article, e.g. News or Page.</td>
+</tr>
+<tr>
+<td><strong>Template</strong></td>
+<td>How the article is laid out, if your website has more than one layout for it.</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td><strong>Published</strong> (listed), <strong>Unlisted</strong> (its own page only) or <strong>Draft</strong> (not on the website).</td>
+</tr>
+<tr>
+<td><strong>Slug</strong></td>
+<td>The last part of the article’s address. Left empty, it is made from the title.</td>
+</tr>
+<tr>
+<td><strong>Publication date</strong></td>
+<td>The article’s date.</td>
+</tr>
+<tr>
+<td><strong>Excerpt</strong></td>
+<td>A summary for lists. Left empty, the text before <strong>Read more</strong> (or the article’s start) is used.</td>
+</tr>
+<tr>
+<td><strong>Thumbnail</strong></td>
+<td>An image shown in lists.</td>
+</tr>
+</tbody>
+</table>
+<p>The form also has the <strong>Author</strong> (name, email address and homepage), <strong>Tags</strong>, and <strong>Attachments</strong>: files to download, uploaded with <strong>Upload file</strong> or linked by address. Uploads need the article to be saved first.</p>
+<p>Changing an article’s type or slug moves it, with all its files.</p>
+<h2 id="checking-your-work">Checking your work</h2>
+<p>Three buttons by the body change what you see:</p>
+<ul>
+<li><strong>WYSIWYG</strong>: the rich text editor.</li>
+<li><strong>Markdown</strong>: the body as Markdown, if you’d like to edit it directly.</li>
+<li><strong>Preview</strong>: the article as your website will show it, with its layout and styles. Drafts are shown as if published.</li>
+</ul>
+<h2 id="saving-resetting-and-deleting">Saving, resetting and deleting</h2>
+<ul>
+<li><strong>Save</strong> writes your changes. Saving also tidies the file’s Markdown.</li>
+<li><strong>Reset…</strong> goes back to how the article was last saved.</li>
+<li><strong>Delete…</strong> deletes the article and all its files, after asking you.</li>
+</ul>
+<p>If you open another article or start a new one with changes that aren’t saved, the editor asks whether to save them first. Your browser also warns you before you close the page with unsaved changes.</p>
+<h2 id="for-developers">For developers</h2>
+<h3 id="starting-the-editor">Starting the editor</h3>
+<pre><code class="language-sh">npx edaha editor
+</code></pre>
+<p>It finds the site’s <a href="/docs/03-configuration/#where-it-is-found">config file</a> like <code>edaha build</code> does, and takes the same <code>--config</code> and <code>--dir</code> options, plus <code>--port</code> (default <code>5180</code>). It only listens on <code>127.0.0.1</code>, as it reads and writes the site’s files: <strong>never deploy it</strong>. Its API only accepts changes from the editor page itself.</p>
+<p>The editor reads and writes the same <code>article.md</code> files you would edit by hand. A saved article keeps its header format (<code>yaml</code>, <code>yml</code> or <code>json</code>); new articles get <code>yaml</code>. Settings edaha.md doesn’t know are left out when saving. Changes to the config file and templates show without restarting it.</p>
+<p>Preview pages are sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor’s API. Frames are only allowed from the origins that embeds list in <code>frameSources</code>.</p>
+<h3 id="extending-the-editor-with-custom-embeds">Extending the editor with custom embeds</h3>
+<p>Embeds you add to a JavaScript config file’s <code>embeds</code> setting work in the editor too: the <strong>Embed</strong> button previews them, and the preview pages render them as the website will.</p>
+<pre><code class="language-js">// edaha.config.mjs
+export default {
+  name: &quot;My Site&quot;,
+  description: &quot;News and notes.&quot;,
+  embeds: [
+    {
+      name: &quot;Vimeo&quot;,
+      // Let the preview pages show its iframes
+      frameSources: [&quot;https://player.vimeo.com&quot;],
+      match: (url) =&gt; url.hostname === &quot;vimeo.com&quot;,
+      render: async (url) =&gt;
+        `&lt;iframe src=&quot;https://player.vimeo.com/video${url.pathname}&quot; title=&quot;Vimeo video&quot;&gt;&lt;/iframe&gt;`,
+    },
+  ],
+};
+</code></pre>
+<p>The editor reads the config file again for each preview, so you can change an embed and see the result without restarting it. See <a href="/docs/07-embeds/">Embeds</a> for how to write one.</p>
+<h3 id="starting-it-from-code">Starting it from code</h3>
+<pre><code class="language-ts">import { startEditor } from &quot;@lvl99dotcom/edaha.md&quot;;
+
+const editor = await startEditor({
+  siteDir: &quot;my-site&quot;,
+  port: 5180,
+  // Embeds tried after the config file's (default: the built-in ones)
+  embedRenderers: [],
+});
+console.log(`Open ${editor.url}`);
+</code></pre>
+
+  </div>
+
+</article>
+        </main>
+
+  <aside>
+<ol>
+  <li><a href="/docs/01-introduction">Introduction</a></li>
+  <li><a href="/docs/02-quick-start">Quick start</a></li>
+  <li><a href="/docs/03-configuration">Configuration</a></li>
+  <li><a href="/docs/04-articles">Articles</a></li>
+  <li><a href="/docs/05-templating">Templating</a></li>
+  <li><a href="/docs/06-lists">Lists</a></li>
+  <li><a href="/docs/07-embeds">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor">WYSIWYG editor</a></li>
+</ol>
+  </aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/theme-switcher.js" defer></script>
+  </body>
+</html>

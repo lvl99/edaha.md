@@ -1,0 +1,61 @@
+{% extends '@theme/layouts/html.njk' %}
+
+{% block headImports %}
+  <link rel="stylesheet" href="{{ site.path }}base.css" />
+  <link rel="stylesheet" href="{{ site.path }}site.css" />
+{% endblock %}
+
+{% block header %}
+  <header class="site-header">
+    <h1 class="site-title"><a href="{{ site.url }}">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+  {% block headerNav %}{% endblock %}
+{% endblock %}
+
+{% block breadcrumb %}
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="{{ site.path }}">Home</a></li>
+      {% block breadcrumbItems %}{% endblock %}
+    </ul>
+  </nav>
+{% endblock %}
+
+{% block footerNav %}
+  <nav aria-label="Sections">
+    <a href="{{ site.path }}">Home</a>
+    <a href="{{ site.path }}about">About</a>
+    {% for name, type in site.types %}
+      {% if type.generate.list %}<a href="{{ type.url }}">{{ type.labelPlural }}</a>{% endif %}
+    {% endfor %}
+    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+{% endblock %}
+
+{% block colophon %}
+  <p class="colophon">
+    <a href="{{ site.path }}">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+{% endblock %}
+
+{% block bodyImports %}
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="{{ site.path }}theme-switcher.js" defer></script>
+{% endblock %}

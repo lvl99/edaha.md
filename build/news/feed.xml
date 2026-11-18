@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>News | edaha.md</title>
+    <link>http://127.0.0.1:8449/news/</link>
+    <description>Static site generator powered by TypeScript and markdown</description>
+    <language>en</language>
+    <atom:link href="http://127.0.0.1:8449/news/feed.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 15 Nov 2026 18:36:00 GMT</lastBuildDate>
+    <item>
+      <title>Welcome</title>
+      <link>http://127.0.0.1:8449/news/welcome/</link>
+      <guid isPermaLink="true">http://127.0.0.1:8449/news/welcome/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;edaha.md v0.1.0 was launched as a simple approach to a static site generator, utilising markdown to then render articles into HTML and RSS XML files. You can find out more on our About page, or on our…&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

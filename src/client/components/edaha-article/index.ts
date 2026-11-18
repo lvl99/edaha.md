@@ -746,19 +746,19 @@ export class EdahaArticle extends LitElement {
         ></edaha-article-data-field>
         ${this.renderBody()}
       </main>
-      <aside>
+      <aside class="edaha-article-metadata">
         <div class="edaha-article-controls">
           <!-- Marked while there are unsaved changes, to show the article should be saved -->
           <button
             type="submit"
-            class=${classMap({ "btn-save-dirty": this.dirty })}
+            class="btn btn-save ${classMap({ "btn-save-dirty": this.dirty })}"
             ?disabled=${this.busy}
           >
             Save
           </button>
           <button
             type="button"
-            class="reset"
+            class="btn btn-reset"
             ?disabled=${this.busy || !this.dirty}
             @click=${() => this.reset()}
           >
@@ -768,7 +768,7 @@ export class EdahaArticle extends LitElement {
             this.location
               ? html`<button
                   type="button"
-                  class="delete"
+                  class="btn btn-delete"
                   ?disabled=${this.busy}
                   @click=${() => void this.deleteArticle()}
                 >
@@ -777,7 +777,6 @@ export class EdahaArticle extends LitElement {
               : nothing
           }
         </div>
-        <h2>Configuration</h2>
         <edaha-article-data-field
           name="type"
           ?changed=${changed.has("type")}
