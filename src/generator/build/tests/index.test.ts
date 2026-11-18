@@ -174,6 +174,8 @@ describe("buildSite", () => {
       "page/about-us",
     ]);
     expect(result.files).toEqual([
+      // The default theme's stylesheet
+      "base.css",
       "news/authors/matt-scheurich/feed.xml",
       "news/authors/matt-scheurich/index.html",
       "news/authors/zoe-angstrom/feed.xml",
@@ -194,8 +196,6 @@ describe("buildSite", () => {
       "page/authors/test-news/index.html",
       "page/feed.xml",
       "page/index.html",
-      // The default theme's stylesheet
-      "site.css",
     ]);
     expect(logger.warn.mock.calls.map(([message]) => message)).toEqual([
       'articles/page: type "page" is not in edahaconfig.yml; using the default settings',
@@ -354,8 +354,10 @@ describe("buildSite", () => {
     );
     const { result, read } = await build(space, "https://example.com");
     // page/index is the website's front page, page/about-us is at the root
-    expect(await read("index.html")).toContain(
-      '<h1 class="site-title">Welcome</h1>',
+    // The front page's title is in the page title, and its body is the page's main content
+    expect(await read("index.html")).toContain("| Welcome</title>");
+    expect(await read("index.html")).toMatch(
+      /<div class="home-body">\s*<p>Hello!<\/p>/,
     );
     expect(await read("index.html")).not.toContain('aria-label="Breadcrumb"');
     expect(result.files).toContain("about-us/index.html");
@@ -594,7 +596,7 @@ describe("buildSite", () => {
     );
     const { result } = await build({ root, siteDir }, "https://example.com");
     // Only the theme's static files
-    expect(result.files).toEqual(["site.css"]);
+    expect(result.files).toEqual(["base.css"]);
 
     // And with a theme without static files, nothing at all
     const theme = join(root, "theme");
