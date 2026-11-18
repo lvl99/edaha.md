@@ -26,7 +26,7 @@ To find any other article:
 - Type in **Search titles** to see up to 10 articles whose titles contain your text. **See all results** shows every match in the article browser. Press Escape to clear the search.
 - Choose **All articles** (the button beside the search) to open the article browser. Search titles, filter by **Type**, **Author**, **Tag** and **Status**, and sort by date (newest first) or title (A–Z). It shows 50 articles at a time; **Previous** and **Next** move between pages.
 
-The list follows changes made outside the editor too, e.g. articles added by someone else or edited in a text editor.
+Searches and the article browser include changes made outside the editor straight away, e.g. articles added by someone else or edited in a text editor. The list of recent articles shows them after you save or delete an article, or reload the page.
 
 ## Writing an article
 
