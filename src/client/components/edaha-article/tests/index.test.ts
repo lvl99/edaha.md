@@ -686,6 +686,40 @@ describe("edaha-article body modes", () => {
     );
   });
 
+  it("should change the preview's width without rendering it again", async () => {
+    const { api, element } = await setup();
+    await switchTo(element, "preview");
+    const frame = () => find<HTMLIFrameElement>(element, "iframe.preview");
+    const select = find<HTMLSelectElement>(element, "select#preview-width");
+    expect(find(element, 'label[for="preview-width"]').textContent).toBe(
+      "Width",
+    );
+    expect([...select.options].map((o) => [o.value, o.text.trim()])).toEqual([
+      ["full", "Full"],
+      ["900", "900px"],
+      ["320", "320px"],
+    ]);
+    expect(frame().style.width).toBe("100%");
+    for (const [value, width] of [
+      ["320", "320px"],
+      ["900", "900px"],
+      ["full", "100%"],
+    ]) {
+      input(select, value as string, "change");
+      await settle(element);
+      expect(frame().style.width).toBe(width);
+    }
+    expect(api.preview).toHaveBeenCalledOnce();
+    // The width stays when the preview is shown again
+    input(select, "320", "change");
+    await switchTo(element, "wysiwyg");
+    await switchTo(element, "preview");
+    expect(frame().style.width).toBe("320px");
+    expect(find<HTMLSelectElement>(element, "select#preview-width").value).toBe(
+      "320",
+    );
+  });
+
   it("should stay in the current mode, showing the error, when converting or rendering fails", async () => {
     const { api, element } = await setup();
     api.toMarkdown.mockRejectedValueOnce(new Error("No markdown"));

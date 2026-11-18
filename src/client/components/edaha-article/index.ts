@@ -1,5 +1,6 @@
 import { html, LitElement, nothing, type PropertyValues } from "lit";
 import { classMap } from "lit/directives/class-map.js";
+import { styleMap } from "lit/directives/style-map.js";
 import { slugify } from "../../../generator/slug/index.ts";
 import type {
   EditorArticle,
@@ -32,6 +33,16 @@ export const BODY_MODES: readonly { mode: BodyMode; label: string }[] = [
   { mode: "markdown", label: "Markdown" },
   { mode: "preview", label: "Preview" },
 ];
+
+/** The widths the preview can be shown at: the panel's full width, or a narrower page centred in it */
+export const PREVIEW_WIDTHS = [
+  { value: "full", label: "Full", width: "100%" },
+  { value: "900", label: "900px", width: "900px" },
+  { value: "320", label: "320px", width: "320px" },
+] as const;
+
+/** A width the preview can be shown at */
+export type PreviewWidth = (typeof PREVIEW_WIDTHS)[number]["value"];
 
 /** The id of a body mode's tab */
 const bodyTabId = (mode: BodyMode) => `body-tab-${mode}`;
@@ -238,6 +249,7 @@ export class EdahaArticle extends LitElement {
     mode: { state: true },
     bodyMarkdown: { state: true },
     previewUrl: { state: true },
+    previewWidth: { state: true },
     savedData: { state: true },
     bodyChanged: { state: true },
   };
@@ -264,6 +276,8 @@ export class EdahaArticle extends LitElement {
   declare bodyMarkdown: string;
   /** The URL of the article as the website would show it (a temporary page), in Preview mode */
   declare previewUrl: string;
+  /** The width the preview is shown at */
+  declare previewWidth: PreviewWidth;
   /** The data as last saved (or loaded; empty for a new article), which changes are found against */
   declare savedData: EditorArticleData;
   /** Whether the body differs from the saved one, compared as Markdown */
@@ -300,6 +314,7 @@ export class EdahaArticle extends LitElement {
     this.mode = "wysiwyg";
     this.bodyMarkdown = "";
     this.previewUrl = "";
+    this.previewWidth = "full";
     // A copy, so both have the same date
     this.savedData = structuredClone(this.data);
     this.bodyChanged = false;
@@ -723,11 +738,38 @@ export class EdahaArticle extends LitElement {
       // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. It
       // isn't sandboxed (a sandboxed page can't load anything from 127.0.0.1): its server sends a Content Security
       // Policy that forbids scripts, which is what keeps it from using the editor's API (`previewCsp`)
-      body = html`<iframe
-        class="preview"
-        title="Preview"
-        src=${this.previewUrl}
-      ></iframe>`;
+      body = html`<div class="preview-controls">
+          <label for="preview-width">Width</label>
+          <select
+            id="preview-width"
+            @change=${(event: Event) =>
+              (this.previewWidth = (event.target as HTMLSelectElement)
+                .value as PreviewWidth)}
+          >
+            ${PREVIEW_WIDTHS.map(
+              ({ value, label }) =>
+                html`<option
+                  value=${value}
+                  ?selected=${this.previewWidth === value}
+                >
+                  ${label}
+                </option>`,
+            )}
+          </select>
+        </div>
+        <div class="preview-frame">
+          <iframe
+            class="preview"
+            title="Preview"
+            src=${this.previewUrl}
+            style=${styleMap({
+              // Only the frame's width changes: the page isn't rendered again
+              width: PREVIEW_WIDTHS.find(
+                ({ value }) => value === this.previewWidth,
+              )?.width,
+            })}
+          ></iframe>
+        </div>`;
     else
       body = html`<edaha-article-data-field
         name="body"

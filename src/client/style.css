@@ -487,10 +487,25 @@ edaha-article-data-field textarea {
   border: 1px solid;
 }
 
-edaha-article .preview {
+.preview-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block: 0.5rem;
+}
+
+/* The preview is centred; wider than the panel, it starts at the panel's left and scrolls sideways */
+.preview-frame {
   flex: 1 1 0;
-  width: 100%;
+  display: flex;
   min-height: 0;
+  overflow-x: auto;
+}
+
+edaha-article .preview {
+  flex: none;
+  max-width: none;
+  margin-inline: auto;
   border: 1px solid var(--colour-border);
 }
 
