@@ -609,3 +609,62 @@ edaha-article .preview {
 .richtext-content .ProseMirror-selectednode {
   outline: 3px solid Highlight;
 }
+
+/* Formatting toolbars (rich text and Markdown): icon buttons, named by their tooltips and for screen readers */
+.editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding-block: 0.25rem 0.5rem;
+}
+
+.toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* At least 24px by 24px for pointers and touch (WCAG 2.2 target size), larger for comfort */
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0.25rem;
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--border-radius);
+  color: var(--colour-text);
+  cursor: pointer;
+}
+
+.toolbar-button:hover {
+  border-color: var(--colour-muted);
+}
+
+.toolbar-button[aria-pressed="true"] {
+  background: var(--colour-link);
+  border-color: var(--colour-link);
+  color: var(--colour-background);
+}
+
+.toolbar-button:disabled,
+.toolbar-button[data-disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* The upload button is a label for its hidden file input, so it shows the input's focus */
+.toolbar-upload:focus-within {
+  outline: 3px solid var(--colour-focus);
+  outline-offset: 2px;
+}
+
+.icon {
+  display: inline-flex;
+}
+
+.icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentColor;
+}
+
+[data-action="Remove column"] .icon svg {
+  transform: rotate(90deg);
+}

@@ -4,6 +4,7 @@ import type { EmbedPreview } from "../../../server/types/index.ts";
 import { createRichtextEditor } from "../../richtext/editor/index.ts";
 import { EMBED_EDIT_EVENT } from "../../richtext/extensions/index.ts";
 import { defineElement } from "../define/index.ts";
+import { toolbarButtonContent } from "../../icons/index.ts";
 
 /** Uploads an image and returns the URL to show it at */
 export type ImageUploader = (file: File) => Promise<string>;
@@ -291,22 +292,34 @@ export class EdahaRichtext extends LitElement {
   override render() {
     const editor = this.editor;
     return html`
-      <div class="richtext-toolbar" role="toolbar" aria-label="Formatting">
+      <div
+        class="editor-toolbar richtext-toolbar"
+        role="toolbar"
+        aria-label="Formatting"
+      >
         ${this.actions.map(
           (action) =>
             html`<button
               type="button"
+              class="toolbar-button"
+              data-action=${action.label}
+              title=${action.label}
               ?disabled=${!editor || (action.enabled ? !action.enabled(editor) : false)}
               aria-pressed=${editor && action.active ? String(action.active(editor)) : "false"}
               @click=${() => editor && action.run(editor)}
             >
-              ${action.label}
+              ${toolbarButtonContent(action.label)}
             </button>`,
         )}
-        <label>
-          Upload image
+        <label
+          class="toolbar-button toolbar-upload"
+          title="Upload image"
+          ?data-disabled=${!editor || !this.uploadImage}
+        >
+          ${toolbarButtonContent("Upload image")}
           <input
             type="file"
+            class="visually-hidden"
             accept="image/png, image/jpeg, image/gif, image/webp"
             ?disabled=${!editor || !this.uploadImage}
             @change=${(event: Event) => void this.onImageFile(event)}

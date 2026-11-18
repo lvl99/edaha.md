@@ -191,6 +191,9 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.15.0(supports-color@7.2.0))
+      '@material-symbols/svg-400':
+        specifier: 0.48.1
+        version: 0.48.1
       '@tiptap/core':
         specifier: ^3.32.0
         version: 3.34.0(@tiptap/pm@3.34.0)
@@ -448,6 +451,9 @@ packages:
 
   '@lit/reactive-element@2.1.2':
     resolution: {integrity: sha512-pbCDiVMnne1lYUIaYNN5wrwQXDtHaYtg7YEFPeW+hws6U47WeFvISGUWekPGKWOP1ygrs0ef0o1VJMk1exos5A==}
+
+  '@material-symbols/svg-400@0.48.1':
+    resolution: {integrity: sha512-l3zCJuHOtBdha7C3fZ/OXjt6N0pP+a7+TUtYJeWOLbsOh2hDn8weIPgj1a9hwvF7aI1U5lwuxi0to7JysAiBvg==}
 
   '@mixmark-io/domino@2.2.0':
     resolution: {integrity: sha512-Y28PR25bHXUg88kCV7nivXrP2Nj2RueZ3/l/jdx6J9f8J4nsEGcgX0Qe6lt7Pa+J79+kPiJU3LguR6O/6zrLOw==}
@@ -1839,6 +1845,8 @@ snapshots:
   '@lit/reactive-element@2.1.2':
     dependencies:
       '@lit-labs/ssr-dom-shim': 1.6.0
+
+  '@material-symbols/svg-400@0.48.1': {}
 
   '@mixmark-io/domino@2.2.0': {}
 
