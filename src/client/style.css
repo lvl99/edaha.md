@@ -11,8 +11,10 @@
   --colour-focus: #3b9a04;
 
   /** Fonts */
+  --font-family-base: Arial, sans-serif;
   --font-size-base: 16px;
-  --font-size-xl: --font-size-l: 1.2rem;
+  --font-size-xl: 1.4rem;
+  --font-size-l: 1.2rem;
   --font-size-s: 0.9rem;
   --font-size-xs: 0.8rem;
   --font-size-title: 48px;
@@ -92,7 +94,7 @@ body {
   background: var(--colour-background);
   color: var(--colour-text);
   font-family: Arial, sans-serif;
-  font-size: 1.0625rem;
+  font-size: var(--font-size-base);
   line-height: 1.6;
 }
 
@@ -149,7 +151,7 @@ pre {
 code {
   background: var(--colour-surface);
   color: var(--colour-muted);
-  font-size: 0.9em;
+  font-size: var(--font-size-s);
   padding: 0.2em;
 }
 
@@ -196,9 +198,24 @@ select {
   border-radius: var(--border-radius);
   color: var(--colour-text);
   padding: 0.25rem 0.5rem;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-family-base);
   font-size: var(--font-size-base);
   line-height: 1;
+}
+
+select {
+  appearance: none;
+  /* Room on the right for the arrow, so long option text doesn't run under it */
+  padding-inline-end: 2rem;
+  /* A small chevron drawn in the text colour, so it follows the light and dark themes */
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position:
+    right 0.85rem center,
+    right 0.55rem center;
+  background-size: 0.3rem 0.3rem;
+  background-repeat: no-repeat;
 }
 
 /** Buttons */
@@ -269,8 +286,16 @@ edaha-editor {
   overflow-y: auto;
 }
 
+.edaha-editor-new button {
+  width: 100%;
+}
+
 .edaha-editor-filters {
   margin: 0.5rem 0 1rem;
+}
+
+.edaha-editor-filters select {
+  width: 100%;
 }
 
 .edaha-editor-article-group h2 {
