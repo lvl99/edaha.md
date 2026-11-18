@@ -16,6 +16,7 @@ import formatListNumbered from "@material-symbols/svg-400/outlined/format_list_n
 import formatQuote from "@material-symbols/svg-400/outlined/format_quote.svg?raw";
 import image from "@material-symbols/svg-400/outlined/image.svg?raw";
 import link from "@material-symbols/svg-400/outlined/link.svg?raw";
+import manageSearch from "@material-symbols/svg-400/outlined/manage_search.svg?raw";
 import menu from "@material-symbols/svg-400/outlined/menu.svg?raw";
 import playlistRemove from "@material-symbols/svg-400/outlined/playlist_remove.svg?raw";
 import rawOn from "@material-symbols/svg-400/outlined/raw_on.svg?raw";
@@ -45,6 +46,7 @@ export const ICONS = {
   format_quote: formatQuote,
   image,
   link,
+  manage_search: manageSearch,
   menu,
   playlist_remove: playlistRemove,
   raw_on: rawOn,

@@ -1,10 +1,13 @@
 import type {
+  ArticleFilters,
   ArticleLocation,
-  ArticleSummary,
+  ArticlePage,
+  ArticleQuery,
   ArticleTypeLabels,
   EditorArticle,
   EditorArticleData,
   EmbedPreview,
+  RecentArticles,
   UploadResult,
 } from "../../server/types/index.ts";
 
@@ -15,7 +18,7 @@ export type { ArticleLocation } from "../../server/types/index.ts";
  *
  * @example
  * const api = new EditorApi();
- * const articles = await api.list();
+ * const { articles, total } = await api.query({ search: "hello" });
  */
 export class EditorApi {
   private readonly fetch: typeof fetch;
@@ -47,9 +50,29 @@ export class EditorApi {
     });
   }
 
-  /** List all articles, newest first */
-  list(): Promise<ArticleSummary[]> {
-    return this.request("/api/articles");
+  /**
+   * Find articles by title, type, author, tag and status, sorted by title or date, a page at a time.
+   *
+   * @example
+   * await api.query({ search: "hello", sort: "title", page: 2 });
+   */
+  query(query: ArticleQuery = {}): Promise<ArticlePage> {
+    const params = new URLSearchParams(
+      Object.entries(query)
+        .filter(([, value]) => value !== undefined && value !== "")
+        .map(([name, value]) => [name, String(value)]),
+    );
+    return this.request(`/api/articles${params.size ? `?${params}` : ""}`);
+  }
+
+  /** Each type's most recently changed articles, for the nav */
+  recent(): Promise<RecentArticles[]> {
+    return this.request("/api/articles/recent");
+  }
+
+  /** The types, authors and tags articles use, for the article browser's filters */
+  filters(): Promise<ArticleFilters> {
+    return this.request("/api/articles/filters");
   }
 
   /** The article types from the config file, with their labels */

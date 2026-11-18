@@ -1,10 +1,21 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ArticleSummary, EditorArticle } from "../../../../server/types";
+import type {
+  ArticlePage,
+  ArticleSummary,
+  EditorArticle,
+  RecentArticles,
+} from "../../../../server/types";
 import type { EditorApi } from "../../../editorApi";
 import type { EdahaArticle } from "../../edaha-article";
 import "..";
-import { groupArticles, UNSAVED_DIALOG, type EdahaEditor } from "..";
+import {
+  groupRecent,
+  NAV_SEARCH_COUNT,
+  UNSAVED_DIALOG,
+  type EdahaEditor,
+} from "..";
+import type { EdahaArticleBrowser } from "../../edaha-article-browser";
 import { button, find, input, settle } from "../../../../shared/tests/helpers";
 
 afterEach(() => document.body.replaceChildren());
@@ -16,6 +27,8 @@ const SUMMARIES: ArticleSummary[] = [
     title: "Hello",
     status: "published",
     date: "2026-10-19T09:54:00.000Z",
+    tags: [],
+    updated: "2026-11-01T00:00:00.000Z",
   },
   {
     type: "page",
@@ -24,8 +37,20 @@ const SUMMARIES: ArticleSummary[] = [
     status: "draft",
     date: "",
     error: "Bad date",
+    tags: [],
+    updated: "2026-11-01T00:00:00.000Z",
   },
 ];
+
+/** Each type's most recently changed articles, as the API gives them (types alphabetically) */
+const RECENT: RecentArticles[] = [
+  { type: "article", articles: [SUMMARIES[0]!], total: 7 },
+  { type: "page", articles: [SUMMARIES[1]!], total: 1 },
+];
+
+/** A page of search matches */
+const matches = (articles: ArticleSummary[], total = articles.length) =>
+  ({ articles, total, page: 1, pages: 1, perPage: 10 }) as ArticlePage;
 
 const ARTICLE = {
   type: "article",
@@ -40,9 +65,11 @@ const ARTICLE = {
 } as EditorArticle;
 
 /** Mount the editor with a fake API */
-const setup = async (list = vi.fn(async () => SUMMARIES)) => {
+const setup = async (recent = vi.fn(async () => RECENT)) => {
   const api = {
-    list,
+    recent,
+    query: vi.fn(async () => matches([SUMMARIES[0]!])),
+    filters: vi.fn(async () => ({ types: [], authors: [], tags: [] })),
     templates: vi.fn(async () => ["single"]),
     types: vi.fn(async () => ({
       article: { labelSingle: "Article", labelPlural: "Articles" },
@@ -57,7 +84,8 @@ const setup = async (list = vi.fn(async () => SUMMARIES)) => {
       }),
     ),
   } as unknown as EditorApi & {
-    list: typeof list;
+    recent: typeof recent;
+    query: ReturnType<typeof vi.fn>;
     read: ReturnType<typeof vi.fn>;
     save: ReturnType<typeof vi.fn>;
   };
@@ -69,7 +97,7 @@ const setup = async (list = vi.fn(async () => SUMMARIES)) => {
 };
 
 describe("edaha-editor", () => {
-  it("should list articles with their details and errors", async () => {
+  it("should list each type's most recently changed articles with their details and errors", async () => {
     const { element } = await setup();
     const items = [...element.querySelectorAll("nav li")];
     expect(items.map((li) => li.querySelector("a")!.textContent)).toEqual([
@@ -88,36 +116,149 @@ describe("edaha-editor", () => {
     );
   });
 
-  it("should group the list by type and filter it by type", async () => {
+  it("should label the groups, linking to all of a type's articles when it has more", async () => {
     const { element } = await setup();
-    const groups = () =>
-      [...element.querySelectorAll(".edaha-editor-article-group")].map(
-        (group) => [
-          group.querySelector("h2")!.textContent,
-          [...group.querySelectorAll("li a")].map((a) => a.textContent),
-        ],
-      );
-    expect(groups()).toEqual([
-      ["Articles", ["Hello"]],
-      ["page", ["broken"]],
-    ]);
-    const select = find<HTMLSelectElement>(element, "#filter-type");
+    const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
+    const show = vi.spyOn(browser, "show").mockResolvedValue();
+    const groups = [...element.querySelectorAll(".edaha-editor-article-group")];
     expect(
-      [...select.options].map((o) => [o.value, o.textContent?.trim()]),
+      groups.map((group) => [
+        group.querySelector("h2")!.textContent,
+        group
+          .querySelector(".show-all")
+          ?.textContent?.replace(/\s+/g, " ")
+          .trim(),
+      ]),
     ).toEqual([
-      ["", "All"],
-      ["article", "Article"],
-      ["video", "Video"],
-      ["page", "page"],
+      ["Articles", "Show all Articles (7)"],
+      ["page", undefined],
     ]);
-    select.value = "page";
-    select.dispatchEvent(new Event("change"));
+    (groups[0]!.querySelector(".show-all") as HTMLButtonElement).click();
+    expect(show).toHaveBeenCalledWith({ type: "article" });
+    expect(browser.types).toBe(element.types);
+  });
+
+  it("should open the article browser from the All articles button, and open the article chosen in it", async () => {
+    const { element, api } = await setup();
+    const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
+    const show = vi.spyOn(browser, "show").mockResolvedValue();
+    button(element, "All articles").click();
+    expect(show).toHaveBeenCalledWith({});
+    browser.dispatchEvent(
+      new CustomEvent("article-choose", {
+        detail: { type: "page", slug: "broken" },
+        bubbles: true,
+      }),
+    );
     await settle(element);
-    expect(groups()).toEqual([["page", ["broken"]]]);
-    select.value = "";
-    select.dispatchEvent(new Event("change"));
+    expect(api.read).toHaveBeenCalledWith({ type: "page", slug: "broken" });
+  });
+
+  it("should search titles as you type, showing the first matches in place of the groups", async () => {
+    const { element, api } = await setup();
+    element.searchDelay = 0;
+    const search = find<HTMLInputElement>(element, "#article-search");
+    expect(search.labels?.[0]?.textContent).toBe("Search titles");
+    input(search, "  hel ");
+    await vi.waitFor(() => find(element, ".search-results"));
+    expect(api.query).toHaveBeenCalledWith({
+      search: "hel",
+      perPage: NAV_SEARCH_COUNT,
+    });
+    expect(find(element, ".search-results h2").textContent?.trim()).toBe(
+      "1 match",
+    );
+    expect(
+      element.querySelector('.search-results [role="status"]'),
+    ).not.toBeNull();
+    expect(element.querySelector(".search-results .show-all")).toBeNull();
+    expect(element.querySelector("[data-type]")).toBeNull();
+
+    // More matches than shown link to them all in the article browser
+    api.query.mockResolvedValueOnce(matches(SUMMARIES, 12));
+    input(search, "e");
+    await vi.waitFor(() =>
+      expect(find(element, ".search-results h2").textContent?.trim()).toBe(
+        "12 matches",
+      ),
+    );
+    const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
+    const show = vi.spyOn(browser, "show").mockResolvedValue();
+    button(element, "See all results").click();
+    expect(show).toHaveBeenCalledWith({ search: "e" });
+
+    // Clearing the search shows the groups again
+    input(search, "   ");
+    await vi.waitFor(() => expect(element.searchResult).toBeUndefined());
+    expect(element.querySelector("[data-type]")).not.toBeNull();
+  });
+
+  it("should clear the search with Escape, then leave Escape to close the list", async () => {
+    const { element } = await setup();
+    element.searchDelay = 0;
+    const search = find<HTMLInputElement>(element, "#article-search");
+    input(search, "hello");
+    await vi.waitFor(() => find(element, ".search-results"));
+    const onKey = vi.fn();
+    element.addEventListener("keydown", onKey);
+    const escape = () =>
+      search.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    escape();
     await settle(element);
-    expect(groups()).toHaveLength(2);
+    expect(element.searchText).toBe("");
+    expect(element.searchResult).toBeUndefined();
+    expect(onKey).not.toHaveBeenCalled();
+    escape();
+    search.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", bubbles: true }),
+    );
+    expect(onKey).toHaveBeenCalledTimes(2);
+  });
+
+  it("should show only the latest search's matches, and search errors", async () => {
+    const { element, api } = await setup();
+    let answerFirst: (page: ArticlePage) => void = () => {};
+    api.query.mockImplementationOnce(
+      () => new Promise((resolve) => (answerFirst = resolve)),
+    );
+    element.searchText = "first";
+    const first = element.searchTitles();
+    element.searchText = "second";
+    await element.searchTitles();
+    answerFirst(matches(SUMMARIES));
+    await first;
+    expect(element.searchResult?.articles).toEqual([SUMMARIES[0]]);
+
+    let failFirst: (error: Error) => void = () => {};
+    api.query.mockImplementationOnce(
+      () => new Promise((_resolve, reject) => (failFirst = reject)),
+    );
+    const failing = element.searchTitles();
+    await element.searchTitles();
+    failFirst(new Error("Too late"));
+    await failing;
+    expect(element.error).toBe("");
+
+    api.query.mockRejectedValueOnce(new Error("Search failed"));
+    await element.searchTitles();
+    await element.updateComplete;
+    expect(find(element, ".toast.error span").textContent).toBe(
+      "Search failed",
+    );
+  });
+
+  it("should search again when the list refreshes, and stop waiting to search when removed", async () => {
+    const { element, api } = await setup();
+    element.searchText = "hello";
+    await element.refresh();
+    expect(api.query).toHaveBeenCalledTimes(1);
+    element.searchDelay = 1000;
+    input(find<HTMLInputElement>(element, "#article-search"), "later");
+    element.remove();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(api.query).toHaveBeenCalledTimes(1);
   });
 
   it("should show list errors", async () => {
@@ -187,12 +328,12 @@ describe("edaha-editor", () => {
       }),
     );
     await settle(element);
-    expect(api.list).toHaveBeenCalledTimes(2);
+    expect(api.recent).toHaveBeenCalledTimes(2);
     expect(element.selected).toEqual({ type: "article", slug: "moved" });
 
     form.dispatchEvent(new CustomEvent("article-deleted", { bubbles: true }));
     await settle(element);
-    expect(api.list).toHaveBeenCalledTimes(3);
+    expect(api.recent).toHaveBeenCalledTimes(3);
     expect(element.querySelector("edaha-article")).toBeNull();
     expect(element.selected).toBeUndefined();
   });
@@ -203,43 +344,23 @@ describe("edaha-editor", () => {
   });
 });
 
-describe("groupArticles", () => {
-  const summary = (type: string, slug: string, date: string) =>
-    ({ type, slug, title: slug, status: "published", date }) as ArticleSummary;
-  const articles = [
-    summary("page", "about", "2026-10-01"),
-    summary("news", "old", "2026-10-02"),
-    summary("zines", "z", "2026-10-03"),
-    summary("news", "new", "2026-10-20"),
-    summary("docs", "b", "2026-10-04"),
-    summary("news", "broken", ""),
-  ];
-  const types = {
-    news: { labelSingle: "News", labelPlural: "News" },
-    page: { labelSingle: "Page", labelPlural: "Pages" },
-    video: { labelSingle: "Video", labelPlural: "Videos" },
-  };
-
-  it("should group by configured type, then other types alphabetically, newest first, leaving out empty types", () => {
+describe("groupRecent", () => {
+  it("should label each type and order configured types first, in the config file's order, then others alphabetically", () => {
+    const group = (type: string) => ({ type, articles: [], total: 1 });
     expect(
-      groupArticles(articles, types).map((group) => [
-        group.type,
-        group.label,
-        group.articles.map((article) => article.slug),
-      ]),
+      groupRecent(
+        [group("docs"), group("news"), group("page"), group("zines")],
+        {
+          page: { labelSingle: "Page", labelPlural: "Pages" },
+          news: { labelSingle: "News item", labelPlural: "News" },
+        },
+      ).map(({ type, label }) => [type, label]),
     ).toEqual([
-      ["news", "News", ["new", "old", "broken"]],
-      ["page", "Pages", ["about"]],
-      ["docs", "docs", ["b"]],
-      ["zines", "zines", ["z"]],
+      ["page", "Pages"],
+      ["news", "News"],
+      ["docs", "docs"],
+      ["zines", "zines"],
     ]);
-  });
-
-  it("should give only the chosen type's group", () => {
-    expect(groupArticles(articles, types, "page").map((g) => g.type)).toEqual([
-      "page",
-    ]);
-    expect(groupArticles(articles, types, "video")).toEqual([]);
   });
 });
 

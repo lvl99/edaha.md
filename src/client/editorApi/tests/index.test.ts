@@ -23,8 +23,8 @@ describe("EditorApi", () => {
     const fetch = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response("[]"));
-    expect(await new EditorApi().list()).toEqual([]);
-    expect(fetch).toHaveBeenCalledWith("/api/articles", undefined);
+    expect(await new EditorApi().recent()).toEqual([]);
+    expect(fetch).toHaveBeenCalledWith("/api/articles/recent", undefined);
     fetch.mockRestore();
   });
 
@@ -32,7 +32,17 @@ describe("EditorApi", () => {
     const fetch = answer(200, { ok: true });
     const api = new EditorApi(fetch);
     const data = { title: "Hi" } as never;
-    await api.list();
+    await api.query();
+    await api.query({
+      search: "hi there",
+      type: "news",
+      author: "",
+      tag: undefined,
+      sort: "title",
+      page: 2,
+    });
+    await api.recent();
+    await api.filters();
     await api.types();
     await api.templates("page");
     await api.read(LOCATION);
@@ -45,6 +55,9 @@ describe("EditorApi", () => {
       calls.map(([path, init]) => `${init?.method ?? "GET"} ${path}`),
     ).toEqual([
       "GET /api/articles",
+      "GET /api/articles?search=hi+there&type=news&sort=title&page=2",
+      "GET /api/articles/recent",
+      "GET /api/articles/filters",
       "GET /api/types",
       "GET /api/templates/page",
       "GET /api/articles/article/hello",
@@ -53,11 +66,11 @@ describe("EditorApi", () => {
       "POST /api/articles/article/hello/files",
       "GET /api/embed?url=https%3A%2F%2Fyoutu.be%2Fx%3Fa%3D1%26b%3D2",
     ]);
-    expect(calls[4]![1]).toMatchObject({
+    expect(calls[7]![1]).toMatchObject({
       headers: { "Content-Type": "application/json" },
       body: '{"title":"Hi"}',
     });
-    expect((calls[6]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
+    expect((calls[9]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
   });
 
   it("should convert bodies and render previews, returning their result", async () => {
@@ -98,10 +111,10 @@ describe("EditorApi", () => {
 
   it("should throw the server's error message, or the status", async () => {
     await expect(
-      new EditorApi(answer(409, { error: "Exists" })).list(),
+      new EditorApi(answer(409, { error: "Exists" })).recent(),
     ).rejects.toThrow("Exists");
-    await expect(new EditorApi(answer(500, "not json")).list()).rejects.toThrow(
-      "Request failed with 500",
-    );
+    await expect(
+      new EditorApi(answer(500, "not json")).recent(),
+    ).rejects.toThrow("Request failed with 500");
   });
 });
