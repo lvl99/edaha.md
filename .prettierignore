@@ -3,3 +3,5 @@ coverage
 pnpm-lock.yaml
 src/**/fixtures/**
 site/build
+# The website built from site/ (generated)
+/build
