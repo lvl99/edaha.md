@@ -1,6 +1,6 @@
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ list.name }} | {% if list.pagination.page.index > 1 %}Page {{ list.pagination.page.index }} | {% endif %}{{ site.name }}{% endblock %}
+{% block headTitle %}{{ list.name }} | {% if list.pagination.page.index > 1 %}Page {{ list.pagination.page.index }} | {% endif %}{{ site.name }}{% endblock %}
 
 {% block breadcrumbItems %}
 {% set typeSettings = site.types[list.type] %}

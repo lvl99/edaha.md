@@ -140,7 +140,7 @@ As well as Nunjucks' own filters, templates have:
 
 ### Change the page layout
 
-The theme's templates extend `layouts/html.njk` and fill in its blocks: `head_title`, `head_description`, `bodyClass`, `header`, `breadcrumb`, `breadcrumbItems`, `main`, `aside` and `footer`. Copy it into `templates/layouts/html.njk` to change every page at once, e.g. to add a navigation menu:
+The theme's templates extend `layouts/html.njk` and fill in its blocks: `headTitle`, `headDescription`, `headImports` (stylesheets), `bodyClass`, `header`, `headerNav`, `breadcrumb`, `breadcrumbItems`, `main`, `aside`, `footer`, `footerNav`, `colophon` and `bodyImports` (scripts). Copy it into `templates/layouts/html.njk` to change every page at once, e.g. to add a navigation menu:
 
 ```njk
 {% block header %}
@@ -161,7 +161,7 @@ The theme's templates extend `layouts/html.njk` and fill in its blocks: `head_ti
 ```njk
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ article.title }} | {{ site.name }}{% endblock %}
+{% block headTitle %}{{ article.title }} | {{ site.name }}{% endblock %}
 
 {% block main %}
 <article>
@@ -179,7 +179,7 @@ The theme's templates extend `layouts/html.njk` and fill in its blocks: `head_ti
 ```njk
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ list.name }} | {{ site.name }}{% endblock %}
+{% block headTitle %}{{ list.name }} | {{ site.name }}{% endblock %}
 
 {% block main %}
 <h1>{{ list.name }}</h1>

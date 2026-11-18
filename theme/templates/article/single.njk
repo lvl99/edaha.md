@@ -1,8 +1,8 @@
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ article.title }} | {{ site.name }}{% endblock %}
+{% block headTitle %}{{ article.title }} | {{ site.name }}{% endblock %}
 
-{% block head_description %}{{ article.excerptText }}{% endblock %}
+{% block headDescription %}{{ article.excerptText }}{% endblock %}
 
 {% block breadcrumbItems %}
 {% set typeSettings = site.types[article.type] %}
