@@ -74,7 +74,7 @@ const sendText = (response: ServerResponse, status: number, text: string) => {
  * `reload()` is called.
  *
  * @example
- * const server = await startSiteServer({ root: () => "site/build", port: 5181 });
+ * const server = await startSiteServer({ root: () => "build", port: 5181 });
  * console.log(server.url);
  */
 export const startSiteServer = ({
