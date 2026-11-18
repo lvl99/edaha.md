@@ -385,6 +385,13 @@ export class EdahaArticle extends LitElement {
     return this.fileUrl(name) as string;
   };
 
+  /** Images inserted into the body's Markdown are uploaded and referred to by their file name in the article folder */
+  private readonly uploadMarkdownImage = async (file: File) => {
+    const name = await this.upload(file);
+    if (!name) throw new Error("Upload failed");
+    return name;
+  };
+
   /** Embed blocks in the body preview their embeds as the website shows them */
   private readonly loadEmbedPreview = (url: string) =>
     this.api.embedPreview(url);
@@ -706,11 +713,11 @@ export class EdahaArticle extends LitElement {
     if (this.mode === "markdown")
       body = html`<edaha-article-data-field
         name="bodyMarkdown"
-        type="textarea"
+        type="markdown"
         label="Body"
-        rows="20"
         ?changed=${this.bodyChanged}
         .value=${this.bodyMarkdown}
+        .uploadImage=${this.location ? this.uploadMarkdownImage : undefined}
       ></edaha-article-data-field>`;
     else if (this.mode === "preview")
       // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. It

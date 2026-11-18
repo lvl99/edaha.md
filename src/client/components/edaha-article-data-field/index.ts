@@ -1,5 +1,6 @@
 import { html, LitElement, nothing } from "lit";
 import { defineElement } from "../define/index.ts";
+import "../edaha-markdown/index.ts";
 import "../edaha-richtext/index.ts";
 import type { ImageUploader } from "../edaha-richtext/index.ts";
 import type { EmbedPreview } from "../../../server/types/index.ts";
@@ -13,7 +14,8 @@ export type FieldType =
   | "textarea"
   | "select"
   | "file"
-  | "richtext";
+  | "richtext"
+  | "markdown";
 
 /** An option of a select field */
 export interface FieldOption {
@@ -73,7 +75,7 @@ export class EdahaArticleDataField extends LitElement {
   declare options: FieldOption[];
   /** For file fields: the URL to preview the current file at */
   declare previewUrl?: string | undefined;
-  /** For rich text fields: uploads images inserted into the text */
+  /** For rich text and Markdown fields: uploads images inserted into the text */
   declare uploadImage?: ImageUploader | undefined;
   /** For rich text fields: renders embed URLs for previews */
   declare loadEmbedPreview?:
@@ -168,6 +170,18 @@ export class EdahaArticleDataField extends LitElement {
             );
           }}
         ></edaha-richtext>`;
+      case "markdown":
+        return html`<edaha-markdown
+          .textareaId=${this.inputId}
+          .value=${this.value}
+          .uploadImage=${this.uploadImage}
+          @markdown-change=${(event: Event) => {
+            event.stopPropagation();
+            this.change(
+              (event.currentTarget as HTMLElement & { value: string }).value,
+            );
+          }}
+        ></edaha-markdown>`;
       case "file":
         return this.renderFile();
       default:
