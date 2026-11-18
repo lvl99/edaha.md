@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>edaha.md</title>
-    <meta name="description" content="Static site generator powered by TypeScript and markdown" />
+    <title>Templating | edaha.md</title>
+    <meta name="description" content="edaha.md renders every page with Nunjucks templates. It comes with a neutral default theme, and you can replace any of its templates with your own, one file at a time." />
 
 
   <link rel="stylesheet" href="/base.css" />
@@ -12,7 +12,7 @@
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="http://127.0.0.1:8449">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -216,7 +216,7 @@
 </table>
 <h2 id="examples">Examples</h2>
 <h3 id="change-the-page-layout">Change the page layout</h3>
-<p>The theme’s templates extend <code>layouts/html.njk</code> and fill in its blocks: <code>head_title</code>, <code>head_description</code>, <code>bodyClass</code>, <code>header</code>, <code>breadcrumb</code>, <code>breadcrumbItems</code>, <code>main</code>, <code>aside</code> and <code>footer</code>. Copy it into <code>templates/layouts/html.njk</code> to change every page at once, e.g. to add a navigation menu:</p>
+<p>The theme’s templates extend <code>layouts/html.njk</code> and fill in its blocks: <code>headTitle</code>, <code>headDescription</code>, <code>headImports</code> (stylesheets), <code>bodyClass</code>, <code>header</code>, <code>headerNav</code>, <code>breadcrumb</code>, <code>breadcrumbItems</code>, <code>main</code>, <code>aside</code>, <code>footer</code>, <code>footerNav</code>, <code>colophon</code> and <code>bodyImports</code> (scripts). Copy it into <code>templates/layouts/html.njk</code> to change every page at once, e.g. to add a navigation menu:</p>
 <pre><code class="language-njk">{% block header %}
 &lt;header class=&quot;site-header&quot;&gt;
   &lt;p class=&quot;site-title&quot;&gt;&lt;a href=&quot;{{ site.path }}&quot;&gt;{{ site.name }}&lt;/a&gt;&lt;/p&gt;
@@ -231,7 +231,7 @@
 <p><code>templates/article/single.njk</code> can extend the theme’s own article page and replace just one block:</p>
 <pre><code class="language-njk">{% extends &quot;layouts/html.njk&quot; %}
 
-{% block head_title %}{{ article.title }} | {{ site.name }}{% endblock %}
+{% block headTitle %}{{ article.title }} | {{ site.name }}{% endblock %}
 
 {% block main %}
 &lt;article&gt;
@@ -245,7 +245,7 @@
 <p><code>templates/docs/list.njk</code> shows documentation as a plain list of links, without dates or excerpts:</p>
 <pre><code class="language-njk">{% extends &quot;layouts/html.njk&quot; %}
 
-{% block head_title %}{{ list.name }} | {{ site.name }}{% endblock %}
+{% block headTitle %}{{ list.name }} | {{ site.name }}{% endblock %}
 
 {% block main %}
 &lt;h1&gt;{{ list.name }}&lt;/h1&gt;
