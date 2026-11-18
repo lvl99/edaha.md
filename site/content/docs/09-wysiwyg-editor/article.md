@@ -13,6 +13,10 @@ Someone who manages the project starts the editor on your computer (see [Startin
 
 The editor only works on your own computer: nobody else can see it or use it.
 
+The editor fills the window in three columns, each scrolling on its own: the list of articles, the article's title and body, and its buttons and settings.
+
+On a phone or a narrow window, the list of articles opens from the menu button at the top, and **Save**, **Reset…** and **Delete…** sit in a bar at the bottom of the screen. Its **︽** button opens the article's settings over the whole screen; **︾** or Escape closes them.
+
 ## Finding articles
 
 The list of articles shows every article, including drafts, grouped by type with the newest first. Each shows its title, then its type and slug, status and date. Use **Type** to show one type only, and pick an article to open it.
@@ -21,12 +25,12 @@ The list of articles shows every article, including drafts, grouped by type with
 
 1. Choose **New article**, or open an existing one.
 2. Give it a **Title**.
-3. Write in the **Body**. The toolbar formats your text:
+3. Write in the **Body**. The toolbar's buttons format your text. Each shows an icon; point at it to see its name:
    - **Bold**, **Italic**, **Small** and **Big** text;
    - **Link**, **Heading** and **Subheading**;
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
-   - **Image URL**, **Upload image** and **Table**;
+   - **Image URL**, **Upload image** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
    - **Embed**: a YouTube video, Bandcamp player or other [embed](/docs/07-embeds/), from its address;
    - **Raw**: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;
    - **Read more**: where the article's summary in lists ends.
@@ -54,11 +58,11 @@ Changing an article's type or slug moves it, with all its files.
 
 ## Checking your work
 
-Three buttons by the body change what you see:
+Three tabs above the body change what you see. Move between them with the arrow keys, and press Enter or Space to show one.
 
 - **WYSIWYG**: the rich text editor.
-- **Markdown**: the body as Markdown, if you'd like to edit it directly.
-- **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published.
+- **Markdown**: the body as Markdown, if you'd like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.
+- **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px or 320px wide (like a tablet or a phone), centred.
 
 ## Saving, resetting and deleting
 
