@@ -192,7 +192,8 @@ export const staticFiles = async (
   const files = new Map<string, string>();
   for (const dir of dirs)
     for (const file of await listFiles(dir)) files.set(file, join(dir, file));
-  return new Map([...files].sort(([a], [b]) => (a < b ? -1 : 1)));
+  // Sorted by path, comparing characters (not the locale's order)
+  return new Map([...files].sort(([a], [b]) => Number(a > b) - Number(a < b)));
 };
 
 /**
