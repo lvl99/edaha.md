@@ -73,6 +73,18 @@ Three tabs above the body change what you see. Move between them with the arrow 
 - **Markdown**: the body as Markdown, if you'd like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.
 - **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred.
 
+## Managing files
+
+Choose **Files** (beside **All articles**) to see every file in your articles' folders. Search their names, filter by **Type** (image, document, archive, video, audio or other) and **Article type**, and choose a column's heading to sort by it, as in the article browser. **Name** opens the file, and **Location** opens its article in a new tab.
+
+Each file has three buttons:
+
+- **Copy URL** copies the file's address on your website, e.g. `/news/welcome/photo.jpg`, to paste into an article.
+- **Replace…** swaps the file for another you choose. If the new file has another name, every article that shows or links to the old file is changed to use the new one.
+- **Delete…** deletes the file after asking you. Articles that show it no longer do, links to it keep their text, and it is removed from thumbnails and attachments.
+
+The editor finds a file's uses in article bodies, thumbnails and attachments: by its name in its own article, and by its address in any article.
+
 ## Saving, resetting and deleting
 
 - **Save** writes your changes. Saving also tidies the file's Markdown.
