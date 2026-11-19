@@ -130,6 +130,10 @@ export const fieldOptions = (field: EdahaField): Record<string, unknown> => {
 const checkFields = (schema: unknown, path: string): void => {
   const fields = asMap(schema, `"${path}"`);
   if (fields.type === "object") {
+    if (Array.isArray(fields.properties))
+      throw new Error(
+        `"${path}.properties" must be a map of each property's name to its schema, not a list (remove the "-"s and put each schema under its property's name)`,
+      );
     const properties = asMap(fields.properties, `"${path}.properties"`);
     for (const [name, property] of Object.entries(properties))
       checkFields(property, `${path}.properties.${name}`);
@@ -137,6 +141,11 @@ const checkFields = (schema: unknown, path: string): void => {
   }
   // A list is edited item by item, unless one field edits it all (e.g. a select with `multiple`)
   if (fields.type === "array" && !hasFieldKind(fields.$edahaField)) {
+    // A list of schemas describes each item in turn; the editor needs one schema for every item
+    if (Array.isArray(fields.items))
+      throw new Error(
+        `"${path}.items" must be one schema for every item, not a list (remove the "-" before it)`,
+      );
     checkFields(fields.items, `${path}.items`);
     return;
   }

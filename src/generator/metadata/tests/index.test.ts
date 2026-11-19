@@ -115,6 +115,29 @@ describe("parseMetadata", () => {
     expect(parseMetadata({ tags2: tags })).toEqual({ tags2: tags });
   });
 
+  it("should explain items and properties written as lists", () => {
+    expect(() =>
+      parseMetadata({
+        source: {
+          type: "array",
+          items: [{ type: "string", $edahaField: { text: true } }],
+        },
+      }),
+    ).toThrow(
+      '"metadata.source.items" must be one schema for every item, not a list (remove the "-" before it)',
+    );
+    expect(() =>
+      parseMetadata({
+        source: {
+          type: "object",
+          properties: [{ type: "string", $edahaField: { text: true } }],
+        },
+      }),
+    ).toThrow(
+      '"metadata.source.properties" must be a map of each property\'s name to its schema, not a list',
+    );
+  });
+
   it("should reject schemas ajv can't compile", () => {
     expect(() =>
       parseMetadata({ a: { type: "strin", $edahaField: { text: true } } }),
