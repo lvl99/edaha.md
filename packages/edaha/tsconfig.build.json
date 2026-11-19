@@ -1,0 +1,14 @@
+{
+  // Writes the published Node.js code and type definitions (dist/) for the generator, embeds and CLI.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": ["es2022", "dom"],
+    "types": ["node"]
+  },
+  "include": ["src"],
+  "exclude": ["src/**/tests"]
+}

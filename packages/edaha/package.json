@@ -1,0 +1,76 @@
+{
+  "name": "@lvl99dotcom/edaha.md",
+  "version": "0.1.0",
+  "description": "Static site generator using markdown.",
+  "keywords": [
+    "blog",
+    "static-site-generator",
+    "markdown",
+    "nunjucks",
+    "rss"
+  ],
+  "author": "Matt Scheurich <matt@lvl99.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lvl99/edaha.md.git",
+    "directory": "packages/edaha"
+  },
+  "homepage": "https://github.com/lvl99/edaha.md#readme",
+  "bugs": "https://github.com/lvl99/edaha.md/issues",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "edaha": "./src/cli/bin.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json",
+    "./*": "./src/*/index.ts"
+  },
+  "files": [
+    "dist",
+    "theme",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "bin": {
+      "edaha": "./dist/cli/bin.js"
+    },
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json",
+      "./*": {
+        "types": "./dist/*/index.d.ts",
+        "default": "./dist/*/index.js"
+      }
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "markdown-it": "^15.0.3",
+    "mime-types": "^3.0.2",
+    "nunjucks": "^3.2.4",
+    "yaml": "^2.9.1"
+  },
+  "peerDependencies": {
+    "@lvl99dotcom/edaha-editor": "workspace:^"
+  },
+  "peerDependenciesMeta": {
+    "@lvl99dotcom/edaha-editor": {
+      "optional": true
+    }
+  }
+}

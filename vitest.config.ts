@@ -8,9 +8,9 @@ export default defineConfig({
     css: { include: /.+/ },
     coverage: {
       provider: "v8",
-      include: ["src/**/*.ts"],
+      include: ["packages/*/src/**/*.ts"],
       // bin.ts only runs the CLI with the process's arguments; everything it calls is tested via cli/index.ts
-      exclude: ["**/tests/**", "**/*.d.ts", "src/cli/bin.ts"],
+      exclude: ["**/tests/**", "**/*.d.ts", "packages/edaha/src/cli/bin.ts"],
     },
   },
 });

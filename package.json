@@ -1,50 +1,21 @@
 {
-  "name": "@lvl99dotcom/edaha.md",
-  "version": "0.1.0",
-  "description": "Static site generator using markdown.",
-  "keywords": [
-    "blog",
-    "static-site-generator",
-    "markdown",
-    "nunjucks",
-    "rss",
-    "editor"
-  ],
-  "author": "Matt Scheurich <matt@lvl99.com>",
+  "name": "edaha.md",
+  "private": true,
+  "description": "The edaha.md workspace: the static site generator, its editor and embed plugins, and the edaha.md website.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lvl99/edaha.md.git"
   },
-  "homepage": "https://github.com/lvl99/edaha.md#readme",
-  "bugs": "https://github.com/lvl99/edaha.md/issues",
   "type": "module",
   "engines": {
     "node": ">=22"
   },
-  "bin": {
-    "edaha": "./dist/cli/bin.js"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "dist",
-    "theme",
-    "README.md",
-    "LICENSE"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
-    "build": "node scripts/build.ts",
-    "dev:editor": "vite",
-    "site:build": "node src/cli/bin.ts build",
+    "build": "pnpm --filter @lvl99dotcom/edaha.md build && pnpm -r --filter \"!@lvl99dotcom/edaha.md\" build",
+    "editor": "edaha editor",
+    "dev:editor": "vite --config packages/edaha-editor/vite.config.ts",
+    "site:build": "edaha build",
     "site:serve": "node scripts/serve-site.ts",
     "site:dev": "node scripts/dev-site.ts",
     "typecheck": "tsc -p .",
@@ -52,29 +23,12 @@
     "test:coverage": "vitest --run --coverage",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "prepublishOnly": "pnpm build"
-  },
-  "dependencies": {
-    "@hono/node-server": "^2.1.5",
-    "ajv": "^8.20.0",
-    "ajv-formats": "^3.0.1",
-    "hono": "^4.13.13",
-    "markdown-it": "^15.0.3",
-    "mime-types": "^3.0.2",
-    "nunjucks": "^3.2.4",
-    "turndown": "^7.2.4",
-    "yaml": "^2.9.1"
+    "format:check": "prettier --check ."
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@material-symbols/svg-400": "0.48.1",
-    "@tiptap/core": "^3.32.0",
-    "@tiptap/extension-details": "3.32.0",
-    "@tiptap/extension-image": "^3.32.0",
-    "@tiptap/extension-table": "^3.32.0",
-    "@tiptap/pm": "^3.32.0",
-    "@tiptap/starter-kit": "^3.32.0",
+    "@lvl99dotcom/edaha.md": "workspace:^",
+    "@lvl99dotcom/edaha-editor": "workspace:^",
     "@types/markdown-it": "^14.1.2",
     "@types/mime-types": "^3.0.1",
     "@types/node": "^26.1.1",
@@ -86,7 +40,7 @@
     "eslint-plugin-lit": "^2.3.1",
     "globals": "^17.13.0",
     "jsdom": "^30.1.3",
-    "lit": "^3.3.3",
+    "mime-types": "^3.0.2",
     "prettier": "^3.9.10",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.2",

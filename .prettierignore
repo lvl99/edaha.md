@@ -1,6 +1,6 @@
 dist
 coverage
 pnpm-lock.yaml
-src/**/fixtures/**
+packages/*/src/**/fixtures/**
 # The website built from site/ (generated)
 /build

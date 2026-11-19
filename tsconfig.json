@@ -1,5 +1,6 @@
 {
-  // Type checks everything: source, tests, scripts and configs. See tsconfig.build.json for the published code.
+  // Type checks everything in the workspace: source, tests, scripts and configs. See each package's tsconfig.build.json
+  // for its published code.
   // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
     // Environment Settings
@@ -30,5 +31,11 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "scripts", "*.config.ts"]
+  "include": [
+    "packages/*/src",
+    "packages/*/scripts",
+    "packages/*/*.config.ts",
+    "scripts",
+    "*.config.ts"
+  ]
 }

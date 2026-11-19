@@ -20,6 +20,14 @@ yarn add --dev @lvl99dotcom/edaha.md
 pnpm add --save-dev @lvl99dotcom/edaha.md
 ```
 
+To also write articles in the [WYSIWYG editor](/docs/09-wysiwyg-editor/), add its package too:
+
+```sh
+npm install --save-dev @lvl99dotcom/edaha-editor
+yarn add --dev @lvl99dotcom/edaha-editor
+pnpm add --save-dev @lvl99dotcom/edaha-editor
+```
+
 ## 2. Add a config file
 
 Create `edahaconfig.yml` next to your project's `package.json`. Only the website's name and description are required:

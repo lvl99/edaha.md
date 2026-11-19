@@ -12,7 +12,7 @@
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="http://127.0.0.1:8449">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -65,8 +65,8 @@ The first paragraph. &lt;!-- readmore --&gt;
 
 The rest of the article, with an image: ![A photo](photo.jpg)
 </code></pre>
-<h3 id="the-header">The header</h3>
-<p>The header is an HTML comment at the very top of the file. Its first word says what format the settings are written in:</p>
+<h3 id="article-metadata">Article metadata</h3>
+<p>Article metadata is contained within an HTML comment at the very top of the file. Its first word says what format the settings are written in:</p>
 <ul>
 <li><code>&lt;!--yaml</code> or <code>&lt;!--yml</code>: YAML (the default, used by the editor for new articles);</li>
 <li><code>&lt;!--json</code>: JSON.</li>
@@ -168,16 +168,14 @@ The rest of the article, with an image: ![A photo](photo.jpg)
 </ul>
 <h2 id="raw-content">Raw content</h2>
 <p>Put content between <code>&lt;!-- raw --&gt;</code> and <code>&lt;!-- /raw --&gt;</code> to show it exactly as it is written. Nothing inside is read as Markdown, embeds, read more breaks or HTML, and quotes and dashes aren’t made typographic:</p>
-<!-- prettier-ignore -->
 <pre><code class="language-md">&lt;!-- raw --&gt;
-*Not italic*, # not a heading, &lt;b&gt;not bold&lt;/b&gt;
+
+_Not italic_, # not a heading, &lt;b&gt;not bold&lt;/b&gt;
 &lt;!-- readmore --&gt; isn't a read more break here
 &lt;!-- /raw --&gt;
 </code></pre>
 <p>Shows on the page as:</p>
-<!-- prettier-ignore-start -->
-<pre class="raw">&#42;Not italic&#42;&#44; &#35; not a heading&#44; &#60;b&#62;not bold&#60;&#47;b&#62;&#10;&#60;&#33;&#45;&#45; readmore &#45;&#45;&#62; isn&#39;t a read more break here</pre>
-<!-- prettier-ignore-end -->
+<pre class="raw">&#10;&#95;Not italic&#95;&#44; &#35; not a heading&#44; &#60;b&#62;not bold&#60;&#47;b&#62;&#10;&#60;&#33;&#45;&#45; readmore &#45;&#45;&#62; isn&#39;t a read more break here</pre>
 <ul>
 <li><strong>On its own lines</strong>, raw content is a block, <code>&lt;pre class=&quot;raw&quot;&gt;</code>, keeping its spaces and line breaks.</li>
 <li><strong>Within a line</strong>, e.g. <code>Type &lt;!-- raw --&gt;*&lt;!-- /raw --&gt; for a star</code>, it is inline, <code>&lt;span class=&quot;raw&quot;&gt;</code>.</li>
@@ -188,12 +186,9 @@ The rest of the article, with an image: ![A photo](photo.jpg)
 <h3 id="raw-content-and-code-formatters">Raw content and code formatters</h3>
 <p>If your project formats Markdown with a tool like <a href="https://prettier.io/">Prettier</a>, it may change the content of raw blocks, e.g. turn <code>*text*</code> into <code>_text_</code> or add blank lines, which changes what the page shows. It also formats Markdown inside <code>```md</code> code blocks.</p>
 <p>Tell it to leave them alone. For Prettier, wrap raw blocks in <code>prettier-ignore-start</code> and <code>prettier-ignore-end</code> comments, or put <code>&lt;!-- prettier-ignore --&gt;</code> just before a code block:</p>
-<!-- prettier-ignore -->
 <pre><code class="language-md">&lt;!-- prettier-ignore-start --&gt;
 
-
 &lt;pre class=&quot;raw&quot;&gt;&amp;#42;Shown with its stars&amp;#42;&lt;/pre&gt;
-
 
 &lt;!-- prettier-ignore-end --&gt;
 </code></pre>
