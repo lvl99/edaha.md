@@ -90,21 +90,22 @@ The folder that holds the config file is the **site folder**. Every folder in th
 
 ## Settings
 
-| Setting                           | Required | Description                                                                      |
-| --------------------------------- | -------- | -------------------------------------------------------------------------------- |
-| [`name`](#name)                   | Yes      | The website's name.                                                              |
-| [`description`](#description)     | Yes      | The website's description.                                                       |
-| [`path`](#path)                   | No       | A URL path that every article type's URLs start with.                            |
-| [`articlesDir`](#articlesdir)     | No       | The folder that holds the articles.                                              |
-| [`templatesDir`](#templatesdir)   | No       | The folder that holds your own templates.                                        |
-| [`staticDir`](#staticdir)         | No       | The folder that holds your own static files.                                     |
-| [`outputDir`](#outputdir)         | No       | The folder the website is built into.                                            |
-| [`publishDir`](#publishdir)       | No       | A folder outside the site folder that the built website is copied into.          |
-| [`siteUrl`](#siteurl)             | No       | The website's absolute URL, for links in RSS feeds.                              |
-| [`reservedPaths`](#reservedpaths) | No       | Paths at the website's root that articles and article types can't use.           |
-| [`types`](#types)                 | No       | Settings for each article type: URL path, labels and what is built.              |
-| [`embeds`](#embeds)               | No       | Custom embed renderers, tried before the built-in ones (JavaScript config only). |
-| [`metadata`](#metadata)           | No       | Custom settings for articles, with how the editor shows them.                    |
+| Setting                             | Required | Description                                                                      |
+| ----------------------------------- | -------- | -------------------------------------------------------------------------------- |
+| [`name`](#name)                     | Yes      | The website's name.                                                              |
+| [`description`](#description)       | Yes      | The website's description.                                                       |
+| [`path`](#path)                     | No       | A URL path that every article type's URLs start with.                            |
+| [`articlesDir`](#articlesdir)       | No       | The folder that holds the articles.                                              |
+| [`templatesDir`](#templatesdir)     | No       | The folder that holds your own templates.                                        |
+| [`staticDir`](#staticdir)           | No       | The folder that holds your own static files.                                     |
+| [`outputDir`](#outputdir)           | No       | The folder the website is built into.                                            |
+| [`publishDir`](#publishdir)         | No       | A folder outside the site folder that the built website is copied into.          |
+| [`siteUrl`](#siteurl)               | No       | The website's absolute URL, for links in RSS feeds.                              |
+| [`reservedPaths`](#reservedpaths)   | No       | Paths at the website's root that articles and article types can't use.           |
+| [`types`](#types)                   | No       | Settings for each article type: URL path, labels and what is built.              |
+| [`embeds`](#embeds)                 | No       | Custom embed renderers, tried before the built-in ones (JavaScript config only). |
+| [`metadata`](#metadata)             | No       | Custom settings for articles, with how the editor shows them.                    |
+| [`metadataGroups`](#metadatagroups) | No       | Groups of settings in the editor, besides the built-in ones.                     |
 
 Unknown settings stop the build, so a typo doesn't go unnoticed.
 
@@ -364,7 +365,58 @@ metadata:
     maxItems: 5
 ```
 
+Each custom setting appears in a group of the editor's settings: `$edahaField.group` names the group (see [`metadataGroups`](#metadatagroups)), or is `{ key, after }` to come after a given setting in it. Without one, it's in the **Custom** group. A map's or list's `$edahaField` may set only its group.
+
+```yaml
+metadata:
+  featured:
+    type: string
+    $edahaField:
+      group:
+        key: files
+        after: thumbnail # right after the thumbnail
+      file: true
+```
+
 Values are checked against their schemas with [ajv](https://ajv.js.org/), including formats like `uri` and `email`. Problems are described in plain words, e.g. "Rating must be at most 10" or "Credit name is required", and show above the field in the editor. The build and the editor stop with an error if a key is a core setting's name, a type lists a key that isn't defined, a value has no field kind or more than one, or a schema isn't valid.
+
+### `metadataGroups`
+
+The editor shows articles' settings in groups that open and close. These are built in, in this order:
+
+| Group        | Settings                                                                    | Starts |
+| ------------ | --------------------------------------------------------------------------- | ------ |
+| `info`       | Type, status, slug, publication date and author.                            | Open   |
+| `categorise` | Tags.                                                                       | Closed |
+| `customise`  | Excerpt and template.                                                       | Open   |
+| `files`      | Thumbnail, attachments, and the files in the article's folder (`uploaded`). | Open   |
+| `custom`     | Custom settings without a group.                                            | Closed |
+
+`metadataGroups` adds groups of your own, for [custom settings](#metadata) to be in.
+
+- **Accepted values:** a map of keys (a letter, then letters, digits, `_` and `-`; not a built-in group's key) to a group's settings:
+  - `title` (required): the group's heading.
+  - `description`: shown above its settings.
+  - `after`: the group it comes after. Without it, groups go at the end.
+  - `openedByDefault`: whether it starts open (`true`) or closed (`false`, the default).
+- **Default:** none
+
+```yaml
+metadataGroups:
+  seo:
+    title: Search engines
+    description: How the article appears in search results.
+    after: info
+    openedByDefault: true
+metadata:
+  keywords:
+    type: string
+    $edahaField:
+      group: seo
+      text: true
+```
+
+A setting in a group that doesn't exist, or coming after a setting or group that isn't there, stops the build and the editor with an error.
 
 ## Commands
 

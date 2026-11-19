@@ -168,6 +168,11 @@ module.exports = {
 <td>No</td>
 <td>Custom settings for articles, with how the editor shows them.</td>
 </tr>
+<tr>
+<td><a href="#metadatagroups"><code>metadataGroups</code></a></td>
+<td>No</td>
+<td>Groups of settings in the editor, besides the built-in ones.</td>
+</tr>
 </tbody>
 </table>
 <p>Unknown settings stop the build, so a typo doesn’t go unnoticed.</p>
@@ -453,7 +458,81 @@ types:
         file: { accept: image/* }
     maxItems: 5
 </code></pre>
+<p>Each custom setting appears in a group of the editor’s settings: <code>$edahaField.group</code> names the group (see <a href="#metadatagroups"><code>metadataGroups</code></a>), or is <code>{ key, after }</code> to come after a given setting in it. Without one, it’s in the <strong>Custom</strong> group. A map’s or list’s <code>$edahaField</code> may set only its group.</p>
+<pre><code class="language-yaml">metadata:
+  featured:
+    type: string
+    $edahaField:
+      group:
+        key: files
+        after: thumbnail # right after the thumbnail
+      file: true
+</code></pre>
 <p>Values are checked against their schemas with <a href="https://ajv.js.org/">ajv</a>, including formats like <code>uri</code> and <code>email</code>. Problems are described in plain words, e.g. “Rating must be at most 10” or “Credit name is required”, and show above the field in the editor. The build and the editor stop with an error if a key is a core setting’s name, a type lists a key that isn’t defined, a value has no field kind or more than one, or a schema isn’t valid.</p>
+<h3 id="metadatagroups"><code>metadataGroups</code></h3>
+<p>The editor shows articles’ settings in groups that open and close. These are built in, in this order:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Settings</th>
+<th>Starts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>info</code></td>
+<td>Type, status, slug, publication date and author.</td>
+<td>Open</td>
+</tr>
+<tr>
+<td><code>categorise</code></td>
+<td>Tags.</td>
+<td>Closed</td>
+</tr>
+<tr>
+<td><code>customise</code></td>
+<td>Excerpt and template.</td>
+<td>Open</td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td>Thumbnail, attachments, and the files in the article’s folder (<code>uploaded</code>).</td>
+<td>Open</td>
+</tr>
+<tr>
+<td><code>custom</code></td>
+<td>Custom settings without a group.</td>
+<td>Closed</td>
+</tr>
+</tbody>
+</table>
+<p><code>metadataGroups</code> adds groups of your own, for <a href="#metadata">custom settings</a> to be in.</p>
+<ul>
+<li><strong>Accepted values:</strong> a map of keys (a letter, then letters, digits, <code>_</code> and <code>-</code>; not a built-in group’s key) to a group’s settings:
+<ul>
+<li><code>title</code> (required): the group’s heading.</li>
+<li><code>description</code>: shown above its settings.</li>
+<li><code>after</code>: the group it comes after. Without it, groups go at the end.</li>
+<li><code>openedByDefault</code>: whether it starts open (<code>true</code>) or closed (<code>false</code>, the default).</li>
+</ul>
+</li>
+<li><strong>Default:</strong> none</li>
+</ul>
+<pre><code class="language-yaml">metadataGroups:
+  seo:
+    title: Search engines
+    description: How the article appears in search results.
+    after: info
+    openedByDefault: true
+metadata:
+  keywords:
+    type: string
+    $edahaField:
+      group: seo
+      text: true
+</code></pre>
+<p>A setting in a group that doesn’t exist, or coming after a setting or group that isn’t there, stops the build and the editor with an error.</p>
 <h2 id="commands">Commands</h2>
 <h3 id="edaha-build"><code>edaha build</code></h3>
 <p>Builds the website into <code>outputDir</code>, and copies it into <code>publishDir</code> if that is set. See <a href="/docs/08-build-and-deploy/">Build &amp; deploy</a>.</p>

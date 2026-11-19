@@ -49,7 +49,9 @@ Searches and the article browser include changes made outside the editor straigh
 
 ## Settings
 
-The **Configuration** section holds the article's settings:
+The settings are in groups you can open and close: **Info** (type, status, slug, date and author), **Categorise** (tags), **Customise** (excerpt and template), **Files** (thumbnail, attachments and the article's files) and **Custom** (custom settings). Your website may add groups of its own. A group's heading is marked `*` when a setting in it has changed, and ⚠️ when one isn't valid; a group with an invalid setting opens.
+
+What the settings do:
 
 | Setting              | What it does                                                                                     |
 | -------------------- | ------------------------------------------------------------------------------------------------ |
@@ -67,7 +69,7 @@ Changing an article's type or slug moves it, with all its files.
 
 ## Custom settings
 
-If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are under **Custom settings**, after the other settings. Lists have **Add** and **Delete** buttons, and file fields upload into the article's folder (once it's saved).
+If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields upload into the article's folder (once it's saved).
 
 When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren't valid. The article can't be saved until they are fixed. Settings the article's type doesn't use, or that nobody defined, are listed there too; they are kept as they are.
 
