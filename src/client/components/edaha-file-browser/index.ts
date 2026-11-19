@@ -41,6 +41,29 @@ export interface FilesChanged extends FileChange {
   file: FileSummary;
 }
 
+/** A file chosen for an article: how the article refers to it, its name, and its kind */
+export interface ChosenFile {
+  /** How the article refers to it (or, in the rich text editor, the URL showing it) */
+  url: string;
+  name: string;
+  kind: FileKind;
+}
+
+/** Lets the user choose an existing file (first showing files of a kind, if given); undefined if none was chosen */
+export type FileChooser = (kind?: FileKind) => Promise<ChosenFile | undefined>;
+
+/**
+ * The kind of files a file input's `accept` takes, when it only takes images.
+ *
+ * @example
+ * acceptedKind("image/png, image/jpeg"); // "image"
+ * acceptedKind("image/png, application/pdf"); // undefined
+ */
+export const acceptedKind = (accept = ""): FileKind | undefined =>
+  accept && accept.split(",").every((type) => type.trim().startsWith("image/"))
+    ? "image"
+    : undefined;
+
 /** The units file sizes are shown in */
 const SIZE_UNITS = ["B", "KB", "MB", "GB"];
 
@@ -73,9 +96,12 @@ const articles = (count: number) =>
  * replaced with another file, or deleted; replacing and deleting update references to it in every article, and fire
  * `files-changed` (detail: {@link FilesChanged}). Rendered in the light DOM.
  *
+ * Opened with `pick`, it also lets the user choose a file (e.g. to insert into an article), and gives the chosen file.
+ *
  * @example
  * html`<edaha-file-browser .api=${api} .types=${types}></edaha-file-browser>`
  * browser.show();
+ * const file = await browser.pick("image");
  */
 export class EdahaFileBrowser extends LitElement {
   static override properties = {
@@ -92,6 +118,7 @@ export class EdahaFileBrowser extends LitElement {
     loading: { state: true },
     message: { state: true },
     error: { state: true },
+    picking: { state: true },
   };
 
   declare api: EditorApi;
@@ -112,6 +139,8 @@ export class EdahaFileBrowser extends LitElement {
   /** What the last operation did, e.g. "Copied /news/hello/photo.png" */
   declare message: string;
   declare error: string;
+  /** While choosing a file with `pick`: gives the chosen file (or undefined) */
+  declare picking?: ((file?: FileSummary) => void) | undefined;
 
   /** How long to wait after typing in the search before searching, in ms (replaceable for tests) */
   searchDelay = 250;
@@ -179,8 +208,14 @@ export class EdahaFileBrowser extends LitElement {
 
   /** Open the browser with its filters cleared, on the first page, with focus in the search field */
   async show(): Promise<void> {
+    this.finishPicking();
+    await this.openWith("");
+  }
+
+  /** Open the browser with its filters cleared but for the kind, on the first page, with focus in the search field */
+  private async openWith(kind: FileKind | ""): Promise<void> {
     this.search = "";
-    this.kind = "";
+    this.kind = kind;
     this.type = "";
     this.page = 1;
     this.message = "";
@@ -188,6 +223,35 @@ export class EdahaFileBrowser extends LitElement {
     if (!this.open) this.dialog?.showModal();
     this.querySelector<HTMLInputElement>("#file-browser-search")?.focus();
     await Promise.all([this.loadFilters(), this.load()]);
+  }
+
+  /**
+   * Open the browser to choose a file (first showing files of a kind, if given). Resolves with the chosen file, or
+   * undefined if the browser is closed without choosing one.
+   *
+   * @example
+   * const image = await browser.pick("image");
+   */
+  async pick(kind: FileKind | "" = ""): Promise<FileSummary | undefined> {
+    this.finishPicking();
+    const chosen = new Promise<FileSummary | undefined>(
+      (resolve) => (this.picking = resolve),
+    );
+    await this.openWith(kind);
+    return chosen;
+  }
+
+  /** Stop choosing a file, giving the chosen one (or undefined) */
+  private finishPicking(file?: FileSummary): void {
+    const picking = this.picking;
+    this.picking = undefined;
+    picking?.(file);
+  }
+
+  /** Choose a file while picking, closing the browser */
+  private chooseFile(file: FileSummary): void {
+    this.finishPicking(file);
+    this.close();
   }
 
   /** Close the browser */
@@ -433,6 +497,17 @@ export class EdahaFileBrowser extends LitElement {
               <a href="/#${location}" target="_blank">${location}</a>
             </td>
             <td class="file-browser-operations">
+              ${
+                this.picking
+                  ? html`<button
+                      type="button"
+                      class="btn"
+                      @click=${() => this.chooseFile(file)}
+                    >
+                      Choose<span class="visually-hidden"> ${file.name}</span>
+                    </button>`
+                  : nothing
+              }
               ${this.renderOperation(
                 `Copy URL of ${file.name}`,
                 "content_copy",
@@ -500,10 +575,15 @@ export class EdahaFileBrowser extends LitElement {
     return html`<dialog
       class="article-browser file-browser"
       aria-labelledby="file-browser-title"
-      @close=${() => clearTimeout(this.searchTimer)}
+      @close=${() => {
+        clearTimeout(this.searchTimer);
+        this.finishPicking();
+      }}
     >
       <div class="article-browser-header">
-        <h2 id="file-browser-title">Files</h2>
+        <h2 id="file-browser-title">
+          ${this.picking ? "Choose a file" : "Files"}
+        </h2>
         <button
           type="button"
           class="btn-icon"

@@ -1,11 +1,14 @@
 <!--yaml
 status: published
-date: 2026-11-15T20:36:00.000+02:00
+date: 2026-11-15T18:36:00.000Z
+author: false
 -->
 
 # Build & deploy
 
-`edaha build` turns your articles into a folder of plain HTML, RSS and static files. Deploying is uploading that folder to any host that serves static files. <!-- readmore -->
+`edaha build` turns your articles into a folder of plain HTML, RSS and static files. Deploying is uploading that folder to any host that serves static files.
+
+<!-- readmore -->
 
 ## Building
 
@@ -35,13 +38,13 @@ To add it to your project's scripts, in `package.json`:
 
 ### Settings that affect the build
 
-| Setting                                            | What it does                                                           |
-| -------------------------------------------------- | ---------------------------------------------------------------------- |
-| [`outputDir`](/docs/03-configuration/#outputdir)   | Where the website is built. Emptied on every build. Default: `build`.  |
-| [`siteUrl`](/docs/03-configuration/#siteurl)       | The website's address, for RSS feed links.                             |
+| Setting | What it does |
+| --- | --- |
+| [`outputDir`](/docs/03-configuration/#outputdir) | Where the website is built. Emptied on every build. Default: `build`. |
+| [`siteUrl`](/docs/03-configuration/#siteurl) | The website's address, for RSS feed links. |
 | [`publishDir`](/docs/03-configuration/#publishdir) | Another folder the website is copied into, e.g. an app's build folder. |
-| [`path`](/docs/03-configuration/#path)             | A URL path every article type's URLs start with.                       |
-| [`types`](/docs/03-configuration/#types)           | What is built for each article type.                                   |
+| [`path`](/docs/03-configuration/#path) | A URL path every article type's URLs start with. |
+| [`types`](/docs/03-configuration/#types) | What is built for each article type. |
 
 The website's address can also come from the `SITE_URL` environment variable or the `--site-url` option, which take the place of `siteUrl`. That's handy when the same site is built for a staging and a live address:
 

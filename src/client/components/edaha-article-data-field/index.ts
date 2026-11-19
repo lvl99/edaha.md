@@ -4,6 +4,7 @@ import "../edaha-markdown/index.ts";
 import "../edaha-richtext/index.ts";
 import type { ImageUploader } from "../edaha-richtext/index.ts";
 import type { EmbedPreview } from "../../../server/types/index.ts";
+import { acceptedKind, type FileChooser } from "../edaha-file-browser/index.ts";
 
 /** Kinds of field */
 export type FieldType =
@@ -37,7 +38,8 @@ const IMAGE = /\.(png|jpe?g|gif|webp|svg)$/i;
  * ends with an asterisk, to show it isn't saved yet.
  *
  * Fires `field-change` (detail: {@link FieldChange}) when the value changes, and for file fields `field-file`
- * (detail: the chosen File) so the article can upload it and set the value to the saved file name.
+ * (detail: the chosen File) so the article can upload it and set the value to the saved file name. With `chooseFile`,
+ * a file field can also be set to an existing file.
  *
  * @example
  * html`<edaha-article-data-field name="title" type="text" label="Title" .value=${title}></edaha-article-data-field>`
@@ -54,6 +56,7 @@ export class EdahaArticleDataField extends LitElement {
     options: { attribute: false },
     previewUrl: { attribute: false },
     uploadImage: { attribute: false },
+    chooseFile: { attribute: false },
     loadEmbedPreview: { attribute: false },
     preview: { type: Boolean },
     allowchange: { type: Boolean },
@@ -77,6 +80,8 @@ export class EdahaArticleDataField extends LitElement {
   declare previewUrl?: string | undefined;
   /** For rich text and Markdown fields: uploads images inserted into the text */
   declare uploadImage?: ImageUploader | undefined;
+  /** For file, rich text and Markdown fields: lets the user choose an existing file */
+  declare chooseFile?: FileChooser | undefined;
   /** For rich text fields: renders embed URLs for previews */
   declare loadEmbedPreview?:
     ((url: string) => Promise<EmbedPreview>) | undefined;
@@ -162,6 +167,7 @@ export class EdahaArticleDataField extends LitElement {
           id=${this.inputId}
           .value=${this.value}
           .uploadImage=${this.uploadImage}
+          .chooseFile=${this.chooseFile}
           .loadEmbedPreview=${this.loadEmbedPreview}
           @richtext-change=${(event: Event) => {
             event.stopPropagation();
@@ -175,6 +181,7 @@ export class EdahaArticleDataField extends LitElement {
           .textareaId=${this.inputId}
           .value=${this.value}
           .uploadImage=${this.uploadImage}
+          .chooseFile=${this.chooseFile}
           @markdown-change=${(event: Event) => {
             event.stopPropagation();
             this.change(
@@ -196,7 +203,13 @@ export class EdahaArticleDataField extends LitElement {
     }
   }
 
-  /** Render a file field: the current file (with a preview), a file chooser and the file name */
+  /** Let the user choose an existing file (of the kind the field accepts), and set the value to it */
+  private async chooseExisting() {
+    const file = await this.chooseFile?.(acceptedKind(this.accept));
+    if (file) this.change(file.url);
+  }
+
+  /** Render a file field: the current file (with a preview), a file chooser, and a button choosing an existing file */
   private renderFile() {
     const showChooser = !this.value || this.allowchange;
     return html`
@@ -215,23 +228,35 @@ export class EdahaArticleDataField extends LitElement {
       ${
         showChooser
           ? html`<input
-              id=${this.inputId}
-              type="file"
-              accept=${this.accept}
-              ?disabled=${this.disabled}
-              @change=${(event: Event) => {
-                const input = event.target as HTMLInputElement;
-                const file = input.files?.[0];
-                input.value = "";
-                if (file)
-                  this.dispatchEvent(
-                    new CustomEvent<File>("field-file", {
-                      detail: file,
-                      bubbles: true,
-                    }),
-                  );
-              }}
-            />`
+                id=${this.inputId}
+                type="file"
+                accept=${this.accept}
+                ?disabled=${this.disabled}
+                @change=${(event: Event) => {
+                  const input = event.target as HTMLInputElement;
+                  const file = input.files?.[0];
+                  input.value = "";
+                  if (file)
+                    this.dispatchEvent(
+                      new CustomEvent<File>("field-file", {
+                        detail: file,
+                        bubbles: true,
+                      }),
+                    );
+                }}
+              />${
+                this.chooseFile
+                  ? html`<button
+                      type="button"
+                      class="btn btn-choose-file"
+                      @click=${() => void this.chooseExisting()}
+                    >
+                      Choose existing file…<span class="visually-hidden">
+                        for ${this.label}</span
+                      >
+                    </button>`
+                  : nothing
+              }`
           : nothing
       }
     `;

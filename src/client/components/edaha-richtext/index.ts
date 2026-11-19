@@ -5,6 +5,7 @@ import { createRichtextEditor } from "../../richtext/editor/index.ts";
 import { EMBED_EDIT_EVENT } from "../../richtext/extensions/index.ts";
 import { defineElement } from "../define/index.ts";
 import { toolbarButtonContent } from "../../icons/index.ts";
+import type { ChosenFile, FileChooser } from "../edaha-file-browser/index.ts";
 
 /** Uploads an image and returns the URL to show it at */
 export type ImageUploader = (file: File) => Promise<string>;
@@ -34,6 +35,7 @@ export class EdahaRichtext extends LitElement {
   static override properties = {
     value: { attribute: false },
     uploadImage: { attribute: false },
+    chooseFile: { attribute: false },
     loadEmbedPreview: { attribute: false },
   };
 
@@ -42,6 +44,9 @@ export class EdahaRichtext extends LitElement {
 
   /** Uploads an image file; without it, the upload button is disabled */
   declare uploadImage?: ImageUploader | undefined;
+
+  /** Lets the user choose an existing file, giving the URL to show it at; without it, its button is disabled */
+  declare chooseFile?: FileChooser | undefined;
 
   /** Renders embed URLs for previews inside embed blocks */
   declare loadEmbedPreview?:
@@ -248,6 +253,30 @@ export class EdahaRichtext extends LitElement {
     }
   }
 
+  /**
+   * Insert a file: an image as an image, anything else as a link (on the selection, or named after the file).
+   */
+  insertFile({ url, name, kind }: ChosenFile): void {
+    const chain = this.editor?.chain().focus();
+    if (!chain) return;
+    if (kind === "image") chain.setImage({ src: url, alt: "" }).run();
+    else if (this.editor?.state.selection.empty)
+      chain
+        .insertContent({
+          type: "text",
+          text: name,
+          marks: [{ type: "link", attrs: { href: url } }],
+        })
+        .run();
+    else chain.setLink({ href: url }).run();
+  }
+
+  /** Let the user choose an existing file, and insert it */
+  private async onChooseFile() {
+    const file = await this.chooseFile?.();
+    if (file) this.insertFile(file);
+  }
+
   protected override firstUpdated(): void {
     const element = this.querySelector(".richtext-content") as HTMLElement;
     this.editor = createRichtextEditor(
@@ -325,6 +354,16 @@ export class EdahaRichtext extends LitElement {
             @change=${(event: Event) => void this.onImageFile(event)}
           />
         </label>
+        <button
+          type="button"
+          class="toolbar-button"
+          data-action="Choose file"
+          title="Choose file"
+          ?disabled=${!editor || !this.chooseFile}
+          @click=${() => void this.onChooseFile()}
+        >
+          ${toolbarButtonContent("Choose file")}
+        </button>
       </div>
       <div class="richtext-content"></div>
     `;

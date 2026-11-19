@@ -877,12 +877,14 @@ export class ArticleStore {
   }
 
   /**
-   * Read one of the static files published at the website's root (the site's `static/`, then the theme's), e.g.
-   * `site.css`, for previews. Throws a 404 EditorError if there is no such file, or the path leaves the folder or
-   * names a hidden file.
+   * Read a file at its path on the website, for previews and the article body: one of the static files published at
+   * the website's root (the site's `static/`, then the theme's), e.g. `site.css`, or else a file in an article's
+   * folder, e.g. `news/welcome/photo.png`. Throws a 404 EditorError if there is no such file, or the path leaves the
+   * folder or names a hidden file.
    *
    * @example
    * await store.staticFile("fonts/my-font.woff2");
+   * await store.staticFile("news/welcome/photo.png");
    */
   async staticFile(path: string): Promise<Uint8Array> {
     const parts = path.split("/");
@@ -895,7 +897,14 @@ export class ArticleStore {
         // Not in this folder
       }
     }
-    throw new EditorError(404, "File not found");
+    const { articleUrl } = await this.articleUrls();
+    const file = (await this.index())
+      .files()
+      .find(
+        ({ type, slug, name }) => articleUrl(type, slug) + name === `/${path}`,
+      );
+    if (!file) throw new EditorError(404, "File not found");
+    return this.file(file.type, file.slug, file.name);
   }
 
   /** The static folders (stylesheet, fonts) published at the website's root: the site's, then the theme's */

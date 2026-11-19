@@ -1,7 +1,7 @@
 /**
- * Narrow screens (phones and small tablets), where the editor's article list opens from a menu button and the article's
- * settings open full screen from a bar at the bottom. Keep in step with the `@media (max-width: 899.98px)` rules in
- * style.css.
+ * Narrow screens (phones and small tablets), where the editor always has its compact layout: the article list opens
+ * from a menu button and the article's settings open full screen from a bar at the bottom. Keep in step with the
+ * `@media (max-width: 899.98px)` rules in style.css.
  */
 export const NARROW_QUERY = "(max-width: 899.98px)";
 

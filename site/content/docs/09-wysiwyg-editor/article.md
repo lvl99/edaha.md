@@ -1,21 +1,26 @@
 <!--yaml
 status: published
-date: 2026-11-15T20:36:00.000+02:00
+date: 2026-11-15T18:36:00.000Z
+author: false
 -->
 
 # WYSIWYG editor
 
-edaha.md comes with an editor that lets you write and manage your website's articles in your browser, without editing Markdown files. What you see as you write is what your visitors will see. <!-- readmore -->
+edaha.md comes with an editor that lets you write and manage your website's articles in your browser, without editing Markdown files. What you see as you write is what your visitors will see.
+
+<!-- readmore -->
 
 ## Opening the editor
 
-Someone who manages the project starts the editor on your computer (see [Starting the editor](#starting-the-editor)). Then open <http://127.0.0.1:5180> in your browser.
+Someone who manages the project starts the editor on your computer (see [Starting the editor](#starting-the-editor)). Then open [http://127.0.0.1:5180](http://127.0.0.1:5180) in your browser.
 
 The editor only works on your own computer: nobody else can see it or use it.
 
 The editor fills the window in three columns, each scrolling on its own: the list of articles, the article's title and body, and its buttons and settings.
 
 On a phone or a narrow window, the list of articles opens from the menu button at the top, and **Save**, **Reset…** and **Delete…** sit in a bar at the bottom of the screen. Its **︽** button opens the article's settings over the whole screen; **︾** or Escape closes them.
+
+On a wider window, **Focus mode** (the button at the top right of the title) hides the list of articles and the settings in the same way, keeping the title and body in the middle of the window, at most 900px wide. Choose it again to show them beside the article. Focus mode is off each time you open the editor.
 
 ## Finding articles
 
@@ -39,7 +44,7 @@ Searches and the article browser include changes made outside the editor straigh
    - **Link**, **Heading** and **Subheading**;
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
-   - **Image URL**, **Upload image** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
+   - **Image URL**, **Upload image**, **Choose file** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
    - **Embed**: a YouTube video, Bandcamp player or other [embed](/docs/07-embeds/), from its address;
    - **Raw**: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;
    - **Read more**: where the article's summary in lists ends.
@@ -47,29 +52,31 @@ Searches and the article browser include changes made outside the editor straigh
 
 **Upload image** saves the image into the article's folder, so it needs the article to be saved first.
 
+**Choose file** opens the file browser (see [Managing files](#managing-files)) to choose a file you have already uploaded, in any article. An image is shown in the body; any other file is linked, from the text you selected or named after the file.
+
 ## Settings
 
 The settings are in groups you can open and close: **Info** (type, status, slug, date and author), **Categorise** (tags), **Customise** (excerpt and template), **Files** (thumbnail, attachments and the article's files) and **Custom** (custom settings). Your website may add groups of its own. A group's heading is marked `*` when a setting in it has changed, and ⚠️ when one isn't valid; a group with an invalid setting opens.
 
 What the settings do:
 
-| Setting              | What it does                                                                                     |
-| -------------------- | ------------------------------------------------------------------------------------------------ |
-| **Type**             | The kind of article, e.g. News or Page.                                                          |
-| **Template**         | How the article is laid out, if your website has more than one layout for it.                    |
-| **Status**           | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website).      |
-| **Slug**             | The last part of the article's address. Left empty, it is made from the title.                   |
-| **Publication date** | The article's date.                                                                              |
-| **Excerpt**          | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
-| **Thumbnail**        | An image shown in lists.                                                                         |
+| Setting | What it does |
+| --- | --- |
+| **Type** | The kind of article, e.g. News or Page. |
+| **Template** | How the article is laid out, if your website has more than one layout for it. |
+| **Status** | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website). |
+| **Slug** | The last part of the article's address. Left empty, it is made from the title. |
+| **Publication date** | The article's date. |
+| **Excerpt** | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
+| **Thumbnail** | An image shown in lists. |
 
-The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file** or linked by address. Uploads need the article to be saved first.
+The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file**, chosen with **Choose existing file…**, or linked by address. Uploads need the article to be saved first. The thumbnail can also be chosen with **Choose existing file…**.
 
 Changing an article's type or slug moves it, with all its files.
 
 ## Custom settings
 
-If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields upload into the article's folder (once it's saved).
+If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields upload into the article's folder (once it's saved), or choose an existing file with **Choose existing file…**.
 
 When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren't valid. The article can't be saved until they are fixed. Settings the article's type doesn't use, or that nobody defined (e.g. after a custom setting was removed from the config file), are listed in **Custom**, marked ⚠️. They are kept in the article unless you choose **Remove** beside one and save.
 
@@ -92,6 +99,8 @@ Each file has three buttons:
 - **Copy URL** copies the file's address on your website, e.g. `/news/welcome/photo.jpg`, to paste into an article.
 - **Replace…** swaps the file for another you choose. If the new file has another name, every article that shows or links to the old file is changed to use the new one.
 - **Delete…** deletes the file after asking you. Articles that show it no longer do, links to it keep their text, and it is removed from thumbnails and attachments.
+
+When you choose an existing file for an article, the file browser opens as **Choose a file**, with a **Choose** button beside each file; fields that only take images show images first. A file in the article's own folder is referred to by its name, and a file from another article by its address on your website.
 
 The editor finds a file's uses in article bodies, thumbnails and attachments: by its name in its own article, and by its address in any article.
 

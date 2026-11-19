@@ -265,6 +265,26 @@ export const setLink = (edit: TextEdit, url: string): TextEdit | undefined => {
   return replace(value, start, end, `[${text}](${url})`, 1, 1 + text.length);
 };
 
+/**
+ * Insert a file at the selection: an image as an image, anything else as a link (on the selected text, or named after
+ * the file).
+ *
+ * @example
+ * insertFile({ value: "", start: 0, end: 0 }, "cat.png", "cat.png", true); // "![](cat.png)"
+ * insertFile({ value: "", start: 0, end: 0 }, "/news/a/notes.pdf", "notes.pdf", false); // "[notes.pdf](/news/a/notes.pdf)"
+ * insertFile({ value: "Read", start: 0, end: 4 }, "notes.pdf", "notes.pdf", false); // "[Read](notes.pdf)"
+ */
+export const insertFile = (
+  edit: TextEdit,
+  url: string,
+  name: string,
+  image: boolean,
+): TextEdit => {
+  if (image) return insertText(edit, `![](${url})`);
+  if (edit.start === edit.end) return insertText(edit, `[${name}](${url})`);
+  return setLink(edit, url) as TextEdit;
+};
+
 /** The URL of the selected embed, if a whole embed is selected */
 export const selectedEmbedUrl = ({ value, start, end }: TextEdit) =>
   EMBED.exec(value.slice(start, end))?.[1];

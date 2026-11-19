@@ -3,6 +3,7 @@ import {
   addTableColumn,
   addTableRow,
   insertBlock,
+  insertFile,
   insertTable,
   insertText,
   READMORE,
@@ -145,6 +146,23 @@ describe("insertBlock and insertText", () => {
   it("should replace the selection with text, putting the cursor after it", () => {
     expect(mark(insertText(marked("a «b» c"), "![](cat.png)"))).toBe(
       "a ![](cat.png)‸ c",
+    );
+  });
+});
+
+describe("insertFile", () => {
+  it("should insert an image as an image, and another file as a link on the selection or named after it", () => {
+    expect(mark(insertFile(marked("a ‸"), "cat.png", "cat.png", true))).toBe(
+      "a ![](cat.png)‸",
+    );
+    expect(
+      mark(insertFile(marked("a «b»"), "/news/x/cat.png", "cat.png", true)),
+    ).toBe("a ![](/news/x/cat.png)‸");
+    expect(
+      mark(insertFile(marked("See ‸"), "/news/x/a.pdf", "a.pdf", false)),
+    ).toBe("See [a.pdf](/news/x/a.pdf)‸");
+    expect(mark(insertFile(marked("«Read»"), "a.pdf", "a.pdf", false))).toBe(
+      "[«Read»](a.pdf)",
     );
   });
 });

@@ -11,6 +11,8 @@ import contentCopy from "@material-symbols/svg-400/outlined/content_copy.svg?raw
 import deleteIcon from "@material-symbols/svg-400/outlined/delete.svg?raw";
 import findReplace from "@material-symbols/svg-400/outlined/find_replace.svg?raw";
 import folderOpen from "@material-symbols/svg-400/outlined/folder_open.svg?raw";
+import fullscreen from "@material-symbols/svg-400/outlined/fullscreen.svg?raw";
+import fullscreenExit from "@material-symbols/svg-400/outlined/fullscreen_exit.svg?raw";
 import formatBold from "@material-symbols/svg-400/outlined/format_bold.svg?raw";
 import formatH2 from "@material-symbols/svg-400/outlined/format_h2.svg?raw";
 import formatH3 from "@material-symbols/svg-400/outlined/format_h3.svg?raw";
@@ -52,6 +54,8 @@ export const ICONS = {
   format_list_bulleted: formatListBulleted,
   format_list_numbered: formatListNumbered,
   format_quote: formatQuote,
+  fullscreen,
+  fullscreen_exit: fullscreenExit,
   image,
   link,
   manage_search: manageSearch,
@@ -97,6 +101,7 @@ export const TOOLBAR_ICONS: Record<string, IconName> = {
   Raw: "raw_on",
   "Read more": "read_more",
   "Upload image": "add_photo_alternate",
+  "Choose file": "folder_open",
 };
 
 /**

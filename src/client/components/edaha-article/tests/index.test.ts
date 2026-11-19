@@ -263,7 +263,9 @@ describe("edaha-article", () => {
     );
     // Below the title, before the body
     const notice = find(element, "main .unsaved-notice");
-    expect(notice.previousElementSibling).toBe(field(element, "title"));
+    expect(notice.previousElementSibling).toBe(
+      field(element, "title").parentElement,
+    );
     expect(notice.textContent?.replace(/\s+/g, " ").trim()).toBe(
       "⚠️ Uploading images and attachments will require a title and slug to be defined first",
     );
@@ -786,12 +788,7 @@ describe("edaha-article body modes", () => {
   });
 });
 
-describe("edaha-article settings on narrow screens", () => {
-  afterEach(() => {
-    // @ts-expect-error -- jsdom has no matchMedia
-    delete window.matchMedia;
-  });
-
+describe("edaha-article settings in the compact layout", () => {
   it("should open the settings full screen from the bar, and close them with the button or Escape", async () => {
     const { element } = await setup();
     const toggle = find<HTMLButtonElement>(element, ".btn-metadata-toggle");
@@ -831,21 +828,116 @@ describe("edaha-article settings on narrow screens", () => {
     expect(element.metadataOpen).toBe(false);
   });
 
-  it("should close the settings when the screen stops being narrow, until removed", async () => {
-    const listeners: (() => void)[] = [];
-    const removeEventListener = vi.fn();
-    window.matchMedia = vi.fn(() => ({
-      matches: true,
-      addEventListener: (_type: string, listener: () => void) =>
-        listeners.push(listener),
-      removeEventListener,
-    })) as unknown as typeof window.matchMedia;
+  it("should close the settings when the layout stops being compact, but not when it becomes compact", async () => {
     const { element } = await setup();
     element.metadataOpen = true;
-    listeners.forEach((listener) => listener());
+    element.compact = true;
+    await settle(element);
+    expect(element.metadataOpen).toBe(true);
+    element.compact = false;
+    await settle(element);
     expect(element.metadataOpen).toBe(false);
-    element.remove();
-    expect(removeEventListener).toHaveBeenCalled();
+  });
+});
+
+describe("edaha-article focus mode button", () => {
+  it("should be a toggle button at the top right of the title, asking to turn focus mode on and off", async () => {
+    const { element } = await setup();
+    const toggle = find<HTMLButtonElement>(element, ".btn-focus-mode");
+    expect(toggle.parentElement).toBe(field(element, "title").parentElement);
+    expect(toggle.title).toBe("Focus mode");
+    expect(toggle.textContent?.trim()).toBe("Focus mode");
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.querySelector(".icon-fullscreen")).not.toBeNull();
+
+    const requests: boolean[] = [];
+    document.addEventListener("focus-mode-change", (event) =>
+      requests.push((event as CustomEvent<boolean>).detail),
+    );
+    toggle.click();
+    expect(requests).toEqual([true]);
+    // The editor turns it on
+    element.focusMode = true;
+    await settle(element);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle.querySelector(".icon-fullscreen_exit")).not.toBeNull();
+    toggle.click();
+    expect(requests).toEqual([true, false]);
+  });
+});
+
+describe("edaha-article choosing existing files", () => {
+  /** A file the file browser lists */
+  const listed = (type: string, slug: string, name: string) => ({
+    type,
+    slug,
+    name,
+    kind: name.endsWith(".png") ? ("image" as const) : ("document" as const),
+    size: 1,
+    updated: DATE,
+    url: `/${type}/${slug}/${name}`,
+  });
+
+  it("should offer no choosers without a file picker", async () => {
+    const { element } = await setup();
+    expect(field(element, "body").chooseFile).toBeUndefined();
+    expect(field(element, "thumbnail").chooseFile).toBeUndefined();
+    expect(element.querySelector(".btn-choose-file")).toBeNull();
+  });
+
+  it("should refer to the article's own files by name, and others by their path on the website", async () => {
+    const { element } = await setup();
+    element.pickFile = vi
+      .fn()
+      .mockResolvedValueOnce(listed("article", "hello", "cat.png"))
+      .mockResolvedValueOnce(listed("page", "about", "guide.pdf"))
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(listed("article", "hello", "cat.png"))
+      .mockResolvedValueOnce(listed("page", "about", "team.png"));
+    await settle(element);
+    const choose = field(element, "thumbnail").chooseFile!;
+    expect(await choose("image")).toEqual({
+      url: "cat.png",
+      name: "cat.png",
+      kind: "image",
+    });
+    expect(element.pickFile).toHaveBeenCalledWith("image");
+    expect(await choose()).toEqual({
+      url: "/page/about/guide.pdf",
+      name: "guide.pdf",
+      kind: "document",
+    });
+    expect(await choose()).toBeUndefined();
+    // The rich text body shows the article's own files from the editor's file URL
+    const chooseBody = field(element, "body").chooseFile!;
+    expect((await chooseBody())?.url).toBe("/files/article/hello/cat.png");
+    expect((await chooseBody())?.url).toBe("/page/about/team.png");
+    // Attachments get the same chooser
+    expect(field(element, "attachments[0][url]").chooseFile).toBe(choose);
+  });
+
+  it("should give the Markdown body the chooser, and choose for unsaved articles", async () => {
+    const { element } = await setup(undefined);
+    element.pickFile = vi.fn(async () => listed("article", "hello", "a.pdf"));
+    element.mode = "markdown";
+    await settle(element);
+    const choose = field(element, "bodyMarkdown").chooseFile!;
+    // Not saved yet, so it has no own files
+    expect((await choose())?.url).toBe("/article/hello/a.pdf");
+    expect(field(element, "thumbnail").chooseFile).toBe(choose);
+  });
+
+  it("should show files chosen from other articles at their paths on the website", async () => {
+    const { element } = await setup({
+      ...ARTICLE,
+      attachments: [{ url: "/page/about/team.png" }],
+    });
+    expect(
+      find<HTMLImageElement>(
+        field(element, "attachments[0][url]"),
+        ".file-current img",
+      ).getAttribute("src"),
+    ).toBe("/page/about/team.png");
   });
 });
 

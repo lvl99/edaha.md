@@ -6,6 +6,7 @@ import type {
   ArticleSummary,
   ArticleTypeLabels,
   EditorArticle,
+  FileKind,
   MetadataInfo,
   MetadataProblem,
   RecentArticles,
@@ -38,7 +39,7 @@ import {
   toggleTheme,
 } from "../../theme/index.ts";
 import { icon } from "../../icons/index.ts";
-import { onNarrowChange } from "../../narrow/index.ts";
+import { isNarrow, onNarrowChange } from "../../narrow/index.ts";
 
 /**
  * Describe an article in the list, e.g. "hello · published · 2026-10-19".
@@ -115,7 +116,9 @@ export const groupRecent = (
  * article browser for finding any article, the selected or new article's form, and toasts for success and error
  * messages. Opening another article or starting a new one
  * while the form has unsaved changes asks whether to save them first; closing or reloading the page gets the browser's
- * own question. On narrow screens, the article list opens over the page from a menu button.
+ * own question. On narrow screens, and in focus mode (toggled from the article form), the editor has a compact layout:
+ * the article list opens over the page from a menu button, and the host element has the `compact` attribute (and
+ * `focus-mode` in focus mode) for the stylesheet.
  *
  * @example
  * html`<edaha-editor></edaha-editor>`
@@ -138,6 +141,8 @@ export class EdahaEditor extends LitElement {
     site: { state: true },
     unsaved: { state: true },
     navOpen: { state: true },
+    narrow: { state: true },
+    focusMode: { state: true },
   };
 
   declare api: EditorApi;
@@ -168,8 +173,15 @@ export class EdahaEditor extends LitElement {
   declare site?: SiteInfo | undefined;
   /** The open "Save changes first?" question, with what to do with the answer */
   declare unsaved?: ((choice: UnsavedChoice) => void) | undefined;
-  /** Whether the article list is open over the page (on narrow screens) */
+  /** Whether the article list is open over the page (in the compact layout) */
   declare navOpen: boolean;
+  /** Whether the screen is narrow */
+  declare narrow: boolean;
+  /** Whether focus mode hides the side panels on wide screens, as on narrow screens */
+  declare focusMode: boolean;
+
+  /** Whether the layout was compact when last updated */
+  private wasCompact = false;
 
   /** Ask the browser before the page closes or reloads with unsaved changes (browsers word the question) */
   private readonly onBeforeUnload = (event: BeforeUnloadEvent) => {
@@ -179,7 +191,7 @@ export class EdahaEditor extends LitElement {
   /** Stops updating the theme switcher's label when the device's light or dark setting changes */
   private stopWatchingTheme?: () => void;
 
-  /** Stops closing the article list when the screen stops being narrow */
+  /** Stops following whether the screen is narrow */
   private stopWatchingNarrow?: () => void;
 
   /** How long to wait after typing in the nav's search before searching, in ms (replaceable for tests) */
@@ -205,6 +217,13 @@ export class EdahaEditor extends LitElement {
     this.error = "";
     this.searchText = "";
     this.navOpen = false;
+    this.narrow = false;
+    this.focusMode = false;
+  }
+
+  /** Whether the layout is compact: on narrow screens, or in focus mode */
+  get compact(): boolean {
+    return this.narrow || this.focusMode;
   }
 
   protected override createRenderRoot() {
@@ -217,8 +236,8 @@ export class EdahaEditor extends LitElement {
     this.addEventListener(TOAST_EVENT, this.onToast);
     // The theme switcher's label says which theme it switches to, which follows the device until one is chosen
     this.stopWatchingTheme = onDeviceThemeChange(() => this.requestUpdate());
-    // On wide screens the article list is always shown, so it isn't left open over the page
-    this.stopWatchingNarrow = onNarrowChange(() => (this.navOpen = false));
+    this.narrow = isNarrow();
+    this.stopWatchingNarrow = onNarrowChange(() => (this.narrow = isNarrow()));
     void this.refresh().then(() => this.openFromAddress());
   }
 
@@ -241,7 +260,19 @@ export class EdahaEditor extends LitElement {
   }
 
   /**
-   * Open the article list over the page (on narrow screens), moving focus into it.
+   * Mark the host element for the stylesheet's compact layout and focus mode. Leaving the compact layout closes the
+   * article list, which is then always shown beside the page.
+   */
+  protected override willUpdate(): void {
+    const compact = this.compact;
+    if (this.wasCompact && !compact) this.navOpen = false;
+    this.wasCompact = compact;
+    this.toggleAttribute("compact", compact);
+    this.toggleAttribute("focus-mode", this.focusMode);
+  }
+
+  /**
+   * Open the article list over the page (in the compact layout), moving focus into it.
    */
   async openNav(): Promise<void> {
     this.navOpen = true;
@@ -260,6 +291,10 @@ export class EdahaEditor extends LitElement {
     )
       this.querySelector<HTMLElement>(".nav-toggle")?.focus();
   }
+
+  /** Let the user choose an existing file in the file browser, for the article form */
+  private readonly pickFile = (kind?: FileKind) =>
+    (this.querySelector("edaha-file-browser") as EdahaFileBrowser).pick(kind);
 
   /** The article form, while shown */
   private form(): EdahaArticle | null {
@@ -821,6 +856,11 @@ export class EdahaEditor extends LitElement {
                   .typeOptions=${this.typeOptions()}
                   .metadata=${this.metadata}
                   .site=${this.site}
+                  .compact=${this.compact}
+                  .focusMode=${this.focusMode}
+                  .pickFile=${this.pickFile}
+                  @focus-mode-change=${(event: CustomEvent<boolean>) =>
+                    (this.focusMode = event.detail)}
                   @article-saved=${(event: CustomEvent<ArticleLocation>) => void this.onSaved(event)}
                   @article-deleted=${() => void this.onDeleted()}
                 ></edaha-article>`,

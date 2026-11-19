@@ -1119,4 +1119,23 @@ describe("ArticleStore previews", () => {
     ])
       await rejectsWith(store.staticFile(path), 404, "File not found");
   });
+
+  it("should read articles' files at their paths on the website, after the static files", async () => {
+    const { dir, store } = await copySite();
+    const read = async (path: string) =>
+      new TextDecoder().decode(await store.staticFile(path));
+    expect(await read("news/first/guide.pdf")).toBe(
+      await readFile(join(dir, "articles/article/first/guide.pdf"), "utf8"),
+    );
+    // Static files come first
+    await mkdir(join(dir, "static/news/first"), { recursive: true });
+    await writeFile(join(dir, "static/news/first/guide.pdf"), "static");
+    expect(await read("news/first/guide.pdf")).toBe("static");
+    for (const path of [
+      "news/first/missing.png",
+      "news/first/article.md",
+      "article/first/thumb.png",
+    ])
+      await rejectsWith(store.staticFile(path), 404, "File not found");
+  });
 });

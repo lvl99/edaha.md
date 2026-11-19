@@ -9,7 +9,10 @@ import type {
   SiteInfo,
   EditorArticleData,
   EditorAttachment,
+  FileKind,
+  FileSummary,
 } from "../../../server/types/index.ts";
+import type { FileChooser } from "../edaha-file-browser/index.ts";
 import {
   ApiError,
   type ArticleLocation,
@@ -35,11 +38,11 @@ import {
   type MetadataSchema,
 } from "../../../generator/metadata/index.ts";
 import { setAt } from "../../metadataForm/index.ts";
+import { icon } from "../../icons/index.ts";
 import {
   BUILT_IN_GROUPS,
   type MetadataGroup,
 } from "../../../generator/metadataGroups/index.ts";
-import { onNarrowChange } from "../../narrow/index.ts";
 
 const STATUS_OPTIONS: FieldOption[] = [
   { value: "published", label: "Published" },
@@ -290,8 +293,10 @@ export const RESET_QUESTION =
  * would show the article with its type's "single" template. Saving a changed type or slug moves the article's folder.
  * Fields changed since the last save are marked with an asterisk, and "Reset…" puts back the last saved version.
  *
- * Fires `article-saved` (detail: the article's location), `article-deleted`, and `edaha-toast` for success and error
- * messages (see `showToast`).
+ * Fires `article-saved` (detail: the article's location), `article-deleted`, `edaha-toast` for success and error
+ * messages (see `showToast`), and `focus-mode-change` (detail: whether focus mode should be on) from the focus mode
+ * button at the top right of the title and body. In the compact layout (`compact`, see `edaha-editor`) the settings
+ * open full screen from a bar at the bottom of the screen.
  *
  * @example
  * html`<edaha-article .api=${api} .article=${article} .typeOptions=${[{ value: "article", label: "Article" }]}></edaha-article>`
@@ -319,6 +324,9 @@ export class EdahaArticle extends LitElement {
     site: { attribute: false },
     metaProblems: { state: true },
     openGroups: { state: true },
+    compact: { attribute: false },
+    focusMode: { attribute: false },
+    pickFile: { attribute: false },
   };
 
   declare api: EditorApi;
@@ -345,7 +353,7 @@ export class EdahaArticle extends LitElement {
   declare previewUrl: string;
   /** The width the preview is shown at */
   declare previewWidth: PreviewWidth;
-  /** Whether the article's settings are open full screen (on narrow screens) */
+  /** Whether the article's settings are open full screen (in the compact layout) */
   declare metadataOpen: boolean;
   /** The data as last saved (or loaded; empty for a new article), which changes are found against */
   declare savedData: EditorArticleData;
@@ -359,6 +367,13 @@ export class EdahaArticle extends LitElement {
   declare metaProblems: MetadataProblem[];
   /** The keys of the settings groups that are open */
   declare openGroups: Set<string>;
+  /** Whether the editor's layout is compact (on narrow screens, or in focus mode) */
+  declare compact: boolean;
+  /** Whether focus mode is on */
+  declare focusMode: boolean;
+  /** Lets the user choose an existing file (e.g. in the file browser); without it, existing files can't be chosen */
+  declare pickFile?:
+    ((kind?: FileKind) => Promise<FileSummary | undefined>) | undefined;
 
   /** Whether the groups' open state has been set from the config file's groups */
   private groupsOpened = false;
@@ -409,24 +424,23 @@ export class EdahaArticle extends LitElement {
     this.bodyChanged = false;
     this.metaProblems = [];
     this.openGroups = openedByDefault(BUILT_IN_GROUPS);
+    this.compact = false;
+    this.focusMode = false;
   }
 
   protected override createRenderRoot() {
     return this;
   }
 
-  /** Stops closing the settings when the screen stops being narrow */
-  private stopWatchingNarrow?: () => void;
-
-  override connectedCallback(): void {
-    super.connectedCallback();
-    // On wide screens the settings are always shown beside the body, so they aren't left open over it
-    this.stopWatchingNarrow = onNarrowChange(() => (this.metadataOpen = false));
-  }
-
-  override disconnectedCallback(): void {
-    super.disconnectedCallback();
-    this.stopWatchingNarrow?.();
+  /** Ask the editor to turn focus mode on or off */
+  private toggleFocusMode(): void {
+    this.dispatchEvent(
+      new CustomEvent<boolean>("focus-mode-change", {
+        detail: !this.focusMode,
+        bubbles: true,
+        composed: true,
+      }),
+    );
   }
 
   /** A new article starts with focus in its title, ready to type */
@@ -440,6 +454,8 @@ export class EdahaArticle extends LitElement {
   }
 
   protected override willUpdate(changed: PropertyValues<this>): void {
+    // Leaving the compact layout closes the settings, which are then always shown beside the body
+    if (changed.get("compact") && !this.compact) this.metadataOpen = false;
     // Groups start as the config file says, once it's known; after that, as they were left
     if (changed.has("metadata") && this.metadata && !this.groupsOpened) {
       this.groupsOpened = true;
@@ -491,9 +507,12 @@ export class EdahaArticle extends LitElement {
     }
   }
 
-  /** The URL a file in the saved article folder is served at */
+  /**
+   * The URL a file in the saved article folder is served at. Addresses and paths on the website (e.g. another
+   * article's file) are served as they are.
+   */
   private fileUrl(name: string | undefined) {
-    if (!name || !this.location || /^[a-z][a-z0-9+.-]*:/i.test(name))
+    if (!name || !this.location || /^([a-z][a-z0-9+.-]*:|\/)/i.test(name))
       return name;
     return `/files/${this.location.type}/${this.location.slug}/${name}`;
   }
@@ -542,6 +561,35 @@ export class EdahaArticle extends LitElement {
     if (!name) throw new Error("Upload failed");
     return name;
   };
+
+  /**
+   * Let the user choose an existing file, referred to by its name when it's in the article's own folder, or else by
+   * its path on the website.
+   */
+  private readonly chooseFile: FileChooser = async (kind) => {
+    const file = await this.pickFile?.(kind);
+    if (!file) return undefined;
+    const own =
+      file.type === this.location?.type && file.slug === this.location.slug;
+    return {
+      url: own ? file.name : file.url,
+      name: file.name,
+      kind: file.kind,
+    };
+  };
+
+  /** Files chosen for the rich text body are shown from the URL the editor serves them at */
+  private readonly chooseBodyFile: FileChooser = async (kind) => {
+    const file = await this.chooseFile(kind);
+    return file && { ...file, url: this.fileUrl(file.url) as string };
+  };
+
+  /** The file choosers, while existing files can be chosen */
+  private choosers() {
+    return this.pickFile
+      ? { file: this.chooseFile, body: this.chooseBodyFile }
+      : { file: undefined, body: undefined };
+  }
 
   /** Embed blocks in the body preview their embeds as the website shows them */
   private readonly loadEmbedPreview = (url: string) =>
@@ -956,6 +1004,7 @@ export class EdahaArticle extends LitElement {
               .value=${attachment.url}
               preview
               .previewUrl=${this.fileUrl(attachment.url)}
+              .chooseFile=${this.choosers().file}
               allowchange
               ?disabled=${noUploads}
             ></edaha-article-data-field>
@@ -1000,6 +1049,7 @@ export class EdahaArticle extends LitElement {
         ?changed=${this.bodyChanged}
         .value=${this.bodyMarkdown}
         .uploadImage=${this.location ? this.uploadMarkdownImage : undefined}
+        .chooseFile=${this.choosers().file}
       ></edaha-article-data-field>`;
     else if (this.mode === "preview")
       // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. It
@@ -1045,6 +1095,7 @@ export class EdahaArticle extends LitElement {
         ?changed=${this.bodyChanged}
         .value=${this.data.bodyHtml}
         .uploadImage=${this.location ? this.uploadImage : undefined}
+        .chooseFile=${this.choosers().body}
         .loadEmbedPreview=${this.loadEmbedPreview}
       ></edaha-article-data-field>`;
     return html`<div
@@ -1207,6 +1258,7 @@ export class EdahaArticle extends LitElement {
           .value=${data.thumbnail ?? ""}
           preview
           .previewUrl=${this.fileUrl(data.thumbnail)}
+          .chooseFile=${this.choosers().file}
           allowchange
           allowclear
           ?disabled=${!this.location}
@@ -1241,6 +1293,7 @@ export class EdahaArticle extends LitElement {
       .value=${this.data.meta?.[key]}
       .problems=${this.metaProblems}
       .uploadFile=${this.location ? this.uploadMarkdownImage : undefined}
+      .chooseFile=${this.choosers().file}
       .fileUrl=${(name: string) => this.fileUrl(name)}
     ></edaha-metadata-field>`;
   }
@@ -1353,13 +1406,28 @@ export class EdahaArticle extends LitElement {
     >
       <!-- Out of reach while the settings are open over it -->
       <main class="edaha-article-main" ?inert=${this.metadataOpen}>
-        <edaha-article-data-field
-          name="title"
-          label="Title"
-          ?changed=${changed.has("title")}
-          placeholder="New article title"
-          .value=${data.title}
-        ></edaha-article-data-field>
+        <div class="edaha-article-title">
+          <edaha-article-data-field
+            name="title"
+            label="Title"
+            ?changed=${changed.has("title")}
+            placeholder="New article title"
+            .value=${data.title}
+          ></edaha-article-data-field>
+          <!-- Only on wide screens: narrow screens always have the compact layout focus mode gives -->
+          <button
+            type="button"
+            class="btn-icon btn-focus-mode"
+            title="Focus mode"
+            aria-pressed=${this.focusMode ? "true" : "false"}
+            @click=${() => this.toggleFocusMode()}
+          >
+            ${icon(this.focusMode ? "fullscreen_exit" : "fullscreen")}<span
+              class="visually-hidden"
+              >Focus mode</span
+            >
+          </button>
+        </div>
         ${
           // Files are saved in the article's folder, which it only has once saved
           this.location
@@ -1378,7 +1446,7 @@ export class EdahaArticle extends LitElement {
           if (event.key === "Escape") this.metadataOpen = false;
         }}
       >
-        <!-- On narrow screens, a bar at the bottom of the screen that opens the settings full screen -->
+        <!-- In the compact layout, a bar at the bottom of the screen that opens the settings full screen -->
         <div class="edaha-article-controls">
           <!-- Marked while there are unsaved changes, to show the article should be saved -->
           <button

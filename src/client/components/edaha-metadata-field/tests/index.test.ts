@@ -307,6 +307,40 @@ describe("edaha-metadata-field", () => {
     expect(empty.querySelector(".metadata-file")).toBeNull();
   });
 
+  it("should set a file field to a chosen existing file, of the kind it accepts", async () => {
+    const chooseFile = vi
+      .fn()
+      .mockResolvedValueOnce({
+        url: "/news/a/hero.png",
+        name: "hero.png",
+        kind: "image",
+      })
+      .mockResolvedValueOnce(undefined);
+    const { element, changes } = await setup(
+      "featured",
+      { title: "Featured", $edahaField: { file: { accept: "image/*" } } },
+      undefined,
+      { chooseFile },
+    );
+    const choose = button(element, "Choose existing file… for Featured");
+    choose.click();
+    await vi.waitFor(() =>
+      expect(changes).toEqual([
+        { path: "featured", value: "/news/a/hero.png" },
+      ]),
+    );
+    expect(chooseFile).toHaveBeenCalledWith("image");
+    choose.click();
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(changes).toHaveLength(1);
+
+    // Without a chooser, there's no button
+    const { element: without } = await setup("featured", {
+      $edahaField: { file: true },
+    });
+    expect(without.querySelector(".btn-choose-file")).toBeNull();
+  });
+
   it("should show a map's fields in a group, marking the required ones", async () => {
     const { element, changes } = await setup(
       "credit",

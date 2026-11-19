@@ -260,6 +260,60 @@ describe("edaha-richtext", () => {
     expect(element.uploadImage).toHaveBeenCalledTimes(2);
   });
 
+  it("should insert chosen existing files once a chooser is given: images as images, others as links", async () => {
+    const element = await setup("<p>Hello world</p>");
+    expect(button(element, "Choose file").disabled).toBe(true);
+    element.chooseFile = vi
+      .fn()
+      .mockResolvedValueOnce({
+        url: "/files/article/a/pic.png",
+        name: "pic.png",
+        kind: "image",
+      })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        url: "/page/about/guide.pdf",
+        name: "guide.pdf",
+        kind: "document",
+      })
+      .mockResolvedValueOnce({
+        url: "notes.txt",
+        name: "notes.txt",
+        kind: "document",
+      });
+    await element.updateComplete;
+    expect(button(element, "Choose file").disabled).toBe(false);
+    element.editor!.commands.setTextSelection(6);
+    button(element, "Choose file").click();
+    await settle(element);
+    expect(element.value).toContain(
+      '<img src="/files/article/a/pic.png" alt="">',
+    );
+    // Nothing chosen
+    button(element, "Choose file").click();
+    await settle(element);
+    expect(element.value.match(/<img/g)).toHaveLength(1);
+    // Without a selection, a link named after the file
+    element.editor!.commands.setTextSelection(1);
+    button(element, "Choose file").click();
+    await settle(element);
+    expect(element.value).toContain('href="/page/about/guide.pdf"');
+    expect(element.value).toContain(">guide.pdf</a>");
+    // With one, the selection is linked
+    element.editor!.commands.setTextSelection({ from: 1, to: 6 });
+    element.editor!.commands.unsetLink();
+    selectAll(element);
+    button(element, "Choose file").click();
+    await settle(element);
+    expect(element.value).toContain('href="notes.txt"');
+    expect(element.value).not.toContain(">notes.txt<");
+    expect(element.chooseFile).toHaveBeenCalledTimes(4);
+    // Without an editor, nothing is inserted
+    element.editor!.destroy();
+    element.editor = undefined;
+    element.insertFile({ url: "x.png", name: "x.png", kind: "image" });
+  });
+
   it("should replace its content when given a different value", async () => {
     const element = await setup();
     const onInput = vi.fn();
