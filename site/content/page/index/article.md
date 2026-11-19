@@ -12,5 +12,5 @@ Simple, clean and easy static site generator and <acronym title="Content Managem
 - Define custom article types
 - Define custom embeds
 - Customise templates with [Nunjucks](https://mozilla.github.io/nunjucks/) for all or specific article types
-- Output to any text format (HTML, [RSS XML](https://www.rssboard.org/rss-specification))
+- Output to any text format (HTML, [RSS XML](https://www.rssboard.org/rss-specification), JSON, etc...)
 - <acronym title="What You See Is What You Get">WYSIWYG</acronym> editor
