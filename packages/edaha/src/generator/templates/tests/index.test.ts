@@ -59,6 +59,42 @@ describe("Templates", () => {
     );
   });
 
+  it("should output the page's embed HTML with the embed tags, and nothing without it", async () => {
+    const dir = await templatesDir({
+      ...REQUIRED,
+      "test.njk":
+        "{% embedHead %}|{% embedFoot %}|{% embedRenderHead() %}|{% embedRenderFoot() %}",
+    });
+    const templates = new Templates(dir, { warn: vi.fn() });
+    const site = {
+      name: "Site",
+      description: "",
+      url: "https://example.com",
+      baseUrl: "",
+      path: "/",
+      types: {},
+    };
+    expect(
+      templates.render("test.njk", {
+        site,
+        type: "news",
+        isArticle: true,
+        isList: false,
+        embeds: { head: "<style></style>", foot: "<script></script>" },
+      }),
+    ).toBe(
+      "<style></style>|<script></script>|<style></style>|<script></script>",
+    );
+    expect(
+      templates.render("test.njk", {
+        site,
+        type: "news",
+        isArticle: true,
+        isList: false,
+      }),
+    ).toBe("|||");
+  });
+
   it("should use a type's own template or fall back to article's with one warning", async () => {
     const dir = await templatesDir({ ...REQUIRED, "page/single.njk": "page" });
     const logger = { warn: vi.fn() };

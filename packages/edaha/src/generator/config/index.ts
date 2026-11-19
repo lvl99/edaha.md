@@ -1,5 +1,6 @@
 import { isAbsolute, normalize, sep } from "node:path";
-import type { EmbedRenderer } from "../../embeds/types/index.ts";
+import { checkEmbedPlugins } from "../../embeds/index.ts";
+import type { EmbedPlugin } from "../../embeds/types/index.ts";
 import { isSlug, slugify } from "../slug/index.ts";
 import type { AuthorConfig } from "../article/index.ts";
 import {
@@ -67,8 +68,11 @@ export interface EdahaConfig {
   reservedPaths: string[];
   /** Article type settings, by type */
   types: Record<string, ArticleTypeConfig>;
-  /** Custom embed renderers, tried before the built-in ones. Only JavaScript config files can set them. Default: none */
-  embeds: EmbedRenderer[];
+  /**
+   * Embed plugins, for `<!-- embed:<key> -->` blocks. The config file names their packages (loaded by loadSiteConfig);
+   * a JavaScript config file can also give the plugins themselves. Default: none
+   */
+  plugins: EmbedPlugin[];
   /** Custom metadata fields' JSON Schemas, by the key articles store their values under. Default: none */
   metadata: MetadataDefinitions;
   /** Groups of settings in the editor, besides the built-in ones, by key. Default: none */
@@ -109,7 +113,7 @@ const CONFIG_KEYS = [
   "siteUrl",
   "reservedPaths",
   "types",
-  "embeds",
+  "plugins",
   "metadata",
   "metadataGroups",
   "author",
@@ -333,39 +337,22 @@ const parseSourceFolders = (
   return folders;
 };
 
-/** Whether a value is an embed renderer: a name, match and render functions, and optional frame sources */
-const isEmbedRenderer = (value: unknown): value is EmbedRenderer => {
-  if (!value || typeof value !== "object") return false;
-  const { name, match, render, frameSources } = value as Record<
-    string,
-    unknown
-  >;
-  return (
-    typeof name === "string" &&
-    name.trim() !== "" &&
-    typeof match === "function" &&
-    typeof render === "function" &&
-    (frameSources === undefined ||
-      (Array.isArray(frameSources) &&
-        frameSources.every(
-          (source) =>
-            typeof source === "string" && /^https:\/\/[^/\s;]+$/.test(source),
-        )))
-  );
-};
-
 /**
- * Read the optional custom embed renderers: a list of `{ name, match, render, frameSources? }` objects, which only a
- * JavaScript config file can hold.
+ * Read the optional embed plugins. Package names in the config file are loaded by loadSiteConfig before this, so only
+ * plugin objects are left.
  */
-const parseEmbeds = (data: Record<string, unknown>): EmbedRenderer[] => {
-  const value = data.embeds;
+const parsePlugins = (data: Record<string, unknown>): EmbedPlugin[] => {
+  const value = data.plugins;
   if (value === undefined || value === null) return [];
-  if (!Array.isArray(value) || !value.every(isEmbedRenderer))
+  if (!Array.isArray(value))
     throw new Error(
-      '"embeds" must be a list of embed renderers ({ name, match(url), render(url, context), frameSources? } with https origins), set in a JavaScript config file',
+      '"plugins" must be a list of embed plugin package names (or, in a JavaScript config file, embed plugins)',
     );
-  return value;
+  if (value.some((plugin) => typeof plugin === "string"))
+    throw new Error(
+      '"plugins" package names are loaded by loadSiteConfig; pass embed plugins to parseConfig',
+    );
+  return checkEmbedPlugins(value);
 };
 
 const parseReservedPaths = (data: Record<string, unknown>): string[] => {
@@ -420,7 +407,7 @@ const validateConfig = (data: unknown): EdahaConfig => {
     publishDir: optionalString(fields, "publishDir"),
     siteUrl: parseSiteUrl(fields),
     reservedPaths: parseReservedPaths(fields),
-    embeds: parseEmbeds(fields),
+    plugins: parsePlugins(fields),
     metadata,
     metadataGroups,
     author: parseAuthor(fields.author, '"author"'),

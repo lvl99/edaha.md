@@ -173,6 +173,33 @@ describe("loadSiteConfig", () => {
     );
   });
 
+  it("should load embed plugin packages named in the config file, from its folder", async () => {
+    const { siteDir } = await project();
+    const pkg = join(siteDir, "node_modules", "edaha-plugin-quote");
+    await mkdir(pkg, { recursive: true });
+    await writeFile(
+      join(pkg, "package.json"),
+      '{ "name": "edaha-plugin-quote", "type": "module", "exports": "./index.js" }',
+    );
+    await writeFile(
+      join(pkg, "index.js"),
+      'export default { key: "quote", name: "Quote", build: { render: async (text) => text } };',
+    );
+    await writeFile(
+      join(siteDir, "edahaconfig.yml"),
+      `${FORMATS.yml}plugins:\n  - edaha-plugin-quote\n`,
+    );
+    const { config } = await loadSiteConfig({ siteDir });
+    expect(config.plugins.map((plugin) => plugin.key)).toEqual(["quote"]);
+    await writeFile(
+      join(siteDir, "edahaconfig.yml"),
+      `${FORMATS.yml}plugins:\n  - edaha-plugin-missing\n`,
+    );
+    await expect(loadSiteConfig({ siteDir })).rejects.toThrow(
+      'edahaconfig.yml: plugin "edaha-plugin-missing" couldn\'t be loaded',
+    );
+  });
+
   it("should look in the current folder by default", async () => {
     const { siteDir } = await project();
     await writeFile(join(siteDir, "edahaconfig.yml"), FORMATS.yml as string);

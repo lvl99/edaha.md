@@ -219,6 +219,7 @@ describe("buildSite", () => {
     ]);
     expect(logger.warn.mock.calls.map(([message]) => message)).toEqual([
       'articles/page: type "page" is not in edahaconfig.yml; using the default settings',
+      'articles/article/first: no embed plugin with the key "youtube"; shown as it is',
       "articles/article/no-article: no article.md; skipped",
       // The page type has its own templates folder, without a list template
       "Template page/list.njk not found; using article/list.njk",
@@ -231,8 +232,9 @@ describe("buildSite", () => {
     expect(first).toMatch(
       /<meta name="description" content="Intro with a link/,
     );
+    // The site has no embed plugins, so its YouTube embed is a link
     expect(first).toContain(
-      'src="https://www.youtube-nocookie.com/embed/aju_UB5VIf8"',
+      '<p class="embed-link"><a href="https://youtu.be/aju_UB5VIf8">',
     );
     expect(first).toContain('<img src="/news/first/thumb.png" alt="an image">');
     expect(first).toContain('<a href="/news/first/guide.pdf">');
@@ -723,7 +725,7 @@ describe("buildSite", () => {
     );
   });
 
-  it("should render embeds with the config file's renderers, then the given or built-in ones", async () => {
+  it("should render embeds with the config file's plugins, then the given ones, adding what pages need once", async () => {
     const space = await workspace();
     const settings = parse(
       await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8"),
@@ -733,11 +735,18 @@ describe("buildSite", () => {
       join(space.siteDir, "edaha.config.mjs"),
       `export default {
   ...${JSON.stringify(settings)},
-  embeds: [
+  plugins: [
     {
-      name: "Example",
-      match: (url) => url.hostname === "media.example.com",
-      render: async (url) => \`<iframe src="\${url.href}"></iframe>\`,
+      key: "media",
+      name: "Media",
+      build: {
+        render: async (content, { renders }) => {
+          renders.push(content);
+          return \`<iframe src="\${content}"></iframe>\`;
+        },
+        renderHead: async ({ renders }) => \`<meta name="media" content="\${renders.join(" ")}">\`,
+        renderFoot: async () => '<script src="/media.js"></script>',
+      },
     },
   ],
 };
@@ -746,26 +755,47 @@ describe("buildSite", () => {
     await writeArticle(
       space,
       "article/embeds",
-      `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\n<!-- embed -->https://media.example.com/v/1<!-- /embed -->\n\n<!-- embed -->https://youtu.be/aju_UB5VIf8<!-- /embed -->\n`,
+      `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\nIntro <!-- embed:media -->https://media.example.com/v/1<!-- /embed:media -->\n\n<!-- readmore -->\n\n<!-- embed:quote -->Hello<!-- /embed:quote -->\n\n<!-- embed:media -->https://media.example.com/v/2<!-- /embed:media -->\n`,
     );
-    const { read } = await build(space, "https://example.com");
-    const html = await read("news/embeds/index.html");
-    expect(html).toContain('<iframe src="https://media.example.com/v/1">');
-    expect(html).toContain("youtube-nocookie.com/embed/aju_UB5VIf8");
-
-    // Given renderers take the built-in ones' place, after the config file's
+    const quote = {
+      key: "quote",
+      name: "Quote",
+      build: { render: async (text: string) => `<q>${text}</q>` },
+    };
+    // A given plugin with the config file's key is left out
+    const media = {
+      ...quote,
+      key: "media",
+      build: { render: async () => "<p>Not used</p>" },
+    };
     const result = await buildSite({
       siteDir: space.siteDir,
       siteUrl: "https://example.com",
       logger: { warn: vi.fn() },
-      embedRenderers: [],
+      plugins: [quote, media],
     });
-    const only = await readFile(
-      join(result.outputDir, "news/embeds/index.html"),
-      "utf8",
+    const read = (file: string) =>
+      readFile(join(result.outputDir, file), "utf8");
+    const page = await read("news/embeds/index.html");
+    expect(page).toContain('<iframe src="https://media.example.com/v/1">');
+    expect(page).toContain('<iframe src="https://media.example.com/v/2">');
+    expect(page).toContain("<q>Hello</q>");
+    expect(page).not.toContain("Not used");
+    // Once per page, with every render on it, before </head> and </body>
+    expect(page).toMatch(
+      /<meta name="media" content="https:\/\/media.example.com\/v\/1 https:\/\/media.example.com\/v\/2">\s*<\/head>/,
     );
-    expect(only).toContain('<iframe src="https://media.example.com/v/1">');
-    expect(only).not.toContain("youtube-nocookie.com");
+    expect(page.match(/media\.js/g)).toHaveLength(1);
+    expect(page).toMatch(/<script src="\/media.js"><\/script>\s*<\/body>/);
+    // The list shows the excerpt, which has the first embed only
+    const list = await read("news/index.html");
+    expect(list).toContain(
+      '<meta name="media" content="https://media.example.com/v/1">',
+    );
+    expect(list).toContain('<script src="/media.js">');
+    // Pages without embeds, and feeds, get nothing
+    expect(await read("news/second/index.html")).not.toContain("media.js");
+    expect(await read("news/feed.xml")).not.toContain("media.js");
   });
 
   it("should reject invalid type and article folder names", async () => {

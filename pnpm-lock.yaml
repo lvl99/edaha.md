@@ -172,6 +172,15 @@ importers:
       '@lvl99dotcom/edaha-editor':
         specifier: workspace:^
         version: link:packages/edaha-editor
+      '@lvl99dotcom/edaha-plugin-bandcamp':
+        specifier: workspace:^
+        version: link:packages/edaha-plugin-bandcamp
+      '@lvl99dotcom/edaha-plugin-mermaidjs':
+        specifier: workspace:^
+        version: link:packages/edaha-plugin-mermaidjs
+      '@lvl99dotcom/edaha-plugin-youtube':
+        specifier: workspace:^
+        version: link:packages/edaha-plugin-youtube
       '@lvl99dotcom/edaha.md':
         specifier: workspace:^
         version: link:packages/edaha
@@ -296,6 +305,24 @@ importers:
       lit:
         specifier: ^3.3.3
         version: 3.3.3
+
+  packages/edaha-plugin-bandcamp:
+    devDependencies:
+      '@lvl99dotcom/edaha.md':
+        specifier: workspace:^
+        version: link:../edaha
+
+  packages/edaha-plugin-mermaidjs:
+    devDependencies:
+      '@lvl99dotcom/edaha.md':
+        specifier: workspace:^
+        version: link:../edaha
+
+  packages/edaha-plugin-youtube:
+    devDependencies:
+      '@lvl99dotcom/edaha.md':
+        specifier: workspace:^
+        version: link:../edaha
 
 packages:
 

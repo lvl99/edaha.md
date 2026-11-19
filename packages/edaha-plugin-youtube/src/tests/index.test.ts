@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { isEmbedPlugin } from "@lvl99dotcom/edaha.md/embeds";
 import youtubeDefault, { extractYouTubeId, youtube } from "..";
-
-const context = { fetch: () => Promise.reject(new Error("no fetch")) };
 
 describe("extractYouTubeId", () => {
   it("should find the ID in every form of YouTube URL", () => {
@@ -30,24 +29,34 @@ describe("extractYouTubeId", () => {
 });
 
 describe("youtube", () => {
-  it("should match YouTube hosts only", () => {
+  it("should be an embed plugin with the youtube key, allowing youtube-nocookie.com frames", () => {
     expect(youtubeDefault).toBe(youtube);
-    expect(youtube.match(new URL("https://youtu.be/x"))).toBe(true);
-    expect(youtube.match(new URL("https://www.youtube.com/watch?v=x"))).toBe(
-      true,
-    );
-    expect(youtube.match(new URL("https://example.com/youtube"))).toBe(false);
+    expect(isEmbedPlugin(youtube)).toBe(true);
+    expect(youtube.key).toBe("youtube");
+    expect(youtube.sources.frame).toEqual(["https://www.youtube-nocookie.com"]);
+    expect(youtube.editor.icon).toMatch(/^<svg /);
   });
 
   it("should always embed from youtube-nocookie.com", async () => {
-    const html = await youtube.render(
-      new URL("https://www.youtube.com/watch?v=aju_UB5VIf8"),
-      context,
+    const html = await youtube.build.render(
+      "https://www.youtube.com/watch?v=aju_UB5VIf8",
     );
     expect(html).toContain(
       'src="https://www.youtube-nocookie.com/embed/aju_UB5VIf8"',
     );
     expect(html).toMatch(/^<iframe .*><\/iframe>$/);
     expect(html).not.toContain("www.youtube.com");
+  });
+
+  it("should throw for anything but a YouTube video URL", async () => {
+    await expect(youtube.build.render("not a url")).rejects.toThrow(
+      "Invalid URL",
+    );
+    await expect(
+      youtube.build.render("https://example.com/watch?v=aju_UB5VIf8"),
+    ).rejects.toThrow("is not a YouTube URL");
+    await expect(
+      youtube.build.render("https://www.youtube.com/@channel"),
+    ).rejects.toThrow("No YouTube video ID");
   });
 });

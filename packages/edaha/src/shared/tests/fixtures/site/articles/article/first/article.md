@@ -19,4 +19,4 @@ tags:
 
 Intro with a [link](https://example.com) and ![an image](thumb.png). <!-- readmore -->The rest.
 
-<!-- embed -->https://youtu.be/aju_UB5VIf8<!-- /embed -->
+<!-- embed:youtube -->https://youtu.be/aju_UB5VIf8<!-- /embed:youtube -->

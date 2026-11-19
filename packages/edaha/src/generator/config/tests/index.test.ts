@@ -34,7 +34,7 @@ describe("parseConfig", () => {
       siteUrl: undefined,
       reservedPaths: [],
       types: {},
-      embeds: [],
+      plugins: [],
       metadata: {},
       metadataGroups: {},
     });
@@ -115,35 +115,33 @@ describe("parseConfig", () => {
       );
   });
 
-  it("should read custom embed renderers and reject anything else", () => {
-    const vimeo = {
-      name: "Vimeo",
-      frameSources: ["https://player.vimeo.com"],
-      match: () => true,
-      render: async () => "",
+  it("should read embed plugins and reject anything else", () => {
+    const quote = {
+      key: "quote",
+      name: "Quote",
+      sources: { script: ["https://cdn.example.com"] },
+      build: { render: async (content: string) => content },
     };
-    const plain = { name: "Plain", match: () => true, render: async () => "" };
-    expect(
-      parseConfig({ ...parse(VALID), embeds: [vimeo, plain] }).embeds,
-    ).toEqual([vimeo, plain]);
-    expect(parseConfig({ ...parse(VALID), embeds: null }).embeds).toEqual([]);
-    for (const embeds of [
-      vimeo,
-      ["https://vimeo.com"],
-      [null],
-      [{ ...vimeo, name: " " }],
-      [{ ...vimeo, match: "vimeo.com" }],
-      [{ ...vimeo, render: undefined }],
-      [{ ...vimeo, frameSources: "https://player.vimeo.com" }],
-      [{ ...vimeo, frameSources: ["http://player.vimeo.com"] }],
-      [{ ...vimeo, frameSources: ["https://player.vimeo.com/video"] }],
-      [{ ...vimeo, frameSources: [3] }],
-    ])
-      expect(() =>
-        parseConfig({ ...parse(VALID), embeds }, "edaha.config.mjs"),
-      ).toThrow(
-        'edaha.config.mjs: "embeds" must be a list of embed renderers ({ name, match(url), render(url, context), frameSources? } with https origins), set in a JavaScript config file',
-      );
+    expect(parseConfig({ ...parse(VALID), plugins: [quote] }).plugins).toEqual([
+      quote,
+    ]);
+    expect(parseConfig({ ...parse(VALID), plugins: null }).plugins).toEqual([]);
+    expect(() =>
+      parseConfig({ ...parse(VALID), plugins: quote }, "edaha.config.mjs"),
+    ).toThrow(
+      'edaha.config.mjs: "plugins" must be a list of embed plugin package names (or, in a JavaScript config file, embed plugins)',
+    );
+    expect(() =>
+      parseConfig(
+        { ...parse(VALID), plugins: ["@lvl99dotcom/edaha-plugin-youtube"] },
+        "edahaconfig.yml",
+      ),
+    ).toThrow(
+      'edahaconfig.yml: "plugins" package names are loaded by loadSiteConfig; pass embed plugins to parseConfig',
+    );
+    expect(() =>
+      parseConfig({ ...parse(VALID), plugins: [{ ...quote, key: "Quote" }] }),
+    ).toThrow('"plugins" must be embed plugins');
   });
 
   it("should read reserved paths and reject anything but a list of paths", () => {

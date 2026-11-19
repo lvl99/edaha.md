@@ -57,6 +57,56 @@ export const absoluteUrl = (url: string, siteUrl: string): string =>
 export const absoluteUrls = (html: string, siteUrl: string): string =>
   html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${new URL(siteUrl).origin}/`);
 
+/** Template tags that output the page's embed HTML (`TemplateData.embeds`), by where it goes */
+export const EMBED_TAGS = {
+  embedHead: "head",
+  embedFoot: "foot",
+  // The names the brief's first draft used
+  embedRenderHead: "head",
+  embedRenderFoot: "foot",
+} as const;
+
+/** The Nunjucks parser and node classes an extension's `parse` gets (not in @types/nunjucks) */
+interface NunjucksParser {
+  nextToken(): { value: string; lineno: number; colno: number };
+  parseSignature(tolerant: boolean, noParens: boolean): unknown;
+  advanceAfterBlockEnd(name: string): void;
+}
+interface NunjucksNodes {
+  NodeList: new (lineno: number, colno: number) => unknown;
+  CallExtension: new (
+    extension: object,
+    method: string,
+    args: unknown,
+    contentArgs: unknown[],
+  ) => unknown;
+}
+
+/**
+ * The `{% embedHead %}` and `{% embedFoot %}` tags (also `{% embedRenderHead() %}` and `{% embedRenderFoot() %}`): output
+ * the HTML that the page's embeds need once in its `<head>`, or before `</body>`. They output nothing on pages without
+ * embeds.
+ */
+class EmbedTags implements nunjucks.Extension {
+  tags = Object.keys(EMBED_TAGS);
+
+  /** Read the tag (with or without empty brackets) */
+  parse(parser: NunjucksParser, nodes: NunjucksNodes) {
+    const token = parser.nextToken();
+    // Brackets are optional, and the tags take no arguments
+    const args =
+      parser.parseSignature(true, false) ??
+      new nodes.NodeList(token.lineno, token.colno);
+    parser.advanceAfterBlockEnd(token.value);
+    return new nodes.CallExtension(this, token.value, args, []);
+  }
+}
+for (const [tag, part] of Object.entries(EMBED_TAGS))
+  Object.defineProperty(EmbedTags.prototype, tag, {
+    value: (context: { ctx: Partial<TemplateData> }) =>
+      new nunjucks.runtime.SafeString(context.ctx.embeds?.[part] ?? ""),
+  });
+
 /**
  * Loads and renders the site's Nunjucks templates from one or more folders. A file in an earlier folder overrides the
  * same file in later ones (e.g. a site's templates over the default theme's). Falls back to the `article` templates
@@ -100,6 +150,7 @@ export class Templates {
     this.env.addFilter("rfc822", formatRfc822);
     this.env.addFilter("absoluteUrl", absoluteUrl);
     this.env.addFilter("absoluteUrls", absoluteUrls);
+    this.env.addExtension("embeds", new EmbedTags());
   }
 
   /**

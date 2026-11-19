@@ -17,9 +17,9 @@ import {
   sep,
 } from "node:path";
 import {
-  EMBED_RENDERERS,
   EmbedResolver,
-  type EmbedRenderer,
+  type EmbedPlugin,
+  type EmbedUsage,
 } from "../../embeds/index.ts";
 import { loadArticle } from "../article/index.ts";
 import { MetadataValidator, typeMetadataKeys } from "../metadata/index.ts";
@@ -75,8 +75,8 @@ export interface BuildOptions {
   logger?: Logger;
   /** Fetches extra data for embeds (defaults to the global fetch) */
   fetch?: typeof fetch;
-  /** Embed renderers tried after the config file's `embeds` (defaults to the built-in ones, EMBED_RENDERERS) */
-  embedRenderers?: readonly EmbedRenderer[];
+  /** Embed plugins added after the config file's `plugins` (a key in both uses the config file's). Default: none */
+  plugins?: readonly EmbedPlugin[];
 }
 
 /** What a build produced */
@@ -282,6 +282,23 @@ export const listPageData = (
 });
 
 /**
+ * The embed plugins to build with: the config file's, then the given ones whose keys the config file doesn't use.
+ *
+ * @example
+ * withPlugins([youtube], [youtube2, mermaidjs]); // [youtube, mermaidjs]
+ */
+export const withPlugins = (
+  configPlugins: readonly EmbedPlugin[],
+  plugins: readonly EmbedPlugin[] = [],
+): EmbedPlugin[] => {
+  const keys = new Set(configPlugins.map((plugin) => plugin.key));
+  return [
+    ...configPlugins,
+    ...plugins.filter((plugin) => !keys.has(plugin.key)),
+  ];
+};
+
+/**
  * Build the site: render every published and unlisted article with its assets, then each type's paginated list and
  * RSS feed, and its tag and author lists, and copy the static files (the theme's, overridden by the site's `static/`)
  * as they are. Files are written to `outputDir` (emptied first). If `publishDir` is set, they are then copied into it
@@ -361,10 +378,7 @@ export const buildSite = async (
   const embeds = new EmbedResolver({
     fetch: options.fetch ?? fetch,
     logger,
-    renderers: [
-      ...config.embeds,
-      ...(options.embedRenderers ?? EMBED_RENDERERS),
-    ],
+    plugins: withPlugins(config.plugins, options.plugins),
   });
 
   // Remove what the previous build published, then empty the build folder
@@ -388,7 +402,11 @@ export const buildSite = async (
     article: TemplateDataArticle;
     dir: string;
     folder: string;
+    /** The embeds its body uses */
+    usage: EmbedUsage;
   }[] = [];
+  /** The embeds each built article's excerpt uses, by its URL, for list pages */
+  const excerptUsage = new Map<string, EmbedUsage>();
   for (const type of typeFolders) {
     const typeConfig = site.types[type] as TemplateDataArticleType;
     const built = typeConfig.generate.article;
@@ -416,6 +434,7 @@ export const buildSite = async (
       }
       // An index article is its type's front page
       const folder = slug === "index" ? typeFolder : `${typeFolder}${slug}/`;
+      const usage = { body: new Map(), excerpt: new Map() };
       const article = await loadArticle(text, type, {
         site,
         dir,
@@ -425,7 +444,7 @@ export const buildSite = async (
         source,
         // Embeds aren't fetched for articles that won't be built
         replaceEmbeds: built
-          ? (md) => embeds.replaceBlocks(md, source)
+          ? (md, part) => embeds.replaceBlocks(md, source, usage[part])
           : async (md) => md,
         renderMarkdown: (md, baseUrl) =>
           renderMarkdown(markdown, md, baseUrl, site.baseUrl),
@@ -436,7 +455,10 @@ export const buildSite = async (
           warn: (message) => logger.warn(message),
         },
       });
-      if (article && built) articles.push({ article, dir, folder });
+      if (article && built) {
+        articles.push({ article, dir, folder, usage: usage.body });
+        excerptUsage.set(article.url, usage.excerpt);
+      }
     }
   }
 
@@ -452,6 +474,10 @@ export const buildSite = async (
       (article) => article.status === "published" && article.slug !== "index",
     );
   const lists = collectLists(listed, site, withIndex);
+  /** The embeds used by the excerpts of a page's articles */
+  const articlesUsage = (shown: readonly TemplateDataArticle[]) =>
+    // Every article in a list is built, so its excerpt's embeds are known
+    shown.map((article) => excerptUsage.get(article.url) as EmbedUsage);
   const firstPages = new Map<string, TemplateDataList>();
   for (const list of lists) {
     const pages = paginate(list);
@@ -462,7 +488,13 @@ export const buildSite = async (
       for (const page of pages)
         await write(
           list.dir + pageFile(page.pagination.page.index),
-          templates.render(listTemplate, listPageData(site, page)),
+          templates.render(listTemplate, {
+            ...listPageData(site, page),
+            embeds: await embeds.pageParts(
+              articlesUsage(page.articles),
+              page.pagination.page.url,
+            ),
+          }),
         );
     }
     if (list.feed)
@@ -480,21 +512,22 @@ export const buildSite = async (
   }
 
   // Article pages with their assets; index articles also get their type's list
-  for (const { article, dir, folder } of articles) {
+  for (const { article, dir, folder, usage } of articles) {
     await cp(dir, join(outputDir, folder), {
       recursive: true,
       filter: (path) => path !== join(dir, "article.md"),
     });
+    const list =
+      article.slug === "index" ? firstPages.get(article.type) : undefined;
     await write(
       `${folder}index.html`,
-      templates.render(
-        templates.resolve(article.type, article.template),
-        articlePageData(
-          site,
-          article,
-          article.slug === "index" ? firstPages.get(article.type) : undefined,
+      templates.render(templates.resolve(article.type, article.template), {
+        ...articlePageData(site, article, list),
+        embeds: await embeds.pageParts(
+          [usage, ...articlesUsage(list?.articles ?? [])],
+          article.url,
         ),
-      ),
+      }),
     );
   }
 
