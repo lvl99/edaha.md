@@ -447,7 +447,7 @@ export const buildSite = async (
           ? (md, part) => embeds.replaceBlocks(md, source, usage[part])
           : async (md) => md,
         renderMarkdown: (md, baseUrl) =>
-          renderMarkdown(markdown, md, baseUrl, site.baseUrl),
+          embeds.restore(renderMarkdown(markdown, md, baseUrl, site.baseUrl)),
         metadata: {
           validator,
           keys: typeMetadataKeys(config.metadata, typeConfigs[type]?.metadata),

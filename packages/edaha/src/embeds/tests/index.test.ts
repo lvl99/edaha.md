@@ -2,6 +2,7 @@ import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { createMarkdown, renderMarkdown } from "../../generator/markdown";
 import {
   checkEmbedPlugins,
   EmbedResolver,
@@ -221,16 +222,27 @@ describe("EmbedResolver", () => {
       "news/a",
       usage,
     );
-    expect(markdown).toContain(
-      '\n\n<div class="embed embed-example"><figure>one</figure></div>\n\n',
+    // Each block is a placeholder, as its own block, until the rendered HTML is restored
+    expect(markdown.split("\n").filter(Boolean)).toEqual([
+      "Intro",
+      "<!--edaha-embed:0-->",
+      "<!--edaha-embed:1-->",
+      "<!--edaha-embed:2-->",
+      "`<!-- embed:example -->code<!-- /embed:example -->`",
+    ]);
+    expect(markdown).toContain("\n\n<!--edaha-embed:0-->\n\n");
+    const html = resolver.restore(markdown);
+    expect(html).toContain(
+      '<div class="embed embed-example"><figure>one</figure></div>',
     );
     // Blank lines around the content are left out, but its indentation is kept
-    expect(markdown).toContain(
+    expect(html).toContain(
       '<div class="embed embed-example"><figure>  two\n  lines</figure></div>',
     );
-    expect(markdown).toContain('<div class="embed embed-plain">three</div>');
-    expect(markdown).toContain(
-      "`<!-- embed:example -->code<!-- /embed:example -->`",
+    expect(html).toContain('<div class="embed embed-plain">three</div>');
+    // Placeholders this resolver didn't make are left as they are
+    expect(resolver.restore("<!--edaha-embed:99-->")).toBe(
+      "<!--edaha-embed:99-->",
     );
     expect([...usage]).toEqual([
       ["example", [3, 13]],
@@ -239,6 +251,24 @@ describe("EmbedResolver", () => {
     // Without a usage map, it isn't recorded
     expect(await resolver.replaceBlocks("No embeds", "news/b")).toBe(
       "No embeds",
+    );
+  });
+
+  it("should keep embed HTML with blank lines whole through Markdown", async () => {
+    const { resolver } = setup();
+    const markdown = createMarkdown();
+    const html = resolver.restore(
+      renderMarkdown(
+        markdown,
+        await resolver.replaceBlocks(
+          "Intro\n\n<!-- embed:plain -->\n<pre>a\n\n  *b*</pre>\n<!-- /embed:plain -->\n\nEnd",
+          "news/a",
+        ),
+        "/",
+      ),
+    );
+    expect(html).toBe(
+      '<p>Intro</p>\n<div class="embed embed-plain"><pre>a\n\n  *b*</pre></div>\n<p>End</p>\n',
     );
   });
 

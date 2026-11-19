@@ -824,7 +824,8 @@ export class ArticleStore {
         source: name,
         replaceEmbeds: (md, part) =>
           embeds.replaceBlocks(md, name, part === "body" ? usage : undefined),
-        renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
+        renderMarkdown: (md, base) =>
+          embeds.restore(renderMarkdown(markdown, md, base)),
         metadata: {
           ...metadata.context(data.type),
           // The editor shows problems itself

@@ -17,6 +17,9 @@ import type {
 export type * from "./types/index.ts";
 export { EMBED_BLOCK, embedBlock, embedContent } from "./blocks/index.ts";
 
+/** Where `replaceBlocks` put an embed's HTML, for `restore` */
+const EMBED_PLACEHOLDER = /<!--edaha-embed:(\d+)-->/g;
+
 /** Embed keys: lowercase kebab-case */
 const EMBED_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -188,6 +191,8 @@ export class EmbedResolver {
   private readonly options: EmbedOptions;
   private readonly plugins: Map<string, EmbedPlugin>;
   private readonly cache = new Map<string, Promise<RenderedEmbed>>();
+  /** Rendered embeds' HTML, by their placeholders' IDs (see replaceBlocks) */
+  private readonly placed = new Map<number, string>();
 
   constructor(options: EmbedOptions) {
     this.options = options;
@@ -219,10 +224,13 @@ export class EmbedResolver {
   }
 
   /**
-   * Replace every embed block in markdown with its rendered HTML, as its own block, recording the embeds used in
-   * `usage`. Blocks in code blocks and inline code are left as they are.
+   * Replace every embed block in markdown with a placeholder for its rendered HTML, as its own block, recording the
+   * embeds used in `usage`. Blocks in code blocks and inline code are left as they are. Render the markdown, then put
+   * the HTML in its place with `restore` (embed HTML put straight into markdown would end at its first blank line).
    *
    * @param source - where the markdown is from, for warnings
+   * @example
+   * const html = embeds.restore(renderMarkdown(markdown, await embeds.replaceBlocks(source, "news/hello"), "/news/hello/"));
    */
   async replaceBlocks(
     markdown: string,
@@ -242,10 +250,23 @@ export class EmbedResolver {
     );
     for (const { usage: used } of rendered) addUsage(usage, used);
     let index = 0;
-    return replaceOutsideCode(
-      markdown,
-      EMBED_BLOCK,
-      () => `\n\n${(rendered[index++] as RenderedEmbed).html}\n\n`,
+    return replaceOutsideCode(markdown, EMBED_BLOCK, () => {
+      const id = this.placed.size;
+      this.placed.set(id, (rendered[index++] as RenderedEmbed).html);
+      return `\n\n<!--edaha-embed:${id}-->\n\n`;
+    });
+  }
+
+  /**
+   * Put rendered embeds' HTML in place of their placeholders in HTML rendered from `replaceBlocks`' markdown.
+   *
+   * @example
+   * embeds.restore("<p>Intro</p>\n<!--edaha-embed:0-->\n"); // '<p>Intro</p>\n<div class="embed embed-youtube">...</div>\n'
+   */
+  restore(html: string): string {
+    return html.replace(
+      EMBED_PLACEHOLDER,
+      (placeholder, id: string) => this.placed.get(Number(id)) ?? placeholder,
     );
   }
 
