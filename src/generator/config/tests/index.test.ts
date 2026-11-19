@@ -35,6 +35,7 @@ describe("parseConfig", () => {
       reservedPaths: [],
       types: {},
       embeds: [],
+      metadata: {},
     });
     expect(parseYaml(`${VALID}path: docs\n`).path).toBe("docs");
   });
@@ -258,5 +259,57 @@ describe("article types", () => {
       expect(() => withTypes(types), types).toThrow(
         `edahaconfig.yml: ${message}`,
       );
+  });
+});
+
+describe("custom metadata", () => {
+  /** Parse a config with settings added */
+  const withSettings = (settings: Record<string, unknown>) =>
+    parseConfig({ name: "News", description: "Updates", ...settings });
+  const featured = {
+    type: "string",
+    format: "uri",
+    $edahaField: { file: { accept: "image/*" } },
+  };
+
+  it("should read metadata definitions and the types' metadata settings", () => {
+    const config = withSettings({
+      metadata: {
+        featured,
+        rating: { type: "number", $edahaField: { number: true } },
+      },
+      types: {
+        news: { metadata: ["featured"] },
+        docs: { metadata: false },
+        page: {},
+      },
+    });
+    expect(config.metadata).toEqual({
+      featured,
+      rating: { type: "number", $edahaField: { number: true } },
+    });
+    expect(config.types.news?.metadata).toEqual(["featured"]);
+    expect(config.types.docs?.metadata).toBe(false);
+    expect(config.types.page?.metadata).toBeUndefined();
+    expect(withSettings({}).metadata).toEqual({});
+  });
+
+  it("should reject types using metadata that isn't defined, or settings that aren't lists or false", () => {
+    expect(() =>
+      withSettings({
+        metadata: { featured },
+        types: { news: { metadata: ["featured", "missing"] } },
+      }),
+    ).toThrow(
+      'config: "types.news.metadata" lists "missing", which isn\'t defined in "metadata"',
+    );
+    expect(() =>
+      withSettings({ types: { news: { metadata: "all" } } }),
+    ).toThrow(
+      '"types.news.metadata" must be a list of metadata keys, or false for none',
+    );
+    expect(() => withSettings({ metadata: [] })).toThrow(
+      '"metadata" must be a map of settings',
+    );
   });
 });

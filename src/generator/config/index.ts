@@ -1,6 +1,11 @@
 import { isAbsolute, normalize, sep } from "node:path";
 import type { EmbedRenderer } from "../../embeds/types/index.ts";
 import { isSlug } from "../slug/index.ts";
+import {
+  parseMetadata,
+  parseTypeMetadata,
+  type MetadataDefinitions,
+} from "../metadata/index.ts";
 
 /** What is built for an article type */
 export interface GenerateConfig {
@@ -26,6 +31,8 @@ export interface ArticleTypeConfig {
   labelPlural: string;
   /** What is built for the type */
   generate: GenerateConfig;
+  /** The custom metadata fields the type uses: those listed, none for `false`, or all when undefined */
+  metadata?: string[] | false | undefined;
 }
 
 /** The site's settings from the config file */
@@ -54,6 +61,8 @@ export interface EdahaConfig {
   types: Record<string, ArticleTypeConfig>;
   /** Custom embed renderers, tried before the built-in ones. Only JavaScript config files can set them. Default: none */
   embeds: EmbedRenderer[];
+  /** Custom metadata fields' JSON Schemas, by the key articles store their values under. Default: none */
+  metadata: MetadataDefinitions;
 }
 
 /** Settings under `generate` */
@@ -66,7 +75,13 @@ const GENERATE_KEYS: (keyof GenerateConfig)[] = [
 ];
 
 /** Settings of an article type */
-const TYPE_KEYS = ["labelSingle", "labelPlural", "path", "generate"];
+const TYPE_KEYS = [
+  "labelSingle",
+  "labelPlural",
+  "path",
+  "generate",
+  "metadata",
+];
 
 /** The site's settings */
 const CONFIG_KEYS = [
@@ -82,6 +97,7 @@ const CONFIG_KEYS = [
   "reservedPaths",
   "types",
   "embeds",
+  "metadata",
 ];
 
 /** List folders that can't be used as article types */
@@ -159,6 +175,10 @@ const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
     config[label] = text.trim();
   }
   config.path = parsePath(fields.path, `"types.${type}.path"`) ?? type;
+  config.metadata = parseTypeMetadata(
+    fields.metadata,
+    `"types.${type}.metadata"`,
+  );
   const generate = fields.generate;
   if (generate === false)
     for (const key of GENERATE_KEYS) config.generate[key] = false;
@@ -326,6 +346,20 @@ const validateConfig = (data: unknown): EdahaConfig => {
     fields.types === undefined || fields.types === null
       ? {}
       : asMap(fields.types, '"types"');
+  const metadata = parseMetadata(fields.metadata);
+  const typeConfigs = Object.fromEntries(
+    Object.entries(types).map(([type, value]) => [
+      type,
+      parseTypeConfig(type, value),
+    ]),
+  );
+  // Types can only use custom metadata that is defined
+  for (const [type, { metadata: keys }] of Object.entries(typeConfigs))
+    for (const key of keys || [])
+      if (!(key in metadata))
+        throw new Error(
+          `"types.${type}.metadata" lists "${key}", which isn't defined in "metadata"`,
+        );
   return {
     name: requireString(fields, "name"),
     description: requireString(fields, "description"),
@@ -336,12 +370,8 @@ const validateConfig = (data: unknown): EdahaConfig => {
     siteUrl: parseSiteUrl(fields),
     reservedPaths: parseReservedPaths(fields),
     embeds: parseEmbeds(fields),
-    types: Object.fromEntries(
-      Object.entries(types).map(([type, value]) => [
-        type,
-        parseTypeConfig(type, value),
-      ]),
-    ),
+    metadata,
+    types: typeConfigs,
   };
 };
 
