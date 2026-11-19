@@ -455,6 +455,124 @@ describe("ArticleStore", () => {
     ]);
   });
 
+  describe("custom metadata", () => {
+    /** A copy of the site whose pages use "featured" and "rating", with a page using them */
+    const metadataSite = async () => {
+      const site = await copySite();
+      const config = await readFile(join(site.dir, "edahaconfig.yml"), "utf8");
+      await writeFile(
+        join(site.dir, "edahaconfig.yml"),
+        [
+          config.trimEnd(),
+          "  page:",
+          "    metadata: [featured, rating]",
+          "metadata:",
+          "  featured:",
+          "    type: string",
+          "    $edahaField: { file: true }",
+          "  rating:",
+          "    type: number",
+          "    maximum: 10",
+          "    $edahaField: { number: true }",
+          "  credit:",
+          "    type: string",
+          "    $edahaField: { text: true }",
+          "",
+        ].join("\n"),
+      );
+      await writeFile(
+        join(site.dir, "articles/page/about-us/article.md"),
+        `<!--yaml\ndate: ${DATE}\nfeatured: hero.png\nrating: 11\ncredit: Me\noops: true\n-->\n# About us\n\nBody\n`,
+      );
+      return { ...site, store: await openStore(site.dir) };
+    };
+
+    it("should read an article's other settings and their problems", async () => {
+      const { store } = await metadataSite();
+      const article = await store.read("page", "about-us");
+      expect(article.meta).toEqual({
+        featured: "hero.png",
+        rating: 11,
+        credit: "Me",
+        oops: true,
+      });
+      expect(article.problems).toEqual([
+        { path: "rating", message: "must be <= 10", level: "error" },
+        { path: "credit", message: "isn't used by Pages", level: "warning" },
+        { path: "oops", message: "isn't a known setting", level: "warning" },
+      ]);
+      expect(await store.metadataInfo()).toMatchObject({
+        types: { page: ["featured", "rating"] },
+      });
+      expect(Object.keys((await store.metadataInfo()).definitions)).toEqual([
+        "featured",
+        "rating",
+        "credit",
+      ]);
+    });
+
+    it("should give summaries their problems, and find articles with errors, warnings or either", async () => {
+      const { store } = await metadataSite();
+      await store.load();
+      const slugs = async (problems: "errors" | "warnings" | "any") =>
+        (await store.query({ problems })).articles.map((a) => a.slug);
+      expect(await slugs("errors")).toEqual(["about-us"]);
+      expect(await slugs("warnings")).toEqual(["about-us"]);
+      expect(await slugs("any")).toEqual(["about-us"]);
+      expect(
+        (await store.query({ search: "first" })).articles[0]?.problems,
+      ).toBeUndefined();
+    });
+
+    it("should refuse to save invalid values, and keep other settings when saving", async () => {
+      const { dir, store } = await metadataSite();
+      const article = await store.read("page", "about-us");
+      await expect(
+        store.save(article, { type: "page", slug: "about-us" }),
+      ).rejects.toMatchObject({
+        status: 400,
+        message: 'Some values aren\'t valid: "rating" must be <= 10',
+        problems: [
+          { path: "rating", message: "must be <= 10", level: "error" },
+        ],
+      });
+      await store.save(
+        { ...article, meta: { ...article.meta, rating: 7 } },
+        { type: "page", slug: "about-us" },
+      );
+      const saved = await readFile(
+        join(dir, "articles/page/about-us/article.md"),
+        "utf8",
+      );
+      expect(saved).toContain(
+        "featured: hero.png\nrating: 7\ncredit: Me\noops: true\n",
+      );
+    });
+
+    it("should give previews the type's valid values as article.meta", async () => {
+      const { dir, store } = await metadataSite();
+      await mkdir(join(dir, "templates/page"), { recursive: true });
+      await writeFile(
+        join(dir, "templates/page/single.njk"),
+        "{{ article.meta | dump | safe }}",
+      );
+      const article = await store.read("page", "about-us");
+      expect(
+        JSON.parse(
+          await store.preview(
+            article,
+            { type: "page", slug: "about-us" },
+            new EmbedResolver({
+              fetch: (async () => new Response("")) as unknown as typeof fetch,
+              logger: { warn: () => undefined },
+              renderers: [],
+            }),
+          ),
+        ),
+      ).toEqual({ featured: "/files/page/about-us/hero.png" });
+    });
+  });
+
   it("should watch the articles folder for changes by default, until closed", async () => {
     const { dir } = await copySite();
     let updates = 0;

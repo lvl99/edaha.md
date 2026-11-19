@@ -148,6 +148,27 @@ describe("queryArticles", () => {
     ).toEqual(["old", "new"]);
   });
 
+  it("should find articles with metadata errors, warnings or either", () => {
+    const withProblems = [
+      summary({
+        slug: "e",
+        problems: [{ path: "a", message: "x", level: "error" }],
+      }),
+      summary({
+        slug: "w",
+        problems: [{ path: "a", message: "x", level: "warning" }],
+      }),
+      summary({ slug: "none" }),
+    ];
+    const found = (problems: "errors" | "warnings" | "any") =>
+      queryArticles(withProblems, { problems, sort: "title" }).articles.map(
+        (article) => article.slug,
+      );
+    expect(found("errors")).toEqual(["e"]);
+    expect(found("warnings")).toEqual(["w"]);
+    expect(found("any")).toEqual(["e", "w"]);
+  });
+
   it("should search titles and filter by type, author, tag and status, ignoring case and accents", () => {
     expect(slugs({ search: "  ALPH " })).toEqual(["a"]);
     expect(slugs({ type: "page" })).toEqual(["c"]);
@@ -241,6 +262,23 @@ describe("articleFiles", () => {
 });
 
 describe("ArticleIndex", () => {
+  it("should check articles' metadata with the check given", async () => {
+    const dir = await copyArticles();
+    const index = new ArticleIndex(dir, {
+      check: (type, settings) =>
+        type === "page" && settings.date
+          ? [{ path: "x", message: "is wrong", level: "error" }]
+          : [],
+    });
+    await index.load();
+    expect(
+      index
+        .articles()
+        .filter((article) => article.problems)
+        .map((a) => a.slug),
+    ).toEqual(["about-us"]);
+  });
+
   it("should read every article, skipping folders that aren't articles", async () => {
     const dir = await copyArticles();
     await mkdir(join(dir, "article/empty"));

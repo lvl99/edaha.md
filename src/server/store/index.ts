@@ -15,6 +15,7 @@ import {
   DEFAULT_HEADER_FORMAT,
   headerFormat,
   loadArticle,
+  type MetadataContext,
   parseArticleConfig,
   splitArticle,
   splitContent,
@@ -52,7 +53,15 @@ import {
   markdownToEditorHtml,
 } from "../convert/index.ts";
 import {
+  articleMetadata,
+  CORE_FIELDS,
+  MetadataValidator,
+  typeMetadataKeys,
+} from "../../generator/metadata/index.ts";
+import type { EdahaConfig } from "../../generator/config/index.ts";
+import {
   ArticleIndex,
+  type MetadataCheck,
   articleFilters,
   queryArticles,
   recentArticles,
@@ -76,6 +85,8 @@ import type {
   FileFilters,
   FilePage,
   FileQuery,
+  MetadataInfo,
+  MetadataProblem,
   ArticleTypeLabels,
   RecentArticles,
   EditorArticle,
@@ -87,9 +98,13 @@ import type {
 export class EditorError extends Error {
   readonly status: number;
 
-  constructor(status: number, message: string) {
+  /** Problems with the article's custom metadata, when saving it was refused because of them */
+  readonly problems?: MetadataProblem[] | undefined;
+
+  constructor(status: number, message: string, problems?: MetadataProblem[]) {
     super(message);
     this.status = status;
+    this.problems = problems;
   }
 }
 
@@ -97,6 +112,15 @@ export class EditorError extends Error {
 export interface ArticleStoreOptions extends ArticleIndexOptions {
   /** Whether the article index watches the articles folder for changes made outside the editor (default: true) */
   watch?: boolean;
+}
+
+/** What articles' custom metadata is checked with (see `ArticleStore.metadata`) */
+interface MetadataTools {
+  config: EdahaConfig;
+  /** An article's problems, from its type and settings */
+  check: MetadataCheck;
+  /** What `loadArticle` reads a type's metadata with (besides `warn`) */
+  context(type: string): Omit<MetadataContext, "warn">;
 }
 
 /** How many previews the editor remembers (the newest) */
@@ -196,6 +220,8 @@ export const serializeArticle = (
           )
         : undefined,
       tags: data.tags.length ? data.tags : undefined,
+      // Custom metadata and other settings, after the core ones
+      ...data.meta,
     }).filter(([, value]) => value !== undefined && value !== ""),
   );
   const header =
@@ -233,6 +259,9 @@ export class ArticleStore {
   private readonly siteDir: string;
 
   private readonly themeDir: string;
+
+  /** What custom metadata is checked with, once read from the config file */
+  private metadataLoad?: Promise<MetadataTools> | undefined;
 
   /** The article index, once its first load has started */
   private indexLoad?: Promise<ArticleIndex> | undefined;
@@ -320,10 +349,61 @@ export class ArticleStore {
     }
   }
 
+  /**
+   * What articles' custom metadata is checked with, from the config file (read once): a check giving an article's
+   * problems from its type and settings, and the context `loadArticle` reads a type's metadata with.
+   */
+  private metadata(): Promise<MetadataTools> {
+    this.metadataLoad ??= (async () => {
+      const config = await this.config();
+      const validator = new MetadataValidator(config.metadata);
+      const context = (type: string) => {
+        const typeConfig = config.types[type] ?? defaultTypeConfig(type);
+        return {
+          validator,
+          keys: typeMetadataKeys(config.metadata, typeConfig.metadata),
+          typeLabel: typeConfig.labelPlural,
+        };
+      };
+      const check: MetadataCheck = (type, settings) => {
+        const { keys, typeLabel } = context(type);
+        return articleMetadata(settings, keys, validator, typeLabel).problems;
+      };
+      return { config, check, context };
+    })();
+    return this.metadataLoad;
+  }
+
+  /**
+   * Read the config file's custom metadata and every article now, rather than on first use, so the editor starts with
+   * every article checked.
+   */
+  async load(): Promise<void> {
+    await this.index();
+  }
+
+  /**
+   * The custom metadata fields, and which fields each configured type uses, for the editor's article form.
+   */
+  async metadataInfo(): Promise<MetadataInfo> {
+    const { config } = await this.metadata();
+    return {
+      definitions: config.metadata,
+      types: Object.fromEntries(
+        Object.entries(config.types).flatMap(([type, { metadata }]) =>
+          metadata === undefined ? [] : [[type, metadata]],
+        ),
+      ),
+    };
+  }
+
   /** The article index, read on first use (and then watched, unless turned off) */
   private index(): Promise<ArticleIndex> {
     this.indexLoad ??= (async () => {
-      const index = new ArticleIndex(this.articlesDir, this.indexOptions);
+      const index = new ArticleIndex(this.articlesDir, {
+        ...this.indexOptions,
+        check: (await this.metadata()).check,
+      });
       await index.load();
       if (this.indexOptions.watch !== false) index.watch();
       return index;
@@ -541,6 +621,8 @@ export class ArticleStore {
     const files = (await readdir(this.dir(type, slug)))
       .filter((name) => name !== "article.md")
       .sort();
+    const settings = header as Record<string, unknown>;
+    const { check } = await this.metadata();
     return {
       type,
       slug,
@@ -555,6 +637,10 @@ export class ArticleStore {
       attachments: config.attachments,
       bodyHtml: markdownToEditorHtml(body, filesUrl(type, slug)),
       files,
+      meta: Object.fromEntries(
+        Object.entries(settings).filter(([key]) => !CORE_FIELDS.includes(key)),
+      ),
+      problems: check(type, settings),
     };
   }
 
@@ -583,6 +669,16 @@ export class ArticleStore {
       throw new EditorError(400, `The slug can't be used: ${problem}`);
     if (!data.title.trim())
       throw new EditorError(400, "The article needs a title");
+    // Custom metadata values that aren't valid aren't saved
+    const errors = (await this.metadata())
+      .check(data.type, data.meta ?? {})
+      .filter(({ level }) => level === "error");
+    if (errors.length)
+      throw new EditorError(
+        400,
+        `Some values aren't valid: ${errors.map(({ path, message }) => `"${path}" ${message}`).join("; ")}`,
+        errors,
+      );
     const moving = !from || from.type !== data.type || from.slug !== data.slug;
     if (moving && (await exists(dir)))
       throw new EditorError(
@@ -653,6 +749,7 @@ export class ArticleStore {
     );
     const name = `${data.type}/${data.slug || "new"}`;
     const markdown = createMarkdown();
+    const metadata = await this.metadata();
     try {
       // Published, so always rendered
       const article = (await loadArticle(source, data.type, {
@@ -667,6 +764,11 @@ export class ArticleStore {
         source: name,
         replaceEmbeds: (md) => embeds.replaceBlocks(md, name),
         renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
+        metadata: {
+          ...metadata.context(data.type),
+          // The editor shows problems itself
+          warn: () => undefined,
+        },
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
       return templates.render(

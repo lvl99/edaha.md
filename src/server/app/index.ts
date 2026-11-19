@@ -92,6 +92,7 @@ const STATUSES: readonly ArticleStatus[] = ["published", "draft", "unlisted"];
 export const articleQuery = (params: URLSearchParams): ArticleQuery => {
   const { text, number } = paramReader(params);
   const status = text("status") as ArticleStatus | undefined;
+  const problems = text("problems");
   const sort = text("sort");
   const order = text("order");
   return Object.fromEntries(
@@ -101,6 +102,10 @@ export const articleQuery = (params: URLSearchParams): ArticleQuery => {
       author: text("author"),
       tag: text("tag"),
       status: status && STATUSES.includes(status) ? status : undefined,
+      problems:
+        problems === "errors" || problems === "warnings" || problems === "any"
+          ? problems
+          : undefined,
       sort: SORTS.includes(sort as ArticleSort)
         ? (sort as ArticleSort)
         : undefined,
@@ -197,7 +202,13 @@ export const createEditorApp = (
 
   app.onError((error, c) =>
     error instanceof EditorError
-      ? c.json({ error: error.message }, error.status as 400)
+      ? c.json(
+          {
+            error: error.message,
+            ...(error.problems ? { problems: error.problems } : {}),
+          },
+          error.status as 400,
+        )
       : c.json({ error: error.message }, 500),
   );
 
@@ -252,6 +263,8 @@ export const createEditorApp = (
   app.get("/api/articles/filters", async (c) => c.json(await store.filters()));
 
   app.get("/api/types", async (c) => c.json(await store.types()));
+
+  app.get("/api/metadata", async (c) => c.json(await store.metadataInfo()));
 
   app.get("/api/templates/:type", (c) =>
     c.json(store.templates(c.req.param("type"))),

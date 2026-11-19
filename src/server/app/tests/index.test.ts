@@ -10,7 +10,7 @@ import {
   fileQuery,
   previewCsp,
 } from "..";
-import { ArticleStore } from "../../store";
+import { ArticleStore, EditorError } from "../../store";
 import { loadSiteConfig } from "../../../generator/configFile";
 
 const FIXTURE = fileURLToPath(
@@ -195,6 +195,27 @@ describe("createEditorApp", () => {
     expect(missing.status).toBe(404);
     expect(await missing.json()).toEqual({
       error: "Article article/missing not found",
+    });
+  });
+
+  it("should give the custom metadata fields, and the problems when saving is refused", async () => {
+    const { app, store } = await setup();
+    expect(await (await app.request("/api/metadata")).json()).toEqual({
+      definitions: {},
+      types: {},
+    });
+    const problems = [{ path: "a", message: "is wrong", level: "error" }];
+    vi.spyOn(store, "save").mockRejectedValue(
+      new EditorError(400, "Some values aren't valid", problems as never),
+    );
+    const refused = await app.request(
+      "/api/articles/article/first",
+      json("PUT", ARTICLE),
+    );
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({
+      error: "Some values aren't valid",
+      problems,
     });
   });
 
@@ -481,7 +502,7 @@ describe("articleQuery", () => {
     expect(
       articleQuery(
         new URLSearchParams(
-          "search=hi&type=news&author=Matt&tag=News&status=draft&sort=title&order=desc&page=2&perPage=10",
+          "search=hi&type=news&author=Matt&tag=News&status=draft&problems=errors&sort=title&order=desc&page=2&perPage=10",
         ),
       ),
     ).toEqual({
@@ -490,6 +511,7 @@ describe("articleQuery", () => {
       author: "Matt",
       tag: "News",
       status: "draft",
+      problems: "errors",
       sort: "title",
       order: "desc",
       page: 2,
@@ -498,10 +520,14 @@ describe("articleQuery", () => {
     expect(
       articleQuery(
         new URLSearchParams(
-          "search=&status=gone&sort=random&order=sideways&page=two",
+          "search=&status=gone&problems=lots&sort=random&order=sideways&page=two",
         ),
       ),
     ).toEqual({});
+    for (const problems of ["warnings", "any"])
+      expect(articleQuery(new URLSearchParams(`problems=${problems}`))).toEqual(
+        { problems },
+      );
     expect(articleQuery(new URLSearchParams("sort=status"))).toEqual({
       sort: "status",
     });

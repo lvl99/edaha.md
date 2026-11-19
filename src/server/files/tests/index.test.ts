@@ -236,6 +236,56 @@ describe("changeArticleReferences", () => {
     ).toBe("<!--json\n{}\n-->\nText");
   });
 
+  it("should change custom settings' values that are the file, through lists and maps", () => {
+    const source = [
+      "<!--yaml",
+      "date: 2026-10-19T09:54:00.000Z",
+      "featured: photo.png",
+      "gallery:",
+      "  - photo.png",
+      "  - other.png",
+      "credit:",
+      "  photo: photo.png",
+      "  name: photo.png credit",
+      "rating: 3",
+      "-->",
+      "Text",
+    ].join("\n");
+    expect(
+      changeArticleReferences(source, ["photo.png"], { rename: "a.jpg" }),
+    ).toBe(
+      [
+        "<!--yaml",
+        "date: 2026-10-19T09:54:00.000Z",
+        "featured: a.jpg",
+        "gallery:",
+        "  - a.jpg",
+        "  - other.png",
+        "credit:",
+        "  photo: a.jpg",
+        "  name: photo.png credit",
+        "rating: 3",
+        "-->",
+        "Text",
+      ].join("\n"),
+    );
+    expect(
+      changeArticleReferences(source, ["photo.png"], { remove: true }),
+    ).toBe(
+      [
+        "<!--yaml",
+        "date: 2026-10-19T09:54:00.000Z",
+        "gallery:",
+        "  - other.png",
+        "credit:",
+        "  name: photo.png credit",
+        "rating: 3",
+        "-->",
+        "Text",
+      ].join("\n"),
+    );
+  });
+
   it("should keep the header as written when only the body changes", () => {
     expect(
       changeArticleReferences(

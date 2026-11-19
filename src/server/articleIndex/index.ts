@@ -12,11 +12,27 @@ import { fileKind } from "../files/index.ts";
 import type {
   ArticleFilters,
   IndexedFile,
+  MetadataProblem,
+  ProblemFilter,
   ArticlePage,
   ArticleQuery,
   ArticleSummary,
   RecentArticles,
 } from "../types/index.ts";
+
+/** Finds problems with an article's custom metadata, from its type and settings */
+export type MetadataCheck = (
+  type: string,
+  settings: Record<string, unknown>,
+) => MetadataProblem[];
+
+/** Whether an article has problems of the kind a query looks for */
+const hasProblems = (article: ArticleSummary, filter: ProblemFilter) =>
+  (article.problems ?? []).some(
+    ({ level }) =>
+      filter === "any" ||
+      (filter === "errors" ? level === "error" : level === "warning"),
+  );
 
 /** The most articles a page of query results has */
 export const MAX_PER_PAGE = 50;
@@ -38,8 +54,9 @@ const slugFolders = async (dir: string): Promise<string[]> => {
 };
 
 /**
- * Read an article's summary from its folder: its settings, title, and when its article.md last changed. Articles that
- * can't be read are summarised with their error. Undefined if the folder has no article.md.
+ * Read an article's summary from its folder: its settings, title, when its article.md last changed, and (with `check`)
+ * problems with its custom metadata. Articles that can't be read are summarised with their error. Undefined if the
+ * folder has no article.md.
  *
  * @example
  * await summarizeArticle("my-site/articles", "news", "hello");
@@ -49,6 +66,7 @@ export const summarizeArticle = async (
   articlesDir: string,
   type: string,
   slug: string,
+  check?: MetadataCheck,
 ): Promise<ArticleSummary | undefined> => {
   const file = join(articlesDir, type, slug, "article.md");
   let source: string;
@@ -64,6 +82,7 @@ export const summarizeArticle = async (
   try {
     const { header, content } = splitArticle(source);
     const config = parseArticleConfig(header, type, `${type}/${slug}`);
+    const problems = check?.(type, header as Record<string, unknown>) ?? [];
     return {
       type,
       slug,
@@ -73,6 +92,7 @@ export const summarizeArticle = async (
       author: config.author?.name,
       tags: config.tags,
       updated,
+      ...(problems.length ? { problems } : {}),
     };
   } catch (error) {
     return {
@@ -136,7 +156,7 @@ const articleOrder = (query: ArticleQuery) => {
 
 /**
  * Find articles: those whose title contains the search text (ignoring case and accents) and that match the type,
- * author, tag and status given, sorted by title, type, status, date or when their file last changed, ascending or
+ * author, tag, status and problems given, sorted by title, type, status, date or when their file last changed, ascending or
  * descending (by default titles, types and statuses A to Z and dates newest first), one page at a time.
  *
  * @example
@@ -157,7 +177,8 @@ export const queryArticles = (
         (!query.type || article.type === query.type) &&
         (!author || comparable(article.author ?? "") === author) &&
         (!tag || article.tags.some((t) => comparable(t) === tag)) &&
-        (!query.status || article.status === query.status),
+        (!query.status || article.status === query.status) &&
+        (!query.problems || hasProblems(article, query.problems)),
     )
     .sort(articleOrder(query));
   const perPage = Math.min(
@@ -279,6 +300,8 @@ export interface ArticleIndexOptions {
   watchDelay?: number;
   /** Called after changes found by watching have been read (e.g. for tests) */
   onWatchUpdate?: () => void;
+  /** Finds problems with articles' custom metadata (none are found without it) */
+  check?: MetadataCheck | undefined;
 }
 
 /**
@@ -310,6 +333,8 @@ export class ArticleIndex {
 
   private readonly onWatchUpdate?: (() => void) | undefined;
 
+  private readonly check?: MetadataCheck | undefined;
+
   /**
    * @param articlesDir - the site's articles folder, holding a folder per type, each holding a folder per article
    */
@@ -317,6 +342,7 @@ export class ArticleIndex {
     this.articlesDir = articlesDir;
     this.watchDelay = options.watchDelay ?? 100;
     this.onWatchUpdate = options.onWatchUpdate;
+    this.check = options.check;
   }
 
   /** Every indexed article */
@@ -335,7 +361,7 @@ export class ArticleIndex {
     slug: string,
   ): Promise<IndexEntry | undefined> {
     const [summary, files] = await Promise.all([
-      summarizeArticle(this.articlesDir, type, slug),
+      summarizeArticle(this.articlesDir, type, slug, this.check),
       articleFiles(this.articlesDir, type, slug),
     ]);
     return summary && { summary, files };

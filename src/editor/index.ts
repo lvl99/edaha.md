@@ -106,6 +106,8 @@ const editorServerParts = async (
     await loadSiteConfig(options),
     options.themeDir,
   );
+  // Every article is read and checked as the editor starts
+  await store.load();
   const editorApp = createEditorApp(store, {
     allowedOrigins: [editorUrl(port)],
     fetch: options.fetch,

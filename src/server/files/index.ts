@@ -1,6 +1,7 @@
 import { stringify } from "yaml";
 import { splitArticle } from "../../generator/article/index.ts";
 import { replaceOutsideCode } from "../../generator/format/index.ts";
+import { CORE_FIELDS } from "../../generator/metadata/index.ts";
 import {
   DEFAULT_FILE_ORDERS,
   type FileFilters,
@@ -196,9 +197,47 @@ export const changeBodyReferences = (
   return { markdown: result, count };
 };
 
+/** A setting's value after changing references in it: removed (it was the file), or changed, and how many were */
+interface ChangedValue {
+  value: unknown;
+  removed: boolean;
+  count: number;
+}
+
 /**
- * Change references to a file in an article's settings: its thumbnail, and its attachments and their thumbnails. Removing
- * clears a thumbnail and removes an attachment. Returns the settings (the same object if nothing changed) and how many were changed.
+ * Change references to a file in a custom setting's value, through lists and maps: text that is the file points at the
+ * new name, or is removed (from its list or map, or the setting itself).
+ */
+const changeValue = (
+  value: unknown,
+  references: string[],
+  change: ReferenceChange,
+): ChangedValue => {
+  if (typeof value === "string" && references.includes(value))
+    return "rename" in change
+      ? { value: renamed(value, change.rename), removed: false, count: 1 }
+      : { value: undefined, removed: true, count: 1 };
+  if (!value || typeof value !== "object")
+    return { value, removed: false, count: 0 };
+  let count = 0;
+  const entries: [string, unknown][] = [];
+  for (const [key, item] of Object.entries(value)) {
+    const changed = changeValue(item, references, change);
+    count += changed.count;
+    if (!changed.removed) entries.push([key, changed.value]);
+  }
+  return {
+    value: Array.isArray(value)
+      ? entries.map(([, item]) => item)
+      : Object.fromEntries(entries),
+    removed: false,
+    count,
+  };
+};
+
+/**
+ * Change references to a file in an article's settings: its thumbnail, its attachments and their thumbnails, and custom
+ * metadata (any value that is the file). Removing clears a thumbnail, and removes an attachment or a custom value. Returns the settings (the same object if nothing changed) and how many were changed.
  */
 const changeHeaderReferences = (
   header: Record<string, unknown>,
@@ -240,7 +279,22 @@ const changeHeaderReferences = (
     if (kept.length) next.attachments = kept;
     else delete next.attachments;
   }
-  return { header: count ? next : header, count };
+  // Custom metadata and other settings: any value that is the file
+  const removed = new Set<string>();
+  for (const [key, value] of Object.entries(header)) {
+    if (CORE_FIELDS.includes(key)) continue;
+    const changed = changeValue(value, references, change);
+    count += changed.count;
+    if (changed.removed) removed.add(key);
+    else if (changed.count) next[key] = changed.value;
+  }
+  if (!count) return { header, count };
+  return {
+    header: Object.fromEntries(
+      Object.entries(next).filter(([key]) => !removed.has(key)),
+    ),
+    count,
+  };
 };
 
 /**

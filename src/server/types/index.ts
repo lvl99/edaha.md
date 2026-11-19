@@ -1,7 +1,15 @@
 // Data exchanged between the article editor's client and its local server.
 import type { ArticleStatus } from "../../generator/types/index.ts";
+import type {
+  MetadataDefinitions,
+  MetadataProblem,
+} from "../../generator/metadata/index.ts";
 
 export type { ArticleStatus } from "../../generator/types/index.ts";
+export type {
+  MetadataDefinitions,
+  MetadataProblem,
+} from "../../generator/metadata/index.ts";
 
 /** Where an article is saved */
 export interface ArticleLocation {
@@ -26,6 +34,8 @@ export interface ArticleSummary {
   tags: string[];
   /** When its article.md file last changed (ISO 8601) */
   updated: string;
+  /** Problems with its custom metadata, if it has any */
+  problems?: MetadataProblem[] | undefined;
 }
 
 /** What articles are sorted by: their title, type, status, date, or when their file last changed */
@@ -46,6 +56,15 @@ export const DEFAULT_ORDERS: Readonly<Record<ArticleSort, ArticleOrder>> = {
   updated: "desc",
 };
 
+/** Which articles with metadata problems to find: those with errors, with warnings, or with either */
+export type ProblemFilter = "errors" | "warnings" | "any";
+
+/** The custom metadata fields, and which each configured type uses (a list, `false` for none, or all when missing) */
+export interface MetadataInfo {
+  definitions: MetadataDefinitions;
+  types: Record<string, string[] | false>;
+}
+
 /** A search of the article index; every part is optional */
 export interface ArticleQuery {
   /** Text the title contains (ignoring case and accents) */
@@ -55,6 +74,8 @@ export interface ArticleQuery {
   author?: string | undefined;
   tag?: string | undefined;
   status?: ArticleStatus | undefined;
+  /** Only articles with metadata errors, warnings, or either */
+  problems?: ProblemFilter | undefined;
   /** Default: "date" */
   sort?: ArticleSort | undefined;
   /** Default: the sort's own default (see `DEFAULT_ORDERS`) */
@@ -197,12 +218,19 @@ export interface EditorArticleData {
   attachments: EditorAttachment[];
   /** The article body as editor HTML (readmore as `<hr class="readmore">`, embeds as `<div class="embed">URL</div>`) */
   bodyHtml: string;
+  /**
+   * Every other setting, by key: the custom metadata values, and settings the type doesn't use or nobody defined (kept
+   * as they are). Default: none
+   */
+  meta?: Record<string, unknown> | undefined;
 }
 
 /** An article as loaded into the editor */
 export interface EditorArticle extends EditorArticleData {
   /** Files in the article's folder (except article.md) */
   files: string[];
+  /** Problems with its custom metadata as saved (none if left out) */
+  problems?: MetadataProblem[] | undefined;
 }
 
 /** The result of uploading a file into an article's folder */
