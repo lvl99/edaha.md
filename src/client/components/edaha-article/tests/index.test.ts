@@ -1144,6 +1144,12 @@ describe("edaha-article custom settings", () => {
     return result;
   };
 
+  /** The warnings about other settings, without their Remove buttons */
+  const warnings = (element: HTMLElement) =>
+    [...element.querySelectorAll(".metadata-warnings li > span")].map((span) =>
+      span.textContent?.replace(/\s+/g, " ").trim(),
+    );
+
   /** A settings group */
   const group = (element: HTMLElement, key = "custom") =>
     find<HTMLDetailsElement>(element, `.settings-group[data-group="${key}"]`);
@@ -1170,9 +1176,13 @@ describe("edaha-article custom settings", () => {
       ].map((f) => f.getAttribute("name") ?? (f as EdahaMetadataField).path),
     ).toEqual(["thumbnail", "hero"]);
     expect(find<HTMLInputElement>(element, "#meta-rating").value).toBe("3");
-    expect(find(element, ".metadata-warnings").textContent?.trim()).toBe(
-      '"oops" isn\'t a known setting; it is kept as it is.',
-    );
+    expect(warnings(element)).toEqual([
+      '"oops" isn\'t a known setting; it is kept unless you remove it.',
+    ]);
+    // The Custom group says it has warnings, even closed
+    expect(
+      find(group(element), "summary").textContent?.replace(/\s+/g, " ").trim(),
+    ).toBe("Custom ⚠️ has warnings");
     // News articles use no custom fields, so "rating" is kept with a warning
     input(
       find<HTMLSelectElement>(field(element, "type"), "select"),
@@ -1184,14 +1194,21 @@ describe("edaha-article custom settings", () => {
       group(element).querySelectorAll(":scope > edaha-metadata-field"),
     ).toHaveLength(0);
     expect(element.querySelector("edaha-metadata-field")).toBeNull();
-    expect(
-      [...element.querySelectorAll(".metadata-warnings li")].map((li) =>
-        li.textContent?.trim(),
-      ),
-    ).toEqual([
-      "\"rating\" isn't used by this article's type; it is kept as it is.",
-      '"oops" isn\'t a known setting; it is kept as it is.',
+    expect(warnings(element)).toEqual([
+      "\"rating\" isn't used by this article's type; it is kept unless you remove it.",
+      '"oops" isn\'t a known setting; it is kept unless you remove it.',
     ]);
+  });
+
+  it("should remove other settings with their Remove buttons, once saved", async () => {
+    const { element, api } = await setupMetadata({ rating: 3, oops: true });
+    button(element, 'Remove "oops"').click();
+    await settle(element);
+    expect(element.data.meta).toEqual({ rating: 3 });
+    expect(element.querySelector(".metadata-warnings")).toBeNull();
+    expect(element.dirty).toBe(true);
+    await element.save();
+    expect(api.save.mock.calls[0]![1].meta).toEqual({ rating: 3 });
   });
 
   it("should leave out the Custom group without custom fields or other settings", async () => {

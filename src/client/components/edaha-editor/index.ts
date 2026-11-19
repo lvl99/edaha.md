@@ -436,6 +436,18 @@ export class EdahaEditor extends LitElement {
     return options;
   }
 
+  /**
+   * Close the open article and show the welcome prompt (refreshed), asking first whether to save unsaved changes.
+   */
+  async showWelcome(): Promise<void> {
+    this.closeNav();
+    if (!(await this.leaveForm())) return;
+    this.article = undefined;
+    this.selected = undefined;
+    this.editing = false;
+    await this.refresh();
+  }
+
   /** Start writing a new article, asking first whether to save unsaved changes in the open one */
   async create(): Promise<void> {
     if (!(await this.leaveForm())) return;
@@ -728,7 +740,17 @@ export class EdahaEditor extends LitElement {
         >
           <span class="visually-hidden">${themeSwitcherLabel()}</span>
         </button>
-        <h1 class="edaha-title">edaha.md<span class="leaf-device"></span></h1>
+        <!-- Goes back to the welcome prompt; a button for keyboards and screen readers, but looking like the title -->
+        <h1 class="edaha-title">
+          <button
+            type="button"
+            class="edaha-title-button"
+            title="Show the welcome prompt"
+            @click=${() => void this.showWelcome()}
+          >
+            edaha.md<span class="leaf-device"></span>
+          </button>
+        </h1>
         <div class="edaha-editor-new">
           <button
             type="button"

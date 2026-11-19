@@ -266,6 +266,10 @@ type CoreSetting = (typeof CORE_SETTINGS)[number];
 const isCoreSetting = (key: string): key is CoreSetting =>
   (CORE_SETTINGS as readonly string[]).includes(key);
 
+/** Text read by screen readers only, e.g. which setting a Remove button removes */
+const hiddenText = (text: string) =>
+  html`<span class="visually-hidden">${text}</span>`;
+
 /** The keys of the groups that start open */
 const openedByDefault = (groups: readonly MetadataGroup[]) =>
   new Set(
@@ -792,6 +796,14 @@ export class EdahaArticle extends LitElement {
       showToast(this, { kind: "error", message: METADATA_ERRORS });
   }
 
+  /** Remove one of the article's other settings (it's gone once the article is saved) */
+  removeSetting(key: string): void {
+    this.data = {
+      ...this.data,
+      meta: setAt(this.data.meta, [key], undefined) as Record<string, unknown>,
+    };
+  }
+
   /** Warnings about the article's other settings: values of fields its type doesn't use, and unknown settings */
   private metadataWarnings(): MetadataProblem[] {
     const keys = this.metadataKeys();
@@ -1277,9 +1289,11 @@ export class EdahaArticle extends LitElement {
                 >`
               : nothing
           }${
-            hasErrors
+            hasErrors || groupWarnings.length
               ? html`<span class="settings-group-errors">
-                  ⚠️<span class="visually-hidden"> has errors</span></span
+                  ⚠️<span class="visually-hidden">
+                    ${hasErrors ? "has errors" : "has warnings"}</span
+                  ></span
                 >`
               : nothing
           }
@@ -1297,7 +1311,19 @@ export class EdahaArticle extends LitElement {
             ? html`<ul class="metadata-warnings">
                 ${groupWarnings.map(
                   ({ path, message }) =>
-                    html`<li>"${path}" ${message}; it is kept as it is.</li>`,
+                    html`<li>
+                      <span
+                        >"${path}" ${message}; it is kept unless you remove
+                        it.</span
+                      >
+                      <button
+                        type="button"
+                        class="btn btn-xs"
+                        @click=${() => this.removeSetting(path)}
+                      >
+                        Remove${hiddenText(` "${path}"`)}
+                      </button>
+                    </li>`,
                 )}
               </ul>`
             : nothing
