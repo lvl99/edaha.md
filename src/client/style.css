@@ -409,6 +409,13 @@ edaha-article form {
   min-height: 300px;
 }
 
+/* Below a new article's title, until it is saved */
+.unsaved-notice {
+  margin: 0;
+  color: var(--colour-muted);
+  font-size: var(--font-size-s);
+}
+
 /* The body's field fills the panel; its toolbar stays put while its text scrolls */
 .body-panel > edaha-article-data-field {
   flex: 1 1 0;

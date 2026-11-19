@@ -241,6 +241,7 @@ describe("edaha-article", () => {
       "/files/article/hello/thumb.png",
     ]);
     expect(element.querySelector(".hint")).toBeNull();
+    expect(element.querySelector(".unsaved-notice")).toBeNull();
     expect(button(element, "Delete…")).toBeDefined();
   });
 
@@ -255,6 +256,12 @@ describe("edaha-article", () => {
     ).toBeUndefined();
     expect(find(element, ".hint").textContent).toContain(
       "Save the article before uploading files",
+    );
+    // Below the title, before the body
+    const notice = find(element, "main .unsaved-notice");
+    expect(notice.previousElementSibling).toBe(field(element, "title"));
+    expect(notice.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "⚠️ Uploading images and attachments will require a title and slug to be defined first",
     );
     expect(element.querySelector(".files")).toBeNull();
     // No tag inputs until "Add" is pressed
@@ -283,6 +290,7 @@ describe("edaha-article", () => {
     expect(toasts).toEqual([{ kind: "success", message: "Saved" }]);
     // Now saved, uploads are possible
     expect(field(element, "thumbnail").disabled).toBe(false);
+    expect(element.querySelector(".unsaved-notice")).toBeNull();
   });
 
   it("should save an existing article to its location and show errors", async () => {
@@ -720,11 +728,13 @@ describe("edaha-article body modes", () => {
     expect([...select.options].map((o) => [o.value, o.text.trim()])).toEqual([
       ["full", "Full"],
       ["900", "900px"],
+      ["600", "600px"],
       ["320", "320px"],
     ]);
     expect(frame().style.width).toBe("100%");
     for (const [value, width] of [
       ["320", "320px"],
+      ["600", "600px"],
       ["900", "900px"],
       ["full", "100%"],
     ]) {
@@ -832,6 +842,21 @@ describe("edaha-article settings on narrow screens", () => {
     expect(element.metadataOpen).toBe(false);
     element.remove();
     expect(removeEventListener).toHaveBeenCalled();
+  });
+});
+
+describe("edaha-article title focus", () => {
+  it("should focus the title of a new article, but not of an opened one", async () => {
+    const { element: opened } = await setup();
+    const openedTitle = find<HTMLInputElement>(field(opened, "title"), "input");
+    expect(document.activeElement).not.toBe(openedTitle);
+    opened.remove();
+
+    const { element } = await setup(undefined);
+    await settle(element);
+    expect(document.activeElement).toBe(
+      find<HTMLInputElement>(field(element, "title"), "input"),
+    );
   });
 });
 

@@ -13,6 +13,7 @@ import { defineElement } from "../define/index.ts";
 import "../edaha-article-data-field/index.ts";
 import "../edaha-article-data-group/index.ts";
 import type {
+  EdahaArticleDataField,
   FieldChange,
   FieldOption,
 } from "../edaha-article-data-field/index.ts";
@@ -39,6 +40,7 @@ export const BODY_MODES: readonly { mode: BodyMode; label: string }[] = [
 export const PREVIEW_WIDTHS = [
   { value: "full", label: "Full", width: "100%" },
   { value: "900", label: "900px", width: "900px" },
+  { value: "600", label: "600px", width: "600px" },
   { value: "320", label: "320px", width: "320px" },
 ] as const;
 
@@ -341,6 +343,16 @@ export class EdahaArticle extends LitElement {
   override disconnectedCallback(): void {
     super.disconnectedCallback();
     this.stopWatchingNarrow?.();
+  }
+
+  /** A new article starts with focus in its title, ready to type */
+  protected override async firstUpdated(): Promise<void> {
+    if (this.article) return;
+    const title = this.querySelector<EdahaArticleDataField>(
+      'edaha-article-data-field[name="title"]',
+    );
+    await title?.updateComplete;
+    title?.querySelector("input")?.focus();
   }
 
   protected override willUpdate(changed: PropertyValues<this>): void {
@@ -875,6 +887,15 @@ export class EdahaArticle extends LitElement {
           placeholder="New article title"
           .value=${data.title}
         ></edaha-article-data-field>
+        ${
+          // Files are saved in the article's folder, which it only has once saved
+          this.location
+            ? nothing
+            : html`<p class="unsaved-notice">
+                ⚠️ Uploading images and attachments will require a title and
+                slug to be defined first
+              </p>`
+        }
         ${this.renderBody()}
       </main>
       <aside
