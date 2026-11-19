@@ -268,6 +268,9 @@ export class ArticleStore {
   /** What custom metadata is checked with, once read from the config file */
   private metadataLoad?: Promise<MetadataTools> | undefined;
 
+  /** When the config file had last changed when its custom metadata was read */
+  private metadataChanged?: number | undefined;
+
   /** The article index, once its first load has started */
   private indexLoad?: Promise<ArticleIndex> | undefined;
 
@@ -375,11 +378,21 @@ export class ArticleStore {
   }
 
   /**
-   * What articles' custom metadata is checked with, from the config file (read once): a check giving an article's
-   * problems from its type and settings, and the context `loadArticle` reads a type's metadata with.
+   * What articles' custom metadata is checked with, from the config file: a check giving an article's problems from its
+   * type and settings, and the context `loadArticle` reads a type's metadata with. It is read again when the config file
+   * changes, which checks every article again.
    */
-  private metadata(): Promise<MetadataTools> {
-    this.metadataLoad ??= (async () => {
+  private async metadata(): Promise<MetadataTools> {
+    // Read again when the config file changes, as the editor keeps running while it is edited
+    const changed = (await stat(this.configFile)).mtimeMs;
+    if (this.metadataLoad && changed === this.metadataChanged)
+      return this.metadataLoad;
+    this.metadataChanged = changed;
+    // Articles are checked again with the new settings
+    const oldIndex = this.indexLoad;
+    this.indexLoad = undefined;
+    void oldIndex?.then((index) => index.close());
+    this.metadataLoad = (async () => {
       const config = await this.config();
       const validator = new MetadataValidator(config.metadata);
       const context = (type: string) => {
@@ -425,11 +438,13 @@ export class ArticleStore {
   }
 
   /** The article index, read on first use (and then watched, unless turned off) */
-  private index(): Promise<ArticleIndex> {
+  private async index(): Promise<ArticleIndex> {
+    // Checking the config file first starts afresh when it has changed
+    const { check } = await this.metadata();
     this.indexLoad ??= (async () => {
       const index = new ArticleIndex(this.articlesDir, {
         ...this.indexOptions,
-        check: (await this.metadata()).check,
+        check,
       });
       await index.load();
       if (this.indexOptions.watch !== false) index.watch();

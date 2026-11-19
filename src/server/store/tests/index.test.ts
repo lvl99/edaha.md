@@ -553,6 +553,24 @@ describe("ArticleStore", () => {
       );
     });
 
+    it("should read the config again when it changes, checking every article again", async () => {
+      const { dir, store } = await metadataSite();
+      await store.load();
+      expect((await store.query({ problems: "errors" })).total).toBe(1);
+      // "rating" is now allowed up to 20, so 11 is fine
+      const config = await readFile(join(dir, "edahaconfig.yml"), "utf8");
+      await writeFile(
+        join(dir, "edahaconfig.yml"),
+        config.replace("maximum: 10", "maximum: 20"),
+      );
+      const later = new Date(Date.now() + 5000);
+      await utimes(join(dir, "edahaconfig.yml"), later, later);
+      expect((await store.query({ problems: "errors" })).total).toBe(0);
+      expect(
+        (await store.read("page", "about-us")).problems?.map((p) => p.path),
+      ).toEqual(["credit", "oops"]);
+    });
+
     it("should give previews the type's valid values as article.meta", async () => {
       const { dir, store } = await metadataSite();
       await mkdir(join(dir, "templates/page"), { recursive: true });
