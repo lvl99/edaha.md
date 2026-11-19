@@ -47,5 +47,5 @@ See [Development](README.md#development) in the README to set up the project.
 - TypeScript, formatted with Prettier and checked with ESLint.
 - Every method has a short comment saying what it does, with an example where it helps.
 - Readable `camelCase` names; short names only for loop counters.
-- Node.js code (`src/generator`, `src/server`, `src/editor`, `src/cli`, `src/embeds`) imports with explicit `.ts` extensions. The editor page (`src/client`) uses Lit and Tiptap.
+- Node.js code imports with explicit `.ts` extensions. The editor page (`packages/edaha-editor/src/client`) uses Lit and Tiptap.
 - The default theme and the editor follow WCAG 2.2 and work with mouse, keyboard and touch.

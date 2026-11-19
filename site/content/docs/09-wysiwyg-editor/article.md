@@ -116,9 +116,13 @@ If you open another article or start a new one with changes that aren't saved, t
 
 ### Starting the editor
 
+The editor is in its own package, `@lvl99dotcom/edaha-editor`. Install it next to `@lvl99dotcom/edaha` (see [Quick start](/docs/02-quick-start/)), then:
+
 ```sh
 npx edaha editor
 ```
+
+Without the editor package, `edaha editor` stops and says how to install it.
 
 It finds the site's [config file](/docs/03-configuration/#where-it-is-found) like `edaha build` does, and takes the same `--config` and `--dir` options, plus `--port` (default `5180`). It only listens on `127.0.0.1`, as it reads and writes the site's files: **never deploy it**. Its API only accepts changes from the editor page itself.
 
@@ -155,7 +159,7 @@ The editor reads the config file again for each preview, so you can change an em
 ### Starting it from code
 
 ```ts
-import { startEditor } from "@lvl99dotcom/edaha.md";
+import { startEditor } from "@lvl99dotcom/edaha-editor";
 
 const editor = await startEditor({
   siteDir: "my-site",
