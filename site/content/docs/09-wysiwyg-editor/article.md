@@ -19,7 +19,7 @@ On a phone or a narrow window, the list of articles opens from the menu button a
 
 ## Finding articles
 
-When the editor opens, the welcome prompt in the middle offers to **Write a new article** or **edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Open article browser** opens the article browser.
+When the editor opens (or you choose **edaha.md** at the top of the list), the welcome prompt in the middle offers to **Write a new article** or **edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Open article browser** opens the article browser.
 
 The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, **Show all** opens them all in the article browser.
 
@@ -71,7 +71,7 @@ Changing an article's type or slug moves it, with all its files.
 
 If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields upload into the article's folder (once it's saved).
 
-When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren't valid. The article can't be saved until they are fixed. Settings the article's type doesn't use, or that nobody defined, are listed there too; they are kept as they are.
+When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren't valid. The article can't be saved until they are fixed. Settings the article's type doesn't use, or that nobody defined (e.g. after a custom setting was removed from the config file), are listed in **Custom**, marked ⚠️. They are kept in the article unless you choose **Remove** beside one and save.
 
 When the editor opens, **Needs attention** on the welcome prompt lists articles with problems in their settings. In the article browser, **Problems** shows only articles with errors, warnings or either.
 
