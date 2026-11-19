@@ -78,7 +78,7 @@ The header is never written into the built pages.
 | `template`    | The template to render the article with, e.g. `home`. See [Templating](/docs/05-templating/).                             | `single`                    |
 | `type`        | The article's type. It must match its type folder.                                                                        | The type folder             |
 
-Settings that edaha.md doesn't know are ignored: they aren't passed to templates yet, and the editor leaves them out when it saves an article.
+Articles can also have the custom settings defined in the config file's [`metadata`](/docs/03-configuration/#metadata), for the types that use them. Their values are checked: an invalid value is a warning when building (and is left out of templates), and the editor won't save it. Settings nobody defined, and custom settings the article's type doesn't use, are kept as they are with a warning.
 
 An author with more details:
 

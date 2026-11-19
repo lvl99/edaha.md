@@ -110,6 +110,10 @@
 </table>
 <p>The form also has the <strong>Author</strong> (name, email address and homepage), <strong>Tags</strong>, and <strong>Attachments</strong>: files to download, uploaded with <strong>Upload file</strong> or linked by address. Uploads need the article to be saved first.</p>
 <p>Changing an article’s type or slug moves it, with all its files.</p>
+<h2 id="custom-settings">Custom settings</h2>
+<p>If your website defines <a href="/docs/03-configuration/#metadata">custom settings</a>, such as a featured image or a rating, the ones the article’s type uses are under <strong>Custom settings</strong>, after the other settings. Lists have <strong>Add</strong> and <strong>Delete</strong> buttons, and file fields upload into the article’s folder (once it’s saved).</p>
+<p>When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren’t valid. The article can’t be saved until they are fixed. Settings the article’s type doesn’t use, or that nobody defined, are listed there too; they are kept as they are.</p>
+<p>When the editor opens, <strong>Needs attention</strong> on the welcome prompt lists articles with problems in their settings. In the article browser, <strong>Problems</strong> shows only articles with errors, warnings or either.</p>
 <h2 id="checking-your-work">Checking your work</h2>
 <p>Three tabs above the body change what you see. Move between them with the arrow keys, and press Enter or Space to show one.</p>
 <ul>
@@ -138,7 +142,7 @@
 <pre><code class="language-sh">npx edaha editor
 </code></pre>
 <p>It finds the site’s <a href="/docs/03-configuration/#where-it-is-found">config file</a> like <code>edaha build</code> does, and takes the same <code>--config</code> and <code>--dir</code> options, plus <code>--port</code> (default <code>5180</code>). It only listens on <code>127.0.0.1</code>, as it reads and writes the site’s files: <strong>never deploy it</strong>. Its API only accepts changes from the editor page itself.</p>
-<p>The editor reads and writes the same <code>article.md</code> files you would edit by hand. A saved article keeps its header format (<code>yaml</code>, <code>yml</code> or <code>json</code>); new articles get <code>yaml</code>. Settings edaha.md doesn’t know are left out when saving. Changes to the config file and templates show without restarting it.</p>
+<p>The editor reads and writes the same <code>article.md</code> files you would edit by hand. A saved article keeps its header format (<code>yaml</code>, <code>yml</code> or <code>json</code>); new articles get <code>yaml</code>. Settings edaha.md doesn’t know are kept as they are when saving, with a warning. Changes to the config file and templates show without restarting it.</p>
 <p>To list and search articles quickly, the editor keeps an index of every article’s settings in memory: it reads them all when it starts, updates an article’s entry when it saves, moves or deletes it, and watches the articles folder for changes made outside it. The article files stay the only source of truth: no database or index file is written. Recently changed means when an article’s <code>article.md</code> file last changed.</p>
 <p>Preview pages are sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor’s API. Frames are only allowed from the origins that embeds list in <code>frameSources</code>.</p>
 <h3 id="extending-the-editor-with-custom-embeds">Extending the editor with custom embeds</h3>

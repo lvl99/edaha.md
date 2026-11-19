@@ -65,6 +65,14 @@ The form also has the **Author** (name, email address and homepage), **Tags**, a
 
 Changing an article's type or slug moves it, with all its files.
 
+## Custom settings
+
+If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are under **Custom settings**, after the other settings. Lists have **Add** and **Delete** buttons, and file fields upload into the article's folder (once it's saved).
+
+When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren't valid. The article can't be saved until they are fixed. Settings the article's type doesn't use, or that nobody defined, are listed there too; they are kept as they are.
+
+When the editor opens, **Needs attention** on the welcome prompt lists articles with problems in their settings. In the article browser, **Problems** shows only articles with errors, warnings or either.
+
 ## Checking your work
 
 Three tabs above the body change what you see. Move between them with the arrow keys, and press Enter or Space to show one.
@@ -103,7 +111,7 @@ npx edaha editor
 
 It finds the site's [config file](/docs/03-configuration/#where-it-is-found) like `edaha build` does, and takes the same `--config` and `--dir` options, plus `--port` (default `5180`). It only listens on `127.0.0.1`, as it reads and writes the site's files: **never deploy it**. Its API only accepts changes from the editor page itself.
 
-The editor reads and writes the same `article.md` files you would edit by hand. A saved article keeps its header format (`yaml`, `yml` or `json`); new articles get `yaml`. Settings edaha.md doesn't know are left out when saving. Changes to the config file and templates show without restarting it.
+The editor reads and writes the same `article.md` files you would edit by hand. A saved article keeps its header format (`yaml`, `yml` or `json`); new articles get `yaml`. Settings edaha.md doesn't know are kept as they are when saving, with a warning. Changes to the config file and templates show without restarting it.
 
 To list and search articles quickly, the editor keeps an index of every article's settings in memory: it reads them all when it starts, updates an article's entry when it saves, moves or deletes it, and watches the articles folder for changes made outside it. The article files stay the only source of truth: no database or index file is written. Recently changed means when an article's `article.md` file last changed.
 
