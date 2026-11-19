@@ -264,6 +264,8 @@ export const createEditorApp = (
 
   app.get("/api/types", async (c) => c.json(await store.types()));
 
+  app.get("/api/site", async (c) => c.json(await store.site()));
+
   app.get("/api/metadata", async (c) => c.json(await store.metadataInfo()));
 
   app.get("/api/templates/:type", (c) =>

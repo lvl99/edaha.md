@@ -70,6 +70,10 @@ describe("createEditorApp", () => {
     expect(await (await app.request("/api/templates/article")).json()).toEqual([
       "single",
     ]);
+    expect(await (await app.request("/api/site")).json()).toEqual({
+      name: "Test News",
+      author: { name: "Test News" },
+    });
     expect(await (await app.request("/api/types")).json()).toEqual({
       article: { labelSingle: "Article", labelPlural: "Articles" },
     });

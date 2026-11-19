@@ -209,8 +209,8 @@ const typeData = (
 });
 
 /**
- * The website's template data: its name, description, absolute URL and home URL, and each article type's settings and
- * URL.
+ * The website's template data: its name, description, absolute URL and home URL, default author, and each article
+ * type's settings and URL.
  *
  * @param typeConfigs - the article types' settings (configured ones, plus defaults for any others)
  * @param url - the website's absolute URL (a trailing slash is removed)
@@ -227,6 +227,7 @@ export const siteData = (
   description: config.description,
   url: url.replace(/\/+$/, ""),
   path: folderUrl(folderPath(config.path)),
+  author: config.author ?? { name: config.name },
   types: Object.fromEntries(
     Object.entries(typeConfigs).map(([type, typeConfig]) => [
       type,

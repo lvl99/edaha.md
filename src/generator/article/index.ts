@@ -315,25 +315,27 @@ export interface MetadataContext {
 }
 
 /**
- * Build an author's template data. Authors without a config are the website itself (the site's name).
+ * Build an author's template data. Articles without an author have the default one (the config file's `author`, or
+ * the website's name).
  *
+ * @param fallback - the default author
  * @param typeUrl - the URL of the article type, which its author lists are under
  *
  * @example
- * authorData({ name: "Matt Scheurich" }, "LiveCanvas", "/news/"); // { name: "Matt Scheurich", slug: "matt-scheurich", listUrl: "/news/authors/matt-scheurich/" }
+ * authorData(undefined, { name: "LiveCanvas" }, "/news/"); // { name: "LiveCanvas", slug: "livecanvas", listUrl: "/news/authors/livecanvas/" }
  */
 export const authorData = (
   author: AuthorConfig | undefined,
-  siteName: string,
+  fallback: AuthorConfig,
   typeUrl: string,
 ): TemplateDataAuthor => {
-  const name = author?.name ?? siteName;
+  const { name, email, url } = author ?? fallback;
   const slug = slugify(name);
   return {
     name,
     slug,
-    email: author?.email,
-    url: author?.url,
+    email,
+    url,
     listUrl: `${typeUrl}authors/${slug}/`,
   };
 };
@@ -480,7 +482,7 @@ export const loadArticle = async (
     template: config.template ?? "single",
     url,
     title,
-    author: authorData(config.author, context.site.name, context.typeUrl),
+    author: authorData(config.author, context.site.author, context.typeUrl),
     thumbnail: config.thumbnail
       ? (await resolveFile(config.thumbnail, url, context)).url
       : undefined,

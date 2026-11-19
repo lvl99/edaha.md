@@ -47,6 +47,7 @@ describe("EditorApi", () => {
     await api.queryFiles({ kind: "image", sort: "size", order: "desc" });
     await api.fileFilters();
     await api.metadata();
+    await api.site();
     await api.fileReferences({ ...LOCATION, name: "my photo.png" });
     await api.replaceFile(
       { ...LOCATION, name: "a.png" },
@@ -72,6 +73,7 @@ describe("EditorApi", () => {
       "GET /api/files?kind=image&sort=size&order=desc",
       "GET /api/files/filters",
       "GET /api/metadata",
+      "GET /api/site",
       "GET /api/files/article/hello/my%20photo.png/references",
       "PUT /api/files/article/hello/a.png",
       "DELETE /api/files/article/hello/a.png",
@@ -83,15 +85,14 @@ describe("EditorApi", () => {
       "POST /api/articles/article/hello/files",
       "GET /api/embed?url=https%3A%2F%2Fyoutu.be%2Fx%3Fa%3D1%26b%3D2",
     ]);
-    expect((calls[9]![1]!.body as FormData).get("file") as File).toHaveProperty(
-      "name",
-      "b.png",
-    );
-    expect(calls[14]![1]).toMatchObject({
+    expect(
+      (calls[10]![1]!.body as FormData).get("file") as File,
+    ).toHaveProperty("name", "b.png");
+    expect(calls[15]![1]).toMatchObject({
       headers: { "Content-Type": "application/json" },
       body: '{"title":"Hi"}',
     });
-    expect((calls[16]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
+    expect((calls[17]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
   });
 
   it("should convert bodies and render previews, returning their result", async () => {

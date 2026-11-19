@@ -1437,3 +1437,44 @@ describe("edaha-article settings groups", () => {
     expect(find(element, '[data-group="info"] summary .changed')).toBeDefined();
   });
 });
+
+describe("edaha-article default author", () => {
+  /** The author fields' placeholders */
+  const placeholders = (element: HTMLElement) =>
+    ["name", "email", "url"].map(
+      (name) =>
+        find<HTMLInputElement>(field(element, `author[${name}]`), "input")
+          .placeholder,
+    );
+
+  it("should show the default author as the author fields' placeholders, when the article has no author", async () => {
+    const { element } = await setup({ ...ARTICLE, author: undefined });
+    expect(placeholders(element)).toEqual([
+      "Defaults to the site name",
+      "",
+      "https://example.com",
+    ]);
+    element.defaultAuthor = {
+      name: "Matt",
+      email: "matt@example.com",
+      url: "https://matt.example",
+    };
+    await settle(element);
+    expect(placeholders(element)).toEqual([
+      "Defaults to Matt",
+      "matt@example.com",
+      "https://matt.example",
+    ]);
+    // With its own author, the default's details don't apply
+    input(
+      find<HTMLInputElement>(field(element, "author[name]"), "input"),
+      "Zoë",
+    );
+    await settle(element);
+    expect(placeholders(element)).toEqual([
+      "Defaults to Matt",
+      "",
+      "https://example.com",
+    ]);
+  });
+});

@@ -79,6 +79,7 @@ The editor lists the templates an article can use.
 Every template gets:
 
 - `site.name` and `site.description`: the website's name and description.
+- `site.author`: the author of articles that don't name one (`name`, `email` and `url`): the config file's `author`, or the website's name.
 - `site.url`: the website's absolute URL, e.g. `https://example.com`, for links that leave the website (e.g. in feeds).
 - `site.path`: the URL of the website's home page, e.g. `/` (or `/docs/` with the `path` setting `docs`).
 - `site.types`: each article type's settings (`labelSingle`, `labelPlural`, `path`, `generate`) and `url`.

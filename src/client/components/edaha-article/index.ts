@@ -5,6 +5,7 @@ import { slugify } from "../../../generator/slug/index.ts";
 import type {
   MetadataInfo,
   EditorArticle,
+  EditorAuthor,
   EditorArticleData,
   EditorAttachment,
 } from "../../../server/types/index.ts";
@@ -309,6 +310,7 @@ export class EdahaArticle extends LitElement {
     savedData: { state: true },
     bodyChanged: { state: true },
     metadata: { attribute: false },
+    defaultAuthor: { attribute: false },
     metaProblems: { state: true },
     openGroups: { state: true },
   };
@@ -343,6 +345,8 @@ export class EdahaArticle extends LitElement {
   declare savedData: EditorArticleData;
   /** Whether the body differs from the saved one, compared as Markdown */
   declare bodyChanged: boolean;
+  /** The author of articles that don't name one (the website's, until it's known) */
+  declare defaultAuthor?: EditorAuthor | undefined;
   /** The custom metadata fields, and which each type uses (none without it) */
   declare metadata?: MetadataInfo | undefined;
   /** Errors in the custom metadata values, from checking them or from the last save */
@@ -810,6 +814,8 @@ export class EdahaArticle extends LitElement {
   /** Render the author fields */
   private renderAuthor() {
     const author = this.data.author;
+    // Without an author, the article has the default one, which the placeholders show
+    const fallback = author ? undefined : this.defaultAuthor;
     return html`<edaha-article-data-group
       name="author"
       label="Author"
@@ -820,20 +826,21 @@ export class EdahaArticle extends LitElement {
       <edaha-article-data-field
         name="author[name]"
         label="Name"
-        placeholder="Defaults to the site name"
+        placeholder=${`Defaults to ${this.defaultAuthor?.name ?? "the site name"}`}
         .value=${author?.name ?? ""}
       ></edaha-article-data-field>
       <edaha-article-data-field
         name="author[email]"
         type="email"
         label="Email address"
+        placeholder=${fallback?.email ?? ""}
         .value=${author?.email ?? ""}
       ></edaha-article-data-field>
       <edaha-article-data-field
         name="author[url]"
         type="url"
         label="Homepage"
-        placeholder="https://example.com"
+        placeholder=${fallback?.url ?? "https://example.com"}
         .value=${author?.url ?? ""}
       ></edaha-article-data-field>
     </edaha-article-data-group>`;

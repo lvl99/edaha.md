@@ -7,6 +7,7 @@ import type {
   FileQuery,
   MetadataInfo,
   MetadataProblem,
+  SiteInfo,
   ArticlePage,
   ArticleQuery,
   ArticleTypeLabels,
@@ -150,6 +151,11 @@ export class EditorApi {
   /** The custom metadata fields, and which fields each configured type uses */
   metadata(): Promise<MetadataInfo> {
     return this.request("/api/metadata");
+  }
+
+  /** The website's name, and the author of articles that don't name one */
+  site(): Promise<SiteInfo> {
+    return this.request("/api/site");
   }
 
   /** The article types from the config file, with their labels */

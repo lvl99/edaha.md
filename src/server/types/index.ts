@@ -192,6 +192,12 @@ export interface ArticleFilters {
   tags: string[];
 }
 
+/** The website, as the editor needs it: its name, and the author of articles that don't name one */
+export interface SiteInfo {
+  name: string;
+  author: EditorAuthor;
+}
+
 /** An author as edited */
 export interface EditorAuthor {
   name: string;

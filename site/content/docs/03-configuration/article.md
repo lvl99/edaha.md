@@ -106,12 +106,13 @@ The folder that holds the config file is the **site folder**. Every folder in th
 | [`embeds`](#embeds)                 | No       | Custom embed renderers, tried before the built-in ones (JavaScript config only). |
 | [`metadata`](#metadata)             | No       | Custom settings for articles, with how the editor shows them.                    |
 | [`metadataGroups`](#metadatagroups) | No       | Groups of settings in the editor, besides the built-in ones.                     |
+| [`author`](#author)                 | No       | The author of articles that don't name one.                                      |
 
 Unknown settings stop the build, so a typo doesn't go unnoticed.
 
 ### `name`
 
-The website's name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don't name one.
+The website's name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don't name one, unless [`author`](#author) is set.
 
 ```yaml
 name: My Site
@@ -292,6 +293,20 @@ export default {
 ```
 
 See [Embeds](/docs/07-embeds/) for how to write one.
+
+### `author`
+
+The author of articles that don't name one: their author lists and feeds use it, and the editor shows it in the author fields.
+
+- **Accepted values:** a name, or `{ name, email, url }` like an article's [`author`](/docs/04-articles/#settings).
+- **Default:** the website's [`name`](#name)
+
+```yaml
+author:
+  name: Jo Bloggs
+  email: jo@example.com
+  url: https://example.com
+```
 
 ### `metadata`
 

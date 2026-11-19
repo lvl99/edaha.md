@@ -77,6 +77,10 @@ const setup = async (recent = vi.fn(async () => RECENT)) => {
       query.problems ? matches([]) : matches([SUMMARIES[0]!]),
     ),
     filters: vi.fn(async () => ({ types: [], authors: [], tags: [] })),
+    site: vi.fn(async () => ({
+      name: "Test News",
+      author: { name: "Matt", email: "matt@example.com" },
+    })),
     metadata: vi.fn(async () => ({
       definitions: {},
       types: {},
@@ -420,6 +424,10 @@ describe("edaha-editor", () => {
     expect(api.read).toHaveBeenCalledWith(SUMMARIES[0]);
     const form = find<EdahaArticle>(element, "edaha-article");
     expect(form.article).toBe(ARTICLE);
+    expect(form.defaultAuthor).toEqual({
+      name: "Matt",
+      email: "matt@example.com",
+    });
     // Configured types first, then other types articles use
     expect(form.typeOptions).toEqual([
       { value: "article", label: "Article" },

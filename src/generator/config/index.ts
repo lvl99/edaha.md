@@ -1,6 +1,7 @@
 import { isAbsolute, normalize, sep } from "node:path";
 import type { EmbedRenderer } from "../../embeds/types/index.ts";
-import { isSlug } from "../slug/index.ts";
+import { isSlug, slugify } from "../slug/index.ts";
+import type { AuthorConfig } from "../article/index.ts";
 import {
   parseMetadata,
   parseTypeMetadata,
@@ -70,6 +71,8 @@ export interface EdahaConfig {
   metadata: MetadataDefinitions;
   /** Groups of settings in the editor, besides the built-in ones, by key. Default: none */
   metadataGroups: Record<string, MetadataGroupConfig>;
+  /** The author of articles that don't name one. Default: none (the website's name is used) */
+  author?: AuthorConfig | undefined;
 }
 
 /** Settings under `generate` */
@@ -106,6 +109,7 @@ const CONFIG_KEYS = [
   "embeds",
   "metadata",
   "metadataGroups",
+  "author",
 ];
 
 /** List folders that can't be used as article types */
@@ -208,6 +212,32 @@ const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
     for (const key of GENERATE_KEYS) config.generate[key] = false;
   return config;
 };
+
+/**
+ * Read the default author: a name, or a map with a `name` and optionally an `email` and `url`, like an article's.
+ *
+ * @example
+ * parseAuthor("Matt"); // { name: "Matt" }
+ */
+const parseAuthor = (value: unknown): AuthorConfig | undefined => {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "string") {
+    if (!slugify(value)) throw new Error(AUTHOR_NAME);
+    return { name: value.trim() };
+  }
+  const fields = asMap(value, '"author"');
+  checkKeys(fields, ["name", "email", "url"], '"author"');
+  const name = optionalString(fields, "name");
+  if (!name || !slugify(name)) throw new Error(AUTHOR_NAME);
+  return {
+    name,
+    email: optionalString(fields, "email"),
+    url: optionalString(fields, "url"),
+  };
+};
+
+/** Said when the default author has no usable name */
+const AUTHOR_NAME = '"author" needs a name with letters or numbers';
 
 /**
  * Read a required, non-empty string field from parsed YAML.
@@ -383,6 +413,7 @@ const validateConfig = (data: unknown): EdahaConfig => {
     embeds: parseEmbeds(fields),
     metadata,
     metadataGroups,
+    author: parseAuthor(fields.author),
     types: typeConfigs,
   };
 };

@@ -314,3 +314,43 @@ describe("custom metadata", () => {
     );
   });
 });
+
+describe("default author", () => {
+  /** Parse a config with an author setting */
+  const withAuthor = (author: unknown) =>
+    parseConfig({ name: "News", description: "Updates", author }).author;
+
+  it("should read a name, or a name with an email address and homepage", () => {
+    expect(withAuthor(undefined)).toBeUndefined();
+    expect(withAuthor(" Matt ")).toEqual({ name: "Matt" });
+    expect(
+      withAuthor({
+        name: "Matt",
+        email: "matt@example.com",
+        url: "https://x.com",
+      }),
+    ).toEqual({
+      name: "Matt",
+      email: "matt@example.com",
+      url: "https://x.com",
+    });
+    expect(withAuthor({ name: "Matt" })).toEqual({
+      name: "Matt",
+      email: undefined,
+      url: undefined,
+    });
+  });
+
+  it("should need a name with letters or numbers, and no other settings", () => {
+    for (const author of ["!!", {}, { name: "--" }])
+      expect(() => withAuthor(author)).toThrow(
+        '"author" needs a name with letters or numbers',
+      );
+    expect(() => withAuthor({ name: "Matt", twitter: "@m" })).toThrow(
+      'unknown "author" setting "twitter"',
+    );
+    expect(() => withAuthor(["Matt"])).toThrow(
+      '"author" must be a map of settings',
+    );
+  });
+});

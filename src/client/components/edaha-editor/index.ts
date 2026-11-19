@@ -9,6 +9,7 @@ import type {
   MetadataInfo,
   MetadataProblem,
   RecentArticles,
+  SiteInfo,
 } from "../../../server/types/index.ts";
 import type { FieldOption } from "../edaha-article-data-field/index.ts";
 import { EditorApi, type ArticleLocation } from "../../editorApi/index.ts";
@@ -134,6 +135,7 @@ export class EdahaEditor extends LitElement {
     welcome: { state: true },
     metadata: { state: true },
     attention: { state: true },
+    site: { state: true },
     unsaved: { state: true },
     navOpen: { state: true },
   };
@@ -162,6 +164,8 @@ export class EdahaEditor extends LitElement {
   declare metadata?: MetadataInfo | undefined;
   /** Articles whose custom metadata has problems, for the welcome prompt */
   declare attention?: ArticlePage | undefined;
+  /** The website's name and default author */
+  declare site?: SiteInfo | undefined;
   /** The open "Save changes first?" question, with what to do with the answer */
   declare unsaved?: ((choice: UnsavedChoice) => void) | undefined;
   /** Whether the article list is open over the page (on narrow screens) */
@@ -295,18 +299,25 @@ export class EdahaEditor extends LitElement {
    */
   async refresh(): Promise<void> {
     try {
-      [this.recent, this.types, this.welcome, this.metadata, this.attention] =
-        await Promise.all([
-          this.api.recent(),
-          this.api.types(),
-          this.api.query({ sort: "updated", perPage: WELCOME_COUNT }),
-          this.api.metadata(),
-          this.api.query({
-            problems: "any",
-            sort: "title",
-            perPage: ATTENTION_COUNT,
-          }),
-        ]);
+      [
+        this.recent,
+        this.types,
+        this.welcome,
+        this.metadata,
+        this.attention,
+        this.site,
+      ] = await Promise.all([
+        this.api.recent(),
+        this.api.types(),
+        this.api.query({ sort: "updated", perPage: WELCOME_COUNT }),
+        this.api.metadata(),
+        this.api.query({
+          problems: "any",
+          sort: "title",
+          perPage: ATTENTION_COUNT,
+        }),
+        this.api.site(),
+      ]);
       this.error = "";
     } catch (error) {
       this.error = (error as Error).message;
@@ -787,6 +798,7 @@ export class EdahaEditor extends LitElement {
                   .article=${this.article}
                   .typeOptions=${this.typeOptions()}
                   .metadata=${this.metadata}
+                  .defaultAuthor=${this.site?.author}
                   @article-saved=${(event: CustomEvent<ArticleLocation>) => void this.onSaved(event)}
                   @article-deleted=${() => void this.onDeleted()}
                 ></edaha-article>`,

@@ -4,6 +4,7 @@ import { collectLists, pageFile, paginate, sortArticles } from "..";
 import type { TemplateDataArticle, TemplateDataSite } from "../../types";
 
 const site: TemplateDataSite = {
+  author: { name: "Site" },
   name: "Site",
   description: "Updates",
   url: "https://example.com",

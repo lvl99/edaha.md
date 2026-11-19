@@ -600,6 +600,19 @@ describe("ArticleStore", () => {
     (await openStore(dir)).close();
   });
 
+  it("should give the website's name and default author", async () => {
+    const { dir, store } = await copySite();
+    expect(await store.site()).toEqual({
+      name: "Test News",
+      author: { name: "Test News" },
+    });
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `author: Matt\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
+    );
+    expect((await store.site()).author).toEqual({ name: "Matt" });
+  });
+
   it("should give the configured article types with their labels", async () => {
     const { store } = await copySite();
     expect(await store.types()).toEqual({

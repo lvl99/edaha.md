@@ -96,6 +96,7 @@ describe("Templates", () => {
     expect(
       templates.render("test.njk", {
         site: {
+          author: { name: "<News>" },
           name: "<News>",
           description: "<b>Bold</b>",
           url: "2026-10-19T09:54:00.000Z",

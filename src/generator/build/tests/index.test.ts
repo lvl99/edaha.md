@@ -115,11 +115,17 @@ describe("siteData", () => {
       description: "Updates",
       url: "https://e.com",
       path: "/docs/",
+      // Without an author setting, articles' default author is the website
+      author: { name: "Site" },
       types: { news: { ...defaultTypeConfig("news"), url: "/docs/news/" } },
     });
     expect(siteData({ ...config, path: "" }, {}, "https://e.com").path).toBe(
       "/",
     );
+    expect(
+      siteData({ ...config, author: { name: "Matt" } }, {}, "https://e.com")
+        .author,
+    ).toEqual({ name: "Matt" });
   });
 });
 

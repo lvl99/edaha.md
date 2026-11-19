@@ -19,6 +19,7 @@ const site: TemplateDataSite = {
   url: "https://example.com",
   path: "/",
   types: {},
+  author: { name: "Test News" },
 };
 
 const FIRST_DIR = fileURLToPath(
@@ -288,16 +289,29 @@ describe("splitContent", () => {
 
 describe("authorData and tagData", () => {
   it("should build slugs and list URLs", () => {
-    expect(authorData({ name: "Zoë Ångström" }, "Test News", "/news/")).toEqual(
-      {
-        name: "Zoë Ångström",
-        slug: "zoe-angstrom",
-        email: undefined,
-        url: undefined,
-        listUrl: "/news/authors/zoe-angstrom/",
-      },
-    );
-    expect(authorData(undefined, "Test News", "/news/").name).toBe("Test News");
+    expect(
+      authorData({ name: "Zoë Ångström" }, { name: "Test News" }, "/news/"),
+    ).toEqual({
+      name: "Zoë Ångström",
+      slug: "zoe-angstrom",
+      email: undefined,
+      url: undefined,
+      listUrl: "/news/authors/zoe-angstrom/",
+    });
+    // Without an author, the default one, with its email address and homepage
+    expect(
+      authorData(
+        undefined,
+        { name: "Matt", email: "matt@example.com", url: "https://example.com" },
+        "/news/",
+      ),
+    ).toEqual({
+      name: "Matt",
+      slug: "matt",
+      email: "matt@example.com",
+      url: "https://example.com",
+      listUrl: "/news/authors/matt/",
+    });
     expect(tagData("Release Notes", "/news/")).toEqual({
       name: "Release Notes",
       slug: "release-notes",

@@ -173,11 +173,16 @@ module.exports = {
 <td>No</td>
 <td>Groups of settings in the editor, besides the built-in ones.</td>
 </tr>
+<tr>
+<td><a href="#author"><code>author</code></a></td>
+<td>No</td>
+<td>The author of articles that don’t name one.</td>
+</tr>
 </tbody>
 </table>
 <p>Unknown settings stop the build, so a typo doesn’t go unnoticed.</p>
 <h3 id="name"><code>name</code></h3>
-<p>The website’s name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don’t name one.</p>
+<p>The website’s name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don’t name one, unless <a href="#author"><code>author</code></a> is set.</p>
 <pre><code class="language-yaml">name: My Site
 </code></pre>
 <h3 id="description"><code>description</code></h3>
@@ -366,6 +371,17 @@ export default {
 };
 </code></pre>
 <p>See <a href="/docs/07-embeds/">Embeds</a> for how to write one.</p>
+<h3 id="author"><code>author</code></h3>
+<p>The author of articles that don’t name one: their author lists and feeds use it, and the editor shows it in the author fields.</p>
+<ul>
+<li><strong>Accepted values:</strong> a name, or <code>{ name, email, url }</code> like an article’s <a href="/docs/04-articles/#settings"><code>author</code></a>.</li>
+<li><strong>Default:</strong> the website’s <a href="#name"><code>name</code></a></li>
+</ul>
+<pre><code class="language-yaml">author:
+  name: Jo Bloggs
+  email: jo@example.com
+  url: https://example.com
+</code></pre>
 <h3 id="metadata"><code>metadata</code></h3>
 <p>Custom settings articles can have besides the core ones (<code>type</code>, <code>status</code>, <code>date</code>, <code>title</code>, <code>template</code>, <code>author</code>, <code>excerpt</code>, <code>thumbnail</code>, <code>attachments</code> and <code>tags</code>), e.g. a featured image or a rating. Each is a <a href="https://json-schema.org/">JSON Schema</a> under the key articles store it with, plus an <code>$edahaField</code> saying how the editor shows it.</p>
 <ul>

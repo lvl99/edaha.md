@@ -15,6 +15,12 @@ export interface TemplateDataSite {
   path: string;
   /** Article type settings (configured types, plus any other types articles use) */
   types: Record<string, TemplateDataArticleType>;
+  /** The author of articles that don't name one: the config file's `author`, or the website's name */
+  author: {
+    name: string;
+    email?: string | undefined;
+    url?: string | undefined;
+  };
 }
 
 /** What is built for an article type */

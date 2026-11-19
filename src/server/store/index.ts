@@ -88,6 +88,7 @@ import type {
   FileQuery,
   MetadataInfo,
   MetadataProblem,
+  SiteInfo,
   ArticleTypeLabels,
   RecentArticles,
   EditorArticle,
@@ -317,6 +318,17 @@ export class ArticleStore {
    */
   async embeds(): Promise<EmbedRenderer[]> {
     return (await this.config()).embeds;
+  }
+
+  /**
+   * The website's name, and the author of articles that don't name one (the config file's `author`, or the website).
+   */
+  async site(): Promise<SiteInfo> {
+    const config = await this.config();
+    return {
+      name: config.name,
+      author: config.author ?? { name: config.name },
+    };
   }
 
   /**
