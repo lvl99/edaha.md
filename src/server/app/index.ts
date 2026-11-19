@@ -14,17 +14,27 @@ import { bodyBaseUrl, EditorError, type ArticleStore } from "../store/index.ts";
 import type {
   ArticleLocation,
   ArticleQuery,
+  ArticleSort,
   ArticleStatus,
   EditorArticleData,
   EmbedPreview,
 } from "../types/index.ts";
 
+/** The ways an article query can sort */
+const SORTS: readonly ArticleSort[] = [
+  "title",
+  "type",
+  "status",
+  "date",
+  "updated",
+];
+
 /** The statuses an article query can filter by */
 const STATUSES: readonly ArticleStatus[] = ["published", "draft", "unlisted"];
 
 /**
- * Read an article query from a URL's search parameters, e.g. "?search=hello&type=news&sort=title&page=2". Unknown
- * statuses and sorts, and pages that aren't numbers, are left out.
+ * Read an article query from a URL's search parameters, e.g. "?search=hello&type=news&sort=title&order=desc&page=2".
+ * Unknown statuses, sorts and orders, and pages that aren't numbers, are left out.
  *
  * @example
  * articleQuery(new URLSearchParams("search=hello&page=2")); // { search: "hello", page: 2 }
@@ -37,6 +47,7 @@ export const articleQuery = (params: URLSearchParams): ArticleQuery => {
   };
   const status = text("status") as ArticleStatus | undefined;
   const sort = text("sort");
+  const order = text("order");
   return Object.fromEntries(
     Object.entries({
       search: text("search"),
@@ -44,7 +55,10 @@ export const articleQuery = (params: URLSearchParams): ArticleQuery => {
       author: text("author"),
       tag: text("tag"),
       status: status && STATUSES.includes(status) ? status : undefined,
-      sort: sort === "title" || sort === "date" ? sort : undefined,
+      sort: SORTS.includes(sort as ArticleSort)
+        ? (sort as ArticleSort)
+        : undefined,
+      order: order === "asc" || order === "desc" ? order : undefined,
       page: number("page"),
       perPage: number("perPage"),
     }).filter(([, value]) => value !== undefined),

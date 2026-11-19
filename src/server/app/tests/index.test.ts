@@ -413,7 +413,7 @@ describe("articleQuery", () => {
     expect(
       articleQuery(
         new URLSearchParams(
-          "search=hi&type=news&author=Matt&tag=News&status=draft&sort=title&page=2&perPage=10",
+          "search=hi&type=news&author=Matt&tag=News&status=draft&sort=title&order=desc&page=2&perPage=10",
         ),
       ),
     ).toEqual({
@@ -423,16 +423,26 @@ describe("articleQuery", () => {
       tag: "News",
       status: "draft",
       sort: "title",
+      order: "desc",
       page: 2,
       perPage: 10,
     });
     expect(
       articleQuery(
-        new URLSearchParams("search=&status=gone&sort=random&page=two"),
+        new URLSearchParams(
+          "search=&status=gone&sort=random&order=sideways&page=two",
+        ),
       ),
     ).toEqual({});
-    expect(articleQuery(new URLSearchParams("sort=date"))).toEqual({
+    expect(articleQuery(new URLSearchParams("sort=status"))).toEqual({
+      sort: "status",
+    });
+    expect(articleQuery(new URLSearchParams("sort=date&order=asc"))).toEqual({
       sort: "date",
+      order: "asc",
+    });
+    expect(articleQuery(new URLSearchParams("sort=updated"))).toEqual({
+      sort: "updated",
     });
   });
 });

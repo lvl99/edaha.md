@@ -7,6 +7,7 @@ import {
   splitContent,
 } from "../../generator/article/index.ts";
 import { isSlug } from "../../generator/slug/index.ts";
+import { DEFAULT_ORDERS, type ArticleSort } from "../types/index.ts";
 import type {
   ArticleFilters,
   ArticlePage,
@@ -108,9 +109,33 @@ const byTitle = (a: ArticleSummary, b: ArticleSummary) =>
   a.type.localeCompare(b.type) ||
   a.slug.localeCompare(b.slug);
 
+/** The value each sort compares (dates are ISO 8601, so they compare as text) */
+const SORT_VALUES: Readonly<
+  Record<ArticleSort, (article: ArticleSummary) => string>
+> = {
+  title: (article) => comparable(article.title),
+  type: (article) => article.type,
+  status: (article) => article.status,
+  date: (article) => article.date,
+  updated: (article) => article.updated,
+};
+
+/**
+ * How to sort articles for a query: by its sort's value (default: date), in its order (default: the sort's own), then
+ * by title A to Z.
+ */
+const articleOrder = (query: ArticleQuery) => {
+  const sort: ArticleSort = query.sort ?? "date";
+  const direction = (query.order ?? DEFAULT_ORDERS[sort]) === "asc" ? 1 : -1;
+  const value = SORT_VALUES[sort];
+  return (a: ArticleSummary, b: ArticleSummary) =>
+    direction * value(a).localeCompare(value(b)) || byTitle(a, b);
+};
+
 /**
  * Find articles: those whose title contains the search text (ignoring case and accents) and that match the type,
- * author, tag and status given, sorted by title (A to Z) or date (newest first), one page at a time.
+ * author, tag and status given, sorted by title, type, status, date or when their file last changed, ascending or
+ * descending (by default titles, types and statuses A to Z and dates newest first), one page at a time.
  *
  * @example
  * queryArticles(articles, { search: "hello", type: "news", sort: "title", page: 2 });
@@ -132,7 +157,7 @@ export const queryArticles = (
         (!tag || article.tags.some((t) => comparable(t) === tag)) &&
         (!query.status || article.status === query.status),
     )
-    .sort(query.sort === "title" ? byTitle : byNewest("date"));
+    .sort(articleOrder(query));
   const perPage = Math.min(
     Math.max(Math.floor(query.perPage ?? MAX_PER_PAGE), 1),
     MAX_PER_PAGE,

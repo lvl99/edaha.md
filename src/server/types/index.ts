@@ -28,8 +28,23 @@ export interface ArticleSummary {
   updated: string;
 }
 
-/** How articles are sorted: by title (A to Z) or by date (newest first) */
-export type ArticleSort = "title" | "date";
+/** What articles are sorted by: their title, type, status, date, or when their file last changed */
+export type ArticleSort = "title" | "type" | "status" | "date" | "updated";
+
+/**
+ * Which way articles are sorted: ascending (A to Z, oldest first) or descending (Z to A, newest first). Each sort has
+ * its own default (see `DEFAULT_ORDERS`).
+ */
+export type ArticleOrder = "asc" | "desc";
+
+/** Each sort's default order: titles, types and statuses A to Z, dates newest first */
+export const DEFAULT_ORDERS: Readonly<Record<ArticleSort, ArticleOrder>> = {
+  title: "asc",
+  type: "asc",
+  status: "asc",
+  date: "desc",
+  updated: "desc",
+};
 
 /** A search of the article index; every part is optional */
 export interface ArticleQuery {
@@ -42,6 +57,8 @@ export interface ArticleQuery {
   status?: ArticleStatus | undefined;
   /** Default: "date" */
   sort?: ArticleSort | undefined;
+  /** Default: the sort's own default (see `DEFAULT_ORDERS`) */
+  order?: ArticleOrder | undefined;
   /** The page to show, from 1 (default: 1) */
   page?: number | undefined;
   /** Articles per page, at most `MAX_PER_PAGE` (default: `MAX_PER_PAGE`) */

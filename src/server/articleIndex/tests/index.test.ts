@@ -88,8 +88,17 @@ describe("queryArticles", () => {
   const slugs = (query: Parameters<typeof queryArticles>[1]) =>
     queryArticles(articles, query).articles.map((article) => article.slug);
 
-  it("should sort by date (newest first, then slug) or by title (A to Z)", () => {
+  it("should sort by date (newest first, then slug), by title (A to Z) or by when the file last changed", () => {
     expect(slugs(undefined)).toEqual(["b", "a", "c"]);
+    expect(
+      queryArticles(
+        [
+          summary({ slug: "old", updated: "2026-01-01T00:00:00.000Z" }),
+          summary({ slug: "new", updated: "2026-03-01T00:00:00.000Z" }),
+        ],
+        { sort: "updated" },
+      ).articles.map((article) => article.slug),
+    ).toEqual(["new", "old"]);
     expect(slugs({ sort: "title" })).toEqual(["a", "b", "c"]);
     expect(
       queryArticles(
@@ -103,6 +112,27 @@ describe("queryArticles", () => {
         { sort: "title" },
       ).articles.map((article) => article.slug),
     ).toEqual(["a", "y"]);
+  });
+
+  it("should sort ascending or descending, each sort defaulting to its own order", () => {
+    expect(slugs({ order: "asc" })).toEqual(["a", "c", "b"]);
+    expect(slugs({ sort: "date", order: "desc" })).toEqual(["b", "a", "c"]);
+    expect(slugs({ sort: "title", order: "desc" })).toEqual(["c", "b", "a"]);
+    expect(slugs({ sort: "title", order: "asc" })).toEqual(["a", "b", "c"]);
+    // Types and statuses A to Z, then titles A to Z
+    expect(slugs({ sort: "type" })).toEqual(["a", "b", "c"]);
+    expect(slugs({ sort: "type", order: "desc" })).toEqual(["c", "a", "b"]);
+    expect(slugs({ sort: "status" })).toEqual(["a", "b", "c"]);
+    expect(slugs({ sort: "status", order: "desc" })).toEqual(["b", "c", "a"]);
+    const changed = [
+      summary({ slug: "old", updated: "2026-01-01T00:00:00.000Z" }),
+      summary({ slug: "new", updated: "2026-03-01T00:00:00.000Z" }),
+    ];
+    expect(
+      queryArticles(changed, { sort: "updated", order: "asc" }).articles.map(
+        (article) => article.slug,
+      ),
+    ).toEqual(["old", "new"]);
   });
 
   it("should search titles and filter by type, author, tag and status, ignoring case and accents", () => {
@@ -142,6 +172,8 @@ describe("recentArticles and articleFilters", () => {
       summary({ slug: "old", updated: "2026-01-01T00:00:00.000Z" }),
       summary({ slug: "new", updated: "2026-03-01T00:00:00.000Z" }),
       summary({ slug: "mid", updated: "2026-02-01T00:00:00.000Z" }),
+      // Changed at the same time as "mid", so after it by slug
+      summary({ slug: "same", updated: "2026-02-01T00:00:00.000Z" }),
       summary({ type: "blog", slug: "x" }),
     ];
     expect(
@@ -152,9 +184,11 @@ describe("recentArticles and articleFilters", () => {
       ]),
     ).toEqual([
       ["blog", ["x"], 1],
-      ["news", ["new", "mid"], 3],
+      ["news", ["new", "mid"], 4],
     ]);
-    expect(recentArticles(articles)[1]?.articles).toHaveLength(3);
+    expect(
+      recentArticles(articles)[1]?.articles.map((article) => article.slug),
+    ).toEqual(["new", "mid", "same", "old"]);
   });
 
   it("should give the types, authors and tags in use, once each, keeping their first spelling", () => {
