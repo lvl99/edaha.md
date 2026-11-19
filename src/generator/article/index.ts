@@ -13,6 +13,11 @@ import {
   escapeHtml,
 } from "../format/index.ts";
 import { isSlug, slugify } from "../slug/index.ts";
+import {
+  articleMetadata,
+  templateMetadata,
+  type MetadataValidator,
+} from "../metadata/index.ts";
 import type {
   ArticleStatus,
   TemplateDataArticle,
@@ -294,6 +299,19 @@ export interface ArticleContext {
   replaceEmbeds(markdown: string): Promise<string>;
   /** Render markdown to HTML, resolving relative URLs against a folder URL */
   renderMarkdown(markdown: string, baseUrl: string): string;
+  /** The article's custom metadata fields, to validate its values and give them to templates. Default: none */
+  metadata?: MetadataContext | undefined;
+}
+
+/** What an article's custom metadata is read with */
+export interface MetadataContext {
+  validator: MetadataValidator;
+  /** The custom fields the article's type uses */
+  keys: string[];
+  /** The type's plural label, for warnings, e.g. "News" */
+  typeLabel: string;
+  /** Report a problem with the article's metadata (they are warnings for the build) */
+  warn(message: string): void;
 }
 
 /**
@@ -418,6 +436,21 @@ export const loadArticle = async (
     );
   const url = context.url;
 
+  // Custom metadata: problems are reported, and values with errors are left out
+  let meta: Record<string, unknown> = {};
+  if (context.metadata) {
+    const { validator, keys, typeLabel, warn } = context.metadata;
+    const metadata = articleMetadata(
+      header as Record<string, unknown>,
+      keys,
+      validator,
+      typeLabel,
+    );
+    for (const { path, message } of metadata.problems)
+      warn(`${context.source}: "${path}" ${message}`);
+    meta = templateMetadata(metadata, validator.definitions, url);
+  }
+
   const body = parts.body;
   const bodyHtml = context.renderMarkdown(
     await context.replaceEmbeds(body),
@@ -463,5 +496,6 @@ export const loadArticle = async (
         attachmentData(attachment, url, context),
       ),
     ),
+    meta,
   };
 };

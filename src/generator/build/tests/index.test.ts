@@ -759,3 +759,55 @@ describe("buildSite", () => {
     warn.mockRestore();
   });
 });
+
+describe("buildSite custom metadata", () => {
+  it("should give templates the valid values of the type's fields, warning about problems", async () => {
+    const space = await workspace();
+    // Pages use "featured" and "rating", not "credit"
+    await writeSiteFile(
+      space,
+      "edahaconfig.yml",
+      [
+        await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8"),
+        "  page:",
+        "    metadata: [featured, rating]",
+        "metadata:",
+        "  featured:",
+        "    type: string",
+        "    $edahaField:",
+        "      file: true",
+        "  rating:",
+        "    type: number",
+        "    maximum: 10",
+        "    $edahaField:",
+        "      number: true",
+        "  credit:",
+        "    type: string",
+        "    $edahaField:",
+        "      text: true",
+        "",
+      ].join("\n"),
+    );
+    await writeArticle(
+      space,
+      "page/meta",
+      "<!--yaml\ndate: 2026-10-19\nfeatured: hero.png\nrating: 11\ncredit: Me\noops: true\n-->\n# Meta",
+    );
+    await writeSiteFile(
+      space,
+      "templates/page/single.njk",
+      "{{ article.meta | dump | safe }}",
+    );
+    const { read, logger } = await build(space);
+    expect(JSON.parse(await read("page/meta/index.html"))).toEqual({
+      featured: "/page/meta/hero.png",
+    });
+    expect(logger.warn.mock.calls.map(([message]) => message)).toEqual(
+      expect.arrayContaining([
+        'articles/page/meta: "rating" must be <= 10',
+        'articles/page/meta: "credit" isn\'t used by Pages',
+        'articles/page/meta: "oops" isn\'t a known setting',
+      ]),
+    );
+  });
+});

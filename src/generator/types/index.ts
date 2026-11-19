@@ -105,6 +105,11 @@ export interface TemplateDataArticle {
   bodyHtml: string;
   /** Article attachments */
   attachments: TemplateDataAttachment[];
+  /**
+   * The article's custom metadata (see the config file's `metadata`): the valid values of the fields its type uses, by
+   * key, with file fields as paths on the website
+   */
+  meta: Record<string, unknown>;
 }
 
 /** One page of a paginated list */

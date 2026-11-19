@@ -22,6 +22,7 @@ import {
   type EmbedRenderer,
 } from "../../embeds/index.ts";
 import { loadArticle } from "../article/index.ts";
+import { MetadataValidator, typeMetadataKeys } from "../metadata/index.ts";
 import {
   defaultTypeConfig,
   RESERVED_TYPES,
@@ -369,6 +370,9 @@ export const buildSite = async (
     files.push(file);
   };
 
+  // Validates articles' custom metadata
+  const validator = new MetadataValidator(config.metadata);
+
   // Load articles (types that generate nothing are still checked for errors)
   const articles: {
     article: TemplateDataArticle;
@@ -413,6 +417,12 @@ export const buildSite = async (
           ? (md) => embeds.replaceBlocks(md, source)
           : async (md) => md,
         renderMarkdown: (md, baseUrl) => renderMarkdown(markdown, md, baseUrl),
+        metadata: {
+          validator,
+          keys: typeMetadataKeys(config.metadata, typeConfigs[type]?.metadata),
+          typeLabel: typeConfig.labelPlural,
+          warn: (message) => logger.warn(message),
+        },
       });
       if (article && built) articles.push({ article, dir, folder });
     }
