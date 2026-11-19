@@ -1266,3 +1266,72 @@ edaha-metadata-field {
   display: block;
   color: var(--colour-muted);
 }
+
+/* Settings groups: sections of the settings column that open and close */
+.settings-group {
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.settings-group > summary {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.5rem 0;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* A chevron shows whether it's open (flex headings lose the browser's own marker) */
+.settings-group > summary {
+  list-style: none;
+}
+
+.settings-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-group > summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1rem;
+  transition: transform 0.15s;
+}
+
+.settings-group[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-group > summary::before {
+    transition: none;
+  }
+}
+
+.settings-group > summary:focus-visible {
+  outline: 3px solid var(--colour-focus);
+  outline-offset: 2px;
+}
+
+.settings-group[open] > summary {
+  margin-bottom: 0.25rem;
+}
+
+.settings-group[open] {
+  padding-bottom: 0.75rem;
+}
+
+.settings-group-errors {
+  margin-inline-start: auto;
+}
+
+.settings-group-description {
+  margin: 0 0 0.5rem;
+  color: var(--colour-muted);
+  font-size: var(--font-size-s);
+}
+
+.files-title {
+  margin: 0.75rem 0 0.25rem;
+  font-size: var(--font-size-s);
+}

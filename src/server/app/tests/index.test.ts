@@ -200,9 +200,16 @@ describe("createEditorApp", () => {
 
   it("should give the custom metadata fields, and the problems when saving is refused", async () => {
     const { app, store } = await setup();
-    expect(await (await app.request("/api/metadata")).json()).toEqual({
+    expect(await (await app.request("/api/metadata")).json()).toMatchObject({
       definitions: {},
       types: {},
+      groups: [
+        { key: "info" },
+        { key: "categorise" },
+        { key: "customise" },
+        { key: "files" },
+        { key: "custom" },
+      ],
     });
     const problems = [{ path: "a", message: "is wrong", level: "error" }];
     vi.spyOn(store, "save").mockRejectedValue(

@@ -7,6 +7,7 @@ import type {
 import type { EditorApi } from "../../../editorApi";
 import { ApiError } from "../../../editorApi";
 import type { EdahaMetadataField } from "../../edaha-metadata-field";
+import { metadataLayout } from "../../../../generator/metadataGroups";
 import {
   METADATA_ERRORS,
   applyFieldChange,
@@ -1108,24 +1109,29 @@ describe("edaha-article changes", () => {
 
 describe("edaha-article custom settings", () => {
   /** Custom fields: articles use "rating" and "credit"; news uses none */
-  const METADATA = {
-    definitions: {
-      rating: {
-        type: "number",
-        maximum: 10,
-        $edahaField: { number: true },
-      },
-      credit: {
-        type: "object",
-        properties: {
-          name: { type: "string", $edahaField: { text: true } },
-        },
-        required: ["name"],
-      },
-      hero: { type: "string", $edahaField: { file: true } },
+  const DEFINITIONS = {
+    rating: {
+      type: "number",
+      maximum: 10,
+      $edahaField: { number: true },
     },
-    types: { article: ["rating", "credit", "hero"], news: false },
+    credit: {
+      type: "object",
+      properties: {
+        name: { type: "string", $edahaField: { text: true } },
+      },
+      required: ["name"],
+    },
+    hero: {
+      type: "string",
+      $edahaField: { file: true, group: { key: "files", after: "thumbnail" } },
+    },
   } as const;
+  const METADATA = {
+    definitions: DEFINITIONS,
+    types: { article: ["rating", "credit", "hero"], news: false },
+    groups: metadataLayout(DEFINITIONS as never, {}),
+  };
 
   /** An article with custom settings, its form showing them */
   const setupMetadata = async (
@@ -1138,9 +1144,9 @@ describe("edaha-article custom settings", () => {
     return result;
   };
 
-  /** The custom settings group */
-  const group = (element: HTMLElement) =>
-    find(element, 'edaha-article-data-group[name="meta"]');
+  /** A settings group */
+  const group = (element: HTMLElement, key = "custom") =>
+    find<HTMLDetailsElement>(element, `.settings-group[data-group="${key}"]`);
 
   /** Leave a custom field, as moving focus out of it does */
   const blur = (element: HTMLElement, path: string) =>
@@ -1154,7 +1160,15 @@ describe("edaha-article custom settings", () => {
       [...group(element).querySelectorAll(":scope > edaha-metadata-field")].map(
         (f) => (f as EdahaMetadataField).path,
       ),
-    ).toEqual(["rating", "credit", "hero"]);
+    ).toEqual(["rating", "credit"]);
+    // "hero" is in Files, after the thumbnail
+    expect(
+      [
+        ...group(element, "files").querySelectorAll(
+          ":scope > edaha-article-data-field, :scope > edaha-metadata-field",
+        ),
+      ].map((f) => f.getAttribute("name") ?? (f as EdahaMetadataField).path),
+    ).toEqual(["thumbnail", "hero"]);
     expect(find<HTMLInputElement>(element, "#meta-rating").value).toBe("3");
     expect(find(element, ".metadata-warnings").textContent?.trim()).toBe(
       '"oops" isn\'t a known setting; it is kept as it is.',
@@ -1169,6 +1183,7 @@ describe("edaha-article custom settings", () => {
     expect(
       group(element).querySelectorAll(":scope > edaha-metadata-field"),
     ).toHaveLength(0);
+    expect(element.querySelector("edaha-metadata-field")).toBeNull();
     expect(
       [...element.querySelectorAll(".metadata-warnings li")].map((li) =>
         li.textContent?.trim(),
@@ -1179,12 +1194,16 @@ describe("edaha-article custom settings", () => {
     ]);
   });
 
-  it("should show no custom settings without fields or other settings", async () => {
+  it("should leave out the Custom group without custom fields or other settings", async () => {
     const { element } = await setup();
-    expect(element.querySelector('[name="meta"]')).toBeNull();
-    element.metadata = { definitions: {}, types: {} };
+    expect(element.querySelector('[data-group="custom"]')).toBeNull();
+    element.metadata = {
+      definitions: {},
+      types: {},
+      groups: metadataLayout({}, {}),
+    };
     await settle(element);
-    expect(element.querySelector('[name="meta"]')).toBeNull();
+    expect(element.querySelector('[data-group="custom"]')).toBeNull();
   });
 
   it("should change values, checking a field when it is left and saying when errors are found", async () => {
@@ -1193,7 +1212,7 @@ describe("edaha-article custom settings", () => {
     await settle(element);
     expect(element.data.meta).toEqual({ rating: 20, oops: true });
     expect(element.dirty).toBe(true);
-    expect(group(element).hasAttribute("changed")).toBe(true);
+    expect(find(group(element), "summary .changed").textContent).toBe("*");
     blur(element, "rating");
     await settle(element);
     expect(find(element, "#meta-rating-problems").textContent).toContain(
@@ -1282,5 +1301,139 @@ describe("edaha-article custom settings", () => {
       find<EdahaMetadataField>(unsaved, 'edaha-metadata-field[path="hero"]')
         .uploadFile,
     ).toBeUndefined();
+  });
+});
+
+describe("edaha-article settings groups", () => {
+  /** A form with a custom group "seo" (open, with a description) holding a "rating" field */
+  const setupGroups = async () => {
+    const definitions = {
+      rating: {
+        type: "number",
+        maximum: 10,
+        $edahaField: { number: true, group: "seo" },
+      },
+    };
+    const result = await setup({ ...ARTICLE, meta: { rating: 3 } });
+    result.element.metadata = {
+      definitions,
+      types: {},
+      groups: metadataLayout(definitions as never, {
+        seo: {
+          title: "SEO",
+          description: "For search engines",
+          after: "info",
+          openedByDefault: true,
+        },
+      }),
+    };
+    await settle(result.element);
+    return result;
+  };
+
+  /** The settings groups as [key, title, open] */
+  const groups = (element: HTMLElement) =>
+    [...element.querySelectorAll<HTMLDetailsElement>(".settings-group")].map(
+      (group) => [
+        group.dataset.group,
+        group
+          .querySelector("summary")
+          ?.textContent?.replace(/\s+/g, " ")
+          .trim(),
+        group.open,
+      ],
+    );
+
+  it("should show the built-in groups with their settings, Info, Customise and Files open", async () => {
+    const { element } = await setup();
+    expect(groups(element)).toEqual([
+      ["info", "Info", true],
+      ["categorise", "Categorise", false],
+      ["customise", "Customise", true],
+      ["files", "Files", true],
+    ]);
+    const settings = (key: string) =>
+      [
+        ...element.querySelectorAll(
+          `[data-group="${key}"] > edaha-article-data-field, [data-group="${key}"] > edaha-article-data-group`,
+        ),
+      ].map((field) => field.getAttribute("name"));
+    expect(settings("info")).toEqual([
+      "type",
+      "status",
+      "slug",
+      "date",
+      "author",
+    ]);
+    expect(settings("categorise")).toEqual(["tags"]);
+    expect(settings("customise")).toEqual(["excerpt", "template"]);
+    expect(settings("files")).toEqual(["thumbnail", "attachments"]);
+    expect(
+      find(element, '[data-group="files"] .files-title').textContent?.trim(),
+    ).toBe("Files in this article's folder (2)");
+  });
+
+  it("should show custom groups where the config puts them, open as it says, with their description", async () => {
+    const { element } = await setupGroups();
+    expect(groups(element).slice(0, 2)).toEqual([
+      ["info", "Info", true],
+      ["seo", "SEO", true],
+    ]);
+    expect(
+      find(
+        element,
+        '[data-group="seo"] .settings-group-description',
+      ).textContent?.trim(),
+    ).toBe("For search engines");
+    expect(
+      find(element, '[data-group="seo"] edaha-metadata-field').getAttribute(
+        "path",
+      ),
+    ).toBe("rating");
+  });
+
+  it("should keep groups as they were left, even when the config is read again", async () => {
+    const { element } = await setupGroups();
+    const info = find<HTMLDetailsElement>(element, '[data-group="info"]');
+    info.open = false;
+    info.dispatchEvent(new Event("toggle"));
+    const categorise = find<HTMLDetailsElement>(
+      element,
+      '[data-group="categorise"]',
+    );
+    categorise.open = true;
+    categorise.dispatchEvent(new Event("toggle"));
+    await settle(element);
+    element.metadata = structuredClone(element.metadata);
+    await settle(element);
+    expect(element.openGroups).toEqual(
+      new Set(["seo", "categorise", "customise", "files"]),
+    );
+  });
+
+  it("should open and mark a group with errors, and mark changed groups", async () => {
+    const { element } = await setupGroups();
+    const seo = find<HTMLDetailsElement>(element, '[data-group="seo"]');
+    seo.open = false;
+    seo.dispatchEvent(new Event("toggle"));
+    await settle(element);
+    expect(element.openGroups.has("seo")).toBe(false);
+    input(find<HTMLInputElement>(element, "#meta-rating"), "20");
+    await element.save();
+    await settle(element);
+    expect(element.openGroups.has("seo")).toBe(true);
+    expect(seo.classList.contains("has-errors")).toBe(true);
+    expect(find(seo, "summary").textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "SEO* ⚠️ has errors",
+    );
+    // Errors in an open group leave the groups as they are
+    const before = element.openGroups;
+    element.metaProblems = [...element.metaProblems];
+    await settle(element);
+    expect(element.openGroups).toBe(before);
+    // A changed core setting marks its group
+    input(find<HTMLInputElement>(field(element, "slug"), "input"), "new-slug");
+    await settle(element);
+    expect(find(element, '[data-group="info"] summary .changed')).toBeDefined();
   });
 });

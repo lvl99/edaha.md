@@ -4,12 +4,14 @@ import type {
   MetadataDefinitions,
   MetadataProblem,
 } from "../../generator/metadata/index.ts";
+import type { MetadataGroup } from "../../generator/metadataGroups/index.ts";
 
 export type { ArticleStatus } from "../../generator/types/index.ts";
 export type {
   MetadataDefinitions,
   MetadataProblem,
 } from "../../generator/metadata/index.ts";
+export type { MetadataGroup } from "../../generator/metadataGroups/index.ts";
 
 /** Where an article is saved */
 export interface ArticleLocation {
@@ -59,10 +61,14 @@ export const DEFAULT_ORDERS: Readonly<Record<ArticleSort, ArticleOrder>> = {
 /** Which articles with metadata problems to find: those with errors, with warnings, or with either */
 export type ProblemFilter = "errors" | "warnings" | "any";
 
-/** The custom metadata fields, and which each configured type uses (a list, `false` for none, or all when missing) */
+/**
+ * The custom metadata fields, which each configured type uses (a list, `false` for none, or all when missing), and the
+ * groups the editor shows settings in, in order
+ */
 export interface MetadataInfo {
   definitions: MetadataDefinitions;
   types: Record<string, string[] | false>;
+  groups: MetadataGroup[];
 }
 
 /** A search of the article index; every part is optional */

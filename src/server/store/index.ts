@@ -59,6 +59,7 @@ import {
   typeMetadataKeys,
 } from "../../generator/metadata/index.ts";
 import type { EdahaConfig } from "../../generator/config/index.ts";
+import { metadataLayout } from "../../generator/metadataGroups/index.ts";
 import {
   ArticleIndex,
   type MetadataCheck,
@@ -383,12 +384,14 @@ export class ArticleStore {
   }
 
   /**
-   * The custom metadata fields, and which fields each configured type uses, for the editor's article form.
+   * The custom metadata fields, which fields each configured type uses, and the groups the article form shows settings
+   * in.
    */
   async metadataInfo(): Promise<MetadataInfo> {
     const { config } = await this.metadata();
     return {
       definitions: config.metadata,
+      groups: metadataLayout(config.metadata, config.metadataGroups),
       types: Object.fromEntries(
         Object.entries(config.types).flatMap(([type, { metadata }]) =>
           metadata === undefined ? [] : [[type, metadata]],

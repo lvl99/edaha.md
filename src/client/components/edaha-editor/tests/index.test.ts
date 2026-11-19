@@ -19,6 +19,7 @@ import {
 } from "..";
 import type { EdahaArticleBrowser } from "../../edaha-article-browser";
 import type { EdahaFileBrowser } from "../../edaha-file-browser";
+import { metadataLayout } from "../../../../generator/metadataGroups";
 import { button, find, input, settle } from "../../../../shared/tests/helpers";
 
 afterEach(() => document.body.replaceChildren());
@@ -76,7 +77,11 @@ const setup = async (recent = vi.fn(async () => RECENT)) => {
       query.problems ? matches([]) : matches([SUMMARIES[0]!]),
     ),
     filters: vi.fn(async () => ({ types: [], authors: [], tags: [] })),
-    metadata: vi.fn(async () => ({ definitions: {}, types: {} })),
+    metadata: vi.fn(async () => ({
+      definitions: {},
+      types: {},
+      groups: metadataLayout({}, {}),
+    })),
     templates: vi.fn(async () => ["single"]),
     types: vi.fn(async () => ({
       article: { labelSingle: "Article", labelPlural: "Articles" },
