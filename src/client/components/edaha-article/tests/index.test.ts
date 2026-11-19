@@ -1197,7 +1197,7 @@ describe("edaha-article custom settings", () => {
     blur(element, "rating");
     await settle(element);
     expect(find(element, "#meta-rating-problems").textContent).toContain(
-      "must be <= 10",
+      "must be at most 10",
     );
     expect(toasts).toEqual([{ kind: "error", message: METADATA_ERRORS }]);
     // Still wrong: no more toasts
@@ -1222,7 +1222,7 @@ describe("edaha-article custom settings", () => {
     expect(api.save).not.toHaveBeenCalled();
     expect(element.metaProblems.map(({ path }) => path)).toEqual([
       "rating",
-      "credit",
+      "credit/name",
     ]);
     expect(toasts.at(-1)).toEqual({ kind: "error", message: METADATA_ERRORS });
   });
@@ -1241,7 +1241,11 @@ describe("edaha-article custom settings", () => {
 
   it("should show the errors it was loaded with, and show them again on reset", async () => {
     const problems = [
-      { path: "rating", message: "must be <= 10", level: "error" as const },
+      {
+        path: "rating",
+        message: "must be at most 10",
+        level: "error" as const,
+      },
       {
         path: "oops",
         message: "isn't a known setting",

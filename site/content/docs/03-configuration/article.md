@@ -364,7 +364,7 @@ metadata:
     maxItems: 5
 ```
 
-Values are checked against their schemas with [ajv](https://ajv.js.org/), including formats like `uri` and `email`. The build and the editor stop with an error if a key is a core setting's name, a type lists a key that isn't defined, a value has no field kind or more than one, or a schema isn't valid.
+Values are checked against their schemas with [ajv](https://ajv.js.org/), including formats like `uri` and `email`. Problems are described in plain words, e.g. "Rating must be at most 10" or "Credit name is required", and show above the field in the editor. The build and the editor stop with an error if a key is a core setting's name, a type lists a key that isn't defined, a value has no field kind or more than one, or a schema isn't valid.
 
 ## Commands
 

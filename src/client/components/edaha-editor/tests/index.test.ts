@@ -195,7 +195,11 @@ describe("edaha-editor", () => {
     const withProblems = {
       ...SUMMARIES[1]!,
       problems: [
-        { path: "rating", message: "must be <= 10", level: "error" as const },
+        {
+          path: "rating",
+          message: "must be at most 10",
+          level: "error" as const,
+        },
       ],
     };
     api.query.mockImplementation(async (query: { problems?: string }) =>
@@ -214,7 +218,7 @@ describe("edaha-editor", () => {
       [...section.querySelectorAll("li")].map((li) =>
         li.textContent?.replace(/\s+/g, " ").trim(),
       ),
-    ).toEqual(['broken ⚠️ 1 error: "rating" must be <= 10', "Hello ⚠️"]);
+    ).toEqual(['broken ⚠️ 1 error: "rating" must be at most 10', "Hello ⚠️"]);
     const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
     const show = vi.spyOn(browser, "show").mockResolvedValue();
     button(element, "See all 7 articles with problems").click();

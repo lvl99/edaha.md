@@ -54,7 +54,7 @@ describe("edaha-metadata-field", () => {
       {
         required: true,
         problems: [
-          { path: "rating", message: "must be <= 10", level: "error" },
+          { path: "rating", message: "must be at most 10", level: "error" },
           { path: "other", message: "is wrong", level: "error" },
         ],
       },
@@ -85,7 +85,7 @@ describe("edaha-metadata-field", () => {
     // Only its own problems show, above the input
     const problems = find(element, "#meta-rating-problems");
     expect(problems.textContent?.replace(/\s+/g, " ").trim()).toBe(
-      "Rating must be <= 10",
+      "Rating must be at most 10",
     );
     expect(
       problems.compareDocumentPosition(field) &

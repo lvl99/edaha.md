@@ -194,13 +194,111 @@ export const typeMetadataKeys = (
       ? []
       : typeMetadata;
 
-/** An ajv error as a problem with a value */
-const problem = (key: string, error: ErrorObject): MetadataProblem => ({
-  path: key + error.instancePath,
-  // ajv always describes its errors
-  message: error.message as string,
-  level: "error",
-});
+/** JSON types in plain words, e.g. "a number" */
+const TYPE_NAMES: Record<string, string> = {
+  string: "text",
+  number: "a number",
+  integer: "a whole number",
+  boolean: "yes or no",
+  array: "a list",
+  object: "a group of settings",
+  null: "empty",
+};
+
+/** Formats in plain words, e.g. "an email address" */
+const FORMAT_NAMES: Record<string, string> = {
+  email: "an email address",
+  uri: "a full web address, e.g. https://example.com",
+  url: "a full web address, e.g. https://example.com",
+  "uri-reference": "a web address or path",
+  date: "a date, e.g. 2026-11-19",
+  time: "a time, e.g. 14:30:00",
+  "date-time": "a date and time, e.g. 2026-11-19T14:30:00Z",
+  hostname: "a host name, e.g. example.com",
+  ipv4: "an IPv4 address",
+  ipv6: "an IPv6 address",
+  uuid: "a UUID",
+  regex: "a regular expression",
+};
+
+/** "1 item" or "3 items" */
+const plural = (count: number, word: string) =>
+  `${count} ${word}${count === 1 ? "" : "s"}`;
+
+/** A value in a message: text in quotes, anything else as written */
+const quote = (value: unknown) =>
+  typeof value === "string" ? `"${value}"` : JSON.stringify(value);
+
+/**
+ * Say what is wrong with a value in plain words, from an ajv error, e.g. "must be at most 10" or "must be an email
+ * address". Errors this doesn't know keep ajv's message.
+ *
+ * @example
+ * plainMessage({ keyword: "maximum", params: { limit: 10 }, ... }); // "must be at most 10"
+ */
+export const plainMessage = (error: ErrorObject): string => {
+  const params = error.params as Record<string, unknown>;
+  const limit = params.limit as number;
+  switch (error.keyword) {
+    case "type": {
+      const types = String(params.type).split(",");
+      // Schemas only compile with JSON's own types, which all have names
+      return `must be ${types.map((type) => TYPE_NAMES[type] as string).join(" or ")}`;
+    }
+    case "minimum":
+      return `must be at least ${limit}`;
+    case "maximum":
+      return `must be at most ${limit}`;
+    case "exclusiveMinimum":
+      return `must be more than ${limit}`;
+    case "exclusiveMaximum":
+      return `must be less than ${limit}`;
+    case "multipleOf":
+      return `must be a multiple of ${params.multipleOf as number}`;
+    case "minLength":
+      return limit === 1
+        ? "can't be empty"
+        : `must be at least ${plural(limit, "character")}`;
+    case "maxLength":
+      return `must be at most ${plural(limit, "character")}`;
+    case "pattern":
+      return "isn't in the right form";
+    case "format":
+      return `must be ${FORMAT_NAMES[params.format as string] ?? `a valid ${params.format as string}`}`;
+    case "enum":
+      return `must be one of ${(params.allowedValues as unknown[]).map(quote).join(", ")}`;
+    case "const":
+      return `must be ${quote(params.allowedValue)}`;
+    case "required":
+      return "is required";
+    case "minItems":
+      return `must have at least ${plural(limit, "item")}`;
+    case "maxItems":
+      return `can have at most ${plural(limit, "item")}`;
+    case "uniqueItems":
+      return "can't have the same item twice";
+    case "additionalProperties":
+      return "isn't a known setting";
+    default:
+      // ajv always describes its errors
+      return error.message as string;
+  }
+};
+
+/**
+ * An ajv error as a problem with a value, in plain words (see `plainMessage`). A missing or unknown property is a
+ * problem with that property, so its field shows it.
+ */
+const problem = (key: string, error: ErrorObject): MetadataProblem => {
+  const params = error.params as Record<string, unknown>;
+  const property = (params.missingProperty ?? params.additionalProperty) as
+    string | undefined;
+  return {
+    path: key + error.instancePath + (property ? `/${property}` : ""),
+    message: plainMessage(error),
+    level: "error",
+  };
+};
 
 /**
  * Validates articles' custom metadata values against their schemas, compiling each schema once.

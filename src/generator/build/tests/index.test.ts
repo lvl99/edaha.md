@@ -804,7 +804,7 @@ describe("buildSite custom metadata", () => {
     });
     expect(logger.warn.mock.calls.map(([message]) => message)).toEqual(
       expect.arrayContaining([
-        'articles/page/meta: "rating" must be <= 10',
+        'articles/page/meta: "rating" must be at most 10',
         'articles/page/meta: "credit" isn\'t used by Pages',
         'articles/page/meta: "oops" isn\'t a known setting',
       ]),

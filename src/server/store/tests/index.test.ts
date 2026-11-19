@@ -497,7 +497,7 @@ describe("ArticleStore", () => {
         oops: true,
       });
       expect(article.problems).toEqual([
-        { path: "rating", message: "must be <= 10", level: "error" },
+        { path: "rating", message: "must be at most 10", level: "error" },
         { path: "credit", message: "isn't used by Pages", level: "warning" },
         { path: "oops", message: "isn't a known setting", level: "warning" },
       ]);
@@ -531,9 +531,9 @@ describe("ArticleStore", () => {
         store.save(article, { type: "page", slug: "about-us" }),
       ).rejects.toMatchObject({
         status: 400,
-        message: 'Some values aren\'t valid: "rating" must be <= 10',
+        message: 'Some values aren\'t valid: "rating" must be at most 10',
         problems: [
-          { path: "rating", message: "must be <= 10", level: "error" },
+          { path: "rating", message: "must be at most 10", level: "error" },
         ],
       });
       await store.save(

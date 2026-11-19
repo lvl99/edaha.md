@@ -5,6 +5,7 @@ import {
   fieldOptions,
   MetadataValidator,
   parseMetadata,
+  plainMessage,
   resolveFileFields,
   templateMetadata,
   typeMetadataKeys,
@@ -131,19 +132,19 @@ describe("MetadataValidator", () => {
     const validator = new MetadataValidator(DEFINITIONS);
     expect(validator.validate("rating", 5)).toEqual([]);
     expect(validator.validate("rating", 11)).toEqual([
-      { path: "rating", message: "must be <= 10", level: "error" },
+      { path: "rating", message: "must be at most 10", level: "error" },
     ]);
     expect(
       validator.validate("credit", { homepage: "nope" }).map((p) => p.path),
-    ).toEqual(["credit", "credit/homepage"]);
+    ).toEqual(["credit/name", "credit/homepage"]);
     expect(validator.validate("images", ["a.png", 2, 3])).toEqual([
       {
         path: "images",
-        message: "must NOT have more than 2 items",
+        message: "can have at most 2 items",
         level: "error",
       },
-      { path: "images/1", message: "must be string", level: "error" },
-      { path: "images/2", message: "must be string", level: "error" },
+      { path: "images/1", message: "must be text", level: "error" },
+      { path: "images/2", message: "must be text", level: "error" },
     ]);
     // Compiled once, so the same again
     expect(validator.validate("rating", 11)).toHaveLength(1);
@@ -170,7 +171,7 @@ describe("articleMetadata", () => {
     ).toEqual({
       values: { featured: "a.png", rating: 20 },
       problems: [
-        { path: "rating", message: "must be <= 10", level: "error" },
+        { path: "rating", message: "must be at most 10", level: "error" },
         { path: "images", message: "isn't used by News", level: "warning" },
         { path: "oops", message: "isn't a known setting", level: "warning" },
       ],
@@ -215,8 +216,8 @@ describe("resolveFileFields and templateMetadata", () => {
         {
           values: { featured: "a.png", rating: 20, images: ["b.png", 2] },
           problems: [
-            { path: "rating", message: "must be <= 10", level: "error" },
-            { path: "images/1", message: "must be string", level: "error" },
+            { path: "rating", message: "must be at most 10", level: "error" },
+            { path: "images/1", message: "must be text", level: "error" },
             {
               path: "oops",
               message: "isn't a known setting",
@@ -228,5 +229,81 @@ describe("resolveFileFields and templateMetadata", () => {
         "/news/hi/",
       ),
     ).toEqual({ featured: "/news/hi/a.png" });
+  });
+});
+
+describe("plainMessage", () => {
+  /** The message for the first problem with a value under a schema */
+  const message = (schema: object, value: unknown) =>
+    new MetadataValidator({
+      a: { ...schema, $edahaField: { text: true } },
+    }).validate("a", value)[0]?.message;
+
+  it("should say what is wrong in plain words", () => {
+    expect(message({ type: "number" }, "x")).toBe("must be a number");
+    expect(message({ type: ["integer", "null"] }, "x")).toBe(
+      "must be a whole number or empty",
+    );
+    expect(message({ type: "boolean" }, 1)).toBe("must be yes or no");
+    expect(message({ type: "array" }, 1)).toBe("must be a list");
+    expect(message({ type: "object" }, 1)).toBe("must be a group of settings");
+    expect(message({ minimum: 1 }, 0)).toBe("must be at least 1");
+    expect(message({ maximum: 1 }, 2)).toBe("must be at most 1");
+    expect(message({ exclusiveMinimum: 1 }, 1)).toBe("must be more than 1");
+    expect(message({ exclusiveMaximum: 1 }, 1)).toBe("must be less than 1");
+    expect(message({ multipleOf: 5 }, 3)).toBe("must be a multiple of 5");
+    expect(message({ minLength: 1 }, "")).toBe("can't be empty");
+    expect(message({ minLength: 3 }, "a")).toBe(
+      "must be at least 3 characters",
+    );
+    expect(message({ maxLength: 1 }, "ab")).toBe("must be at most 1 character");
+    expect(message({ pattern: "^a$" }, "b")).toBe("isn't in the right form");
+    expect(message({ format: "email" }, "x")).toBe("must be an email address");
+    expect(message({ format: "uri" }, "x")).toBe(
+      "must be a full web address, e.g. https://example.com",
+    );
+    expect(message({ format: "date" }, "x")).toBe(
+      "must be a date, e.g. 2026-11-19",
+    );
+    expect(message({ format: "ipv4" }, "x")).toBe("must be an IPv4 address");
+    expect(message({ format: "duration" }, "x")).toBe(
+      "must be a valid duration",
+    );
+    expect(message({ enum: ["a", 2] }, "c")).toBe('must be one of "a", 2');
+    expect(message({ const: 3 }, 4)).toBe("must be 3");
+    expect(message({ minItems: 1 }, [])).toBe("must have at least 1 item");
+    expect(message({ maxItems: 1 }, [1, 2])).toBe("can have at most 1 item");
+    expect(message({ uniqueItems: true }, [1, 1])).toBe(
+      "can't have the same item twice",
+    );
+    // Others keep ajv's message
+    expect(message({ not: {} }, 1)).toBe("must NOT be valid");
+  });
+
+  it("should point at a missing or unknown property, so its field shows it", () => {
+    const validator = new MetadataValidator({
+      a: {
+        type: "object",
+        properties: { b: { $edahaField: { text: true } } },
+        required: ["b"],
+        additionalProperties: false,
+      },
+    });
+    expect(validator.validate("a", { c: 1 })).toEqual([
+      { path: "a/b", message: "is required", level: "error" },
+      { path: "a/c", message: "isn't a known setting", level: "error" },
+    ]);
+  });
+
+  it("should keep ajv's message for keywords it doesn't know", () => {
+    expect(
+      plainMessage({
+        keyword: "custom",
+        params: {},
+        message: "is odd",
+        instancePath: "",
+        schemaPath: "",
+      }),
+    ).toBe("is odd");
   });
 });
