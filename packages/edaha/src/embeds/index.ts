@@ -67,16 +67,15 @@ const isRenderers = (value: unknown, renderRequired: boolean) => {
  */
 export const isEmbedPlugin = (value: unknown): value is EmbedPlugin => {
   if (!value || typeof value !== "object") return false;
-  const { key, name, description, sources, build, editor } = value as Record<
-    string,
-    unknown
-  >;
+  const { key, name, description, sources, validate, build, editor } =
+    value as Record<string, unknown>;
   return (
     typeof key === "string" &&
     EMBED_KEY.test(key) &&
     typeof name === "string" &&
     name.trim() !== "" &&
     (description === undefined || typeof description === "string") &&
+    (validate === undefined || typeof validate === "function") &&
     (sources === undefined ||
       (typeof sources === "object" &&
         sources !== null &&
@@ -102,7 +101,7 @@ export const checkEmbedPlugins = (plugins: unknown[]): EmbedPlugin[] => {
   for (const plugin of plugins) {
     if (!isEmbedPlugin(plugin))
       throw new Error(
-        `"plugins" must be embed plugins ({ key, name, description?, sources?, build: { render, renderHead?, renderFoot? }, editor? }, with a lowercase kebab-case key and https origins), got ${JSON.stringify(plugin) ?? String(plugin)}`,
+        `"plugins" must be embed plugins ({ key, name, description?, sources?, validate?, build: { render, renderHead?, renderFoot? }, editor? }, with a lowercase kebab-case key and https origins), got ${JSON.stringify(plugin) ?? String(plugin)}`,
       );
     if (keys.has(plugin.key))
       throw new Error(
@@ -305,6 +304,20 @@ export class EmbedResolver {
     return { head: await part("renderHead"), foot: await part("renderFoot") };
   }
 
+  /**
+   * Why a block's content isn't valid (see EmbedPlugin.validate), or nothing when it is: also when its key has no
+   * plugin. Used by the editor to check content before it is saved.
+   *
+   * @example
+   * await embeds.validate("youtube", "https://example.com/"); // ["https://example.com/ is not a YouTube URL"]
+   */
+  async validate(key: string | undefined, content: string): Promise<string[]> {
+    const plugin = key === undefined ? undefined : this.plugins.get(key);
+    return plugin
+      ? validateContent(plugin, content)
+      : [capitalise(missingPlugin(key))];
+  }
+
   private async renderUncached(
     key: string | undefined,
     content: string,
@@ -317,16 +330,15 @@ export class EmbedResolver {
         ? `<p class="embed-link"><a href="${escapeHtml(content)}">${escapeHtml(content)}</a></p>`
         : `<pre class="embed-text">${escapeHtml(content)}</pre>`,
     });
-    if (key === undefined) {
-      logger.warn(
-        `${source}: embed blocks need a key, e.g. <!-- embed:youtube -->...<!-- /embed:youtube -->; shown as it is`,
-      );
+    const plugin = key === undefined ? undefined : this.plugins.get(key);
+    if (!plugin) {
+      logger.warn(`${source}: ${missingPlugin(key)}; shown as it is`);
       return fallback();
     }
-    const plugin = this.plugins.get(key);
-    if (!plugin) {
+    const errors = await validateContent(plugin, content);
+    if (errors.length) {
       logger.warn(
-        `${source}: no embed plugin with the key "${key}"; shown as it is`,
+        `${source}: ${plugin.name} embed isn't valid (${errors.join("; ")}); shown as it is`,
       );
       return fallback();
     }
@@ -340,8 +352,8 @@ export class EmbedResolver {
         renders,
       });
       return {
-        html: `<div class="embed embed-${key}">${html}</div>`,
-        usage: { key, renders },
+        html: `<div class="embed embed-${plugin.key}">${html}</div>`,
+        usage: { key: plugin.key, renders },
       };
     } catch (error) {
       logger.warn(
@@ -351,6 +363,44 @@ export class EmbedResolver {
     }
   }
 }
+
+/** Why a block's key has no plugin */
+const missingPlugin = (key: string | undefined) =>
+  key === undefined
+    ? "embed blocks need a key, e.g. <!-- embed:youtube -->...<!-- /embed:youtube -->"
+    : `no embed plugin with the key "${key}"`;
+
+/** A message with its first letter in capitals */
+const capitalise = (text: string) =>
+  text.charAt(0).toUpperCase() + text.slice(1);
+
+/**
+ * The messages of an error thrown by an embed's `validate`: each of an `AggregateError`'s errors, or the error's own.
+ *
+ * @example
+ * validationErrors(new AggregateError([new Error("No ID"), new Error("Too long")])); // ["No ID", "Too long"]
+ */
+export const validationErrors = (error: unknown): string[] => {
+  const errors =
+    error instanceof AggregateError && error.errors.length
+      ? error.errors
+      : [error];
+  return errors.map((e) => (e instanceof Error ? e.message : String(e)));
+};
+
+/** Why a block's content isn't valid for its plugin, or nothing when it is */
+const validateContent = async (
+  plugin: EmbedPlugin,
+  content: string,
+): Promise<string[]> => {
+  try {
+    return (await plugin.validate?.(content)) === false
+      ? [`The content isn't a valid ${plugin.name}`]
+      : [];
+  } catch (error) {
+    return validationErrors(error);
+  }
+};
 
 /** Add an embed's renders to a page's usage */
 const addUsage = (usage: EmbedUsage, used: RenderedEmbed["usage"]): void => {

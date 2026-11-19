@@ -28,6 +28,7 @@ export {
   embedBlock,
   isEmbedPlugin,
   loadPlugins,
+  validationErrors,
   type EmbedBuildRenderers,
   type EmbedContext,
   type EmbedEditorRenderers,

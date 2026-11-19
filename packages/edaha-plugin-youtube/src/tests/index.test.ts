@@ -48,15 +48,20 @@ describe("youtube", () => {
     expect(html).not.toContain("www.youtube.com");
   });
 
-  it("should throw for anything but a YouTube video URL", async () => {
-    await expect(youtube.build.render("not a url")).rejects.toThrow(
-      "Invalid URL",
+  it("should only accept YouTube video URLs, saying what is wrong", async () => {
+    expect(youtube.validate("https://youtu.be/aju_UB5VIf8")).toBe(true);
+    expect(() => youtube.validate("not a url")).toThrow(
+      '"not a url" is not a URL; paste a YouTube video\'s URL',
     );
-    await expect(
-      youtube.build.render("https://example.com/watch?v=aju_UB5VIf8"),
-    ).rejects.toThrow("is not a YouTube URL");
-    await expect(
-      youtube.build.render("https://www.youtube.com/@channel"),
-    ).rejects.toThrow("No YouTube video ID");
+    expect(() =>
+      youtube.validate("https://example.com/watch?v=aju_UB5VIf8"),
+    ).toThrow("https://example.com/watch?v=aju_UB5VIf8 is not a YouTube URL");
+    expect(() => youtube.validate("https://www.youtube.com/@channel")).toThrow(
+      "No YouTube video ID",
+    );
+    // Rendering checks too, for code that renders without validating
+    await expect(youtube.build.render("not a url")).rejects.toThrow(
+      "is not a URL",
+    );
   });
 });

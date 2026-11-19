@@ -21,6 +21,18 @@ describe("bandcamp", () => {
     expect(bandcamp.editor.icon).toMatch(/^<svg /);
   });
 
+  it("should only accept album and track page URLs, saying what is wrong", () => {
+    expect(bandcamp.validate("https://artist.bandcamp.com/track/name")).toBe(
+      true,
+    );
+    expect(() => bandcamp.validate("artist")).toThrow(
+      '"artist" is not a URL; paste a Bandcamp album or track page\'s URL',
+    );
+    expect(() => bandcamp.validate("https://artist.bandcamp.com/")).toThrow(
+      "https://artist.bandcamp.com/ is not a Bandcamp album or track page",
+    );
+  });
+
   it("should only embed album and track pages on bandcamp.com subdomains", async () => {
     const fetch = fetchPage(ALBUM_PAGE);
     for (const url of [

@@ -17,10 +17,9 @@ describe("mermaidjs", () => {
     );
   });
 
-  it("should reject a diagram without code", async () => {
-    await expect(mermaidjs.build.render("  ")).rejects.toThrow(
-      "the diagram has no code",
-    );
+  it("should only accept diagrams with code", () => {
+    expect(mermaidjs.validate("graph TD;")).toBe(true);
+    expect(() => mermaidjs.validate("  \n")).toThrow("The diagram has no code");
   });
 
   it("should load a pinned Mermaid from jsDelivr once per page, in the page's theme", async () => {

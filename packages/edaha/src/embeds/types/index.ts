@@ -76,6 +76,15 @@ export interface EmbedPlugin {
   description?: string | undefined;
   /** Optional; the web addresses its HTML loads from, which the editor's previews allow */
   sources?: EmbedSources | undefined;
+  /**
+   * Optional; check a block's content before it is rendered, for the website and the editor. Return `true` when it
+   * is valid. Throw an error saying what is wrong (or an `AggregateError` with one error for each problem),
+   * or return `false` for a general message. Content that isn't valid isn't rendered: it is shown as it is written,
+   * with a warning, and the editor's embed dialog shows the errors.
+   */
+  validate?:
+    | ((content: string) => boolean | undefined | Promise<boolean | undefined>)
+    | undefined;
   /** How it renders for the website */
   build: EmbedBuildRenderers;
   /** Optional; how it shows in the editor's rich text body instead (each one defaults to the website's) */

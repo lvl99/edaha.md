@@ -45,11 +45,13 @@ export const mermaidjs = {
   description:
     "A diagram drawn from Mermaid code, e.g. a flowchart. Pages with diagrams load Mermaid from jsDelivr.",
   sources: { script: ["https://cdn.jsdelivr.net"] },
+  validate: (content) => {
+    if (!content.trim()) throw new Error("The diagram has no code");
+    return true;
+  },
   build: {
-    render: async (content) => {
-      if (!content.trim()) throw new Error("the diagram has no code");
-      return `<pre class="mermaid">${escapeHtml(content)}</pre>`;
-    },
+    render: async (content) =>
+      `<pre class="mermaid">${escapeHtml(content)}</pre>`,
     renderFoot: async () => START_SCRIPT,
   },
   editor: { icon: ICON },

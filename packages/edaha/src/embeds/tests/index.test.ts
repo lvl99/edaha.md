@@ -8,6 +8,7 @@ import {
   EmbedResolver,
   isEmbedPlugin,
   loadPlugins,
+  validationErrors,
   type EmbedPlugin,
   type EmbedUsage,
 } from "..";
@@ -55,6 +56,7 @@ describe("isEmbedPlugin and checkEmbedPlugins", () => {
       isEmbedPlugin({
         ...plain,
         description: "Plain text",
+        validate: () => true,
         sources: {
           frame: ["https://player.example.com"],
           script: ["https://cdn.example.com"],
@@ -73,6 +75,7 @@ describe("isEmbedPlugin and checkEmbedPlugins", () => {
       { ...plain, key: "a b" },
       { ...plain, name: " " },
       { ...plain, description: 3 },
+      { ...plain, validate: true },
       { ...plain, build: undefined },
       { ...plain, build: { render: "x" } },
       { ...plain, build: { ...plain.build, renderHead: "x" } },
@@ -251,6 +254,66 @@ describe("EmbedResolver", () => {
     // Without a usage map, it isn't recorded
     expect(await resolver.replaceBlocks("No embeds", "news/b")).toBe(
       "No embeds",
+    );
+  });
+
+  it("should validate content before rendering it, showing content that isn't valid as it is written", async () => {
+    const render = vi.fn(async (content: string) => `<b>${content}</b>`);
+    const checked = {
+      key: "checked",
+      name: "Checked",
+      validate: async (content: string) => {
+        if (content === "none") return false;
+        if (content === "many")
+          throw new AggregateError(
+            [new Error("Too short"), new Error("No ID")],
+            "Problems",
+          );
+        if (content === "odd") throw "Odd";
+        if (content.length < 3) throw new Error("Too short");
+        return true;
+      },
+      build: { render },
+    } satisfies EmbedPlugin;
+    const unchecked = {
+      ...checked,
+      key: "unchecked",
+      validate: () => undefined,
+    };
+    const { resolver, logger } = setup([checked, unchecked]);
+    expect(await resolver.validate("checked", "valid")).toEqual([]);
+    expect(await resolver.validate("checked", "ab")).toEqual(["Too short"]);
+    expect(await resolver.validate("checked", "many")).toEqual([
+      "Too short",
+      "No ID",
+    ]);
+    expect(await resolver.validate("checked", "none")).toEqual([
+      "The content isn't a valid Checked",
+    ]);
+    expect(await resolver.validate("checked", "odd")).toEqual(["Odd"]);
+    // An AggregateError without errors gives its own message
+    expect(validationErrors(new AggregateError([], "All wrong"))).toEqual([
+      "All wrong",
+    ]);
+    // Returning nothing is valid, and so is a plugin without validate
+    expect(await resolver.validate("unchecked", "ab")).toEqual([]);
+    expect(await setup([plain]).resolver.validate("plain", "")).toEqual([]);
+    expect(await resolver.validate("nope", "x")).toEqual([
+      'No embed plugin with the key "nope"',
+    ]);
+    expect(await resolver.validate(undefined, "x")).toEqual([
+      "Embed blocks need a key, e.g. <!-- embed:youtube -->...<!-- /embed:youtube -->",
+    ]);
+
+    expect((await resolver.render("checked", "many", "news/a")).html).toBe(
+      '<pre class="embed-text">many</pre>',
+    );
+    expect(render).not.toHaveBeenCalled();
+    expect(logger.warn).toHaveBeenCalledWith(
+      "news/a: Checked embed isn't valid (Too short; No ID); shown as it is",
+    );
+    expect((await resolver.render("checked", "valid", "news/a")).html).toBe(
+      '<div class="embed embed-checked"><b>valid</b></div>',
     );
   });
 
