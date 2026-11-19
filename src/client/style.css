@@ -1148,3 +1148,15 @@ edaha-article .preview {
     border-radius: 0;
   }
 }
+
+/* The file browser's operations: icon buttons in a row */
+.file-browser-operations {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.file-browser-operations .btn-icon {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  color: var(--colour-text);
+}

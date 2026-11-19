@@ -43,6 +43,15 @@ describe("EditorApi", () => {
     });
     await api.recent();
     await api.filters();
+    await api.queryFiles();
+    await api.queryFiles({ kind: "image", sort: "size", order: "desc" });
+    await api.fileFilters();
+    await api.fileReferences({ ...LOCATION, name: "my photo.png" });
+    await api.replaceFile(
+      { ...LOCATION, name: "a.png" },
+      new File(["x"], "b.png"),
+    );
+    await api.deleteFile({ ...LOCATION, name: "a.png" });
     await api.types();
     await api.templates("page");
     await api.read(LOCATION);
@@ -58,6 +67,12 @@ describe("EditorApi", () => {
       "GET /api/articles?search=hi+there&type=news&sort=title&page=2",
       "GET /api/articles/recent",
       "GET /api/articles/filters",
+      "GET /api/files",
+      "GET /api/files?kind=image&sort=size&order=desc",
+      "GET /api/files/filters",
+      "GET /api/files/article/hello/my%20photo.png/references",
+      "PUT /api/files/article/hello/a.png",
+      "DELETE /api/files/article/hello/a.png",
       "GET /api/types",
       "GET /api/templates/page",
       "GET /api/articles/article/hello",
@@ -66,11 +81,15 @@ describe("EditorApi", () => {
       "POST /api/articles/article/hello/files",
       "GET /api/embed?url=https%3A%2F%2Fyoutu.be%2Fx%3Fa%3D1%26b%3D2",
     ]);
-    expect(calls[7]![1]).toMatchObject({
+    expect((calls[8]![1]!.body as FormData).get("file") as File).toHaveProperty(
+      "name",
+      "b.png",
+    );
+    expect(calls[13]![1]).toMatchObject({
       headers: { "Content-Type": "application/json" },
       body: '{"title":"Hi"}',
     });
-    expect((calls[9]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
+    expect((calls[15]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
   });
 
   it("should convert bodies and render previews, returning their result", async () => {

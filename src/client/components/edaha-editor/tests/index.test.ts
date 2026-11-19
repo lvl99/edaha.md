@@ -17,6 +17,7 @@ import {
   type EdahaEditor,
 } from "..";
 import type { EdahaArticleBrowser } from "../../edaha-article-browser";
+import type { EdahaFileBrowser } from "../../edaha-file-browser";
 import { button, find, input, settle } from "../../../../shared/tests/helpers";
 
 afterEach(() => document.body.replaceChildren());
@@ -417,6 +418,89 @@ describe("edaha-editor", () => {
   it("should create its own API by default", () => {
     const element = document.createElement("edaha-editor") as EdahaEditor;
     expect(element.api).toBeDefined();
+  });
+});
+
+describe("edaha-editor files", () => {
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  /** Tell the editor a file changed */
+  const filesChanged = async (
+    element: EdahaEditor,
+    file: { type: string; slug: string },
+    articles: { type: string; slug: string }[] = [],
+  ) => {
+    find(element, "edaha-file-browser").dispatchEvent(
+      new CustomEvent("files-changed", {
+        detail: { file: { ...file, name: "a.png" }, articles },
+        bubbles: true,
+      }),
+    );
+    await settle(element);
+  };
+
+  it("should open the file browser from the Files button", async () => {
+    const { element } = await setup();
+    const browser = find<EdahaFileBrowser>(element, "edaha-file-browser");
+    const show = vi.spyOn(browser, "show").mockResolvedValue();
+    expect(browser.api).toBe(element.api);
+    expect(browser.types).toBe(element.types);
+    await element.openNav();
+    button(element, "Files").click();
+    expect(show).toHaveBeenCalledOnce();
+    expect(element.navOpen).toBe(false);
+  });
+
+  it("should refresh, and show the open article again when a file change touched it", async () => {
+    const { element, api } = await setup();
+    await element.open(SUMMARIES[0]!);
+    await settle(element);
+    const reads = api.read.mock.calls.length;
+    const recents = api.recent.mock.calls.length;
+    // Another article's file, not referred to by the open one
+    await filesChanged(element, { type: "page", slug: "broken" });
+    expect(api.recent).toHaveBeenCalledTimes(recents + 1);
+    expect(api.read).toHaveBeenCalledTimes(reads);
+    // The open article's own file
+    await filesChanged(element, { type: "article", slug: "hello" });
+    expect(api.read).toHaveBeenCalledTimes(reads + 1);
+    // A file the open article refers to
+    await filesChanged(element, { type: "page", slug: "broken" }, [
+      { type: "article", slug: "hello" },
+    ]);
+    expect(api.read).toHaveBeenCalledTimes(reads + 2);
+  });
+
+  it("should warn instead when the touched article has unsaved changes, and do nothing with none open", async () => {
+    const { element, api } = await setup();
+    await filesChanged(element, { type: "article", slug: "hello" });
+    expect(api.read).not.toHaveBeenCalled();
+    await element.open(SUMMARIES[0]!);
+    await settle(element);
+    const form = find<EdahaArticle>(element, "edaha-article");
+    form.bodyCheckDelay = 0;
+    input(
+      find<HTMLInputElement>(
+        form,
+        "edaha-article-data-field[name=title] input",
+      ),
+      "Changed",
+    );
+    await settle(element);
+    await filesChanged(element, { type: "article", slug: "hello" });
+    expect(api.read).toHaveBeenCalledTimes(1);
+    expect(find(element, ".toast.error span").textContent).toContain(
+      "it has unsaved changes",
+    );
+  });
+
+  it("should open the article the page's address names", async () => {
+    window.history.replaceState(null, "", "/#page/broken");
+    const { api } = await setup();
+    expect(api.read).toHaveBeenCalledWith({ type: "page", slug: "broken" });
+    window.history.replaceState(null, "", "/#not an article");
+    const { api: other } = await setup();
+    expect(other.read).not.toHaveBeenCalled();
   });
 });
 

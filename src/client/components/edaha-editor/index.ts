@@ -14,6 +14,11 @@ import { defineElement } from "../define/index.ts";
 import "../edaha-article/index.ts";
 import type { EdahaArticle } from "../edaha-article/index.ts";
 import { typeLabel } from "../edaha-article-browser/index.ts";
+import "../edaha-file-browser/index.ts";
+import type {
+  EdahaFileBrowser,
+  FilesChanged,
+} from "../edaha-file-browser/index.ts";
 import type {
   ArticleBrowserOptions,
   EdahaArticleBrowser,
@@ -199,7 +204,16 @@ export class EdahaEditor extends LitElement {
     this.stopWatchingTheme = onDeviceThemeChange(() => this.requestUpdate());
     // On wide screens the article list is always shown, so it isn't left open over the page
     this.stopWatchingNarrow = onNarrowChange(() => (this.navOpen = false));
-    void this.refresh();
+    void this.refresh().then(() => this.openFromAddress());
+  }
+
+  /**
+   * Open the article the page's address names, e.g. "#news/hello" (as the file browser's locations link to).
+   */
+  private async openFromAddress(): Promise<void> {
+    const [, type, slug] =
+      /^#([a-z0-9-]+)\/([a-z0-9-]+)$/.exec(window.location.hash) ?? [];
+    if (type && slug) await this.open({ type, slug });
   }
 
   override disconnectedCallback(): void {
@@ -316,6 +330,40 @@ export class EdahaEditor extends LitElement {
       () => void this.searchTitles(),
       this.searchDelay,
     );
+  }
+
+  /** Open the file browser */
+  async openFiles(): Promise<void> {
+    await this.querySelector<EdahaFileBrowser>("edaha-file-browser")?.show();
+  }
+
+  /**
+   * After a file is replaced or deleted, refresh the nav, and show the open article again if the change touched it
+   * (its folder's files or its references). An article with unsaved changes is left as it is, with a warning, as it
+   * still has the old references.
+   */
+  private async onFilesChanged({
+    file,
+    articles,
+  }: FilesChanged): Promise<void> {
+    await this.refresh();
+    const selected = this.selected;
+    const touched =
+      selected &&
+      [file, ...articles].some(
+        ({ type, slug }) => type === selected.type && slug === selected.slug,
+      );
+    if (!touched) return;
+    const form = this.form();
+    if (form?.dirty) {
+      this.toast({
+        kind: "error",
+        message:
+          "The open article's files changed, but it has unsaved changes, so it still shows the old ones. Saving keeps its old references.",
+      });
+      return;
+    }
+    await this.open(selected);
   }
 
   /**
@@ -647,6 +695,17 @@ export class EdahaEditor extends LitElement {
               >All articles</span
             >
           </button>
+          <button
+            type="button"
+            class="btn-icon"
+            title="Files"
+            @click=${() => {
+              this.closeNav();
+              void this.openFiles();
+            }}
+          >
+            ${icon("folder_open")}<span class="visually-hidden">Files</span>
+          </button>
         </div>
         ${this.searchResult ? this.renderSearchResult(this.searchResult, renderItem) : this.renderGroups(renderItem)}
       </nav>
@@ -673,6 +732,12 @@ export class EdahaEditor extends LitElement {
         @article-choose=${(event: CustomEvent<ArticleLocation>) =>
           void this.open(event.detail)}
       ></edaha-article-browser>
+      <edaha-file-browser
+        .api=${this.api}
+        .types=${this.types}
+        @files-changed=${(event: CustomEvent<FilesChanged>) =>
+          void this.onFilesChanged(event.detail)}
+      ></edaha-file-browser>
       ${this.renderUnsaved()}
       <edaha-toasts></edaha-toasts>
     `;

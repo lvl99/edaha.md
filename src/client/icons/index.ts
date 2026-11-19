@@ -7,6 +7,10 @@ import close from "@material-symbols/svg-400/outlined/close.svg?raw";
 import codeBlocks from "@material-symbols/svg-400/outlined/code_blocks.svg?raw";
 import deleteSweep from "@material-symbols/svg-400/outlined/delete_sweep.svg?raw";
 import expandCircleDown from "@material-symbols/svg-400/outlined/expand_circle_down.svg?raw";
+import contentCopy from "@material-symbols/svg-400/outlined/content_copy.svg?raw";
+import deleteIcon from "@material-symbols/svg-400/outlined/delete.svg?raw";
+import findReplace from "@material-symbols/svg-400/outlined/find_replace.svg?raw";
+import folderOpen from "@material-symbols/svg-400/outlined/folder_open.svg?raw";
 import formatBold from "@material-symbols/svg-400/outlined/format_bold.svg?raw";
 import formatH2 from "@material-symbols/svg-400/outlined/format_h2.svg?raw";
 import formatH3 from "@material-symbols/svg-400/outlined/format_h3.svg?raw";
@@ -34,6 +38,10 @@ export const ICONS = {
   add_photo_alternate: addPhotoAlternate,
   add_row_below: addRowBelow,
   close,
+  content_copy: contentCopy,
+  delete: deleteIcon,
+  find_replace: findReplace,
+  folder_open: folderOpen,
   code_blocks: codeBlocks,
   delete_sweep: deleteSweep,
   expand_circle_down: expandCircleDown,

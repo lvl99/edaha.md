@@ -1,6 +1,10 @@
 import type {
   ArticleFilters,
   ArticleLocation,
+  FileChange,
+  FileFilters,
+  FilePage,
+  FileQuery,
   ArticlePage,
   ArticleQuery,
   ArticleTypeLabels,
@@ -12,6 +16,30 @@ import type {
 } from "../../server/types/index.ts";
 
 export type { ArticleLocation } from "../../server/types/index.ts";
+
+/** A file in an article's folder */
+export interface FileLocation extends ArticleLocation {
+  name: string;
+}
+
+/**
+ * A query as URL search parameters, leaving out empty parts, e.g. "?search=hi&page=2" (or "" for none).
+ *
+ * @example
+ * searchParams({ search: "hi", type: "", page: 2 }); // "?search=hi&page=2"
+ */
+export const searchParams = (query: object): string => {
+  const params = new URLSearchParams(
+    Object.entries(query)
+      .filter(([, value]) => value !== undefined && value !== "")
+      .map(([name, value]) => [name, String(value)]),
+  );
+  return params.size ? `?${params}` : "";
+};
+
+/** A file's API route */
+const fileRoute = ({ type, slug, name }: FileLocation) =>
+  `/api/files/${type}/${slug}/${encodeURIComponent(name)}`;
 
 /**
  * Talks to the editor's local server (see src/server/app.ts).
@@ -57,12 +85,40 @@ export class EditorApi {
    * await api.query({ search: "hello", sort: "title", page: 2 });
    */
   query(query: ArticleQuery = {}): Promise<ArticlePage> {
-    const params = new URLSearchParams(
-      Object.entries(query)
-        .filter(([, value]) => value !== undefined && value !== "")
-        .map(([name, value]) => [name, String(value)]),
-    );
-    return this.request(`/api/articles${params.size ? `?${params}` : ""}`);
+    return this.request(`/api/articles${searchParams(query)}`);
+  }
+
+  /**
+   * Find files in the articles' folders by name, kind and article type, sorted by name, kind, size or location, a page
+   * at a time.
+   *
+   * @example
+   * await api.queryFiles({ kind: "image", sort: "size", order: "desc" });
+   */
+  queryFiles(query: FileQuery = {}): Promise<FilePage> {
+    return this.request(`/api/files${searchParams(query)}`);
+  }
+
+  /** The kinds of files and the article types they are in, for the file browser's filters */
+  fileFilters(): Promise<FileFilters> {
+    return this.request("/api/files/filters");
+  }
+
+  /** The articles that refer to a file */
+  fileReferences(file: FileLocation): Promise<ArticleLocation[]> {
+    return this.request(`${fileRoute(file)}/references`);
+  }
+
+  /** Replace a file with another, updating references to it if the new one's name differs */
+  replaceFile(file: FileLocation, replacement: File): Promise<FileChange> {
+    const body = new FormData();
+    body.append("file", replacement);
+    return this.request(fileRoute(file), { method: "PUT", body });
+  }
+
+  /** Delete a file, removing references to it from every article */
+  deleteFile(file: FileLocation): Promise<FileChange> {
+    return this.request(fileRoute(file), { method: "DELETE" });
   }
 
   /** Each type's most recently changed articles, for the nav */
