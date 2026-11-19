@@ -101,6 +101,7 @@ export const TOOLBAR_ICONS: Record<string, IconName> = {
   Raw: "raw_on",
   "Read more": "read_more",
   "Upload image": "add_photo_alternate",
+  "Choose file": "folder_open",
 };
 
 /**

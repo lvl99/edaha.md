@@ -529,6 +529,26 @@ describe("edaha-editor files", () => {
     expect(element.navOpen).toBe(false);
   });
 
+  it("should let the article form choose existing files in the file browser", async () => {
+    const { element } = await setup();
+    const browser = find<EdahaFileBrowser>(element, "edaha-file-browser");
+    const file = {
+      type: "news",
+      slug: "x",
+      name: "a.png",
+      kind: "image" as const,
+      size: 1,
+      updated: "2026-11-01T00:00:00.000Z",
+      url: "/news/x/a.png",
+    };
+    const pick = vi.spyOn(browser, "pick").mockResolvedValue(file);
+    button(element, "New article").click();
+    await settle(element);
+    const article = find<EdahaArticle>(element, "edaha-article");
+    expect(await article.pickFile?.("image")).toBe(file);
+    expect(pick).toHaveBeenCalledWith("image");
+  });
+
   it("should refresh, and show the open article again when a file change touched it", async () => {
     const { element, api } = await setup();
     await element.open(SUMMARIES[0]!);

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "..";
 import type { EdahaArticleDataField, FieldChange } from "..";
 import type { EdahaRichtext } from "../../edaha-richtext";
+import type { EdahaMarkdown } from "../../edaha-markdown";
 import {
   button,
   chooseFile,
@@ -169,6 +170,70 @@ describe("edaha-article-data-field", () => {
     chooseFile(chooser, file);
     chooseFile(chooser);
     expect(files).toEqual([file]);
+  });
+
+  it("should give rich text and Markdown fields the file chooser", async () => {
+    const chooseFile = vi.fn();
+    const richtext = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      { name: "body", type: "richtext", chooseFile },
+    );
+    expect(find<EdahaRichtext>(richtext, "edaha-richtext").chooseFile).toBe(
+      chooseFile,
+    );
+    const markdown = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      { name: "bodyMarkdown", type: "markdown", chooseFile },
+    );
+    expect(find<EdahaMarkdown>(markdown, "edaha-markdown").chooseFile).toBe(
+      chooseFile,
+    );
+  });
+
+  it("should set a file field to a chosen existing file, of the kind it accepts", async () => {
+    const field = await mount<EdahaArticleDataField>(
+      "edaha-article-data-field",
+      {
+        name: "thumbnail",
+        type: "file",
+        label: "Thumbnail",
+        accept: "image/png",
+        allowchange: true,
+      },
+    );
+    expect(field.querySelector(".btn-choose-file")).toBeNull();
+    const chooseFile = vi
+      .fn()
+      .mockResolvedValueOnce({
+        url: "/news/a/cat.png",
+        name: "cat.png",
+        kind: "image",
+      })
+      .mockResolvedValueOnce(undefined);
+    field.chooseFile = chooseFile;
+    await field.updateComplete;
+    const { changes } = record(field);
+    const choose = find<HTMLButtonElement>(field, ".btn-choose-file");
+    expect(choose.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Choose existing file… for Thumbnail",
+    );
+    choose.click();
+    await vi.waitFor(() =>
+      expect(changes).toEqual([
+        { name: "thumbnail", value: "/news/a/cat.png" },
+      ]),
+    );
+    expect(chooseFile).toHaveBeenCalledWith("image");
+    await field.updateComplete;
+    find<HTMLButtonElement>(field, ".btn-choose-file").click();
+    await new Promise((resolve) => setTimeout(resolve));
+    expect(changes).toHaveLength(1);
+
+    // Fields taking other files show any kind first
+    field.accept = "image/png, application/pdf";
+    await field.updateComplete;
+    find<HTMLButtonElement>(field, ".btn-choose-file").click();
+    expect(chooseFile).toHaveBeenLastCalledWith(undefined);
   });
 
   it("should show the current file with an image preview", async () => {

@@ -2,11 +2,13 @@ import { html, LitElement } from "lit";
 import { live } from "lit/directives/live.js";
 import { defineElement } from "../define/index.ts";
 import type { ImageUploader } from "../edaha-richtext/index.ts";
+import type { FileChooser } from "../edaha-file-browser/index.ts";
 import { toolbarButtonContent } from "../../icons/index.ts";
 import {
   addTableColumn,
   addTableRow,
   insertTable,
+  insertFile,
   insertText,
   removeTable,
   removeTableColumn,
@@ -52,6 +54,7 @@ export class EdahaMarkdown extends LitElement {
     value: { attribute: false },
     textareaId: { attribute: false },
     uploadImage: { attribute: false },
+    chooseFile: { attribute: false },
   };
 
   /** The Markdown */
@@ -62,6 +65,9 @@ export class EdahaMarkdown extends LitElement {
 
   /** Uploads an image file and returns how to refer to it in Markdown; without it, the upload button is disabled */
   declare uploadImage?: ImageUploader | undefined;
+
+  /** Lets the user choose an existing file, giving how to refer to it; without it, its button is disabled */
+  declare chooseFile?: FileChooser | undefined;
 
   /** Asks for a URL (replaceable for tests) */
   prompt: (message: string, value?: string) => string | null = (
@@ -204,6 +210,16 @@ export class EdahaMarkdown extends LitElement {
     }
   }
 
+  /** Let the user choose an existing file, and insert it where the selection was when asked */
+  private async onChooseFile() {
+    const selection = this.selection;
+    const file = await this.chooseFile?.();
+    if (file)
+      this.apply(
+        insertFile(selection, file.url, file.name, file.kind === "image"),
+      );
+  }
+
   override render() {
     const selection = this.selection;
     // Moving the cursor changes which buttons can be used (e.g. the table buttons)
@@ -241,6 +257,16 @@ export class EdahaMarkdown extends LitElement {
             @change=${(event: Event) => void this.onImageFile(event)}
           />
         </label>
+        <button
+          type="button"
+          class="toolbar-button"
+          data-action="Choose file"
+          title="Choose file"
+          ?disabled=${!this.chooseFile}
+          @click=${() => void this.onChooseFile()}
+        >
+          ${toolbarButtonContent("Choose file")}
+        </button>
       </div>
       <textarea
         id=${this.textareaId}

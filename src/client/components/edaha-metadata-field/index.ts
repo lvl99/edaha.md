@@ -16,6 +16,7 @@ import {
 } from "../../metadataForm/index.ts";
 import { fieldOptions } from "../../../generator/metadata/index.ts";
 import { defineElement } from "../define/index.ts";
+import { acceptedKind, type FileChooser } from "../edaha-file-browser/index.ts";
 
 /** Detail of the `metadata-change` event: the changed value's path (e.g. "credit/name") and its new value */
 export interface MetadataChange {
@@ -53,6 +54,7 @@ export class EdahaMetadataField extends LitElement {
     problems: { attribute: false },
     required: { type: Boolean },
     uploadFile: { attribute: false },
+    chooseFile: { attribute: false },
     fileUrl: { attribute: false },
   };
 
@@ -67,6 +69,8 @@ export class EdahaMetadataField extends LitElement {
   declare required: boolean;
   /** Uploads files for file fields; without it they can't be chosen */
   declare uploadFile?: FileUploader | undefined;
+  /** Lets the user choose an existing file for file fields */
+  declare chooseFile?: FileChooser | undefined;
   /** The URL a file name is shown at, for file fields */
   declare fileUrl?: ((name: string) => string | undefined) | undefined;
 
@@ -157,6 +161,7 @@ export class EdahaMetadataField extends LitElement {
       .problems=${this.problems}
       ?required=${options.required ?? false}
       .uploadFile=${this.uploadFile}
+      .chooseFile=${this.chooseFile}
       .fileUrl=${this.fileUrl}
     ></edaha-metadata-field>`;
   }
@@ -295,7 +300,18 @@ export class EdahaMetadataField extends LitElement {
     </fieldset>`;
   }
 
-  /** Render a file field: the file's name (linked), a chooser that uploads it, and a button that clears it */
+  /** Let the user choose an existing file (of the kind the field accepts), and set the value to it */
+  private async chooseExisting() {
+    const file = await this.chooseFile?.(
+      acceptedKind(inputAttributes(this.schema).accept),
+    );
+    if (file) this.change(this.path, file.url);
+  }
+
+  /**
+   * Render a file field: the file's name (linked), a chooser that uploads it, a button choosing an existing file, and
+   * a button that clears it.
+   */
   private renderFile(id: string) {
     const name = typeof this.value === "string" ? this.value : "";
     const url = name ? this.fileUrl?.(name) : undefined;
@@ -331,7 +347,17 @@ export class EdahaMetadataField extends LitElement {
             // The uploader reports its own errors
           }
         }}
-      />`;
+      />${
+        this.chooseFile
+          ? html`<button
+              type="button"
+              class="btn btn-choose-file"
+              @click=${() => void this.chooseExisting()}
+            >
+              Choose existing file…${hidden(` for ${this.fieldTitle}`)}
+            </button>`
+          : nothing
+      }`;
   }
 
   /** Render the input for a single value's field kind (the other kinds are an `<input>` of the same type) */

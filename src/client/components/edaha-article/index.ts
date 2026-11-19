@@ -9,7 +9,10 @@ import type {
   SiteInfo,
   EditorArticleData,
   EditorAttachment,
+  FileKind,
+  FileSummary,
 } from "../../../server/types/index.ts";
+import type { FileChooser } from "../edaha-file-browser/index.ts";
 import {
   ApiError,
   type ArticleLocation,
@@ -323,6 +326,7 @@ export class EdahaArticle extends LitElement {
     openGroups: { state: true },
     compact: { attribute: false },
     focusMode: { attribute: false },
+    pickFile: { attribute: false },
   };
 
   declare api: EditorApi;
@@ -367,6 +371,9 @@ export class EdahaArticle extends LitElement {
   declare compact: boolean;
   /** Whether focus mode is on */
   declare focusMode: boolean;
+  /** Lets the user choose an existing file (e.g. in the file browser); without it, existing files can't be chosen */
+  declare pickFile?:
+    ((kind?: FileKind) => Promise<FileSummary | undefined>) | undefined;
 
   /** Whether the groups' open state has been set from the config file's groups */
   private groupsOpened = false;
@@ -500,9 +507,12 @@ export class EdahaArticle extends LitElement {
     }
   }
 
-  /** The URL a file in the saved article folder is served at */
+  /**
+   * The URL a file in the saved article folder is served at. Addresses and paths on the website (e.g. another
+   * article's file) are served as they are.
+   */
   private fileUrl(name: string | undefined) {
-    if (!name || !this.location || /^[a-z][a-z0-9+.-]*:/i.test(name))
+    if (!name || !this.location || /^([a-z][a-z0-9+.-]*:|\/)/i.test(name))
       return name;
     return `/files/${this.location.type}/${this.location.slug}/${name}`;
   }
@@ -551,6 +561,35 @@ export class EdahaArticle extends LitElement {
     if (!name) throw new Error("Upload failed");
     return name;
   };
+
+  /**
+   * Let the user choose an existing file, referred to by its name when it's in the article's own folder, or else by
+   * its path on the website.
+   */
+  private readonly chooseFile: FileChooser = async (kind) => {
+    const file = await this.pickFile?.(kind);
+    if (!file) return undefined;
+    const own =
+      file.type === this.location?.type && file.slug === this.location.slug;
+    return {
+      url: own ? file.name : file.url,
+      name: file.name,
+      kind: file.kind,
+    };
+  };
+
+  /** Files chosen for the rich text body are shown from the URL the editor serves them at */
+  private readonly chooseBodyFile: FileChooser = async (kind) => {
+    const file = await this.chooseFile(kind);
+    return file && { ...file, url: this.fileUrl(file.url) as string };
+  };
+
+  /** The file choosers, while existing files can be chosen */
+  private choosers() {
+    return this.pickFile
+      ? { file: this.chooseFile, body: this.chooseBodyFile }
+      : { file: undefined, body: undefined };
+  }
 
   /** Embed blocks in the body preview their embeds as the website shows them */
   private readonly loadEmbedPreview = (url: string) =>
@@ -965,6 +1004,7 @@ export class EdahaArticle extends LitElement {
               .value=${attachment.url}
               preview
               .previewUrl=${this.fileUrl(attachment.url)}
+              .chooseFile=${this.choosers().file}
               allowchange
               ?disabled=${noUploads}
             ></edaha-article-data-field>
@@ -1009,6 +1049,7 @@ export class EdahaArticle extends LitElement {
         ?changed=${this.bodyChanged}
         .value=${this.bodyMarkdown}
         .uploadImage=${this.location ? this.uploadMarkdownImage : undefined}
+        .chooseFile=${this.choosers().file}
       ></edaha-article-data-field>`;
     else if (this.mode === "preview")
       // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. It
@@ -1054,6 +1095,7 @@ export class EdahaArticle extends LitElement {
         ?changed=${this.bodyChanged}
         .value=${this.data.bodyHtml}
         .uploadImage=${this.location ? this.uploadImage : undefined}
+        .chooseFile=${this.choosers().body}
         .loadEmbedPreview=${this.loadEmbedPreview}
       ></edaha-article-data-field>`;
     return html`<div
@@ -1216,6 +1258,7 @@ export class EdahaArticle extends LitElement {
           .value=${data.thumbnail ?? ""}
           preview
           .previewUrl=${this.fileUrl(data.thumbnail)}
+          .chooseFile=${this.choosers().file}
           allowchange
           allowclear
           ?disabled=${!this.location}
@@ -1250,6 +1293,7 @@ export class EdahaArticle extends LitElement {
       .value=${this.data.meta?.[key]}
       .problems=${this.metaProblems}
       .uploadFile=${this.location ? this.uploadMarkdownImage : undefined}
+      .chooseFile=${this.choosers().file}
       .fileUrl=${(name: string) => this.fileUrl(name)}
     ></edaha-metadata-field>`;
   }

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FilePage, FileSummary } from "../../../../server/types";
 import type { EditorApi } from "../../../editorApi";
 import "..";
-import { formatFileSize, type EdahaFileBrowser } from "..";
+import { acceptedKind, formatFileSize, type EdahaFileBrowser } from "..";
 import {
   button,
   chooseFile,
@@ -116,6 +116,16 @@ describe("formatFileSize", () => {
     expect(formatFileSize(3 * 1024 ** 2)).toBe("3 MB");
     expect(formatFileSize(5.25 * 1024 ** 3)).toBe("5.3 GB");
     expect(formatFileSize(4096 * 1024 ** 3)).toBe("4096 GB");
+  });
+});
+
+describe("acceptedKind", () => {
+  it("should be images only when a file input only accepts images", () => {
+    expect(acceptedKind("image/png, image/jpeg")).toBe("image");
+    expect(acceptedKind("image/*")).toBe("image");
+    expect(acceptedKind("image/png, application/pdf")).toBeUndefined();
+    expect(acceptedKind("")).toBeUndefined();
+    expect(acceptedKind()).toBeUndefined();
   });
 });
 
@@ -474,5 +484,56 @@ describe("edaha-file-browser", () => {
     expect(api.queryFiles).toHaveBeenCalledTimes(calls);
     element.close();
     expect(element.open).toBe(false);
+  });
+
+  it("should let a file be chosen, first showing files of a kind, and give it", async () => {
+    const { element, api } = await setup();
+    // Not picking: no Choose buttons
+    expect(find(element, "h2").textContent?.trim()).toBe("Files");
+    expect(element.querySelectorAll("tbody .btn").length).toBe(0);
+
+    const chosen = element.pick("image");
+    await settle(element);
+    expect(element.open).toBe(true);
+    expect(find(element, "h2").textContent?.trim()).toBe("Choose a file");
+    expect(api.queryFiles).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: "image" }),
+    );
+    const choose = find<HTMLButtonElement>(element, "tbody tr .btn");
+    expect(choose.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Choose photo.png",
+    );
+    // Replacing and deleting are still offered
+    expect(button(element, "Delete photo.png…")).toBeDefined();
+    choose.click();
+    expect(await chosen).toEqual(summary());
+    expect(element.open).toBe(false);
+    await settle(element);
+    expect(find(element, "h2").textContent?.trim()).toBe("Files");
+  });
+
+  it("should give no file when closed or opened again without choosing", async () => {
+    const { element, api } = await setup();
+    const closed = element.pick();
+    await settle(element);
+    expect(api.queryFiles).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: undefined }),
+    );
+    button(element, "Close").click();
+    expect(await closed).toBeUndefined();
+
+    const replaced = element.pick();
+    await settle(element);
+    await element.show();
+    expect(await replaced).toBeUndefined();
+    await settle(element);
+    expect(element.querySelectorAll("tbody .btn").length).toBe(0);
+
+    const picked = element.pick();
+    const again = element.pick("document");
+    expect(await picked).toBeUndefined();
+    await settle(element);
+    find<HTMLButtonElement>(element, "tbody tr .btn").click();
+    expect(await again).toEqual(summary());
   });
 });

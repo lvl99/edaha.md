@@ -6,6 +6,7 @@ import type {
   ArticleSummary,
   ArticleTypeLabels,
   EditorArticle,
+  FileKind,
   MetadataInfo,
   MetadataProblem,
   RecentArticles,
@@ -290,6 +291,10 @@ export class EdahaEditor extends LitElement {
     )
       this.querySelector<HTMLElement>(".nav-toggle")?.focus();
   }
+
+  /** Let the user choose an existing file in the file browser, for the article form */
+  private readonly pickFile = (kind?: FileKind) =>
+    (this.querySelector("edaha-file-browser") as EdahaFileBrowser).pick(kind);
 
   /** The article form, while shown */
   private form(): EdahaArticle | null {
@@ -853,6 +858,7 @@ export class EdahaEditor extends LitElement {
                   .site=${this.site}
                   .compact=${this.compact}
                   .focusMode=${this.focusMode}
+                  .pickFile=${this.pickFile}
                   @focus-mode-change=${(event: CustomEvent<boolean>) =>
                     (this.focusMode = event.detail)}
                   @article-saved=${(event: CustomEvent<ArticleLocation>) => void this.onSaved(event)}

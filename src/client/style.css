@@ -1184,6 +1184,7 @@ edaha-editor[focus-mode] .edaha-article-main {
 /* The file browser's operations: icon buttons in a row */
 .file-browser-operations {
   display: flex;
+  align-items: center;
   gap: 0.25rem;
 }
 

@@ -866,6 +866,81 @@ describe("edaha-article focus mode button", () => {
   });
 });
 
+describe("edaha-article choosing existing files", () => {
+  /** A file the file browser lists */
+  const listed = (type: string, slug: string, name: string) => ({
+    type,
+    slug,
+    name,
+    kind: name.endsWith(".png") ? ("image" as const) : ("document" as const),
+    size: 1,
+    updated: DATE,
+    url: `/${type}/${slug}/${name}`,
+  });
+
+  it("should offer no choosers without a file picker", async () => {
+    const { element } = await setup();
+    expect(field(element, "body").chooseFile).toBeUndefined();
+    expect(field(element, "thumbnail").chooseFile).toBeUndefined();
+    expect(element.querySelector(".btn-choose-file")).toBeNull();
+  });
+
+  it("should refer to the article's own files by name, and others by their path on the website", async () => {
+    const { element } = await setup();
+    element.pickFile = vi
+      .fn()
+      .mockResolvedValueOnce(listed("article", "hello", "cat.png"))
+      .mockResolvedValueOnce(listed("page", "about", "guide.pdf"))
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(listed("article", "hello", "cat.png"))
+      .mockResolvedValueOnce(listed("page", "about", "team.png"));
+    await settle(element);
+    const choose = field(element, "thumbnail").chooseFile!;
+    expect(await choose("image")).toEqual({
+      url: "cat.png",
+      name: "cat.png",
+      kind: "image",
+    });
+    expect(element.pickFile).toHaveBeenCalledWith("image");
+    expect(await choose()).toEqual({
+      url: "/page/about/guide.pdf",
+      name: "guide.pdf",
+      kind: "document",
+    });
+    expect(await choose()).toBeUndefined();
+    // The rich text body shows the article's own files from the editor's file URL
+    const chooseBody = field(element, "body").chooseFile!;
+    expect((await chooseBody())?.url).toBe("/files/article/hello/cat.png");
+    expect((await chooseBody())?.url).toBe("/page/about/team.png");
+    // Attachments get the same chooser
+    expect(field(element, "attachments[0][url]").chooseFile).toBe(choose);
+  });
+
+  it("should give the Markdown body the chooser, and choose for unsaved articles", async () => {
+    const { element } = await setup(undefined);
+    element.pickFile = vi.fn(async () => listed("article", "hello", "a.pdf"));
+    element.mode = "markdown";
+    await settle(element);
+    const choose = field(element, "bodyMarkdown").chooseFile!;
+    // Not saved yet, so it has no own files
+    expect((await choose())?.url).toBe("/article/hello/a.pdf");
+    expect(field(element, "thumbnail").chooseFile).toBe(choose);
+  });
+
+  it("should show files chosen from other articles at their paths on the website", async () => {
+    const { element } = await setup({
+      ...ARTICLE,
+      attachments: [{ url: "/page/about/team.png" }],
+    });
+    expect(
+      find<HTMLImageElement>(
+        field(element, "attachments[0][url]"),
+        ".file-current img",
+      ).getAttribute("src"),
+    ).toBe("/page/about/team.png");
+  });
+});
+
 describe("edaha-article title focus", () => {
   it("should focus the title of a new article, but not of an opened one", async () => {
     const { element: opened } = await setup();

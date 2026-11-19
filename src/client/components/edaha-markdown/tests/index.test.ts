@@ -84,6 +84,7 @@ describe("edaha-markdown", () => {
       "Embed",
       "Raw",
       "Read more",
+      "Choose file",
     ]);
     for (const b of buttons) {
       expect(b.title).toBe(b.textContent?.trim());
@@ -287,6 +288,33 @@ describe("edaha-markdown", () => {
     expect(element.value).toBe("Hi ![](cat.png)");
     chooseFile(chooser());
     expect(element.uploadImage).toHaveBeenCalledTimes(2);
+  });
+
+  it("should insert a chosen existing file where the cursor was, once a chooser is given", async () => {
+    const element = await setup("Hi ", [3, 3]);
+    expect(button(element, "Choose file").disabled).toBe(true);
+    element.chooseFile = vi
+      .fn()
+      .mockResolvedValueOnce({ url: "cat.png", name: "cat.png", kind: "image" })
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        url: "/page/about/guide.pdf",
+        name: "guide.pdf",
+        kind: "document",
+      });
+    await element.updateComplete;
+    await press(element, "Choose file");
+    await settle(element);
+    expect(element.value).toBe("Hi ![](cat.png)");
+    expect(element.chooseFile).toHaveBeenCalledWith();
+    // Nothing chosen
+    await press(element, "Choose file");
+    await settle(element);
+    expect(element.value).toBe("Hi ![](cat.png)");
+    textarea(element).setSelectionRange(0, 2);
+    await press(element, "Choose file");
+    await settle(element);
+    expect(element.value).toBe("[Hi](/page/about/guide.pdf) ![](cat.png)");
   });
 
   it("should ask with the browser's prompt by default", async () => {
