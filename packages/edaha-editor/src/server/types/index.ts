@@ -258,11 +258,23 @@ export interface UploadResult {
   url: string;
 }
 
-/** A rendered embed for the editor's preview */
-export interface EmbedPreview {
-  /** The embed HTML as the website shows it (or a plain link if it can't be embedded) */
-  html: string;
-  /** Why the URL couldn't be embedded, if it couldn't */
+/** An embed plugin, for the editor's lists of embeds */
+export interface EmbedInfo {
+  /** Its key, e.g. "youtube" for `<!-- embed:youtube -->` */
+  key: string;
+  /** Its name, e.g. "YouTube video" */
+  name: string;
+  /** What it embeds, if it says */
+  description?: string | undefined;
+  /** Its SVG icon (markup), if it has one */
+  icon?: string | undefined;
+}
+
+/** An embed block's frame in the editor's body */
+export interface EmbedFrame {
+  /** The frame page's URL, e.g. "/embed-frame/<id>/" */
+  url: string;
+  /** Why the block couldn't be embedded, if it couldn't (it then shows as it is written) */
   warnings: string[];
 }
 

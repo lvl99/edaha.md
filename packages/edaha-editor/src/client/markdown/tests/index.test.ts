@@ -10,7 +10,7 @@ import {
   removeTable,
   removeTableColumn,
   removeTableRow,
-  selectedEmbedUrl,
+  selectedEmbed,
   selectedLinkUrl,
   setEmbed,
   setLink,
@@ -190,19 +190,47 @@ describe("links", () => {
 });
 
 describe("embeds and read more", () => {
-  const embed = "<!-- embed -->https://youtu.be/abc<!-- /embed -->";
+  const embed =
+    "<!-- embed:youtube -->https://youtu.be/abc<!-- /embed:youtube -->";
 
-  it("should insert, change and remove embeds", () => {
-    expect(setEmbed(marked("Intro‸"), "https://youtu.be/abc")?.value).toBe(
-      `Intro\n\n${embed}`,
-    );
+  it("should insert and change embed blocks", () => {
+    expect(
+      setEmbed(marked("Intro‸"), {
+        key: "youtube",
+        content: "https://youtu.be/abc",
+      }).value,
+    ).toBe(`Intro\n\n${embed}`);
     const selected = marked(`«${embed}»`);
-    expect(selectedEmbedUrl(selected)).toBe("https://youtu.be/abc");
-    expect(setEmbed(selected, "https://youtu.be/def")?.value).toBe(
-      "<!-- embed -->https://youtu.be/def<!-- /embed -->",
+    expect(selectedEmbed(selected)).toEqual({
+      key: "youtube",
+      content: "https://youtu.be/abc",
+    });
+    expect(
+      setEmbed(selected, { key: "mermaidjs", content: "graph TD;\n  A-->B;" })
+        .value,
+    ).toBe(
+      "<!-- embed:mermaidjs -->\ngraph TD;\n  A-->B;\n<!-- /embed:mermaidjs -->",
     );
-    expect(setEmbed(selected, "")?.value).toBe("");
-    expect(setEmbed(marked("‸"), "")).toBeUndefined();
+  });
+
+  it("should read selected multi-line and old embed blocks, and nothing else", () => {
+    expect(
+      selectedEmbed(
+        marked(
+          "«<!-- embed:mermaidjs -->\ngraph TD;\n<!-- /embed:mermaidjs -->»",
+        ),
+      ),
+    ).toEqual({ key: "mermaidjs", content: "graph TD;" });
+    expect(
+      selectedEmbed(
+        marked("«<!-- embed -->https://youtu.be/abc<!-- /embed -->»"),
+      ),
+    ).toEqual({ key: "", content: "https://youtu.be/abc" });
+    expect(selectedEmbed(marked(`Intro «${embed}»`))).toEqual({
+      key: "youtube",
+      content: "https://youtu.be/abc",
+    });
+    expect(selectedEmbed(marked(`«Intro ${embed}»`))).toBeUndefined();
   });
 
   it("should insert a read more break, or remove a selected one", () => {

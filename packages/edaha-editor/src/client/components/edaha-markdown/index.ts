@@ -3,6 +3,7 @@ import { live } from "lit/directives/live.js";
 import { defineElement } from "../define/index.ts";
 import type { ImageUploader } from "../edaha-richtext/index.ts";
 import type { FileChooser } from "../edaha-file-browser/index.ts";
+import type { EmbedTools } from "../../embeds/index.ts";
 import { toolbarButtonContent } from "../../icons/index.ts";
 import {
   addTableColumn,
@@ -13,7 +14,7 @@ import {
   removeTable,
   removeTableColumn,
   removeTableRow,
-  selectedEmbedUrl,
+  selectedEmbed,
   selectedLinkUrl,
   setEmbed,
   setLink,
@@ -55,6 +56,7 @@ export class EdahaMarkdown extends LitElement {
     textareaId: { attribute: false },
     uploadImage: { attribute: false },
     chooseFile: { attribute: false },
+    embedTools: { attribute: false },
   };
 
   /** The Markdown */
@@ -68,6 +70,9 @@ export class EdahaMarkdown extends LitElement {
 
   /** Lets the user choose an existing file, giving how to refer to it; without it, its button is disabled */
   declare chooseFile?: FileChooser | undefined;
+
+  /** The site's embeds and the embed dialog; without them, the embed button is disabled */
+  declare embedTools?: EmbedTools | undefined;
 
   /** Asks for a URL (replaceable for tests) */
   prompt: (message: string, value?: string) => string | null = (
@@ -129,15 +134,10 @@ export class EdahaMarkdown extends LitElement {
     {
       label: "Embed",
       run: (e) => {
-        const current = selectedEmbedUrl(e);
-        const url = this.prompt(
-          current === undefined
-            ? "Embed URL (e.g. a YouTube video)"
-            : "Embed URL (empty to remove)",
-          current,
-        );
-        return url === null ? undefined : setEmbed(e, url.trim());
+        void this.editEmbed(e);
+        return undefined;
       },
+      enabled: () => !!this.embedTools,
     },
     {
       label: "Raw",
@@ -208,6 +208,16 @@ export class EdahaMarkdown extends LitElement {
     } catch {
       // The uploader reports its own errors
     }
+  }
+
+  /**
+   * Insert an embed block, or change the selected one, asking for its kind and content in the embed dialog (where the
+   * selection was when asked).
+   */
+  private async editEmbed(selection: TextEdit) {
+    const value = await this.embedTools?.edit(selectedEmbed(selection));
+    if (value) this.apply(setEmbed(selection, value));
+    else this.textarea?.focus();
   }
 
   /** Let the user choose an existing file, and insert it where the selection was when asked */

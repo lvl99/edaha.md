@@ -3,7 +3,7 @@ import { defineElement } from "../define/index.ts";
 import "../edaha-markdown/index.ts";
 import "../edaha-richtext/index.ts";
 import type { ImageUploader } from "../edaha-richtext/index.ts";
-import type { EmbedPreview } from "../../../server/types/index.ts";
+import type { EmbedTools } from "../../embeds/index.ts";
 import { acceptedKind, type FileChooser } from "../edaha-file-browser/index.ts";
 
 /** Kinds of field */
@@ -57,7 +57,7 @@ export class EdahaArticleDataField extends LitElement {
     previewUrl: { attribute: false },
     uploadImage: { attribute: false },
     chooseFile: { attribute: false },
-    loadEmbedPreview: { attribute: false },
+    embedTools: { attribute: false },
     preview: { type: Boolean },
     allowchange: { type: Boolean },
     allowclear: { type: Boolean },
@@ -82,9 +82,8 @@ export class EdahaArticleDataField extends LitElement {
   declare uploadImage?: ImageUploader | undefined;
   /** For file, rich text and Markdown fields: lets the user choose an existing file */
   declare chooseFile?: FileChooser | undefined;
-  /** For rich text fields: renders embed URLs for previews */
-  declare loadEmbedPreview?:
-    ((url: string) => Promise<EmbedPreview>) | undefined;
+  /** For rich text and Markdown fields: the site's embeds, the embed dialog, and embed blocks' frames */
+  declare embedTools?: EmbedTools | undefined;
   /** For file fields: show an image preview */
   declare preview: boolean;
   /** For file fields: allow choosing a new file when one is set */
@@ -168,7 +167,7 @@ export class EdahaArticleDataField extends LitElement {
           .value=${this.value}
           .uploadImage=${this.uploadImage}
           .chooseFile=${this.chooseFile}
-          .loadEmbedPreview=${this.loadEmbedPreview}
+          .embedTools=${this.embedTools}
           @richtext-change=${(event: Event) => {
             event.stopPropagation();
             this.change(
@@ -182,6 +181,7 @@ export class EdahaArticleDataField extends LitElement {
           .value=${this.value}
           .uploadImage=${this.uploadImage}
           .chooseFile=${this.chooseFile}
+          .embedTools=${this.embedTools}
           @markdown-change=${(event: Event) => {
             event.stopPropagation();
             this.change(

@@ -1,5 +1,9 @@
 import TurndownService from "turndown";
-import { EMBED_BLOCK } from "@lvl99dotcom/edaha.md/embeds";
+import {
+  EMBED_BLOCK,
+  embedBlock,
+  embedContent,
+} from "@lvl99dotcom/edaha.md/embeds";
 import { READMORE } from "@lvl99dotcom/edaha.md/generator/article";
 import {
   escapeHtml,
@@ -25,8 +29,20 @@ export const filesUrl = (type: string, slug: string): string =>
   `/files/${type}/${slug}/`;
 
 /**
+ * An embed block as editor HTML: an empty `<div class="embed">` with its key (empty for an old block without one) and
+ * content in attributes. Line breaks in the content are written as `&#10;`, so the HTML is one line that Markdown
+ * keeps whole.
+ *
+ * @example
+ * embedHtml("mermaidjs", "graph TD;\n  A-->B;"); // '<div class="embed" data-embed="mermaidjs" data-content="graph TD;&#10;  A--&gt;B;"></div>'
+ */
+export const embedHtml = (key: string, content: string): string =>
+  `<div class="embed" data-embed="${escapeHtml(key)}" data-content="${escapeHtml(content).replace(/\r?\n/g, "&#10;")}"></div>`;
+
+/**
  * Convert article markdown to HTML for the editor: `<!-- readmore -->` becomes `<hr class="readmore">`,
- * embed blocks become `<div class="embed">URL</div>` (except in code), raw blocks become `<pre class="raw">` or
+ * embed blocks become `<div class="embed" data-embed="key" data-content="...">` (except in code; see embedHtml), raw
+ * blocks become `<pre class="raw">` or
  * `<span class="raw">` holding their content as it is, and relative URLs point at the editor's file URL.
  *
  * @example
@@ -50,15 +66,35 @@ export const markdownToEditorHtml = (source: string, baseUrl: string): string =>
         () => '\n\n<hr class="readmore">\n\n',
       ),
       EMBED_BLOCK,
-      ([, url]) =>
-        `\n\n<div class="embed">${escapeHtml((url as string).trim())}</div>\n\n`,
+      ([, key, content]) =>
+        `\n\n${embedHtml(key ?? "", embedContent(content as string))}\n\n`,
     ),
     baseUrl,
   );
 
+/** Whether a node is an embed block (see embedHtml) */
+const isEmbed = (node: Node): boolean =>
+  node.nodeName === "DIV" && (node as HTMLElement).classList.contains("embed");
+
+/** An embed block's Markdown, from its editor HTML (see embedHtml) */
+const embedMarkdown = (_: string, node: Node): string => {
+  const element = node as HTMLElement;
+  const key = element.getAttribute("data-embed") ?? "";
+  const content = embedContent(element.getAttribute("data-content") ?? "");
+  // An old block without a key is kept as it was, until a kind of embed is chosen for it
+  return `\n\n${key ? embedBlock(key, content) : `<!-- embed -->${content}<!-- /embed -->`}\n\n`;
+};
+
 /** HTML to markdown converter with rules for the readmore and embed blocks */
 const createTurndown = () => {
   const turndown = new TurndownService({
+    // Other empty blocks are left out, as Turndown does by default
+    blankReplacement: (content, node) =>
+      isEmbed(node)
+        ? embedMarkdown(content, node)
+        : (node as { isBlock?: boolean }).isBlock
+          ? "\n\n"
+          : "",
     headingStyle: "atx",
     codeBlockStyle: "fenced",
     bulletListMarker: "-",
@@ -81,13 +117,8 @@ const createTurndown = () => {
         ? `\n\n<!-- raw -->\n${String(node.textContent)}\n<!-- /raw -->\n\n`
         : `<!-- raw -->${String(node.textContent).replace(/\u00a0/g, " ")}<!-- /raw -->`,
   });
-  turndown.addRule("embed", {
-    filter: (node) =>
-      node.nodeName === "DIV" &&
-      (node as HTMLElement).classList.contains("embed"),
-    replacement: (_, node) =>
-      `\n\n<!-- embed -->${String(node.textContent).trim()}<!-- /embed -->\n\n`,
-  });
+  // Embed blocks are empty, which Turndown passes to `blankReplacement` rather than its rules
+  turndown.addRule("embed", { filter: isEmbed, replacement: embedMarkdown });
   // Small and big text, and collapsible details blocks, stay HTML. A details block's summary stays HTML (Markdown
   // isn't read inside an HTML line) and its content becomes Markdown, between blank lines so it is read as Markdown.
   turndown.addRule("smallBig", {

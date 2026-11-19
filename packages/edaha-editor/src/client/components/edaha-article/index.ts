@@ -28,6 +28,9 @@ import type {
   FieldOption,
 } from "../edaha-article-data-field/index.ts";
 import { showToast } from "../edaha-toasts/index.ts";
+import "../edaha-embed-dialog/index.ts";
+import type { EdahaEmbedDialog } from "../edaha-embed-dialog/index.ts";
+import type { EmbedTools } from "../../embeds/index.ts";
 import "../edaha-metadata-field/index.ts";
 import type { MetadataChange } from "../edaha-metadata-field/index.ts";
 import {
@@ -327,6 +330,7 @@ export class EdahaArticle extends LitElement {
     compact: { attribute: false },
     focusMode: { attribute: false },
     pickFile: { attribute: false },
+    embedTools: { state: true },
   };
 
   declare api: EditorApi;
@@ -374,6 +378,9 @@ export class EdahaArticle extends LitElement {
   /** Lets the user choose an existing file (e.g. in the file browser); without it, existing files can't be chosen */
   declare pickFile?:
     ((kind?: FileKind) => Promise<FileSummary | undefined>) | undefined;
+
+  /** The site's embeds, the embed dialog and embed blocks' frames, once the embeds are loaded */
+  declare embedTools?: EmbedTools | undefined;
 
   /** Whether the groups' open state has been set from the config file's groups */
   private groupsOpened = false;
@@ -441,6 +448,11 @@ export class EdahaArticle extends LitElement {
         composed: true,
       }),
     );
+  }
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    void this.loadEmbeds();
   }
 
   /** A new article starts with focus in its title, ready to type */
@@ -591,9 +603,26 @@ export class EdahaArticle extends LitElement {
       : { file: undefined, body: undefined };
   }
 
-  /** Embed blocks in the body preview their embeds as the website shows them */
-  private readonly loadEmbedPreview = (url: string) =>
-    this.api.embedPreview(url);
+  /**
+   * Load the site's embeds, for the body's embed blocks and the embed dialog. Without them (e.g. the API is
+   * unreachable), embed blocks show as they are written and can't be added.
+   */
+  private async loadEmbeds(): Promise<void> {
+    try {
+      const embeds = await this.api.embeds();
+      this.embedTools = {
+        embeds,
+        edit: (current) =>
+          (this.querySelector("edaha-embed-dialog") as EdahaEmbedDialog).edit(
+            embeds,
+            current,
+          ),
+        loadFrame: ({ key, content }) => this.api.embedFrame(key, content),
+      };
+    } catch {
+      this.embedTools = undefined;
+    }
+  }
 
   /** Apply a field change */
   private onFieldChange(event: CustomEvent<FieldChange>) {
@@ -1050,6 +1079,7 @@ export class EdahaArticle extends LitElement {
         .value=${this.bodyMarkdown}
         .uploadImage=${this.location ? this.uploadMarkdownImage : undefined}
         .chooseFile=${this.choosers().file}
+        .embedTools=${this.embedTools}
       ></edaha-article-data-field>`;
     else if (this.mode === "preview")
       // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. It
@@ -1096,7 +1126,7 @@ export class EdahaArticle extends LitElement {
         .value=${this.data.bodyHtml}
         .uploadImage=${this.location ? this.uploadImage : undefined}
         .chooseFile=${this.choosers().body}
-        .loadEmbedPreview=${this.loadEmbedPreview}
+        .embedTools=${this.embedTools}
       ></edaha-article-data-field>`;
     return html`<div
         class="body-tabs"
@@ -1395,104 +1425,109 @@ export class EdahaArticle extends LitElement {
       ? this.typeOptions
       : [...this.typeOptions, { value: data.type, label: data.type }];
     return html`<form
-      @field-change=${this.onFieldChange}
-      @metadata-change=${this.onMetadataChange}
-      @metadata-blur=${this.onMetadataBlur}
-      @field-file=${(event: CustomEvent<File>) => void this.onFieldFile(event)}
-      @submit=${(event: Event) => {
-        event.preventDefault();
-        void this.save();
-      }}
-    >
-      <!-- Out of reach while the settings are open over it -->
-      <main class="edaha-article-main" ?inert=${this.metadataOpen}>
-        <div class="edaha-article-title">
-          <edaha-article-data-field
-            name="title"
-            label="Title"
-            ?changed=${changed.has("title")}
-            placeholder="New article title"
-            .value=${data.title}
-          ></edaha-article-data-field>
-          <!-- Only on wide screens: narrow screens always have the compact layout focus mode gives -->
-          <button
-            type="button"
-            class="btn-icon btn-focus-mode"
-            title="Focus mode"
-            aria-pressed=${this.focusMode ? "true" : "false"}
-            @click=${() => this.toggleFocusMode()}
-          >
-            ${icon(this.focusMode ? "fullscreen_exit" : "fullscreen")}<span
-              class="visually-hidden"
-              >Focus mode</span
-            >
-          </button>
-        </div>
-        ${
-          // Files are saved in the article's folder, which it only has once saved
-          this.location
-            ? nothing
-            : html`<p class="unsaved-notice">
-                ⚠️ Uploading images and attachments will require a title and
-                slug to be defined first
-              </p>`
-        }
-        ${this.renderBody()}
-      </main>
-      <aside
-        class="edaha-article-metadata ${classMap({ open: this.metadataOpen })}"
-        aria-label="Article settings"
-        @keydown=${(event: KeyboardEvent) => {
-          if (event.key === "Escape") this.metadataOpen = false;
+        @field-change=${this.onFieldChange}
+        @metadata-change=${this.onMetadataChange}
+        @metadata-blur=${this.onMetadataBlur}
+        @field-file=${(event: CustomEvent<File>) => void this.onFieldFile(event)}
+        @submit=${(event: Event) => {
+          event.preventDefault();
+          void this.save();
         }}
       >
-        <!-- In the compact layout, a bar at the bottom of the screen that opens the settings full screen -->
-        <div class="edaha-article-controls">
-          <!-- Marked while there are unsaved changes, to show the article should be saved -->
-          <button
-            type="submit"
-            class="btn btn-save ${classMap({ "btn-save-dirty": this.dirty })}"
-            ?disabled=${this.busy}
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            class="btn btn-reset"
-            ?disabled=${this.busy || !this.dirty}
-            @click=${() => this.reset()}
-          >
-            Reset…
-          </button>
+        <!-- Out of reach while the settings are open over it -->
+        <main class="edaha-article-main" ?inert=${this.metadataOpen}>
+          <div class="edaha-article-title">
+            <edaha-article-data-field
+              name="title"
+              label="Title"
+              ?changed=${changed.has("title")}
+              placeholder="New article title"
+              .value=${data.title}
+            ></edaha-article-data-field>
+            <!-- Only on wide screens: narrow screens always have the compact layout focus mode gives -->
+            <button
+              type="button"
+              class="btn-icon btn-focus-mode"
+              title="Focus mode"
+              aria-pressed=${this.focusMode ? "true" : "false"}
+              @click=${() => this.toggleFocusMode()}
+            >
+              ${icon(this.focusMode ? "fullscreen_exit" : "fullscreen")}<span
+                class="visually-hidden"
+                >Focus mode</span
+              >
+            </button>
+          </div>
           ${
+            // Files are saved in the article's folder, which it only has once saved
             this.location
-              ? html`<button
-                  type="button"
-                  class="btn btn-delete"
-                  ?disabled=${this.busy}
-                  @click=${() => void this.deleteArticle()}
-                >
-                  Delete…
-                </button>`
-              : nothing
+              ? nothing
+              : html`<p class="unsaved-notice">
+                  ⚠️ Uploading images and attachments will require a title and
+                  slug to be defined first
+                </p>`
           }
-          <button
-            type="button"
-            class="btn btn-metadata-toggle"
-            title=${this.metadataOpen ? "Hide article settings" : "Show article settings"}
-            aria-expanded=${this.metadataOpen ? "true" : "false"}
-            aria-controls="article-metadata-fields"
-            @click=${() => (this.metadataOpen = !this.metadataOpen)}
+          ${this.renderBody()}
+        </main>
+        <aside
+          class="edaha-article-metadata ${classMap({ open: this.metadataOpen })}"
+          aria-label="Article settings"
+          @keydown=${(event: KeyboardEvent) => {
+            if (event.key === "Escape") this.metadataOpen = false;
+          }}
+        >
+          <!-- In the compact layout, a bar at the bottom of the screen that opens the settings full screen -->
+          <div class="edaha-article-controls">
+            <!-- Marked while there are unsaved changes, to show the article should be saved -->
+            <button
+              type="submit"
+              class="btn btn-save ${classMap({ "btn-save-dirty": this.dirty })}"
+              ?disabled=${this.busy}
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              class="btn btn-reset"
+              ?disabled=${this.busy || !this.dirty}
+              @click=${() => this.reset()}
+            >
+              Reset…
+            </button>
+            ${
+              this.location
+                ? html`<button
+                    type="button"
+                    class="btn btn-delete"
+                    ?disabled=${this.busy}
+                    @click=${() => void this.deleteArticle()}
+                  >
+                    Delete…
+                  </button>`
+                : nothing
+            }
+            <button
+              type="button"
+              class="btn btn-metadata-toggle"
+              title=${this.metadataOpen ? "Hide article settings" : "Show article settings"}
+              aria-expanded=${this.metadataOpen ? "true" : "false"}
+              aria-controls="article-metadata-fields"
+              @click=${() => (this.metadataOpen = !this.metadataOpen)}
+            >
+              <span aria-hidden="true">${this.metadataOpen ? "︾" : "︽"}</span>
+              <span class="visually-hidden">Article settings</span>
+            </button>
+          </div>
+          <div
+            class="edaha-article-metadata-fields"
+            id="article-metadata-fields"
           >
-            <span aria-hidden="true">${this.metadataOpen ? "︾" : "︽"}</span>
-            <span class="visually-hidden">Article settings</span>
-          </button>
-        </div>
-        <div class="edaha-article-metadata-fields" id="article-metadata-fields">
-          ${this.renderGroups(changed, typeOptions)}
-        </div>
-      </aside>
-    </form>`;
+            ${this.renderGroups(changed, typeOptions)}
+          </div>
+        </aside>
+      </form>
+      <!-- Outside the form, as it has its own -->
+      <edaha-embed-dialog></edaha-embed-dialog>`;
   }
 }
 

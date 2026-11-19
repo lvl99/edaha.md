@@ -7,7 +7,7 @@ import {
 import Image from "@tiptap/extension-image";
 import { TableKit } from "@tiptap/extension-table";
 import StarterKit from "@tiptap/starter-kit";
-import type { EmbedPreview } from "../../../server/types/index.ts";
+import type { EmbedTools } from "../../embeds/index.ts";
 import {
   Big,
   Embed,
@@ -24,7 +24,7 @@ import {
  * text, heading IDs shown after headings, the readmore break and embed blocks.
  *
  * @param onUpdate - called with the new HTML whenever the content changes
- * @param loadEmbedPreview - renders embed URLs for previews inside embed blocks
+ * @param embedTools - the embed tools, for embed blocks' names and frames (read when a block is shown)
  *
  * @example
  * const editor = createRichtextEditor(element, "<p>Hello</p>", (html) => console.log(html));
@@ -33,7 +33,7 @@ export const createRichtextEditor = (
   element: HTMLElement,
   content: string,
   onUpdate: (html: string) => void,
-  loadEmbedPreview?: (url: string) => Promise<EmbedPreview>,
+  embedTools: () => EmbedTools | undefined = () => undefined,
 ): Editor =>
   new Editor({
     element,
@@ -56,7 +56,7 @@ export const createRichtextEditor = (
       Readmore,
       Raw,
       RawInline,
-      Embed.configure({ loadPreview: loadEmbedPreview }),
+      Embed.configure({ tools: embedTools }),
     ],
     onUpdate: ({ editor }) => onUpdate(editor.getHTML()),
   });

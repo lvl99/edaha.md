@@ -13,7 +13,11 @@ import {
 } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type NodeView } from "@tiptap/pm/view";
 import { headingIds } from "@lvl99dotcom/edaha.md/generator/slug";
-import type { EmbedPreview } from "../../../server/types/index.ts";
+import {
+  embedName,
+  type EmbedTools,
+  type EmbedValue,
+} from "../../embeds/index.ts";
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -22,8 +26,8 @@ declare module "@tiptap/core" {
       setReadmore: () => ReturnType;
     };
     embed: {
-      /** Insert an embed block for a URL, or change the selected embed block's URL */
-      setEmbed: (url: string) => ReturnType;
+      /** Insert an embed block, or change the selected embed block's kind and content */
+      setEmbed: (value: EmbedValue) => ReturnType;
     };
     raw: {
       /** Turn the current block into a raw block, or a raw block back into a paragraph */
@@ -41,6 +45,9 @@ interface BlockButton {
 
 /** Event fired (bubbling) by an embed block's "Edit" button, after selecting the block */
 export const EMBED_EDIT_EVENT = "embed-edit";
+
+/** Event that makes an embed block show itself again, e.g. once the embed tools are known (fired at `.embed-block`) */
+export const EMBED_REFRESH_EVENT = "embed-refresh";
 
 /**
  * Create the editor's view of a block: a labelled box with a "Remove" button, that can also be clicked to select it
@@ -206,37 +213,69 @@ export const Big = Mark.create({
   renderHTML: () => ["big", 0],
 });
 
-/** The label of an embed block in the editor */
-const embedLabel = (url: string) => `Embed: ${url}`;
+/** The frames of embed blocks, by their window, for sizing them to their content */
+const embedFrames = new Map<MessageEventSource, HTMLIFrameElement>();
+
+// Embed frames send their height (see the editor API's embed frame page); each frame is sized to fit, up to a limit
+addEventListener("message", (event: MessageEvent) => {
+  const frame = event.source && embedFrames.get(event.source);
+  const height = (event.data as { edahaEmbedHeight?: unknown } | null)
+    ?.edahaEmbedHeight;
+  if (frame && typeof height === "number")
+    frame.style.height = `${Math.min(Math.max(height, 40), 2000)}px`;
+});
+
+/** Stop sizing the embed frames inside an element (e.g. before they are removed) */
+const forgetFrames = (element: Element): void => {
+  for (const [source, frame] of embedFrames)
+    if (element.contains(frame)) embedFrames.delete(source);
+};
+
+/** The editor's theme, for embed frames: its chosen one, or else the visitor's setting */
+const editorTheme = (): "light" | "dark" =>
+  document.documentElement.dataset.theme === "dark" ||
+  (document.documentElement.dataset.theme !== "light" &&
+    globalThis.matchMedia?.("(prefers-color-scheme: dark)").matches)
+    ? "dark"
+    : "light";
 
 /** Options of the embed block */
 export interface EmbedOptions {
-  /** Renders a URL as the website would, for a preview inside the block (no preview without it) */
-  loadPreview: ((url: string) => Promise<EmbedPreview>) | undefined;
+  /** The embed tools (read when a block is shown, so they can be set after the editor is created) */
+  tools: () => EmbedTools | undefined;
 }
 
 /**
- * An embed block (`<!-- embed -->URL<!-- /embed -->`), saved as `<div class="embed">URL</div>` and shown in the
- * editor as an "Embed: URL" box with a preview and "Edit" and "Remove" buttons. "Edit" selects the block and fires
- * EMBED_EDIT_EVENT, so the toolbar can ask for the new URL.
+ * An embed block (`<!-- embed:<key> -->content<!-- /embed:<key> -->`), saved as
+ * `<div class="embed" data-embed="key" data-content="...">` and shown in the editor as a box with its kind, the embed
+ * in a sandboxed frame (as the editor shows it, see the embed plugins' `editor` renderers), and "Edit" and "Remove"
+ * buttons. "Edit" selects the block and fires EMBED_EDIT_EVENT, so the toolbar can ask for its new kind and content.
  */
 export const Embed = Node.create<EmbedOptions>({
   name: "embed",
   group: "block",
   atom: true,
-  addOptions: () => ({ loadPreview: undefined }),
-  addAttributes: () => ({ url: { default: "" } }),
+  addOptions: () => ({ tools: () => undefined }),
+  addAttributes: () => ({
+    key: { default: "" },
+    content: { default: "" },
+  }),
   parseHTML: () => [
     {
       tag: "div.embed",
-      // An element always has text content (possibly empty)
-      getAttrs: (element) => ({ url: String(element.textContent).trim() }),
+      getAttrs: (element) => ({
+        key: element.getAttribute("data-embed") ?? "",
+        content: element.getAttribute("data-content") ?? "",
+      }),
     },
   ],
   renderHTML: ({ node }) => [
     "div",
-    { class: "embed" },
-    node.attrs.url as string,
+    {
+      class: "embed",
+      "data-embed": node.attrs.key as string,
+      "data-content": node.attrs.content as string,
+    },
   ],
   addNodeView() {
     return (props) => {
@@ -250,59 +289,94 @@ export const Embed = Node.create<EmbedOptions>({
           },
         },
       ]);
+      const icon = document.createElement("span");
+      icon.className = "icon embed-icon";
+      icon.setAttribute("aria-hidden", "true");
+      block.title.before(icon);
       const preview = document.createElement("div");
       preview.className = "embed-preview";
       block.dom.append(preview);
 
-      let url = "";
-      /** Show a URL's label and load its preview */
-      const show = async (next: string) => {
-        if (next === url) return;
-        url = next;
-        block.title.textContent = embedLabel(url);
-        const loadPreview = this.options.loadPreview;
-        if (!loadPreview) return;
-        preview.textContent = "Loading preview…";
+      let shown = "";
+      let current = props.node.attrs as EmbedValue;
+      /** Show an embed's kind and load its frame */
+      const show = async (value: EmbedValue) => {
+        const id = `${value.key}\0${value.content}`;
+        if (id === shown) return;
+        shown = id;
+        const tools = this.options.tools();
+        const info = tools?.embeds.find((embed) => embed.key === value.key);
+        block.title.textContent = embedName(tools?.embeds ?? [], value.key);
+        icon.innerHTML = info?.icon ?? "";
+        forgetFrames(preview);
+        preview.replaceChildren();
+        const text = document.createElement("pre");
+        text.className = "embed-content";
+        text.textContent = value.content;
+        if (!tools) {
+          preview.append(text);
+          return;
+        }
+        preview.textContent = "Loading…";
         try {
-          const result = await loadPreview(url);
-          // Ignore a preview for a URL that has since changed
-          if (url !== next) return;
-          preview.innerHTML = result.html;
-          // Lazy frames never start loading inside the editable area
-          for (const frame of preview.querySelectorAll("iframe"))
-            frame.removeAttribute("loading");
+          const result = await tools.loadFrame(value);
+          // Ignore a frame for an embed that has since changed
+          if (shown !== id) return;
+          preview.replaceChildren();
           for (const warning of result.warnings) {
             const message = document.createElement("p");
             message.className = "embed-warning";
             message.textContent = warning;
-            preview.prepend(message);
+            preview.append(message);
           }
+          // An embed that can't be shown is shown as it is written
+          if (result.warnings.length) {
+            preview.append(text);
+            return;
+          }
+          const frame = document.createElement("iframe");
+          frame.className = "embed-frame";
+          frame.title = `${block.title.textContent}: preview`;
+          // In an origin of its own, it can run the embed's scripts but can't reach the editor
+          frame.setAttribute(
+            "sandbox",
+            "allow-scripts allow-popups allow-popups-to-escape-sandbox",
+          );
+          frame.src = `${result.url}?theme=${editorTheme()}`;
+          preview.append(frame);
+          if (frame.contentWindow) embedFrames.set(frame.contentWindow, frame);
         } catch (error) {
-          if (url === next)
+          if (shown === id)
             preview.textContent = `No preview: ${(error as Error).message}`;
         }
       };
-      void show(props.node.attrs.url as string);
+      void show(current);
+      block.dom.addEventListener(EMBED_REFRESH_EVENT, () => {
+        shown = "";
+        void show(current);
+      });
 
       return {
         ...block.view,
-        // Show a changed URL without re-creating the view
+        // Show a changed embed without re-creating the view
         update: (updated) => {
           if (updated.type !== this.type) return false;
-          void show(updated.attrs.url as string);
+          current = updated.attrs as EmbedValue;
+          void show(current);
           return true;
         },
+        destroy: () => forgetFrames(preview),
       };
     };
   },
   addCommands() {
     return {
       setEmbed:
-        (url: string) =>
+        (value: EmbedValue) =>
         ({ commands, editor }) =>
           editor.isActive(this.name)
-            ? commands.updateAttributes(this.name, { url })
-            : commands.insertContent({ type: this.name, attrs: { url } }),
+            ? commands.updateAttributes(this.name, value)
+            : commands.insertContent({ type: this.name, attrs: value }),
     };
   },
 });

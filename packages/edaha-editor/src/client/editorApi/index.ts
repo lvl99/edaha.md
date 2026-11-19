@@ -13,7 +13,8 @@ import type {
   ArticleTypeLabels,
   EditorArticle,
   EditorArticleData,
-  EmbedPreview,
+  EmbedFrame,
+  EmbedInfo,
   RecentArticles,
   UploadResult,
 } from "../../server/types/index.ts";
@@ -191,9 +192,14 @@ export class EditorApi {
     return this.request(`/api/articles/${type}/${slug}`, { method: "DELETE" });
   }
 
-  /** Render an embed URL as the website would */
-  embedPreview(url: string): Promise<EmbedPreview> {
-    return this.request(`/api/embed?url=${encodeURIComponent(url)}`);
+  /** The site's embed plugins */
+  embeds(): Promise<EmbedInfo[]> {
+    return this.request("/api/embeds");
+  }
+
+  /** Render an embed block for its frame in the rich text body */
+  embedFrame(key: string, content: string): Promise<EmbedFrame> {
+    return this.send("POST", "/api/embed-frames", { key, content });
   }
 
   /** Convert an article body from editor HTML to Markdown (relative URLs are relative to its saved location) */

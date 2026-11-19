@@ -1,10 +1,12 @@
 import { Hono } from "hono";
 import mime from "mime-types";
 import {
-  EMBED_RENDERERS,
+  EMBED_SOURCE_KINDS,
   EmbedResolver,
-  type EmbedRenderer,
+  type EmbedPlugin,
+  type EmbedSources,
 } from "@lvl99dotcom/edaha.md/embeds";
+import { withPlugins } from "@lvl99dotcom/edaha.md/generator/build";
 import type { Logger } from "@lvl99dotcom/edaha.md/generator/types";
 import {
   editorHtmlToMarkdown,
@@ -20,7 +22,8 @@ import type {
   FileKind,
   FileQuery,
   FileSort,
-  EmbedPreview,
+  EmbedFrame,
+  EmbedInfo,
 } from "../types/index.ts";
 
 /** Read search parameters as text or numbers, undefined when empty or not a number */
@@ -120,29 +123,100 @@ export const articleQuery = (params: URLSearchParams): ArticleQuery => {
 export interface EditorAppOptions {
   /** Origins allowed to change articles, e.g. "http://127.0.0.1:5180" */
   allowedOrigins: readonly string[];
-  /** Fetches extra data for embed previews (defaults to the global fetch) */
+  /** Fetches extra data for embeds (defaults to the global fetch) */
   fetch?: typeof fetch | undefined;
-  /** Embed renderers tried after the config file's `embeds` (defaults to the built-in ones, EMBED_RENDERERS) */
-  embedRenderers?: readonly EmbedRenderer[] | undefined;
+  /** Embed plugins added after the config file's `plugins` (a key in both uses the config file's). Default: none */
+  plugins?: readonly EmbedPlugin[] | undefined;
 }
 
-/**
- * The Content Security Policy of preview pages and their files: like the website's pages (its own files, and frames
- * from the embed renderers' `frameSources`), but with no scripts, requests or forms at all. Previews are served from
- * the editor's own address, so this is what stops anything in an article from using the editor's API.
- *
- * @example
- * previewCsp([youtube]); // "default-src 'self'; script-src 'none'; frame-src https://www.youtube-nocookie.com; ..."
- */
-export const previewCsp = (renderers: readonly EmbedRenderer[]): string => {
-  const frames = [
-    ...new Set(renderers.flatMap((renderer) => renderer.frameSources ?? [])),
-  ];
-  return `default-src 'self'; script-src 'none'; frame-src ${frames.join(" ") || "'none'"}; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'`;
+/** The kinds of embed sources, by the Content Security Policy directive that allows them */
+const SOURCE_DIRECTIVES: Record<keyof EmbedSources, string> = {
+  frame: "frame-src",
+  script: "script-src 'self' 'unsafe-inline'",
+  style: "style-src 'self' 'unsafe-inline'",
+  font: "font-src 'self' data:",
+  // 'self' is replaced with the editor's address (see previewCsp)
+  connect: "connect-src",
 };
 
-/** The preview pages' Content Security Policy with the built-in embed renderers (see previewCsp) */
-export const PREVIEW_CSP = previewCsp(EMBED_RENDERERS);
+/**
+ * The Content Security Policy of preview pages, embed frames and the files they load. They are sandboxed (`sandbox`):
+ * they run in an origin of their own, so although they are served from the editor's address, nothing in them can use
+ * the editor's API (its changes need the editor page's origin, and other origins can't read its answers). Inside,
+ * they may run their own scripts and styles, and load from the editor's address (named, as `'self'` doesn't match it
+ * from a sandboxed page) and the web addresses the embed plugins list in `sources`.
+ *
+ * @param self - the editor's address, e.g. "http://127.0.0.1:5180"
+ * @example
+ * previewCsp([youtube], "http://127.0.0.1:5180"); // "sandbox allow-scripts ...; default-src http://127.0.0.1:5180; ...; frame-src https://www.youtube-nocookie.com; ..."
+ */
+export const previewCsp = (
+  plugins: readonly EmbedPlugin[],
+  self: string,
+): string => {
+  const directives = EMBED_SOURCE_KINDS.map((kind) => {
+    const origins = [
+      ...new Set(plugins.flatMap((plugin) => plugin.sources?.[kind] ?? [])),
+    ];
+    const directive = SOURCE_DIRECTIVES[kind].replace("'self'", self);
+    // Frames and requests are only allowed to the listed addresses
+    return `${directive} ${origins.join(" ") || (directive.includes(" ") ? "" : "'none'")}`.trimEnd();
+  });
+  return [
+    "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox",
+    `default-src ${self}`,
+    ...directives,
+    `img-src ${self} data: https:`,
+    `media-src ${self} https:`,
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'self'",
+  ].join("; ");
+};
+
+/**
+ * Sends an embed frame's height to the editor page (which sizes the frame to fit), whenever it changes. Messages
+ * carry `{ edahaEmbedHeight }`.
+ */
+const FRAME_HEIGHT_SCRIPT = `<script>
+  const report = () => parent.postMessage({ edahaEmbedHeight: document.documentElement.scrollHeight }, "*");
+  new ResizeObserver(report).observe(document.documentElement);
+  addEventListener("load", report);
+</script>`;
+
+/**
+ * The page shown in an embed block's frame in the editor's body: the embed rendered for the editor, with the HTML it
+ * needs once, in the editor's light or dark theme.
+ *
+ * @example
+ * embedFramePage('<div class="embed">...</div>', { head: "", foot: "" }, "dark");
+ */
+export const embedFramePage = (
+  html: string,
+  parts: { head: string; foot: string },
+  theme: "light" | "dark" | undefined,
+): string => `<!doctype html>
+<html lang="en"${theme ? ` data-theme="${theme}" style="color-scheme: ${theme}"` : ""}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base target="_blank">
+<style>
+  html { color-scheme: light dark; }
+  body { margin: 0; font-family: system-ui, sans-serif; }
+  iframe, img, svg, video { max-width: 100%; }
+  .embed-text { white-space: pre-wrap; }
+</style>
+${parts.head}
+</head>
+<body>
+${html}
+${parts.foot}
+${FRAME_HEIGHT_SCRIPT}
+</body>
+</html>
+`;
 
 /**
  * Create the article editor's local API. Requests that change files must come from the editor's own page (checked
@@ -156,16 +230,18 @@ export const PREVIEW_CSP = previewCsp(EMBED_RENDERERS);
  * - `GET|PUT|DELETE /api/articles/:type/:slug`: load, save (and move) or delete an article
  * - `POST /api/articles/:type/:slug/files`: upload a file (multipart field "file")
  * - `GET /files/:type/:slug/:name`: an article's file, for previews in the editor
- * - `GET /api/embed?url=...`: render an embed URL as the website would, for previews in the editor
+ * - `GET /api/embeds`: the embed plugins (`EmbedInfo`), for the editor's embed dialog
+ * - `POST /api/embed-frames`: remember an embed block (`{ key, content }`) for its frame in the editor's body, and give
+ *   the frame's URL and any problems (`EmbedFrame`); `GET /embed-frame/:id/?theme=light|dark` is the frame's page
  * - `POST /api/convert/markdown` and `POST /api/convert/html`: convert an article body between editor HTML and Markdown
  *   (`{ html | markdown, location? }`, where `location` is the saved article's, which relative URLs are relative to)
  * - `POST /api/preview`: remember unsaved article data (`{ data, location? }`) for a preview page, and give its URL
  *   (`{ url }`); answers 400 if it can't be rendered
  * - `GET /preview/:id/`: render a remembered preview with its type's "single" template, and `GET /<path>`: one of the
  *   site's static files (e.g. `/site.css`) or an article's file at its path on the website (e.g.
- *   `/news/welcome/photo.png`), both with a Content Security Policy that forbids scripts (`previewCsp`)
+ *   `/news/welcome/photo.png`), all sandboxed by their Content Security Policy (`previewCsp`)
  *
- * Embeds are rendered with the config file's `embeds`, then `embedRenderers`.
+ * Embeds are rendered with the config file's `plugins`, then the given `plugins`.
  *
  * @example
  * const app = createEditorApp(new ArticleStore(await loadSiteConfig({ siteDir: "my-site" })), { allowedOrigins: ["http://127.0.0.1:5180"] });
@@ -175,22 +251,23 @@ export const createEditorApp = (
   {
     allowedOrigins,
     fetch: fetchFn = (...args) => fetch(...args),
-    embedRenderers = EMBED_RENDERERS,
+    plugins: givenPlugins = [],
   }: EditorAppOptions,
 ): Hono => {
   const app = new Hono();
 
-  /** The embed renderers: the config file's, then the given ones */
-  const renderers = async () => [...(await store.embeds()), ...embedRenderers];
+  /** The embed plugins: the config file's, then the given ones */
+  const plugins = async () => withPlugins(await store.plugins(), givenPlugins);
 
   /**
-   * A new embed resolver, each time, so a fixed URL, a network failure or a changed renderer isn't remembered
+   * A new embed resolver, each time, so a fixed embed, a network failure or a changed plugin isn't remembered
    */
   const embedResolver = async (logger: Logger) =>
-    new EmbedResolver({ fetch: fetchFn, logger, renderers: await renderers() });
+    new EmbedResolver({ fetch: fetchFn, logger, plugins: await plugins() });
 
-  /** The preview pages' Content Security Policy, allowing the renderers' frames */
-  const csp = async () => previewCsp(await renderers());
+  /** The Content Security Policy of preview pages and embed frames, allowing the plugins' sources */
+  const csp = async (url: string) =>
+    previewCsp(await plugins(), new URL(url).origin);
 
   app.use(async (c, next) => {
     if (c.req.method !== "GET" && c.req.method !== "HEAD") {
@@ -273,16 +350,60 @@ export const createEditorApp = (
     c.json(store.templates(c.req.param("type"))),
   );
 
-  app.get("/api/embed", async (c) => {
-    const url = c.req.query("url") ?? "";
+  app.get("/api/embeds", async (c) =>
+    c.json<EmbedInfo[]>(
+      (await plugins()).map(({ key, name, description, editor }) => ({
+        key,
+        name,
+        description,
+        icon: editor?.icon,
+      })),
+    ),
+  );
+
+  app.post("/api/embed-frames", async (c) => {
+    const { key, content } = await c.req.json<{
+      key: string;
+      content: string;
+    }>();
     const warnings: string[] = [];
-    const embeds = await embedResolver({
-      warn: (message) => warnings.push(message),
-    });
-    return c.json<EmbedPreview>({
-      html: await embeds.render(url, "Preview"),
+    // Rendered now to report problems, then again each time the frame is shown
+    await (
+      await embedResolver({ warn: (message) => warnings.push(message) })
+    ).render(key, content, "Embed", "editor");
+    return c.json<EmbedFrame>({
+      url: `/embed-frame/${store.rememberEmbedFrame({ key, content })}/`,
       warnings,
     });
+  });
+
+  // A remembered embed block, rendered for the editor now, so changes to its plugin show when it reloads
+  app.get("/embed-frame/:id/", async (c) => {
+    const { key, content } = store.embedFrame(c.req.param("id"));
+    const theme = c.req.query("theme");
+    const embeds = await embedResolver({ warn: () => undefined });
+    const { html, usage } = await embeds.render(
+      key,
+      content,
+      "Embed",
+      "editor",
+    );
+    return c.html(
+      embedFramePage(
+        html,
+        await embeds.pageParts(
+          usage ? [new Map([[usage.key, usage.renders]])] : [],
+          "Embed",
+          "editor",
+        ),
+        theme === "light" || theme === "dark" ? theme : undefined,
+      ),
+      200,
+      {
+        "Cache-Control": "no-store",
+        "Content-Security-Policy": await csp(c.req.url),
+      },
+    );
   });
 
   app.post("/api/convert/markdown", async (c) => {
@@ -379,7 +500,7 @@ export const createEditorApp = (
     );
     return c.html(html, 200, {
       "Cache-Control": "no-store",
-      "Content-Security-Policy": await csp(),
+      "Content-Security-Policy": await csp(c.req.url),
     });
   });
 
@@ -392,7 +513,7 @@ export const createEditorApp = (
       {
         "Content-Type": mime.lookup(path) || "application/octet-stream",
         "Cache-Control": "no-store",
-        "Content-Security-Policy": await csp(),
+        "Content-Security-Policy": await csp(c.req.url),
       },
     );
   });

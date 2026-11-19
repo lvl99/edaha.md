@@ -5,7 +5,7 @@ import { serve, type ServerType } from "@hono/node-server";
 import { Hono } from "hono";
 import mime from "mime-types";
 import { EDITOR_PORT } from "@lvl99dotcom/edaha.md/cli";
-import type { EmbedRenderer } from "@lvl99dotcom/edaha.md/embeds";
+import type { EmbedPlugin } from "@lvl99dotcom/edaha.md/embeds";
 import { createEditorApp } from "../server/app/index.ts";
 import { ArticleStore } from "../server/store/index.ts";
 import {
@@ -38,10 +38,10 @@ export interface EditorServerOptions extends SiteConfigOptions {
   port?: number;
   /** The editor page's built files. Default: CLIENT_DIR */
   clientDir?: string;
-  /** Fetches extra data for embed previews (defaults to the global fetch) */
+  /** Fetches extra data for embeds (defaults to the global fetch) */
   fetch?: typeof fetch;
-  /** Embed renderers tried after the config file's `embeds` (defaults to the built-in ones, EMBED_RENDERERS) */
-  embedRenderers?: readonly EmbedRenderer[];
+  /** Embed plugins added after the config file's `plugins` (a key in both uses the config file's). Default: none */
+  plugins?: readonly EmbedPlugin[];
 }
 
 /** A running editor server */
@@ -117,7 +117,7 @@ const editorServerParts = async (
   const editorApp = createEditorApp(store, {
     allowedOrigins: [editorUrl(port)],
     fetch: options.fetch,
-    embedRenderers: options.embedRenderers,
+    plugins: options.plugins,
   });
 
   const app = new Hono();

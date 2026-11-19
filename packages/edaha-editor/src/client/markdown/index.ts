@@ -3,6 +3,12 @@
  * new text and selection, or undefined when there is nothing to change. Where Markdown has no syntax for something
  * (small and big text, details blocks), they write HTML; edaha.md's shortcodes are written as comments.
  */
+import {
+  EMBED_BLOCK,
+  embedBlock,
+  embedContent,
+} from "@lvl99dotcom/edaha.md/embeds/blocks";
+import type { EmbedValue } from "../embeds/index.ts";
 
 /** Text and its selection (`start` to `end`; equal when nothing is selected) */
 export interface TextEdit {
@@ -24,8 +30,8 @@ export const READMORE = "<!-- readmore -->";
 /** A selected link, e.g. "[edaha.md](https://example.com)" */
 const LINK = /^\[([^\]]*)\]\(([^)\s]*)\)$/;
 
-/** A selected embed, e.g. "<!-- embed -->https://youtu.be/abc<!-- /embed -->" */
-const EMBED = /^<!-- embed -->([\s\S]*?)<!-- \/embed -->$/;
+/** A selected embed block, e.g. "<!-- embed:youtube -->https://youtu.be/abc<!-- /embed:youtube -->" (see EMBED_BLOCK) */
+const EMBED = new RegExp(`^${EMBED_BLOCK.source}$`);
 
 /** List markers, removed before another kind of list marker is added */
 const LIST_MARKER = /^([-*+]|\d+[.)]) /;
@@ -285,24 +291,35 @@ export const insertFile = (
   return setLink(edit, url) as TextEdit;
 };
 
-/** The URL of the selected embed, if a whole embed is selected */
-export const selectedEmbedUrl = ({ value, start, end }: TextEdit) =>
-  EMBED.exec(value.slice(start, end))?.[1];
-
 /**
- * Insert an embed (e.g. a YouTube video) by URL, change the selected embed's URL, or remove it (an empty URL).
+ * The selected embed block's kind and content, if a whole embed block is selected (an old block without a key has an
+ * empty kind).
  *
  * @example
- * setEmbed({ value: "", start: 0, end: 0 }, "https://youtu.be/abc"); // "<!-- embed -->https://youtu.be/abc<!-- /embed -->"
+ * selectedEmbed(edit); // { key: "youtube", content: "https://youtu.be/abc" }
  */
-export const setEmbed = (edit: TextEdit, url: string): TextEdit | undefined => {
-  const selected = selectedEmbedUrl(edit) !== undefined;
-  if (!url)
-    return selected ? replace(edit.value, edit.start, edit.end, "") : undefined;
-  const embed = `<!-- embed -->${url}<!-- /embed -->`;
-  return selected
-    ? replace(edit.value, edit.start, edit.end, embed)
-    : insertBlock(edit, embed);
+export const selectedEmbed = ({
+  value,
+  start,
+  end,
+}: TextEdit): EmbedValue | undefined => {
+  const match = EMBED.exec(value.slice(start, end));
+  return match
+    ? { key: match[1] ?? "", content: embedContent(match[2] as string) }
+    : undefined;
+};
+
+/**
+ * Insert an embed block (on its own line), or replace the selected one.
+ *
+ * @example
+ * setEmbed({ value: "", start: 0, end: 0 }, { key: "youtube", content: "https://youtu.be/abc" }); // "<!-- embed:youtube -->https://youtu.be/abc<!-- /embed:youtube -->"
+ */
+export const setEmbed = (edit: TextEdit, embed: EmbedValue): TextEdit => {
+  const block = embedBlock(embed.key, embed.content);
+  return selectedEmbed(edit)
+    ? replace(edit.value, edit.start, edit.end, block)
+    : insertBlock(edit, block);
 };
 
 /**

@@ -13,12 +13,23 @@ describe("markdownToEditorHtml", () => {
   it("should turn shortcodes into editor blocks and resolve relative URLs", () => {
     expect(
       markdownToEditorHtml(
-        'Intro "quoted" ![pic](a.png) <!-- readmore -->Rest\n\n<!-- embed --> https://youtu.be/x?a=1&b=2 <!-- /embed -->',
+        'Intro "quoted" ![pic](a.png) <!-- readmore -->Rest\n\n<!-- embed:youtube --> https://youtu.be/x?a=1&b=2 <!-- /embed:youtube -->\n\n<!-- embed:mermaidjs -->\ngraph TD;\n\n  A-->B;\n<!-- /embed:mermaidjs -->\n\n<!-- embed -->old<!-- /embed -->',
         BASE,
       ),
     ).toBe(
-      '<p>Intro &quot;quoted&quot; <img src="/files/article/hello/a.png" alt="pic"></p>\n<hr class="readmore">\n<p>Rest</p>\n<div class="embed">https://youtu.be/x?a=1&amp;b=2</div>\n',
+      '<p>Intro &quot;quoted&quot; <img src="/files/article/hello/a.png" alt="pic"></p>\n<hr class="readmore">\n<p>Rest</p>\n<div class="embed" data-embed="youtube" data-content=" https://youtu.be/x?a=1&amp;b=2"></div>\n<div class="embed" data-embed="mermaidjs" data-content="graph TD;&#10;&#10;  A--&gt;B;"></div>\n<div class="embed" data-embed="" data-content="old"></div>\n',
     );
+  });
+});
+
+describe("embed blocks without settings", () => {
+  it("should keep embed blocks without a key or content as old, empty blocks, and leave out other empty elements", () => {
+    expect(
+      editorHtmlToMarkdown(
+        '<p>a<span></span>b</p><div class="embed"></div>',
+        BASE,
+      ),
+    ).toBe("ab\n\n<!-- embed --><!-- /embed -->");
   });
 });
 
@@ -39,13 +50,13 @@ describe("raw blocks in the editor", () => {
 describe("markdownToEditorHtml in code", () => {
   it("should leave shortcodes in code as they are", () => {
     const html = markdownToEditorHtml(
-      "`<!-- readmore -->`\n\n```md\n<!-- embed -->https://youtu.be/x<!-- /embed -->\n```",
+      "`<!-- readmore -->`\n\n```md\n<!-- embed:youtube -->https://youtu.be/x<!-- /embed:youtube -->\n```",
       BASE,
     );
     expect(html).not.toContain('class="readmore"');
     expect(html).not.toContain('class="embed"');
     expect(html).toContain("&lt;!-- readmore --&gt;");
-    expect(html).toContain("&lt;!-- embed --&gt;https://youtu.be/x");
+    expect(html).toContain("&lt;!-- embed:youtube --&gt;https://youtu.be/x");
   });
 });
 
@@ -53,11 +64,11 @@ describe("editorHtmlToMarkdown", () => {
   it("should turn editor blocks back into shortcodes and file URLs into relative ones", () => {
     expect(
       editorHtmlToMarkdown(
-        '<p>Intro <img src="/files/article/hello/a.png" alt="pic"> <a href="https://example.com">link</a></p><hr class="readmore"><div class="embed"> https://youtu.be/x </div><hr><h2>Sub</h2><p><em>em</em> <strong>strong</strong></p>',
+        '<p>Intro <img src="/files/article/hello/a.png" alt="pic"> <a href="https://example.com">link</a></p><hr class="readmore"><div class="embed" data-embed="youtube" data-content=" https://youtu.be/x "></div><div class="embed" data-embed="mermaidjs" data-content="graph TD;\n\n  A--&gt;B;\n"></div><div class="embed" data-embed="" data-content="old"></div><p></p><hr><h2>Sub</h2><p><em>em</em> <strong>strong</strong></p>',
         BASE,
       ),
     ).toBe(
-      "Intro ![pic](a.png) [link](https://example.com)\n\n<!-- readmore -->\n\n<!-- embed -->https://youtu.be/x<!-- /embed -->\n\n---\n\n## Sub\n\n*em* **strong**",
+      "Intro ![pic](a.png) [link](https://example.com)\n\n<!-- readmore -->\n\n<!-- embed:youtube --> https://youtu.be/x<!-- /embed:youtube -->\n\n<!-- embed:mermaidjs -->\ngraph TD;\n\n  A-->B;\n<!-- /embed:mermaidjs -->\n\n<!-- embed -->old<!-- /embed -->\n\n---\n\n## Sub\n\n*em* **strong**",
     );
   });
 
@@ -106,7 +117,7 @@ describe("editorHtmlToMarkdown", () => {
 
   it("should round-trip article markdown", () => {
     const markdown =
-      "Intro with a [link](https://example.com) and ![image](thumb.png).\n\n<!-- readmore -->\n\nThe rest.\n\n## Sub\n\n- one\n- two\n\n<!-- embed -->https://youtu.be/aju_UB5VIf8<!-- /embed -->\n\n> quote\n\n```\ncode\n```\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\nSome <small>small</small> and <big>big</big> text\n\n<details>\n<summary>More</summary>\n\nHidden\n\n- a\n- b\n\n</details>";
+      "Intro with a [link](https://example.com) and ![image](thumb.png).\n\n<!-- readmore -->\n\nThe rest.\n\n## Sub\n\n- one\n- two\n\n<!-- embed:youtube -->https://youtu.be/aju_UB5VIf8<!-- /embed:youtube -->\n\n<!-- embed:mermaidjs -->\ngraph TD;\n\n  A-->B;\n<!-- /embed:mermaidjs -->\n\n> quote\n\n```\ncode\n```\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\nSome <small>small</small> and <big>big</big> text\n\n<details>\n<summary>More</summary>\n\nHidden\n\n- a\n- b\n\n</details>";
     expect(
       editorHtmlToMarkdown(markdownToEditorHtml(markdown, BASE), BASE),
     ).toBe(markdown);

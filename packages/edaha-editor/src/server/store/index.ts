@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import {
   mkdir,
   readdir,
@@ -11,8 +11,9 @@ import {
 import { basename, extname, join } from "node:path";
 import { stringify } from "yaml";
 import type {
-  EmbedRenderer,
+  EmbedPlugin,
   EmbedResolver,
+  EmbedUsage,
 } from "@lvl99dotcom/edaha.md/embeds";
 import {
   DEFAULT_HEADER_FORMAT,
@@ -31,11 +32,10 @@ import {
 } from "@lvl99dotcom/edaha.md/generator/build";
 import {
   defaultTypeConfig,
-  parseConfig,
   RESERVED_TYPES,
 } from "@lvl99dotcom/edaha.md/generator/config";
 import {
-  readConfigFile,
+  loadSiteConfig,
   type SiteConfig,
 } from "@lvl99dotcom/edaha.md/generator/configFile";
 import {
@@ -130,6 +130,17 @@ interface MetadataTools {
 
 /** How many previews the editor remembers (the newest) */
 export const MAX_PREVIEWS = 20;
+
+/** How many embed frames the editor remembers (the newest) */
+export const MAX_EMBED_FRAMES = 200;
+
+/** An embed block's content, for its frame in the editor's body */
+export interface EmbedFrameData {
+  /** The embed plugin's key */
+  key: string;
+  /** The block's content */
+  content: string;
+}
 
 /** An article's unsaved data, and where it's saved (if it is), for its preview page */
 interface Preview {
@@ -263,6 +274,8 @@ export class ArticleStore {
 
   /** Previews' unsaved data by ID, the newest last (see `rememberPreview`) */
   private readonly previews = new Map<string, Preview>();
+  /** Embed blocks shown in the editor's body by ID, the newest last (see `rememberEmbedFrame`) */
+  private readonly embedFrames = new Map<string, EmbedFrameData>();
 
   private readonly siteDir: string;
 
@@ -307,12 +320,12 @@ export class ArticleStore {
     );
   }
 
-  /** Read the config file again, so changes to it show without restarting the editor */
+  /**
+   * Read the config file again (loading its embed plugin packages), so changes to it show without restarting the
+   * editor
+   */
   private async config() {
-    return parseConfig(
-      await readConfigFile(this.configFile),
-      basename(this.configFile),
-    );
+    return (await loadSiteConfig({ configFile: this.configFile })).config;
   }
 
   /**
@@ -323,10 +336,10 @@ export class ArticleStore {
   }
 
   /**
-   * The config file's custom embed renderers (read again each time, so changes show without restarting the editor).
+   * The config file's embed plugins (read again each time, so changes show without restarting the editor).
    */
-  async embeds(): Promise<EmbedRenderer[]> {
-    return (await this.config()).embeds;
+  async plugins(): Promise<EmbedPlugin[]> {
+    return (await this.config()).plugins;
   }
 
   /**
@@ -794,6 +807,8 @@ export class ArticleStore {
     );
     const name = `${data.type}/${data.slug || "new"}`;
     const markdown = createMarkdown();
+    /** The embeds the article's body uses, for the HTML its page needs once */
+    const usage: EmbedUsage = new Map();
     const metadata = await this.metadata();
     try {
       // Published, so always rendered
@@ -807,7 +822,8 @@ export class ArticleStore {
         url: baseUrl,
         typeUrl: (site.types[data.type] as TemplateDataArticleType).url,
         source: name,
-        replaceEmbeds: (md) => embeds.replaceBlocks(md, name),
+        replaceEmbeds: (md, part) =>
+          embeds.replaceBlocks(md, name, part === "body" ? usage : undefined),
         renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
         metadata: {
           ...metadata.context(data.type),
@@ -816,10 +832,10 @@ export class ArticleStore {
         },
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
-      return templates.render(
-        templates.resolve(data.type, "single"),
-        articlePageData(site, article),
-      );
+      return templates.render(templates.resolve(data.type, "single"), {
+        ...articlePageData(site, article),
+        embeds: await embeds.pageParts([usage], name),
+      });
     } catch (error) {
       throw new EditorError(400, (error as Error).message);
     }
@@ -865,6 +881,35 @@ export class ArticleStore {
     for (const old of [...this.previews.keys()].slice(0, -MAX_PREVIEWS))
       this.previews.delete(old);
     return id;
+  }
+
+  /**
+   * Remember an embed block for its frame in the editor's body, under an ID made from it (so the same block keeps its
+   * frame's URL). Only the newest `MAX_EMBED_FRAMES` are kept.
+   *
+   * @example
+   * const id = store.rememberEmbedFrame({ key: "youtube", content: "https://youtu.be/aju_UB5VIf8" }); // shown at /embed-frame/<id>/
+   */
+  rememberEmbedFrame(frame: EmbedFrameData): string {
+    const id = createHash("sha256")
+      .update(`${frame.key}\0${frame.content}`)
+      .digest("hex")
+      .slice(0, 32);
+    this.embedFrames.delete(id);
+    this.embedFrames.set(id, frame);
+    for (const old of [...this.embedFrames.keys()].slice(0, -MAX_EMBED_FRAMES))
+      this.embedFrames.delete(old);
+    return id;
+  }
+
+  /**
+   * A remembered embed block (see `rememberEmbedFrame`). Throws a 404 EditorError if there is none with that ID (e.g.
+   * after the editor restarted).
+   */
+  embedFrame(id: string): EmbedFrameData {
+    const frame = this.embedFrames.get(id);
+    if (!frame) throw new EditorError(404, "Embed not found");
+    return frame;
   }
 
   /**

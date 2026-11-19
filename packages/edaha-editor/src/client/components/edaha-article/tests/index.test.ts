@@ -23,6 +23,7 @@ import type { EdahaArticleDataField } from "../../edaha-article-data-field";
 import type { EdahaArticleDataGroup } from "../../edaha-article-data-group";
 import type { EdahaMarkdown } from "../../edaha-markdown";
 import type { EdahaRichtext } from "../../edaha-richtext";
+import type { EdahaEmbedDialog } from "../../edaha-embed-dialog";
 import type { ToastMessage } from "../../edaha-toasts";
 import {
   button,
@@ -77,6 +78,8 @@ const fakeApi = () =>
     preview: vi.fn(
       async (data: EditorArticleData) => `/preview/${data.title}/`,
     ),
+    embeds: vi.fn(async () => [{ key: "youtube", name: "YouTube video" }]),
+    embedFrame: vi.fn(async () => ({ url: "/embed-frame/x/", warnings: [] })),
   }) as unknown as EditorApi &
     Record<
       | "create"
@@ -86,7 +89,9 @@ const fakeApi = () =>
       | "templates"
       | "toMarkdown"
       | "toHtml"
-      | "preview",
+      | "preview"
+      | "embeds"
+      | "embedFrame",
       ReturnType<typeof vi.fn>
     >;
 
@@ -395,18 +400,46 @@ describe("edaha-article", () => {
     );
   });
 
-  it("should preview embeds in the body through the API", async () => {
+  it("should give the body the site's embeds, the embed dialog and embed frames from the API", async () => {
     const { element, api } = await setup();
-    const preview = { html: "<p>embed</p>", warnings: [] };
-    (api as unknown as { embedPreview: unknown }).embedPreview = vi.fn(
-      async () => preview,
+    await settle(element);
+    const tools = find<EdahaRichtext>(element, "edaha-richtext").embedTools!;
+    expect(api.embeds).toHaveBeenCalledOnce();
+    expect(tools.embeds).toEqual([{ key: "youtube", name: "YouTube video" }]);
+    expect(await tools.loadFrame({ key: "youtube", content: "x" })).toEqual({
+      url: "/embed-frame/x/",
+      warnings: [],
+    });
+    expect(api.embedFrame).toHaveBeenCalledWith("youtube", "x");
+    // The dialog is outside the article's form, as it has its own
+    const dialog = find<EdahaEmbedDialog>(element, "edaha-embed-dialog");
+    expect(element.querySelector("form")!.contains(dialog)).toBe(false);
+    const edit = vi.spyOn(dialog, "edit").mockResolvedValue(undefined);
+    await tools.edit({ key: "youtube", content: "x" });
+    expect(edit).toHaveBeenCalledWith(tools.embeds, {
+      key: "youtube",
+      content: "x",
+    });
+    // The Markdown body gets them too
+    await element.setMode("markdown");
+    await settle(element);
+    expect(find<EdahaMarkdown>(element, "edaha-markdown").embedTools).toBe(
+      tools,
     );
-    const loadEmbedPreview = find<EdahaRichtext>(
-      element,
-      "edaha-richtext",
-    ).loadEmbedPreview!;
-    expect(await loadEmbedPreview("https://youtu.be/x")).toBe(preview);
-    expect(api.embedPreview).toHaveBeenCalledWith("https://youtu.be/x");
+  });
+
+  it("should leave the body without embed tools when the embeds can't be loaded", async () => {
+    const api = fakeApi();
+    api.embeds.mockRejectedValue(new Error("offline"));
+    const element = await mount<EdahaArticle>("edaha-article", {
+      api,
+      article: ARTICLE,
+      typeOptions: [],
+    });
+    await settle(element);
+    expect(
+      find<EdahaRichtext>(element, "edaha-richtext").embedTools,
+    ).toBeUndefined();
   });
 
   it("should not upload before the article is saved", async () => {

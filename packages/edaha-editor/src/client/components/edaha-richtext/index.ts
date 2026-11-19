@@ -1,8 +1,11 @@
 import type { Editor } from "@tiptap/core";
 import { html, LitElement, type PropertyValues } from "lit";
-import type { EmbedPreview } from "../../../server/types/index.ts";
+import type { EmbedTools, EmbedValue } from "../../embeds/index.ts";
 import { createRichtextEditor } from "../../richtext/editor/index.ts";
-import { EMBED_EDIT_EVENT } from "../../richtext/extensions/index.ts";
+import {
+  EMBED_EDIT_EVENT,
+  EMBED_REFRESH_EVENT,
+} from "../../richtext/extensions/index.ts";
 import { defineElement } from "../define/index.ts";
 import { toolbarButtonContent } from "../../icons/index.ts";
 import type { ChosenFile, FileChooser } from "../edaha-file-browser/index.ts";
@@ -36,7 +39,7 @@ export class EdahaRichtext extends LitElement {
     value: { attribute: false },
     uploadImage: { attribute: false },
     chooseFile: { attribute: false },
-    loadEmbedPreview: { attribute: false },
+    embedTools: { attribute: false },
   };
 
   /** The content as HTML */
@@ -48,9 +51,8 @@ export class EdahaRichtext extends LitElement {
   /** Lets the user choose an existing file, giving the URL to show it at; without it, its button is disabled */
   declare chooseFile?: FileChooser | undefined;
 
-  /** Renders embed URLs for previews inside embed blocks */
-  declare loadEmbedPreview?:
-    ((url: string) => Promise<EmbedPreview>) | undefined;
+  /** The site's embeds, the embed dialog, and embed blocks' frames */
+  declare embedTools?: EmbedTools | undefined;
 
   /** The Tiptap editor, once rendered */
   editor?: Editor;
@@ -176,6 +178,8 @@ export class EdahaRichtext extends LitElement {
       label: "Embed",
       run: (e) => this.editEmbed(e),
       active: (e) => e.isActive("embed"),
+      // The site's embeds must be known to choose one
+      enabled: () => !!this.embedTools,
     },
     {
       label: "Raw",
@@ -222,19 +226,17 @@ export class EdahaRichtext extends LitElement {
   }
 
   /**
-   * Insert an embed block (e.g. a YouTube video) by URL, or change the selected embed's URL (empty to remove it).
+   * Insert an embed block (e.g. a YouTube video or a diagram), or change the selected one, asking for its kind and
+   * content in the embed dialog.
    */
-  private editEmbed(editor: Editor) {
-    const selected = editor.isActive("embed");
-    const url = this.prompt(
-      selected
-        ? "Embed URL (empty to remove)"
-        : "Embed URL (e.g. a YouTube video)",
-      selected ? (editor.getAttributes("embed").url as string) : undefined,
-    );
-    if (url === null) return;
-    if (url.trim()) editor.chain().focus().setEmbed(url.trim()).run();
-    else if (selected) editor.chain().focus().deleteSelection().run();
+  private async editEmbed(editor: Editor) {
+    if (!this.embedTools) return;
+    const current = editor.isActive("embed")
+      ? (editor.getAttributes("embed") as EmbedValue)
+      : undefined;
+    const value = await this.embedTools.edit(current);
+    if (value) editor.chain().focus().setEmbed(value).run();
+    else editor.commands.focus();
   }
 
   /**
@@ -288,15 +290,12 @@ export class EdahaRichtext extends LitElement {
         // Refresh the toolbar's pressed states
         this.requestUpdate();
       },
-      // Read the loader when previews load, so it can be set after the editor is created
-      (url) =>
-        this.loadEmbedPreview
-          ? this.loadEmbedPreview(url)
-          : Promise.reject(new Error("previews are not available")),
+      // Read when embed blocks are shown, so the tools can be set after the editor is created
+      () => this.embedTools,
     );
-    // An embed block's "Edit" button selects it, then asks for its new URL here
+    // An embed block's "Edit" button selects it, then asks for its new kind and content here
     element.addEventListener(EMBED_EDIT_EVENT, () => {
-      if (this.editor) this.editEmbed(this.editor);
+      if (this.editor) void this.editEmbed(this.editor);
     });
     this.editor.on("selectionUpdate", () => this.requestUpdate());
     this.requestUpdate();
@@ -310,6 +309,10 @@ export class EdahaRichtext extends LitElement {
       this.editor.getHTML() !== this.value
     )
       this.editor.commands.setContent(this.value, { emitUpdate: false });
+    // Embed blocks show their kind and frame once the embeds are known
+    if (changed.has("embedTools"))
+      for (const block of this.querySelectorAll(".embed-block"))
+        block.dispatchEvent(new Event(EMBED_REFRESH_EVENT));
   }
 
   override disconnectedCallback(): void {

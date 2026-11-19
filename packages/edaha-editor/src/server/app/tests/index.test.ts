@@ -4,13 +4,8 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
-import {
-  PREVIEW_CSP,
-  articleQuery,
-  createEditorApp,
-  fileQuery,
-  previewCsp,
-} from "..";
+import type { EmbedPlugin } from "@lvl99dotcom/edaha.md/embeds";
+import { articleQuery, createEditorApp, fileQuery, previewCsp } from "..";
 import { ArticleStore, EditorError } from "../../store";
 import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
 
@@ -22,8 +17,30 @@ const FIXTURE = fileURLToPath(
 );
 const ORIGIN = "http://127.0.0.1:5180";
 
+/** An embed plugin for tests: a frame, with a stylesheet and a script once per page, and its own look in the editor */
+const MEDIA = {
+  key: "media",
+  name: "Media",
+  description: "A media player",
+  sources: {
+    frame: ["https://media.example.com"],
+    script: ["https://cdn.example.com"],
+    style: ["https://cdn.example.com"],
+  },
+  build: {
+    render: async (content: string) => `<iframe src="${content}"></iframe>`,
+    renderHead: async () =>
+      '<link rel="stylesheet" href="https://cdn.example.com/media.css">',
+    renderFoot: async () => "<script>/* media */</script>",
+  },
+  editor: {
+    icon: "<svg></svg>",
+    render: async (content: string) => `<p>Editing ${content}</p>`,
+  },
+} satisfies EmbedPlugin;
+
 /** An editor app over a copy of the fixture site */
-const setup = async () => {
+const setup = async (options: { plugins?: EmbedPlugin[] } = {}) => {
   const dir = await mkdtemp(join(tmpdir(), "edaha-app-"));
   await cp(FIXTURE, dir, { recursive: true });
   const store = new ArticleStore(
@@ -34,7 +51,7 @@ const setup = async () => {
   return {
     dir,
     store,
-    app: createEditorApp(store, { allowedOrigins: [ORIGIN] }),
+    app: createEditorApp(store, { allowedOrigins: [ORIGIN], ...options }),
   };
 };
 
@@ -280,113 +297,129 @@ describe("createEditorApp", () => {
     expect(file.headers.get("content-type")).toBe("application/octet-stream");
   });
 
-  it("should render embed previews with their warnings", async () => {
-    const { app } = await setup();
-    const youtube = await app.request(
-      `/api/embed?url=${encodeURIComponent("https://youtu.be/aju_UB5VIf8")}`,
-    );
-    const preview = (await youtube.json()) as {
-      html: string;
-      warnings: string[];
-    };
-    expect(preview.html).toContain("youtube-nocookie.com/embed/aju_UB5VIf8");
-    expect(preview.warnings).toEqual([]);
-
-    const unknown = (await (await app.request("/api/embed")).json()) as {
-      html: string;
-      warnings: string[];
-    };
-    expect(unknown.warnings).toEqual(['Preview: embed "" is not a valid URL']);
-  });
-
-  it("should render embeds and allow their frames in previews with the config file's renderers, then the given ones", async () => {
+  it("should list the embed plugins: the config file's, then the given ones", async () => {
     const { dir } = await setup();
     await writeFile(
       join(dir, "edaha.config.mjs"),
       // The config file's folder is outside the workspace, so it can only import Node.js's own modules
       `export default {
   ...${JSON.stringify(parse(await readFile(join(dir, "edahaconfig.yml"), "utf8")))},
-  embeds: [
-    {
-      name: "Example",
-      frameSources: ["https://media.example.com"],
-      match: (url) => url.hostname === "media.example.com",
-      render: async (url) => \`<iframe src="\${url.href}"></iframe>\`,
-    },
-  ],
+  plugins: [{ key: "quote", name: "Quote", build: { render: async (text) => text } }],
 };
 `,
     );
     const store = new ArticleStore(
       await loadSiteConfig({ configFile: join(dir, "edaha.config.mjs") }),
+      undefined,
+      { watch: false },
     );
     const app = createEditorApp(store, {
       allowedOrigins: [ORIGIN],
-      embedRenderers: [],
+      plugins: [MEDIA, { ...MEDIA, key: "quote", name: "Not used" }],
     });
-    const embed = (await (
-      await app.request(
-        `/api/embed?url=${encodeURIComponent("https://media.example.com/v/1")}`,
-      )
-    ).json()) as { html: string };
-    expect(embed.html).toContain(
-      '<iframe src="https://media.example.com/v/1">',
-    );
-    // No built-in renderers, so YouTube URLs are plain links
-    const youtube = (await (
-      await app.request(
-        `/api/embed?url=${encodeURIComponent("https://youtu.be/aju_UB5VIf8")}`,
-      )
-    ).json()) as { html: string };
-    expect(youtube.html).toContain('class="embed-link"');
+    expect(await (await app.request("/api/embeds")).json()).toEqual([
+      { key: "quote", name: "Quote" },
+      {
+        key: "media",
+        name: "Media",
+        description: "A media player",
+        icon: "<svg></svg>",
+      },
+    ]);
+  });
 
+  it("should show embed blocks in sandboxed frames, rendered for the editor, with their warnings", async () => {
+    const { app } = await setup({ plugins: [MEDIA] });
     const created = await app.request(
-      "/api/preview",
-      json("POST", {
-        data: {
-          type: "article",
-          slug: "embeds",
-          status: "draft",
-          date: "2026-10-19T09:54:00.000Z",
-          title: "Embeds",
-          tags: [],
-          attachments: [],
-          bodyHtml: '<div class="embed">https://media.example.com/v/1</div>',
-        },
-      }),
+      "/api/embed-frames",
+      json("POST", { key: "media", content: "https://media.example.com/v/1" }),
     );
-    const { url } = (await created.json()) as { url: string };
-    const page = await app.request(url);
-    expect(await page.text()).toContain(
-      '<iframe src="https://media.example.com/v/1">',
+    const frame = (await created.json()) as { url: string; warnings: string[] };
+    expect(frame.url).toMatch(/^\/embed-frame\/[0-9a-f]{32}\/$/);
+    expect(frame.warnings).toEqual([]);
+    // The same block keeps its frame's URL
+    const again = await app.request(
+      "/api/embed-frames",
+      json("POST", { key: "media", content: "https://media.example.com/v/1" }),
     );
+    expect(((await again.json()) as { url: string }).url).toBe(frame.url);
+
+    const page = await app.request(`${frame.url}?theme=dark`);
+    expect(page.headers.get("content-type")).toMatch(/^text\/html/);
     expect(page.headers.get("content-security-policy")).toBe(
-      previewCsp(await store.embeds()),
+      previewCsp([MEDIA], "http://localhost"),
     );
-    expect(page.headers.get("content-security-policy")).toContain(
-      "frame-src https://media.example.com;",
+    const html = await page.text();
+    expect(html).toContain('<html lang="en" data-theme="dark"');
+    expect(html).toContain(
+      '<div class="embed embed-media"><p>Editing https://media.example.com/v/1</p></div>',
     );
+    expect(html).toContain(
+      '<link rel="stylesheet" href="https://cdn.example.com/media.css">',
+    );
+    expect(html).toContain("<script>/* media */</script>");
+    expect(html).toContain("edahaEmbedHeight");
+    // Without a theme, the frame follows the visitor's setting
+    expect(await (await app.request(frame.url)).text()).toContain(
+      '<html lang="en">',
+    );
+
+    const unknown = await app.request(
+      "/api/embed-frames",
+      json("POST", { key: "nope", content: "Hello" }),
+    );
+    const { url, warnings } = (await unknown.json()) as {
+      url: string;
+      warnings: string[];
+    };
+    expect(warnings).toEqual([
+      'Embed: no embed plugin with the key "nope"; shown as it is',
+    ]);
+    expect(await (await app.request(url)).text()).toContain(
+      '<pre class="embed-text">Hello</pre>',
+    );
+    expect((await app.request("/embed-frame/nope/")).status).toBe(404);
   });
 
   it("should fetch embed data with the given fetch, or the global one", async () => {
-    const page =
-      '<meta property="og:video" content="https://bandcamp.com/EmbeddedPlayer/album=7/">';
+    const fetching = {
+      ...MEDIA,
+      key: "fetching",
+      build: {
+        render: async (
+          content: string,
+          { fetch }: { fetch: typeof globalThis.fetch },
+        ) => (await fetch(content)).text(),
+      },
+      editor: undefined,
+    };
     const fetch = vi.fn(
-      async () => new Response(page),
+      async () => new Response("<p>Fetched</p>"),
     ) as unknown as typeof globalThis.fetch;
     const { store } = await setup();
-    const url = encodeURIComponent("https://artist.bandcamp.com/album/name");
-    const app = createEditorApp(store, { allowedOrigins: [ORIGIN], fetch });
-    const preview = (await (
-      await app.request(`/api/embed?url=${url}`)
-    ).json()) as { html: string };
-    expect(preview.html).toContain("EmbeddedPlayer/album=7/");
+    const app = createEditorApp(store, {
+      allowedOrigins: [ORIGIN],
+      fetch,
+      plugins: [fetching],
+    });
+    const created = await app.request(
+      "/api/embed-frames",
+      json("POST", { key: "fetching", content: "https://example.com/a" }),
+    );
+    const { url } = (await created.json()) as { url: string };
+    expect(await (await app.request(url)).text()).toContain("<p>Fetched</p>");
 
     const global = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(page));
-    const defaultApp = createEditorApp(store, { allowedOrigins: [ORIGIN] });
-    await defaultApp.request(`/api/embed?url=${url}`);
+      .mockResolvedValue(new Response("<p>Global</p>"));
+    const defaultApp = createEditorApp(store, {
+      allowedOrigins: [ORIGIN],
+      plugins: [fetching],
+    });
+    await defaultApp.request(
+      "/api/embed-frames",
+      json("POST", { key: "fetching", content: "https://example.com/b" }),
+    );
     expect(global).toHaveBeenCalled();
     global.mockRestore();
   });
@@ -424,8 +457,8 @@ describe("createEditorApp", () => {
     expect(bad.status).toBe(400);
   });
 
-  it("should render previews of unsaved articles, with embeds", async () => {
-    const { app } = await setup();
+  it("should render previews of unsaved articles, with embeds and what their page needs once", async () => {
+    const { app } = await setup({ plugins: [MEDIA] });
     const response = await app.request(
       "/api/preview",
       json("POST", {
@@ -433,7 +466,7 @@ describe("createEditorApp", () => {
           ...ARTICLE,
           title: "Preview me",
           bodyHtml:
-            '<h2>Hello there</h2><div class="embed">https://youtu.be/aju_UB5VIf8</div><div class="embed">not a URL</div>',
+            '<h2>Hello there</h2><div class="embed" data-embed="media" data-content="https://media.example.com/v/1"></div><div class="embed" data-embed="nope" data-content="not shown"></div>',
         },
       }),
     );
@@ -442,13 +475,17 @@ describe("createEditorApp", () => {
     expect(url).toMatch(/^\/preview\/[0-9a-f-]{36}\/$/);
     const page = await app.request(url);
     expect(page.headers.get("content-type")).toMatch(/^text\/html/);
-    expect(page.headers.get("content-security-policy")).toBe(PREVIEW_CSP);
+    expect(page.headers.get("content-security-policy")).toBe(
+      previewCsp([MEDIA], "http://localhost"),
+    );
     const html = await page.text();
     expect(html).toContain("Preview me");
     expect(html).toContain('<h2 id="hello-there">');
-    expect(html).toContain("youtube-nocookie.com/embed/aju_UB5VIf8");
-    // Embeds that can't be shown are links, without a warning
-    expect(html).toContain("not a URL");
+    // As the website shows it, not as the editor does
+    expect(html).toContain('<iframe src="https://media.example.com/v/1">');
+    expect(html).toMatch(/<script>\/\* media \*\/<\/script>\s*<\/body>/);
+    // Embeds that can't be shown are shown as they are written, without a warning
+    expect(html).toContain('<pre class="embed-text">not shown</pre>');
 
     const missing = await app.request(
       "/api/preview",
@@ -457,7 +494,7 @@ describe("createEditorApp", () => {
     expect(missing.status).toBe(400);
   });
 
-  it("should serve the files previews share at the root, with the policy forbidding scripts", async () => {
+  it("should serve the files previews share at the root, sandboxed like them", async () => {
     const { app, dir } = await setup();
     await mkdir(join(dir, "static"), { recursive: true });
     await writeFile(join(dir, "static/site.css"), "body {}");
@@ -465,7 +502,9 @@ describe("createEditorApp", () => {
     await app.request("/api/preview", json("POST", { data: ARTICLE }));
     const css = await app.request("/site.css");
     expect(css.headers.get("content-type")).toMatch(/^text\/css/);
-    expect(css.headers.get("content-security-policy")).toBe(PREVIEW_CSP);
+    expect(css.headers.get("content-security-policy")).toBe(
+      previewCsp([], "http://localhost"),
+    );
     expect(await css.text()).toBe("body {}");
     expect((await app.request("/notes")).headers.get("content-type")).toBe(
       "application/octet-stream",
@@ -474,26 +513,28 @@ describe("createEditorApp", () => {
     expect((await app.request("/preview/nope/")).status).toBe(404);
   });
 
-  it("should forbid scripts, requests and forms in previews, but allow the embeds", () => {
-    expect(PREVIEW_CSP).toContain("script-src 'none'");
-    expect(PREVIEW_CSP).toContain("connect-src 'none'");
-    expect(PREVIEW_CSP).toContain("form-action 'none'");
-    expect(PREVIEW_CSP).toContain(
-      "frame-src https://www.youtube-nocookie.com https://bandcamp.com",
+  it("should sandbox previews, allowing their own scripts and styles and the embeds' sources", () => {
+    const self = "http://127.0.0.1:5180";
+    const csp = previewCsp([MEDIA, { ...MEDIA, key: "b" }], self);
+    expect(csp).toMatch(
+      /^sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; /,
     );
-    // No frames without renderers that declare them, and each origin once
-    expect(previewCsp([])).toContain("frame-src 'none';");
-    const renderer = {
-      name: "A",
-      frameSources: ["https://a.example.com"],
-      match: () => false,
-      render: async () => "",
-    };
-    const frameless = { ...renderer, frameSources: undefined };
-    expect(previewCsp([frameless])).toContain("frame-src 'none';");
-    expect(previewCsp([renderer, { ...renderer, name: "B" }])).toContain(
-      "frame-src https://a.example.com;",
+    expect(csp).toContain(`default-src ${self};`);
+    expect(csp).toContain(
+      `script-src ${self} 'unsafe-inline' https://cdn.example.com;`,
     );
+    expect(csp).toContain(
+      `style-src ${self} 'unsafe-inline' https://cdn.example.com;`,
+    );
+    expect(csp).toContain(`font-src ${self} data:;`);
+    // Each origin once
+    expect(csp).toContain("frame-src https://media.example.com;");
+    expect(csp).toContain("form-action 'none'");
+    // Without sources, no frames or requests
+    const none = previewCsp([], self);
+    expect(none).toContain("frame-src 'none';");
+    expect(none).toContain("connect-src 'none';");
+    expect(none).toContain(`script-src ${self} 'unsafe-inline';`);
   });
 
   it("should require a file when uploading", async () => {
