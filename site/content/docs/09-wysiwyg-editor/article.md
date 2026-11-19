@@ -45,7 +45,7 @@ Searches and the article browser include changes made outside the editor straigh
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
    - **Image URL**, **Upload image**, **Choose file** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
-   - **Embed**: a YouTube video, Mermaid diagram or other [embed](/docs/07-embeds/): choose its kind, then paste or write its content (e.g. a video's address). The body shows it as the website will; its **Edit** button changes it;
+   - **Embed**: a YouTube video, Mermaid diagram or other [embed](/docs/07-embeds/): choose its kind, then paste or write its content (e.g. a video's address). If the content isn't right for that kind, the dialog says why before adding it. The body shows it as the website will; its **Edit** button changes it;
    - **Raw**: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;
    - **Read more**: where the article's summary in lists ends.
 4. Choose **Save**.

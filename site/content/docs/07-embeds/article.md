@@ -76,6 +76,8 @@ Packages are found from the config file's folder, like an `import` there would b
 An embed is an **embed plugin**: an object with a key, a name and a `build.render` function that turns a block's content into HTML. The content is the text between its tags, so it can be anything: a URL, an ID, some code.
 
 ```js
+const VIDEO_URL = /^https:\/\/vimeo\.com\/(\d+)$/;
+
 /** @type {import("@lvl99dotcom/edaha.md").EmbedPlugin} */
 export const vimeo = {
   key: "vimeo",
@@ -84,11 +86,16 @@ export const vimeo = {
   description: "A Vimeo video player, from the video's URL.",
   // Optional; the web addresses its HTML loads from (see "Previews in the editor")
   sources: { frame: ["https://player.vimeo.com"] },
+  // Optional; check the content before it is rendered (see "Checking content")
+  validate: (content) => {
+    if (!VIDEO_URL.test(content))
+      throw new Error(`${content} is not a Vimeo video URL`);
+    return true;
+  },
   build: {
     // The HTML for a block's content; throw if it can't be embedded
     render: async (content) => {
-      const id = /^https:\/\/vimeo\.com\/(\d+)$/.exec(content)?.[1];
-      if (!id) throw new Error(`${content} is not a Vimeo video URL`);
+      const [, id] = VIDEO_URL.exec(content);
       return `<iframe src="https://player.vimeo.com/video/${id}" title="Vimeo video" allowfullscreen></iframe>`;
     },
   },
@@ -101,12 +108,29 @@ export const vimeo = {
 | `name`                           | Its name, shown in the editor and in warnings, e.g. `Vimeo video`.                                                                                                                                          |
 | `description`                    | Optional; what it embeds, shown in the editor's embed dialog.                                                                                                                                               |
 | `sources`                        | Optional; the `https://` origins its HTML loads from, by kind: `frame`, `script`, `style`, `font` and `connect` (requests from its scripts). The editor's previews allow them.                              |
+| `validate(content)`              | Optional; checks a block's content before it is rendered. Return `true` when it is valid; throw an error saying what is wrong (or an `AggregateError` with one error for each problem). See below.          |
 | `build.render(content, context)` | Returns a promise of the HTML for a block. `context.fetch` fetches other data, e.g. an oEmbed response; `context.renders` collects what the page needs (see below). Throw if the content can't be embedded. |
 | `build.renderHead(context)`      | Optional; HTML for the `<head>` of each page that has this embed, once, e.g. a stylesheet.                                                                                                                  |
 | `build.renderFoot(context)`      | Optional; HTML for the end of the `<body>` of each page that has this embed, once, e.g. a script.                                                                                                           |
 | `editor`                         | Optional; how it shows in the editor's rich text body (see "Previews in the editor").                                                                                                                       |
 
 Escape anything from the content that you put into the HTML. Each block's content is rendered once per build, however many articles use it.
+
+### Checking content
+
+`validate` checks a block's content before it is rendered, for the website and in the editor. Return `true` when it is valid. Otherwise, throw an error saying what is wrong, so the author can fix it; for several problems, throw an `AggregateError` with one error for each. Returning `false` gives a general message instead. It can be `async`.
+
+```js
+validate: (content) => {
+  const problems = [];
+  if (!content.startsWith("https://")) problems.push(new Error("Use an https:// URL"));
+  if (content.length > 200) problems.push(new Error("The URL is too long"));
+  if (problems.length) throw new AggregateError(problems, "The URL isn't valid");
+  return true;
+},
+```
+
+Content that isn't valid isn't rendered: the build warns with the problems and shows the block as it is written. In the editor, the embed dialog checks the content when you add or save an embed, and lists the problems under it instead of saving it.
 
 ### Scripts and stylesheets once per page
 

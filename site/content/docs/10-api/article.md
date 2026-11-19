@@ -118,7 +118,7 @@ It takes `siteDir`, `configFile` and `logger`, like `buildSite`. The config help
 
 ### Embed plugins
 
-The embed API (`EmbedPlugin`, `EmbedResolver`, `embedBlock`, `isEmbedPlugin` and `loadPlugins`) is exported too. See [Embeds](/docs/07-embeds/#creating-your-own) for how to write a plugin.
+The embed API (`EmbedPlugin`, `EmbedResolver`, `embedBlock`, `isEmbedPlugin`, `loadPlugins` and `validationErrors`) is exported too. See [Embeds](/docs/07-embeds/#creating-your-own) for how to write a plugin.
 
 ### The command line
 
