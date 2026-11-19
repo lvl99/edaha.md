@@ -45,7 +45,7 @@ Searches and the article browser include changes made outside the editor straigh
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
    - **Image URL**, **Upload image**, **Choose file** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
-   - **Embed**: a YouTube video, Bandcamp player or other [embed](/docs/07-embeds/), from its address;
+   - **Embed**: a YouTube video, Mermaid diagram or other [embed](/docs/07-embeds/): choose its kind, then paste or write its content (e.g. a video's address). The body shows it as the website will; its **Edit** button changes it;
    - **Raw**: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;
    - **Read more**: where the article's summary in lists ends.
 4. Choose **Save**.
@@ -130,31 +130,13 @@ The editor reads and writes the same `article.md` files you would edit by hand. 
 
 To list and search articles quickly, the editor keeps an index of every article's settings in memory: it reads them all when it starts, updates an article's entry when it saves, moves or deletes it, and watches the articles folder for changes made outside it. The article files stay the only source of truth: no database or index file is written. Recently changed means when an article's `article.md` file last changed.
 
-Preview pages are sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API. Frames are only allowed from the origins that embeds list in `frameSources`.
+Preview pages, the frames that show embeds in the body, and the files they load are sandboxed by their Content Security Policy: they run as a site of their own, so nothing in an article, and no embed's script, can use the editor's API. They can run their own scripts and styles, and load from the editor and the web addresses the site's embeds list in `sources`. Some embedded browsers (such as the browser pane in Claude's desktop app) block sandboxed pages from loading anything from `127.0.0.1`, so previews look unstyled and embed frames empty there; use a regular browser.
 
-### Extending the editor with custom embeds
+### Embeds in the editor
 
-Embeds you add to a JavaScript config file's `embeds` setting work in the editor too: the **Embed** button previews them, and the preview pages render them as the website will.
+The site's [embed plugins](/docs/07-embeds/) (its config file's `plugins`) work in the editor too: the **Embed** button's dialog lists them with their descriptions, the body shows each embed block in a frame, and the preview pages render them as the website will. An embed's `editor` settings can give it an icon and a different look in the body.
 
-```js
-// edaha.config.mjs
-export default {
-  name: "My Site",
-  description: "News and notes.",
-  embeds: [
-    {
-      name: "Vimeo",
-      // Let the preview pages show its iframes
-      frameSources: ["https://player.vimeo.com"],
-      match: (url) => url.hostname === "vimeo.com",
-      render: async (url) =>
-        `<iframe src="https://player.vimeo.com/video${url.pathname}" title="Vimeo video"></iframe>`,
-    },
-  ],
-};
-```
-
-The editor reads the config file again for each preview, so you can change an embed and see the result without restarting it. See [Embeds](/docs/07-embeds/) for how to write one.
+The editor reads the config file again each time, so you can add or change an embed and see the result without restarting it.
 
 ### Starting it from code
 
@@ -164,8 +146,8 @@ import { startEditor } from "@lvl99dotcom/edaha-editor";
 const editor = await startEditor({
   siteDir: "my-site",
   port: 5180,
-  // Embeds tried after the config file's (default: the built-in ones)
-  embedRenderers: [],
+  // Embed plugins added after the config file's (default: none)
+  plugins: [],
 });
 console.log(`Open ${editor.url}`);
 ```

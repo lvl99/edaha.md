@@ -26,10 +26,13 @@ yarn add @lvl99dotcom/edaha-editor -D
 pnpm add @lvl99dotcom/edaha-editor -D
 ```
 
-| Package                     | What it has                                              |
-| --------------------------- | -------------------------------------------------------- |
-| `@lvl99dotcom/edaha.md`     | The `edaha` command, the build, embeds and default theme |
-| `@lvl99dotcom/edaha-editor` | The local WYSIWYG article editor (`edaha editor`)        |
+| Package                               | What it has                                                    |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `@lvl99dotcom/edaha.md`               | The `edaha` command, the build, embed blocks and default theme |
+| `@lvl99dotcom/edaha-editor`           | The local WYSIWYG article editor (`edaha editor`)              |
+| `@lvl99dotcom/edaha-plugin-youtube`   | Embeds YouTube videos                                          |
+| `@lvl99dotcom/edaha-plugin-bandcamp`  | Embeds Bandcamp albums and tracks                              |
+| `@lvl99dotcom/edaha-plugin-mermaidjs` | Draws Mermaid diagrams                                         |
 
 ## Quick start
 
@@ -111,20 +114,32 @@ Articles can contain metadata. The metadata is located in the article's header w
 
 ## Embeds
 
-Embeds allow you to customise how certain content is rendered in the templates.
+Embeds turn text in an article into richer content, such as a video player or a diagram. Write the content between `<!-- embed:<key> -->` and `<!-- /embed:<key> -->`, where the key names the kind of embed:
 
-Embeds are generally specific pieces of text that you search for to then render differently. One example is a URL to a YouTube video could be used to embed the YouTube player.
+```md
+<!-- embed:youtube -->https://www.youtube.com/watch?v=aju_UB5VIf8<!-- /embed:youtube -->
 
-To enable embeds, wrap your content with `<!-- embed -->` and `<!-- /embed -->` HTML comment tags.
+<!-- embed:mermaidjs -->
 
-Currently supported embeds out of the box:
+graph TD;
+A-->B;
+<!-- /embed:mermaidjs -->
+```
 
-- **YouTube**: wrap YouTube URLs to embed a YouTube player. Embeds always use youtube-nocookie.com.
-- **Bandcamp**: wrap album and track URLs to embed a Bandcamp player. Embeds fetch the page at build time, so the build needs internet access.
+Each kind of embed is a plugin. Install the ones you want and list them under `plugins` in the config file:
 
-An unrecognised URL gives a warning and is rendered as a link.
+```sh
+npm add @lvl99dotcom/edaha-plugin-youtube @lvl99dotcom/edaha-plugin-mermaidjs --save-dev
+```
 
-To add your own renderers, list them under `embeds` in a JavaScript config file. They are tried before the built-in ones, by `edaha build` and by the editor and its previews.
+```yaml
+# edahaconfig.yml
+plugins:
+  - "@lvl99dotcom/edaha-plugin-youtube"
+  - "@lvl99dotcom/edaha-plugin-mermaidjs"
+```
+
+A block whose key has no plugin gives a warning and is shown as it is written. Plugins can add stylesheets and scripts once per page, through the `{% embedHead %}` and `{% embedFoot %}` template tags (the default theme has them).
 
 > For more information about embeds such as how to create your own, see [Embeds](https://lvl99.github.io/edaha.md/site/content/docs/07-embeds/article.md).
 
@@ -205,7 +220,7 @@ pnpm site:dev       # build and serve site/ at http://127.0.0.1:8449, rebuilding
 
 - `packages/edaha/` (`@lvl99dotcom/edaha.md`):
   - `src/generator/`: finds and reads the config file and articles, renders templates and builds the site (`buildSite`).
-  - `src/embeds/`: embed renderers.
+  - `src/embeds/`: embed blocks, plugins and the embed resolver.
   - `src/cli/`: the `edaha` command. `edaha editor` loads `@lvl99dotcom/edaha-editor` when it is installed.
   - `src/theme/`: the path to `theme/`.
   - `src/shared/tests/fixtures/`: a fixture site, also used by the editor's tests.
@@ -215,11 +230,12 @@ pnpm site:dev       # build and serve site/ at http://127.0.0.1:8449, rebuilding
   - `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`.
   - `src/editor/`: the editor's web server (`startEditor`).
   - `src/shared/tests/`: test helpers.
+- `packages/edaha-plugin-youtube/`, `packages/edaha-plugin-bandcamp/`, `packages/edaha-plugin-mermaidjs/`: embed plugins.
 - `scripts/`: the `site:*` scripts for edaha.md's own website.
 - `site/`: edaha.md's own website and docs.
 
 Source imports name their files with `.ts` extensions (e.g. `../slug/index.ts`), so scripts run directly with Node.js type stripping. The build rewrites them to `.js`.
 
-The editor imports the core's modules by their folder, e.g. `@lvl99dotcom/edaha.md/generator/article`. In the workspace, packages' `exports` point at their `src/` TypeScript files, so nothing needs building first; `publishConfig` points them at `dist/` for npm. `pnpm build` builds `@lvl99dotcom/edaha.md` first, as the other packages' types are built from its `dist/`.
+The editor and the plugins import the core's modules by their folder, e.g. `@lvl99dotcom/edaha.md/generator/article`. In the workspace, packages' `exports` point at their `src/` TypeScript files, so nothing needs building first; `publishConfig` points them at `dist/` for npm. `pnpm build` builds `@lvl99dotcom/edaha.md` first, as the other packages' types are built from its `dist/`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.

@@ -72,7 +72,7 @@ module.exports = {
 };
 ```
 
-A JavaScript config file exports a plain object. It is the only format that can hold [custom embeds](#embeds).
+A JavaScript config file exports a plain object. It is the only format that can give [embed plugins](#plugins) themselves, rather than their package names.
 
 ### Where it is found
 
@@ -106,7 +106,7 @@ The folder that holds the config file is the **site folder**. Every folder in th
 | [`siteUrl`](#siteurl) | No | The website's absolute URL, for links in RSS feeds. |
 | [`reservedPaths`](#reservedpaths) | No | Paths at the website's root that articles and article types can't use. |
 | [`types`](#types) | No | Settings for each article type: URL path, labels and what is built. |
-| [`embeds`](#embeds) | No | Custom embed renderers, tried before the built-in ones (JavaScript config only). |
+| [`plugins`](#plugins) | No | Embed plugins: their package names, or (JavaScript config only) the plugins themselves. |
 | [`metadata`](#metadata) | No | Custom settings for articles, with how the editor shows them. |
 | [`metadataGroups`](#metadatagroups) | No | Groups of settings in the editor, besides the built-in ones. |
 | [`author`](#author) | No | The author of articles that don't name one. |
@@ -274,31 +274,31 @@ types:
 - Types can't be called `tags` or `authors`, and no two types can have the same path.
 - A type with `generate: false` builds nothing, but its articles are still checked for errors.
 
-### `embeds`
+### `plugins`
 
-Custom embed renderers, tried before the built-in YouTube and Bandcamp ones. As renderers are code, only a JavaScript config file can set them.
+The site's [embed plugins](/docs/07-embeds/), which render `<!-- embed:<key> -->` blocks. edaha.md has none of its own.
 
-- **Accepted values:** a list of objects with `name`, `match(url)`, `render(url, context)` and, optionally, `frameSources`.
+- **Accepted values:** a list of package names, found from the config file's folder (install them first). A JavaScript config file can also give the plugins themselves.
 - **Default:** none
+
+```yaml
+plugins:
+  - "@lvl99dotcom/edaha-plugin-youtube"
+  - "@lvl99dotcom/edaha-plugin-mermaidjs"
+```
 
 ```js
 // edaha.config.mjs
+import { vimeo } from "./embeds/vimeo.mjs";
+
 export default {
   name: "My Site",
   description: "News and notes.",
-  embeds: [
-    {
-      name: "Vimeo",
-      frameSources: ["https://player.vimeo.com"],
-      match: (url) => url.hostname === "vimeo.com",
-      render: async (url) =>
-        `<iframe src="https://player.vimeo.com/video${url.pathname}" title="Vimeo video"></iframe>`,
-    },
-  ],
+  plugins: ["@lvl99dotcom/edaha-plugin-youtube", vimeo],
 };
 ```
 
-See [Embeds](/docs/07-embeds/) for how to write one.
+No two plugins can have the same key. See [Embeds](/docs/07-embeds/) for the plugins there are, and how to write one.
 
 ### `author`
 

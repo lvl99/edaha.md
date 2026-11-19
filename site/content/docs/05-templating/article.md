@@ -143,6 +143,15 @@ As well as Nunjucks' own filters, templates have:
 | `absoluteUrl(site.url)` | `{{ article.url \| absoluteUrl(site.url) }}` | `https://example.com/news/hello/` |
 | `absoluteUrls(site.url)` | `{{ article.excerptHtml \| absoluteUrls(site.url) }}` | The HTML with absolute links |
 
+## Embed tags
+
+Some [embeds](/docs/07-embeds/) need a stylesheet or a script on the pages that use them, e.g. to draw diagrams. Two tags output them, once per page:
+
+- `{% embedHead %}`: before `</head>`.
+- `{% embedFoot %}`: before `</body>`.
+
+They output nothing on pages without such embeds, and on feeds. The default theme's `layouts/html.njk` has both, so you only need them in a layout of your own that doesn't extend it. `{% embedRenderHead() %}` and `{% embedRenderFoot() %}` work too.
+
 ## Examples
 
 ### Change the page layout
