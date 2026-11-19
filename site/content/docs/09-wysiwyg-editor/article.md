@@ -19,12 +19,14 @@ On a phone or a narrow window, the list of articles opens from the menu button a
 
 ## Finding articles
 
+When the editor opens, the welcome prompt in the middle offers to **Write a new article** or **edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Open article browser** opens the article browser.
+
 The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, **Show all** opens them all in the article browser.
 
 To find any other article:
 
 - Type in **Search titles** to see up to 10 articles whose titles contain your text. **See all results** shows every match in the article browser. Press Escape to clear the search.
-- Choose **All articles** (the button beside the search) to open the article browser. Search titles, filter by **Type**, **Author**, **Tag** and **Status**, and sort by date (newest first) or title (A–Z). It shows 50 articles at a time; **Previous** and **Next** move between pages.
+- Choose **All articles** (the button beside the search) to open the article browser. Search titles and filter by **Type**, **Author**, **Tag** and **Status**. The articles are listed in a table with their title, type, status, publication date and when they last changed, newest published first. Choose a column's heading to sort by it: once for ascending, again for descending, and a third time to go back to newest published first. It shows 50 articles at a time; **Previous** and **Next** move between pages.
 
 Searches and the article browser include changes made outside the editor straight away, e.g. articles added by someone else or edited in a text editor. The list of recent articles shows them after you save or delete an article, or reload the page.
 
@@ -69,7 +71,7 @@ Three tabs above the body change what you see. Move between them with the arrow 
 
 - **WYSIWYG**: the rich text editor.
 - **Markdown**: the body as Markdown, if you'd like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.
-- **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px or 320px wide (like a tablet or a phone), centred.
+- **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred.
 
 ## Saving, resetting and deleting
 
