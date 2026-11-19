@@ -1105,7 +1105,7 @@ edaha-article .preview {
 }
 
 /* Column headers are buttons that sort by their column */
-.article-browser-sort {
+.sort-heading {
   display: inline-flex;
   gap: 0.25rem;
   align-items: center;
@@ -1120,11 +1120,11 @@ edaha-article .preview {
   cursor: pointer;
 }
 
-.article-browser-sort:hover {
+.sort-heading:hover {
   color: var(--colour-link);
 }
 
-.article-browser-sort-arrow {
+.sort-heading-arrow {
   font-size: 0.7em;
 }
 

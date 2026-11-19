@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ArticlePage, ArticleSummary } from "../../../../server/types";
 import type { EditorApi } from "../../../editorApi";
 import "..";
-import { nextSort, typeLabel, type EdahaArticleBrowser } from "..";
+import { typeLabel, type EdahaArticleBrowser } from "..";
 import {
   button,
   find,
@@ -95,21 +95,6 @@ describe("typeLabel", () => {
     const types = { news: { labelSingle: "News item", labelPlural: "News" } };
     expect(typeLabel(types, "news")).toBe("News item");
     expect(typeLabel(types, "page")).toBe("page");
-  });
-});
-
-describe("nextSort", () => {
-  it("should sort another column ascending, then descending, then go back to the default order", () => {
-    expect(nextSort({}, "title")).toEqual({ sort: "title", order: "asc" });
-    expect(nextSort({ sort: "date", order: "desc" }, "title")).toEqual({
-      sort: "title",
-      order: "asc",
-    });
-    expect(nextSort({ sort: "title", order: "asc" }, "title")).toEqual({
-      sort: "title",
-      order: "desc",
-    });
-    expect(nextSort({ sort: "title", order: "desc" }, "title")).toEqual({});
   });
 });
 

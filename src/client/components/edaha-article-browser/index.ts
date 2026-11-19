@@ -10,6 +10,7 @@ import type {
 } from "../../../server/types/index.ts";
 import type { ArticleLocation, EditorApi } from "../../editorApi/index.ts";
 import { icon } from "../../icons/index.ts";
+import { nextSort, sortHeading } from "../../sortTable/index.ts";
 import { defineElement } from "../define/index.ts";
 
 /** What the article browser starts with when it opens */
@@ -38,29 +39,6 @@ export const COLUMNS: readonly { sort: ArticleSort; label: string }[] = [
   { sort: "updated", label: "Changed" },
 ];
 
-/** How the results are sorted: by a column, ascending or descending, or neither (the default order) */
-export interface ResultsSort {
-  sort?: ArticleSort | undefined;
-  order?: ArticleOrder | undefined;
-}
-
-/**
- * How the results are sorted after pressing a column's header: another column sorts ascending, the sorted column
- * changes to descending, and a column sorted descending goes back to the default order (newest published first).
- *
- * @example
- * nextSort({}, "title"); // { sort: "title", order: "asc" }
- * nextSort({ sort: "title", order: "asc" }, "title"); // { sort: "title", order: "desc" }
- * nextSort({ sort: "title", order: "desc" }, "title"); // {}
- */
-export const nextSort = (
-  current: ResultsSort,
-  column: ArticleSort,
-): ResultsSort => {
-  if (current.sort !== column) return { sort: column, order: "asc" };
-  return current.order === "asc" ? { sort: column, order: "desc" } : {};
-};
-
 /** The event fired when an article is chosen (detail: its location) */
 export const ARTICLE_CHOOSE_EVENT = "article-choose";
 
@@ -77,7 +55,7 @@ export const typeLabel = (
 
 /**
  * The article browser: a dialog that finds articles by title, filters them by type, author, tag and status, and shows
- * them 50 at a time in a table whose column headers sort it (see `nextSort`). Choosing one closes it and fires
+ * them 50 at a time in a table whose column headings sort it (see `nextSort`). Choosing one closes it and fires
  * `article-choose` (detail: the article's location). Rendered in the light DOM.
  *
  * @example
@@ -289,30 +267,6 @@ export class EdahaArticleBrowser extends LitElement {
     </div>`;
   }
 
-  /** Render a column's header: a button that sorts by it, showing which way it is sorted */
-  private renderHeader({ sort, label }: (typeof COLUMNS)[number]) {
-    const order = this.sort === sort ? this.order : undefined;
-    const next = nextSort({ sort: this.sort, order: this.order }, sort);
-    const hint = next.sort
-      ? `Sort by ${label.toLowerCase()}, ${next.order === "asc" ? "ascending" : "descending"}`
-      : "Go back to the default order";
-    return html`<th
-      scope="col"
-      aria-sort=${order ? (order === "asc" ? "ascending" : "descending") : "none"}
-    >
-      <button
-        type="button"
-        class="article-browser-sort"
-        title=${hint}
-        @click=${() => this.sortBy(sort)}
-      >
-        ${label}<span class="article-browser-sort-arrow" aria-hidden="true"
-          >${order === "asc" ? "▲" : order === "desc" ? "▼" : ""}</span
-        >
-      </button>
-    </th>`;
-  }
-
   /** Render the found articles as a table */
   private renderResults() {
     const result = this.result;
@@ -325,7 +279,14 @@ export class EdahaArticleBrowser extends LitElement {
     return html`<table class="article-browser-table">
       <thead>
         <tr>
-          ${COLUMNS.map((column) => this.renderHeader(column))}
+          ${COLUMNS.map(({ sort, label }) =>
+            sortHeading(
+              sort,
+              label,
+              { sort: this.sort, order: this.order },
+              (column) => this.sortBy(column),
+            ),
+          )}
         </tr>
       </thead>
       <tbody>
