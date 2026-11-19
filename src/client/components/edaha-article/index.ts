@@ -1,21 +1,45 @@
 import { html, LitElement, nothing, type PropertyValues } from "lit";
 import { classMap } from "lit/directives/class-map.js";
+import { styleMap } from "lit/directives/style-map.js";
 import { slugify } from "../../../generator/slug/index.ts";
 import type {
+  MetadataInfo,
   EditorArticle,
+  EditorAuthor,
+  SiteInfo,
   EditorArticleData,
   EditorAttachment,
 } from "../../../server/types/index.ts";
-import type { ArticleLocation, EditorApi } from "../../editorApi/index.ts";
+import {
+  ApiError,
+  type ArticleLocation,
+  type EditorApi,
+} from "../../editorApi/index.ts";
 import { fromLocalInput, toLocalInput } from "../../dates/index.ts";
 import { defineElement } from "../define/index.ts";
 import "../edaha-article-data-field/index.ts";
 import "../edaha-article-data-group/index.ts";
 import type {
+  EdahaArticleDataField,
   FieldChange,
   FieldOption,
 } from "../edaha-article-data-field/index.ts";
 import { showToast } from "../edaha-toasts/index.ts";
+import "../edaha-metadata-field/index.ts";
+import type { MetadataChange } from "../edaha-metadata-field/index.ts";
+import {
+  MetadataValidator,
+  typeMetadataKeys,
+  type MetadataDefinitions,
+  type MetadataProblem,
+  type MetadataSchema,
+} from "../../../generator/metadata/index.ts";
+import { setAt } from "../../metadataForm/index.ts";
+import {
+  BUILT_IN_GROUPS,
+  type MetadataGroup,
+} from "../../../generator/metadataGroups/index.ts";
+import { onNarrowChange } from "../../narrow/index.ts";
 
 const STATUS_OPTIONS: FieldOption[] = [
   { value: "published", label: "Published" },
@@ -26,12 +50,52 @@ const STATUS_OPTIONS: FieldOption[] = [
 /** How the body is shown: the rich text editor, its Markdown in a text box, or rendered as the website would */
 export type BodyMode = "wysiwyg" | "markdown" | "preview";
 
-/** The body modes' buttons */
+/** The body modes' tabs */
 export const BODY_MODES: readonly { mode: BodyMode; label: string }[] = [
   { mode: "wysiwyg", label: "WYSIWYG" },
   { mode: "markdown", label: "Markdown" },
   { mode: "preview", label: "Preview" },
 ];
+
+/** The widths the preview can be shown at: the panel's full width, or a narrower page centred in it */
+export const PREVIEW_WIDTHS = [
+  { value: "full", label: "Full", width: "100%" },
+  { value: "900", label: "900px", width: "900px" },
+  { value: "600", label: "600px", width: "600px" },
+  { value: "320", label: "320px", width: "320px" },
+] as const;
+
+/** A width the preview can be shown at */
+export type PreviewWidth = (typeof PREVIEW_WIDTHS)[number]["value"];
+
+/** The id of a body mode's tab */
+const bodyTabId = (mode: BodyMode) => `body-tab-${mode}`;
+
+/**
+ * The index of the tab a key moves focus to among `count` tabs, from the tab at `current`: the arrow keys move to the
+ * previous or next tab (wrapping around), Home and End to the first or last. Undefined for other keys.
+ *
+ * @example
+ * nextTabIndex("ArrowRight", 2, 3); // 0
+ */
+export const nextTabIndex = (
+  key: string,
+  current: number,
+  count: number,
+): number | undefined => {
+  switch (key) {
+    case "ArrowRight":
+      return (current + 1) % count;
+    case "ArrowLeft":
+      return (current - 1 + count) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return undefined;
+  }
+};
 
 /**
  * Data for a new, empty article (a draft dated now).
@@ -64,9 +128,10 @@ export const applyFieldChange = (
 ): EditorArticleData => {
   const author = /^author\[(name|email|url)\]$/.exec(name);
   if (author) {
+    // Typing an author replaces "no author"
     const next = {
       name: "",
-      ...data.author,
+      ...(data.author || {}),
       [author[1] as string]: value || undefined,
     };
     return {
@@ -144,6 +209,7 @@ const COMPARED_FIELDS = [
   "thumbnail",
   "tags",
   "attachments",
+  "meta",
 ] as const satisfies readonly (keyof EditorArticleData)[];
 
 /** A value with object keys sorted and undefined properties left out, so equal values compare equal */
@@ -178,6 +244,42 @@ export const changedFields = (
     ),
   );
 
+/** The settings the article form shows itself, by the keys the settings groups list them with */
+const CORE_SETTINGS = [
+  "type",
+  "status",
+  "slug",
+  "date",
+  "author",
+  "tags",
+  "excerpt",
+  "template",
+  "thumbnail",
+  "attachments",
+  "uploaded",
+] as const;
+
+/** A setting the article form shows itself */
+type CoreSetting = (typeof CORE_SETTINGS)[number];
+
+/** Whether a settings group's key is a setting the article form shows itself */
+const isCoreSetting = (key: string): key is CoreSetting =>
+  (CORE_SETTINGS as readonly string[]).includes(key);
+
+/** Text read by screen readers only, e.g. which setting a Remove button removes */
+const hiddenText = (text: string) =>
+  html`<span class="visually-hidden">${text}</span>`;
+
+/** The keys of the groups that start open */
+const openedByDefault = (groups: readonly MetadataGroup[]) =>
+  new Set(
+    groups.filter((group) => group.openedByDefault).map((group) => group.key),
+  );
+
+/** Said when custom metadata values aren't valid */
+export const METADATA_ERRORS =
+  "Some values aren't valid. Fix the fields marked ⚠️ in the settings.";
+
 /** Asked before putting back the last saved version */
 export const RESET_QUESTION =
   "Reset this article to how it was last saved? Your changes will be lost.";
@@ -209,8 +311,14 @@ export class EdahaArticle extends LitElement {
     mode: { state: true },
     bodyMarkdown: { state: true },
     previewUrl: { state: true },
+    previewWidth: { state: true },
+    metadataOpen: { state: true },
     savedData: { state: true },
     bodyChanged: { state: true },
+    metadata: { attribute: false },
+    site: { attribute: false },
+    metaProblems: { state: true },
+    openGroups: { state: true },
   };
 
   declare api: EditorApi;
@@ -235,10 +343,33 @@ export class EdahaArticle extends LitElement {
   declare bodyMarkdown: string;
   /** The URL of the article as the website would show it (a temporary page), in Preview mode */
   declare previewUrl: string;
+  /** The width the preview is shown at */
+  declare previewWidth: PreviewWidth;
+  /** Whether the article's settings are open full screen (on narrow screens) */
+  declare metadataOpen: boolean;
   /** The data as last saved (or loaded; empty for a new article), which changes are found against */
   declare savedData: EditorArticleData;
   /** Whether the body differs from the saved one, compared as Markdown */
   declare bodyChanged: boolean;
+  /** The website's default authors: its own, and its types' (the website's name is assumed until it's known) */
+  declare site?: SiteInfo | undefined;
+  /** The custom metadata fields, and which each type uses (none without it) */
+  declare metadata?: MetadataInfo | undefined;
+  /** Errors in the custom metadata values, from checking them or from the last save */
+  declare metaProblems: MetadataProblem[];
+  /** The keys of the settings groups that are open */
+  declare openGroups: Set<string>;
+
+  /** Whether the groups' open state has been set from the config file's groups */
+  private groupsOpened = false;
+
+  /** The errors the article was loaded or last saved with, which resetting shows again */
+  private savedProblems: MetadataProblem[] = [];
+
+  /** Validates custom metadata values, for the definitions it was made for */
+  private validatorFor?:
+    | { definitions: MetadataDefinitions; validator: MetadataValidator }
+    | undefined;
 
   /** How long to wait after a body edit before checking whether it changed, in ms (replaceable for tests) */
   bodyCheckDelay = 300;
@@ -271,21 +402,67 @@ export class EdahaArticle extends LitElement {
     this.mode = "wysiwyg";
     this.bodyMarkdown = "";
     this.previewUrl = "";
+    this.previewWidth = "full";
+    this.metadataOpen = false;
     // A copy, so both have the same date
     this.savedData = structuredClone(this.data);
     this.bodyChanged = false;
+    this.metaProblems = [];
+    this.openGroups = openedByDefault(BUILT_IN_GROUPS);
   }
 
   protected override createRenderRoot() {
     return this;
   }
 
+  /** Stops closing the settings when the screen stops being narrow */
+  private stopWatchingNarrow?: () => void;
+
+  override connectedCallback(): void {
+    super.connectedCallback();
+    // On wide screens the settings are always shown beside the body, so they aren't left open over it
+    this.stopWatchingNarrow = onNarrowChange(() => (this.metadataOpen = false));
+  }
+
+  override disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this.stopWatchingNarrow?.();
+  }
+
+  /** A new article starts with focus in its title, ready to type */
+  protected override async firstUpdated(): Promise<void> {
+    if (this.article) return;
+    const title = this.querySelector<EdahaArticleDataField>(
+      'edaha-article-data-field[name="title"]',
+    );
+    await title?.updateComplete;
+    title?.querySelector("input")?.focus();
+  }
+
   protected override willUpdate(changed: PropertyValues<this>): void {
+    // Groups start as the config file says, once it's known; after that, as they were left
+    if (changed.has("metadata") && this.metadata && !this.groupsOpened) {
+      this.groupsOpened = true;
+      this.openGroups = openedByDefault(this.metadata.groups);
+    }
+    // Groups with errors open, so the errors can be seen
+    if (changed.has("metaProblems")) {
+      const withErrors = this.groupsWithErrors();
+      if ([...withErrors].some((key) => !this.openGroups.has(key)))
+        this.openGroups = new Set([...this.openGroups, ...withErrors]);
+    }
     if (changed.has("article")) {
-      const { files, ...data }: EditorArticle = this.article ?? {
+      const {
+        files,
+        problems = [],
+        ...data
+      }: EditorArticle = this.article ?? {
         ...newArticleData(),
         files: [],
       };
+      // Warnings are worked out as the article changes; errors stay until checked again
+      this.savedProblems = problems.filter(({ level }) => level === "error");
+      this.metaProblems = this.savedProblems;
       this.data = data;
       this.files = files;
       this.location = this.article
@@ -330,6 +507,9 @@ export class EdahaArticle extends LitElement {
       return await action();
     } catch (error) {
       this.error = (error as Error).message;
+      // Saving refused because of metadata errors shows them on their fields
+      if (error instanceof ApiError && error.problems)
+        this.metaProblems = error.problems;
       showToast(this, { kind: "error", message: this.error });
       return undefined;
     } finally {
@@ -354,6 +534,13 @@ export class EdahaArticle extends LitElement {
     const name = await this.upload(file);
     if (!name) throw new Error("Upload failed");
     return this.fileUrl(name) as string;
+  };
+
+  /** Images inserted into the body's Markdown are uploaded and referred to by their file name in the article folder */
+  private readonly uploadMarkdownImage = async (file: File) => {
+    const name = await this.upload(file);
+    if (!name) throw new Error("Upload failed");
+    return name;
   };
 
   /** Embed blocks in the body preview their embeds as the website shows them */
@@ -480,6 +667,15 @@ export class EdahaArticle extends LitElement {
    * Save the article (creating or moving it as needed). Returns whether it was saved.
    */
   async save(): Promise<boolean> {
+    // Invalid custom metadata values aren't saved
+    const errors = this.metadataKeys().flatMap((key) =>
+      this.checkMetadata(key),
+    );
+    if (errors.length) {
+      this.metaProblems = errors;
+      showToast(this, { kind: "error", message: METADATA_ERRORS });
+      return false;
+    }
     if (!(await this.syncBody())) return false;
     const data = cleanArticleData(this.data);
     const from = this.location;
@@ -489,6 +685,8 @@ export class EdahaArticle extends LitElement {
     if (!location) return false;
     this.data = data;
     this.savedData = structuredClone(data);
+    this.savedProblems = [];
+    this.metaProblems = [];
     this.location = location;
     this.message = "Saved";
     showToast(this, { kind: "success", message: this.message });
@@ -515,6 +713,7 @@ export class EdahaArticle extends LitElement {
     clearTimeout(this.bodyTimer);
     this.bodyChecks++;
     this.data = structuredClone(this.savedData);
+    this.metaProblems = this.savedProblems;
     this.mode = "wysiwyg";
     this.bodyChanged = false;
     this.error = "";
@@ -544,14 +743,115 @@ export class EdahaArticle extends LitElement {
     this.dispatchEvent(new CustomEvent("article-deleted", { bubbles: true }));
   }
 
+  /** The validator for the custom metadata definitions, made once for them */
+  private validator(): MetadataValidator {
+    // Only used for the type's custom fields, so the definitions are there
+    const { definitions } = this.metadata as MetadataInfo;
+    if (this.validatorFor?.definitions !== definitions)
+      this.validatorFor = {
+        definitions,
+        validator: new MetadataValidator(definitions),
+      };
+    return this.validatorFor.validator;
+  }
+
+  /** The custom metadata fields the article's type uses */
+  metadataKeys(): string[] {
+    return typeMetadataKeys(
+      this.metadata?.definitions ?? {},
+      this.metadata?.types[this.data.type],
+    );
+  }
+
+  /** The errors in a custom metadata field's value (none when it has no value) */
+  private checkMetadata(key: string): MetadataProblem[] {
+    const value = this.data.meta?.[key];
+    return value === undefined ? [] : this.validator().validate(key, value);
+  }
+
+  /** Change a custom metadata value (or a value inside one) */
+  private onMetadataChange(event: CustomEvent<MetadataChange>) {
+    const { path, value } = event.detail;
+    this.data = {
+      ...this.data,
+      meta: setAt(this.data.meta, path.split("/"), value) as Record<
+        string,
+        unknown
+      >,
+    };
+  }
+
+  /** Check a custom metadata field once focus leaves it, saying so when errors are found */
+  private onMetadataBlur(event: CustomEvent<string>) {
+    const key = event.detail.split("/")[0] as string;
+    const isKey = (problem: MetadataProblem) =>
+      problem.path.split("/")[0] === key;
+    const hadErrors = this.metaProblems.some(isKey);
+    const errors = this.checkMetadata(key);
+    this.metaProblems = [
+      ...this.metaProblems.filter((problem) => !isKey(problem)),
+      ...errors,
+    ];
+    if (errors.length && !hadErrors)
+      showToast(this, { kind: "error", message: METADATA_ERRORS });
+  }
+
+  /** Remove one of the article's other settings (it's gone once the article is saved) */
+  removeSetting(key: string): void {
+    this.data = {
+      ...this.data,
+      meta: setAt(this.data.meta, [key], undefined) as Record<string, unknown>,
+    };
+  }
+
+  /** Warnings about the article's other settings: values of fields its type doesn't use, and unknown settings */
+  private metadataWarnings(): MetadataProblem[] {
+    const keys = this.metadataKeys();
+    const definitions = this.metadata?.definitions ?? {};
+    return Object.keys(this.data.meta ?? {})
+      .filter((key) => !keys.includes(key))
+      .map((key) => ({
+        path: key,
+        message:
+          key in definitions
+            ? "isn't used by this article's type"
+            : "isn't a known setting",
+        level: "warning",
+      }));
+  }
+
   /** Whether a field or group differs from the saved article */
   private isChanged(name: string): boolean {
     return changedFields(this.data, this.savedData).has(name);
   }
 
   /** Render the author fields */
+  /**
+   * The author the article has when it doesn't name one: its type's default, or the website's (undefined for none).
+   */
+  defaultAuthor(): EditorAuthor | undefined {
+    if (!this.site) return undefined;
+    const typeDefault = this.site.types[this.data.type];
+    if (typeDefault !== undefined) return typeDefault || undefined;
+    return this.site.author;
+  }
+
+  /** Render the author fields, with a choice of no author at all */
   private renderAuthor() {
-    const author = this.data.author;
+    const noAuthor = this.data.author === false;
+    const author = noAuthor
+      ? undefined
+      : (this.data.author as EditorAuthor | undefined);
+    const fallback = this.defaultAuthor();
+    // The default's details apply only when the article has no author of its own
+    const shown = author || noAuthor ? undefined : fallback;
+    const namePlaceholder = noAuthor
+      ? ""
+      : !this.site
+        ? "Defaults to the site name"
+        : fallback
+          ? `Defaults to ${fallback.name}`
+          : "No author unless you name one";
     return html`<edaha-article-data-group
       name="author"
       label="Author"
@@ -559,23 +859,41 @@ export class EdahaArticle extends LitElement {
       allowclear
       @group-clear=${() => (this.data = { ...this.data, author: undefined })}
     >
+      <label class="no-author">
+        <input
+          type="checkbox"
+          .checked=${noAuthor}
+          @change=${(event: Event) =>
+            (this.data = {
+              ...this.data,
+              author: (event.target as HTMLInputElement).checked
+                ? false
+                : undefined,
+            })}
+        />
+        No author
+      </label>
       <edaha-article-data-field
         name="author[name]"
         label="Name"
-        placeholder="Defaults to the site name"
+        placeholder=${namePlaceholder}
+        ?disabled=${noAuthor}
         .value=${author?.name ?? ""}
       ></edaha-article-data-field>
       <edaha-article-data-field
         name="author[email]"
         type="email"
         label="Email address"
+        placeholder=${shown?.email ?? ""}
+        ?disabled=${noAuthor}
         .value=${author?.email ?? ""}
       ></edaha-article-data-field>
       <edaha-article-data-field
         name="author[url]"
         type="url"
         label="Homepage"
-        placeholder="https://example.com"
+        placeholder=${shown?.url ?? "https://example.com"}
+        ?disabled=${noAuthor}
         .value=${author?.url ?? ""}
       ></edaha-article-data-field>
     </edaha-article-data-group>`;
@@ -671,27 +989,54 @@ export class EdahaArticle extends LitElement {
     </edaha-article-data-group>`;
   }
 
-  /** Render the body in its mode, with the buttons switching modes */
+  /** Render the body in its mode, in a tab panel under the tabs that switch modes */
   private renderBody() {
     let body;
     if (this.mode === "markdown")
       body = html`<edaha-article-data-field
         name="bodyMarkdown"
-        type="textarea"
+        type="markdown"
         label="Body"
-        rows="20"
         ?changed=${this.bodyChanged}
         .value=${this.bodyMarkdown}
+        .uploadImage=${this.location ? this.uploadMarkdownImage : undefined}
       ></edaha-article-data-field>`;
     else if (this.mode === "preview")
       // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. It
       // isn't sandboxed (a sandboxed page can't load anything from 127.0.0.1): its server sends a Content Security
       // Policy that forbids scripts, which is what keeps it from using the editor's API (`previewCsp`)
-      body = html`<iframe
-        class="preview"
-        title="Preview"
-        src=${this.previewUrl}
-      ></iframe>`;
+      body = html`<div class="preview-controls">
+          <label for="preview-width">Width</label>
+          <select
+            id="preview-width"
+            @change=${(event: Event) =>
+              (this.previewWidth = (event.target as HTMLSelectElement)
+                .value as PreviewWidth)}
+          >
+            ${PREVIEW_WIDTHS.map(
+              ({ value, label }) =>
+                html`<option
+                  value=${value}
+                  ?selected=${this.previewWidth === value}
+                >
+                  ${label}
+                </option>`,
+            )}
+          </select>
+        </div>
+        <div class="preview-frame">
+          <iframe
+            class="preview"
+            title="Preview"
+            src=${this.previewUrl}
+            style=${styleMap({
+              // Only the frame's width changes: the page isn't rendered again
+              width: PREVIEW_WIDTHS.find(
+                ({ value }) => value === this.previewWidth,
+              )?.width,
+            })}
+          ></iframe>
+        </div>`;
     else
       body = html`<edaha-article-data-field
         name="body"
@@ -702,13 +1047,22 @@ export class EdahaArticle extends LitElement {
         .uploadImage=${this.location ? this.uploadImage : undefined}
         .loadEmbedPreview=${this.loadEmbedPreview}
       ></edaha-article-data-field>`;
-    return html`<div class="body-modes" role="group" aria-label="Body mode">
+    return html`<div
+        class="body-tabs"
+        role="tablist"
+        aria-label="Body"
+        @keydown=${this.onTabKey}
+      >
         ${BODY_MODES.map(
           ({ mode, label }) =>
             html`<button
               type="button"
+              role="tab"
+              id=${bodyTabId(mode)}
               data-mode=${mode}
-              aria-pressed=${this.mode === mode ? "true" : "false"}
+              aria-selected=${this.mode === mode ? "true" : "false"}
+              aria-controls="body-panel"
+              tabindex=${this.mode === mode ? 0 : -1}
               ?disabled=${this.busy}
               @click=${() => void this.setMode(mode)}
             >
@@ -716,7 +1070,266 @@ export class EdahaArticle extends LitElement {
             </button>`,
         )}
       </div>
-      ${body}`;
+      <div
+        class="body-panel body-panel-${this.mode}"
+        id="body-panel"
+        role="tabpanel"
+        aria-labelledby=${bodyTabId(this.mode)}
+      >
+        ${body}
+      </div>`;
+  }
+
+  /**
+   * Move between the body's tabs with the arrow keys, Home and End. Enter or Space then shows the focused tab, as
+   * showing one can take a moment (converting or rendering the body).
+   */
+  private onTabKey(event: KeyboardEvent): void {
+    const tabs = [
+      ...(event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(
+        '[role="tab"]',
+      ),
+    ];
+    const current = tabs.indexOf(event.target as HTMLElement);
+    const next = nextTabIndex(event.key, current, tabs.length);
+    if (next === undefined) return;
+    event.preventDefault();
+    tabs[next]?.focus();
+  }
+
+  /** The groups settings are shown in, in order (the built-in ones until the config file's are known) */
+  private groups(): readonly MetadataGroup[] {
+    return this.metadata?.groups ?? BUILT_IN_GROUPS;
+  }
+
+  /** The groups holding a custom field with errors */
+  private groupsWithErrors(): Set<string> {
+    const keys = new Set(
+      this.metaProblems
+        .filter(({ level }) => level === "error")
+        .map(({ path }) => path.split("/")[0] as string),
+    );
+    return new Set(
+      this.groups()
+        .filter((group) => group.fields.some((field) => keys.has(field)))
+        .map((group) => group.key),
+    );
+  }
+
+  /** Whether a setting differs from the saved article (custom ones by their own value) */
+  private settingChanged(key: string, changed: Set<string>): boolean {
+    if (changed.has(key)) return true;
+    if (isCoreSetting(key)) return false;
+    return (
+      JSON.stringify(normalise(this.data.meta?.[key])) !==
+      JSON.stringify(normalise(this.savedData.meta?.[key]))
+    );
+  }
+
+  /** Render a core setting's field (or the files in the article's folder, "uploaded") */
+  private renderSetting(
+    key: CoreSetting,
+    changed: Set<string>,
+    typeOptions: FieldOption[],
+  ) {
+    const { data } = this;
+    switch (key) {
+      case "type":
+        return html`<edaha-article-data-field
+          name="type"
+          ?changed=${changed.has("type")}
+          type="select"
+          label="Type"
+          .options=${typeOptions}
+          .value=${data.type}
+        ></edaha-article-data-field>`;
+      case "status":
+        return html`<edaha-article-data-field
+          name="status"
+          ?changed=${changed.has("status")}
+          type="select"
+          label="Status"
+          .options=${STATUS_OPTIONS}
+          .value=${data.status}
+        ></edaha-article-data-field>`;
+      case "slug":
+        return html`<edaha-article-data-field
+          name="slug"
+          ?changed=${changed.has("slug")}
+          label="Slug"
+          placeholder=${slugify(data.title) || "title-converted-to-slug"}
+          .value=${data.slug}
+        ></edaha-article-data-field>`;
+      case "date":
+        return html`<edaha-article-data-field
+          name="date"
+          ?changed=${changed.has("date")}
+          type="datetime-local"
+          label="Publication date"
+          .value=${toLocalInput(data.date)}
+        ></edaha-article-data-field>`;
+      case "author":
+        return this.renderAuthor();
+      case "tags":
+        return this.renderTags();
+      case "excerpt":
+        return html`<edaha-article-data-field
+          name="excerpt"
+          ?changed=${changed.has("excerpt")}
+          type="textarea"
+          label="Excerpt"
+          placeholder="Defaults to the text before the read more break"
+          .value=${data.excerpt ?? ""}
+          allowclear
+        ></edaha-article-data-field>`;
+      case "template":
+        return html`<edaha-article-data-field
+          name="template"
+          ?changed=${changed.has("template")}
+          type="select"
+          label="Template"
+          .options=${[
+            ...new Set([
+              "single",
+              ...this.templates,
+              data.template ?? "single",
+            ]),
+          ].map((template) => ({ value: template, label: template }))}
+          .value=${data.template ?? "single"}
+        ></edaha-article-data-field>`;
+      case "thumbnail":
+        return html`<edaha-article-data-field
+          name="thumbnail"
+          ?changed=${changed.has("thumbnail")}
+          type="file"
+          label="Thumbnail"
+          accept="image/png, image/jpeg"
+          .value=${data.thumbnail ?? ""}
+          preview
+          .previewUrl=${this.fileUrl(data.thumbnail)}
+          allowchange
+          allowclear
+          ?disabled=${!this.location}
+        ></edaha-article-data-field>`;
+      case "attachments":
+        return this.renderAttachments();
+      case "uploaded":
+        return this.renderUploaded();
+    }
+  }
+
+  /** Render the files in the article's folder, or that uploads need the article saved first */
+  private renderUploaded() {
+    if (!this.location)
+      return html`<p class="hint">Save the article before uploading files.</p>`;
+    if (!this.files.length) return nothing;
+    return html`<div class="files">
+      <h3 class="files-title">
+        Files in this article's folder (${this.files.length})
+      </h3>
+      <ul>
+        ${this.files.map((file) => html`<li><a href=${this.fileUrl(file) as string} target="_blank">${file}</a></li>`)}
+      </ul>
+    </div>`;
+  }
+
+  /** Render a custom field the article's type uses */
+  private renderCustomField(key: string) {
+    return html`<edaha-metadata-field
+      path=${key}
+      .schema=${(this.metadata as MetadataInfo).definitions[key] as MetadataSchema}
+      .value=${this.data.meta?.[key]}
+      .problems=${this.metaProblems}
+      .uploadFile=${this.location ? this.uploadMarkdownImage : undefined}
+      .fileUrl=${(name: string) => this.fileUrl(name)}
+    ></edaha-metadata-field>`;
+  }
+
+  /**
+   * Render the settings in their groups, as sections that open and close: each with its title (marked when a setting
+   * in it changed, or a custom field in it has errors), its description, and its fields. Custom fields show for the
+   * article's type only, and warnings about other settings show in the Custom group. Empty groups aren't shown.
+   */
+  private renderGroups(changed: Set<string>, typeOptions: FieldOption[]) {
+    const customKeys = this.metadataKeys();
+    const warnings = this.metadataWarnings();
+    const withErrors = this.groupsWithErrors();
+    return this.groups().map((group) => {
+      const fields = group.fields
+        .filter((key) => isCoreSetting(key) || customKeys.includes(key))
+        .map((key) =>
+          isCoreSetting(key)
+            ? this.renderSetting(key, changed, typeOptions)
+            : this.renderCustomField(key),
+        )
+        .filter((field) => field !== nothing);
+      const groupWarnings = group.key === "custom" ? warnings : [];
+      if (!fields.length && !groupWarnings.length) return nothing;
+      const isChanged = group.fields.some((key) =>
+        this.settingChanged(key, changed),
+      );
+      const hasErrors = withErrors.has(group.key);
+      return html`<details
+        class="settings-group ${classMap({ "has-errors": hasErrors })}"
+        data-group=${group.key}
+        ?open=${this.openGroups.has(group.key)}
+        @toggle=${(event: Event) => {
+          const open = (event.target as HTMLDetailsElement).open;
+          const next = new Set(this.openGroups);
+          if (open) next.add(group.key);
+          else next.delete(group.key);
+          this.openGroups = next;
+        }}
+      >
+        <summary>
+          ${group.title}${
+            isChanged
+              ? html`<span class="changed" title="Changed since it was saved"
+                  >*</span
+                >`
+              : nothing
+          }${
+            hasErrors || groupWarnings.length
+              ? html`<span class="settings-group-errors">
+                  ⚠️<span class="visually-hidden">
+                    ${hasErrors ? "has errors" : "has warnings"}</span
+                  ></span
+                >`
+              : nothing
+          }
+        </summary>
+        ${
+          group.description
+            ? html`<p class="settings-group-description">
+                ${group.description}
+              </p>`
+            : nothing
+        }
+        ${fields}
+        ${
+          groupWarnings.length
+            ? html`<ul class="metadata-warnings">
+                ${groupWarnings.map(
+                  ({ path, message }) =>
+                    html`<li>
+                      <span
+                        >"${path}" ${message}; it is kept unless you remove
+                        it.</span
+                      >
+                      <button
+                        type="button"
+                        class="btn btn-xs"
+                        @click=${() => this.removeSetting(path)}
+                      >
+                        Remove${hiddenText(` "${path}"`)}
+                      </button>
+                    </li>`,
+                )}
+              </ul>`
+            : nothing
+        }
+      </details>`;
+    });
   }
 
   override render() {
@@ -730,13 +1343,16 @@ export class EdahaArticle extends LitElement {
       : [...this.typeOptions, { value: data.type, label: data.type }];
     return html`<form
       @field-change=${this.onFieldChange}
+      @metadata-change=${this.onMetadataChange}
+      @metadata-blur=${this.onMetadataBlur}
       @field-file=${(event: CustomEvent<File>) => void this.onFieldFile(event)}
       @submit=${(event: Event) => {
         event.preventDefault();
         void this.save();
       }}
     >
-      <main>
+      <!-- Out of reach while the settings are open over it -->
+      <main class="edaha-article-main" ?inert=${this.metadataOpen}>
         <edaha-article-data-field
           name="title"
           label="Title"
@@ -744,9 +1360,25 @@ export class EdahaArticle extends LitElement {
           placeholder="New article title"
           .value=${data.title}
         ></edaha-article-data-field>
+        ${
+          // Files are saved in the article's folder, which it only has once saved
+          this.location
+            ? nothing
+            : html`<p class="unsaved-notice">
+                ⚠️ Uploading images and attachments will require a title and
+                slug to be defined first
+              </p>`
+        }
         ${this.renderBody()}
       </main>
-      <aside class="edaha-article-metadata">
+      <aside
+        class="edaha-article-metadata ${classMap({ open: this.metadataOpen })}"
+        aria-label="Article settings"
+        @keydown=${(event: KeyboardEvent) => {
+          if (event.key === "Escape") this.metadataOpen = false;
+        }}
+      >
+        <!-- On narrow screens, a bar at the bottom of the screen that opens the settings full screen -->
         <div class="edaha-article-controls">
           <!-- Marked while there are unsaved changes, to show the article should be saved -->
           <button
@@ -776,88 +1408,21 @@ export class EdahaArticle extends LitElement {
                 </button>`
               : nothing
           }
+          <button
+            type="button"
+            class="btn btn-metadata-toggle"
+            title=${this.metadataOpen ? "Hide article settings" : "Show article settings"}
+            aria-expanded=${this.metadataOpen ? "true" : "false"}
+            aria-controls="article-metadata-fields"
+            @click=${() => (this.metadataOpen = !this.metadataOpen)}
+          >
+            <span aria-hidden="true">${this.metadataOpen ? "︾" : "︽"}</span>
+            <span class="visually-hidden">Article settings</span>
+          </button>
         </div>
-        <edaha-article-data-field
-          name="type"
-          ?changed=${changed.has("type")}
-          type="select"
-          label="Type"
-          .options=${typeOptions}
-          .value=${data.type}
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="template"
-          ?changed=${changed.has("template")}
-          type="select"
-          label="Template"
-          .options=${[
-            ...new Set([
-              "single",
-              ...this.templates,
-              data.template ?? "single",
-            ]),
-          ].map((template) => ({ value: template, label: template }))}
-          .value=${data.template ?? "single"}
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="status"
-          ?changed=${changed.has("status")}
-          type="select"
-          label="Status"
-          .options=${STATUS_OPTIONS}
-          .value=${data.status}
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="slug"
-          ?changed=${changed.has("slug")}
-          label="Slug"
-          placeholder=${slugify(data.title) || "title-converted-to-slug"}
-          .value=${data.slug}
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="date"
-          ?changed=${changed.has("date")}
-          type="datetime-local"
-          label="Publication date"
-          .value=${toLocalInput(data.date)}
-        ></edaha-article-data-field>
-        ${this.renderAuthor()}
-        <edaha-article-data-field
-          name="excerpt"
-          ?changed=${changed.has("excerpt")}
-          type="textarea"
-          label="Excerpt"
-          placeholder="Defaults to the text before the read more break"
-          .value=${data.excerpt ?? ""}
-          allowclear
-        ></edaha-article-data-field>
-        <edaha-article-data-field
-          name="thumbnail"
-          ?changed=${changed.has("thumbnail")}
-          type="file"
-          label="Thumbnail"
-          accept="image/png, image/jpeg"
-          .value=${data.thumbnail ?? ""}
-          preview
-          .previewUrl=${this.fileUrl(data.thumbnail)}
-          allowchange
-          allowclear
-          ?disabled=${!this.location}
-        ></edaha-article-data-field>
-        ${this.renderTags()} ${this.renderAttachments()}
-        ${this.location ? nothing : html`<p class="hint">Save the article before uploading files.</p>`}
-        ${
-          this.files.length
-            ? html`<details class="files">
-                <summary>
-                  Files in this article's folder (${this.files.length})
-                </summary>
-                <ul>
-                  ${this.files.map((file) => html`<li><a href=${this.fileUrl(file) as string} target="_blank">${file}</a></li>`)}
-                </ul>
-              </details>`
-            : nothing
-        }
+        <div class="edaha-article-metadata-fields" id="article-metadata-fields">
+          ${this.renderGroups(changed, typeOptions)}
+        </div>
       </aside>
     </form>`;
   }

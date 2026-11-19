@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>edaha.md</title>
-    <meta name="description" content="Static site generator powered by TypeScript and markdown" />
+    <title>Configuration | edaha.md</title>
+    <meta name="description" content="A config file tells edaha.md about your website, where its files are, and what to build for each type of article." />
 
 
   <link rel="stylesheet" href="/base.css" />
@@ -12,7 +12,7 @@
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="http://127.0.0.1:8449">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -163,11 +163,26 @@ module.exports = {
 <td>No</td>
 <td>Custom embed renderers, tried before the built-in ones (JavaScript config only).</td>
 </tr>
+<tr>
+<td><a href="#metadata"><code>metadata</code></a></td>
+<td>No</td>
+<td>Custom settings for articles, with how the editor shows them.</td>
+</tr>
+<tr>
+<td><a href="#metadatagroups"><code>metadataGroups</code></a></td>
+<td>No</td>
+<td>Groups of settings in the editor, besides the built-in ones.</td>
+</tr>
+<tr>
+<td><a href="#author"><code>author</code></a></td>
+<td>No</td>
+<td>The author of articles that don’t name one.</td>
+</tr>
 </tbody>
 </table>
 <p>Unknown settings stop the build, so a typo doesn’t go unnoticed.</p>
 <h3 id="name"><code>name</code></h3>
-<p>The website’s name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don’t name one.</p>
+<p>The website’s name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don’t name one, unless <a href="#author"><code>author</code></a> is set.</p>
 <pre><code class="language-yaml">name: My Site
 </code></pre>
 <h3 id="description"><code>description</code></h3>
@@ -276,6 +291,16 @@ outputDir: site/build
 <td>What is built for the type (see below), or <code>false</code> to build nothing.</td>
 <td>Everything</td>
 </tr>
+<tr>
+<td><code>metadata</code></td>
+<td>The <a href="#metadata">custom settings</a> the type uses, or <code>false</code> for none.</td>
+<td>All of them</td>
+</tr>
+<tr>
+<td><code>author</code></td>
+<td>The author of the type’s articles that don’t name one, or <code>false</code> for none (<a href="#author">see <code>author</code></a>).</td>
+<td>The site’s <code>author</code></td>
+</tr>
 </tbody>
 </table>
 <p><code>generate</code> has these settings, all <code>true</code> by default:</p>
@@ -351,6 +376,190 @@ export default {
 };
 </code></pre>
 <p>See <a href="/docs/07-embeds/">Embeds</a> for how to write one.</p>
+<h3 id="author"><code>author</code></h3>
+<p>The author of articles that don’t name one (unless their type has its own <code>author</code>): their author lists and feeds use it, and the editor shows it in the author fields. <code>false</code> means no author: those articles have none, and aren’t in any author’s list.</p>
+<ul>
+<li><strong>Accepted values:</strong> a name, <code>{ name, email, url }</code> like an article’s <a href="/docs/04-articles/#settings"><code>author</code></a>, or <code>false</code>.</li>
+<li><strong>Default:</strong> the website’s <a href="#name"><code>name</code></a></li>
+</ul>
+<pre><code class="language-yaml">author:
+  name: Jo Bloggs
+  email: jo@example.com
+  url: https://example.com
+types:
+  docs:
+    author: Docs team # docs articles without an author have this one
+  page:
+    author: false # pages without an author have none
+</code></pre>
+<p>An article chooses its own author, or <code>author: false</code> for none, whatever the defaults are.</p>
+<h3 id="metadata"><code>metadata</code></h3>
+<p>Custom settings articles can have besides the core ones (<code>type</code>, <code>status</code>, <code>date</code>, <code>title</code>, <code>template</code>, <code>author</code>, <code>excerpt</code>, <code>thumbnail</code>, <code>attachments</code> and <code>tags</code>), e.g. a featured image or a rating. Each is a <a href="https://json-schema.org/">JSON Schema</a> under the key articles store it with, plus an <code>$edahaField</code> saying how the editor shows it.</p>
+<ul>
+<li><strong>Accepted values:</strong> a map of keys (a letter or <code>_</code>, then letters, digits, <code>_</code> and <code>-</code>; not a core setting’s name) to JSON Schemas.</li>
+<li><strong>Default:</strong> none</li>
+</ul>
+<pre><code class="language-yaml">metadata:
+  featured:
+    title: Featured image # the label, and in messages (default: the key)
+    description: A large image at the top of the article
+    type: string
+    $edahaField:
+      info: JPG, PNG, GIF or WebP
+      file:
+        accept: image/jpg, image/png, image/gif, image/webp
+  rating:
+    type: number
+    minimum: 0
+    maximum: 10
+    $edahaField:
+      number:
+        step: 1
+types:
+  news:
+    metadata: [featured] # news articles use only &quot;featured&quot;
+  docs:
+    metadata: false # docs use none
+  # Types without a metadata setting use them all
+</code></pre>
+<p><code>$edahaField</code> has an optional <code>title</code>, <code>description</code> and <code>info</code> (shown under the label), and exactly one field kind, set to <code>true</code> or to its options:</p>
+<table>
+<thead>
+<tr>
+<th>Field kind</th>
+<th>Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text</code>, <code>email</code>, <code>url</code>, <code>tel</code>, <code>color</code>, <code>date</code>, <code>time</code>, <code>datetime-local</code></td>
+<td>An input of that type.</td>
+</tr>
+<tr>
+<td><code>number</code>, <code>range</code></td>
+<td>A number input or slider, e.g. with <code>step</code>.</td>
+</tr>
+<tr>
+<td><code>textarea</code></td>
+<td>A multi-line text box, e.g. with <code>rows</code>.</td>
+</tr>
+<tr>
+<td><code>select</code></td>
+<td>A dropdown of <code>options</code> (each a <code>value</code> and <code>title</code>, or the schema’s <code>enum</code>); <code>list: true</code> shows it as a list.</td>
+</tr>
+<tr>
+<td><code>checkbox</code></td>
+<td>A checkbox, for <code>type: boolean</code>.</td>
+</tr>
+<tr>
+<td><code>radio</code></td>
+<td>Radio buttons for <code>options</code> (each with an optional <code>description</code>), or the schema’s <code>enum</code>.</td>
+</tr>
+<tr>
+<td><code>file</code></td>
+<td>A file chooser that uploads into the article’s folder (e.g. with <code>accept</code>).</td>
+</tr>
+</tbody>
+</table>
+<p>Options are the input’s HTML attributes. JSON Schema’s own keywords set them too: <code>minimum</code> and <code>maximum</code> become <code>min</code> and <code>max</code>, <code>minLength</code> and <code>maxLength</code> become <code>minlength</code> and <code>maxlength</code>, and <code>pattern</code> stays <code>pattern</code>; a field’s own options win.</p>
+<p>A <code>type: object</code> setting is a group of fields, one per property (each with its own <code>$edahaField</code>; <code>required</code> marks them). A <code>type: array</code> setting is a list with Add and Delete buttons, its <code>items</code> having the <code>$edahaField</code> (<code>maxItems</code> limits it). Or give the array itself an <code>$edahaField</code>, e.g. a <code>select</code> with <code>multiple: true</code>, to choose several at once.</p>
+<pre><code class="language-yaml">metadata:
+  credit:
+    title: Credit
+    type: object
+    properties:
+      name:
+        type: string
+        $edahaField: { text: true }
+      email:
+        type: string
+        format: email
+        $edahaField: { email: true }
+    required: [name]
+  images:
+    title: Images
+    type: array
+    items:
+      type: string
+      $edahaField:
+        file: { accept: image/* }
+    maxItems: 5
+</code></pre>
+<p>Each custom setting appears in a group of the editor’s settings: <code>$edahaField.group</code> names the group (see <a href="#metadatagroups"><code>metadataGroups</code></a>), or is <code>{ key, after }</code> to come after a given setting in it. Without one, it’s in the <strong>Custom</strong> group. A map’s or list’s <code>$edahaField</code> may set only its group.</p>
+<pre><code class="language-yaml">metadata:
+  featured:
+    type: string
+    $edahaField:
+      group:
+        key: files
+        after: thumbnail # right after the thumbnail
+      file: true
+</code></pre>
+<p>Values are checked against their schemas with <a href="https://ajv.js.org/">ajv</a>, including formats like <code>uri</code> and <code>email</code>. Problems are described in plain words, e.g. “Rating must be at most 10” or “Credit name is required”, and show above the field in the editor. The build and the editor stop with an error if a key is a core setting’s name, a type lists a key that isn’t defined, a value has no field kind or more than one, or a schema isn’t valid.</p>
+<h3 id="metadatagroups"><code>metadataGroups</code></h3>
+<p>The editor shows articles’ settings in groups that open and close. These are built in, in this order:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Settings</th>
+<th>Starts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>info</code></td>
+<td>Type, status, slug, publication date and author.</td>
+<td>Open</td>
+</tr>
+<tr>
+<td><code>categorise</code></td>
+<td>Tags.</td>
+<td>Closed</td>
+</tr>
+<tr>
+<td><code>customise</code></td>
+<td>Excerpt and template.</td>
+<td>Open</td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td>Thumbnail, attachments, and the files in the article’s folder (<code>uploaded</code>).</td>
+<td>Open</td>
+</tr>
+<tr>
+<td><code>custom</code></td>
+<td>Custom settings without a group.</td>
+<td>Closed</td>
+</tr>
+</tbody>
+</table>
+<p><code>metadataGroups</code> adds groups of your own, for <a href="#metadata">custom settings</a> to be in.</p>
+<ul>
+<li><strong>Accepted values:</strong> a map of keys (a letter, then letters, digits, <code>_</code> and <code>-</code>; not a built-in group’s key) to a group’s settings:
+<ul>
+<li><code>title</code> (required): the group’s heading.</li>
+<li><code>description</code>: shown above its settings.</li>
+<li><code>after</code>: the group it comes after. Without it, groups go at the end.</li>
+<li><code>openedByDefault</code>: whether it starts open (<code>true</code>) or closed (<code>false</code>, the default).</li>
+</ul>
+</li>
+<li><strong>Default:</strong> none</li>
+</ul>
+<pre><code class="language-yaml">metadataGroups:
+  seo:
+    title: Search engines
+    description: How the article appears in search results.
+    after: info
+    openedByDefault: true
+metadata:
+  keywords:
+    type: string
+    $edahaField:
+      group: seo
+      text: true
+</code></pre>
+<p>A setting in a group that doesn’t exist, or coming after a setting or group that isn’t there, stops the build and the editor with an error.</p>
 <h2 id="commands">Commands</h2>
 <h3 id="edaha-build"><code>edaha build</code></h3>
 <p>Builds the website into <code>outputDir</code>, and copies it into <code>publishDir</code> if that is set. See <a href="/docs/08-build-and-deploy/">Build &amp; deploy</a>.</p>

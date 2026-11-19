@@ -15,7 +15,7 @@
       <link>{{ site.url }}{{ article.url }}</link>
       <guid isPermaLink="true">{{ site.url }}{{ article.url }}</guid>
       <pubDate>{{ article.date | rfc822 }}</pubDate>
-      {% if article.author.email %}
+      {% if article.author and article.author.email %}
       <author>{{ article.author.email }} ({{ article.author.name }})</author>
       {% endif %}
       {% for tag in article.tags %}

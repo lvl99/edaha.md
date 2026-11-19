@@ -126,7 +126,8 @@ export const collectLists = (
             feed: false,
           }),
         );
-    if (settings.author)
+    // Articles without an author aren't in any author's list
+    if (settings.author && article.author)
       add(
         list({
           kind: "author",

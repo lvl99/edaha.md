@@ -5,12 +5,13 @@ import {
   readFile,
   rename,
   readdir,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EmbedResolver } from "../../../embeds";
 import {
   ArticleStore,
@@ -30,7 +31,12 @@ const FIXTURE = fileURLToPath(
 
 /** An article store for the site in a folder, over the given theme */
 const openStore = async (dir: string, themeDir?: string) =>
-  new ArticleStore(await loadSiteConfig({ siteDir: dir }), themeDir);
+  new ArticleStore(await loadSiteConfig({ siteDir: dir }), themeDir, {
+    watch: false,
+  });
+
+/** Every article the store finds, newest first */
+const listAll = async (store: ArticleStore) => (await store.query({})).articles;
 
 /** A copy of the fixture site to edit */
 const copySite = async () => {
@@ -123,18 +129,22 @@ describe("serializeArticle", () => {
     expect(serializeArticle(data({ author: { name: "Matt" } }), "")).toContain(
       "author: Matt\n",
     );
+    // No author is written as false
+    expect(serializeArticle(data({ author: false }), "")).toContain(
+      "author: false\n",
+    );
   });
 });
 
 describe("ArticleStore", () => {
-  it("should list every article newest first, with unreadable ones and their errors", async () => {
+  it("should find every article newest first, with unreadable ones and their errors", async () => {
     const { dir, store } = await copySite();
     await mkdir(join(dir, "articles/article/broken"));
     await writeFile(
       join(dir, "articles/article/broken/article.md"),
       "<!--yaml\ndate: nope\n-->",
     );
-    expect(await store.list()).toEqual([
+    expect(await listAll(store)).toMatchObject([
       {
         type: "article",
         slug: "wip",
@@ -177,8 +187,460 @@ describe("ArticleStore", () => {
         status: "draft",
         date: "",
         error: 'article/broken: "date" must be an ISO 8601 timestamp',
+        tags: [],
       },
     ]);
+  });
+
+  it("should summarise articles with their author, tags and when their file last changed", async () => {
+    const { dir, store } = await copySite();
+    const changed = new Date("2026-11-01T10:00:00.000Z");
+    await utimes(
+      join(dir, "articles/article/first/article.md"),
+      changed,
+      changed,
+    );
+    const { articles } = await store.query({ search: "first" });
+    expect(articles).toEqual([
+      {
+        type: "article",
+        slug: "first",
+        title: "First article",
+        status: "published",
+        date: DATE,
+        author: "Zoë Ångström",
+        tags: ["News", "Release Notes"],
+        updated: changed.toISOString(),
+      },
+    ]);
+  });
+
+  it("should search, filter, sort and page articles, and give each type's most recently changed ones and the filters' choices", async () => {
+    const { dir, store } = await copySite();
+    const touch = (path: string, iso: string) =>
+      utimes(
+        join(dir, "articles", path, "article.md"),
+        new Date(iso),
+        new Date(iso),
+      );
+    await touch("article/second", "2026-11-03T00:00:00.000Z");
+    await touch("article/wip", "2026-11-02T00:00:00.000Z");
+    await touch("article/first", "2026-11-01T00:00:00.000Z");
+    await touch("article/hidden", "2026-10-01T00:00:00.000Z");
+    await touch("page/about-us", "2026-10-01T00:00:00.000Z");
+    const titles = async (query: Parameters<ArticleStore["query"]>[0]) =>
+      (await store.query(query)).articles.map((article) => article.title);
+    expect(await titles({ tag: "news", sort: "title" })).toEqual([
+      "First article",
+      "Second article",
+    ]);
+    expect(await titles({ author: "zoe angstrom" })).toEqual(["First article"]);
+    expect(await titles({ type: "page" })).toEqual(["About us"]);
+    expect(await titles({ status: "draft" })).toEqual(["Not ready"]);
+    expect(await store.query({ perPage: 2, page: 2 })).toMatchObject({
+      total: 5,
+      page: 2,
+      pages: 3,
+      perPage: 2,
+    });
+    expect(
+      (await store.recent(2)).map(({ type, articles, total }) => [
+        type,
+        articles.map((article) => article.slug),
+        total,
+      ]),
+    ).toEqual([
+      ["article", ["second", "wip"], 4],
+      ["page", ["about-us"], 1],
+    ]);
+    expect((await store.recent())[0]?.articles).toHaveLength(4);
+    expect(await store.filters()).toEqual({
+      types: ["article", "page"],
+      authors: ["Matt Scheurich", "Zoë Ångström"],
+      tags: ["News", "Release Notes"],
+    });
+  });
+
+  it("should keep the index up to date as articles are saved, moved and deleted", async () => {
+    const { store } = await copySite();
+    const slugs = async () =>
+      (await listAll(store))
+        .map((article) => `${article.type}/${article.slug}`)
+        .sort();
+    const before = await slugs();
+    await store.save(data({ slug: "fresh", title: "Fresh" }));
+    expect(await slugs()).toEqual([...before, "article/fresh"].sort());
+    await store.save(data({ type: "page", slug: "moved", title: "Moved" }), {
+      type: "article",
+      slug: "fresh",
+    });
+    expect(await slugs()).toEqual([...before, "page/moved"].sort());
+    await store.save(data({ type: "page", slug: "moved", title: "Renamed" }), {
+      type: "page",
+      slug: "moved",
+    });
+    expect((await store.query({ search: "renamed" })).total).toBe(1);
+    await store.remove("page", "moved");
+    expect(await slugs()).toEqual(before);
+  });
+
+  it("should find files in the articles' folders, with their paths on the website", async () => {
+    const { dir, store } = await copySite();
+    await writeFile(join(dir, "articles/page/about-us/team.jpg"), "jpg");
+    const page = await store.queryFiles({ sort: "name" });
+    expect(
+      page.files.map(({ type, slug, name, kind, size, url }) => [
+        `${type}/${slug}`,
+        name,
+        kind,
+        size,
+        url,
+      ]),
+    ).toEqual([
+      ["article/first", "guide.pdf", "document", 13, "/news/first/guide.pdf"],
+      ["page/about-us", "team.jpg", "image", 3, "/page/about-us/team.jpg"],
+      ["article/first", "thumb.png", "image", 8, "/news/first/thumb.png"],
+    ]);
+    // Folders without an article.md aren't articles, so their files aren't listed
+    expect(page.files.map((file) => file.name)).not.toContain("notes.txt");
+    expect(await store.fileFilters()).toEqual({
+      kinds: ["document", "image"],
+      types: ["article", "page"],
+    });
+  });
+
+  it("should give index articles' files their type's path, and the website's address when it has one", async () => {
+    const { dir, store } = await copySite();
+    await mkdir(join(dir, "articles/article/index"));
+    await writeFile(
+      join(dir, "articles/article/index/article.md"),
+      `<!--yaml\ndate: ${DATE}\n-->\n# News`,
+    );
+    await writeFile(join(dir, "articles/article/index/banner.png"), "png");
+    expect((await store.queryFiles({ search: "banner" })).files[0]?.url).toBe(
+      "/news/banner.png",
+    );
+
+    // Other articles refer to it by its path or full address
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `siteUrl: https://example.com/\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
+    );
+    await writeFile(
+      join(dir, "articles/page/about-us/article.md"),
+      `<!--yaml\ndate: ${DATE}\n-->\n# About us\n\n![](https://example.com/news/banner.png) [b](/news/banner.png)`,
+    );
+    expect(
+      await store.fileReferences("article", "index", "banner.png"),
+    ).toEqual([{ type: "page", slug: "about-us" }]);
+  });
+
+  it("should list the articles that refer to a file, without changing them", async () => {
+    const { dir, store } = await copySite();
+    const before = await readFile(
+      join(dir, "articles/article/first/article.md"),
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "articles/article/second/article.md"),
+      `<!--yaml\ndate: ${DATE}\n-->\n# Second\n\n[Guide](/news/first/guide.pdf)`,
+    );
+    // An article that can't be read is left alone
+    await mkdir(join(dir, "articles/article/broken"));
+    await writeFile(
+      join(dir, "articles/article/broken/article.md"),
+      "<!--yaml\n: :\n-->\nguide.pdf",
+    );
+    expect(await store.fileReferences("article", "first", "guide.pdf")).toEqual(
+      [
+        { type: "article", slug: "first" },
+        { type: "article", slug: "second" },
+      ],
+    );
+    expect(
+      await readFile(join(dir, "articles/article/first/article.md"), "utf8"),
+    ).toBe(before);
+  });
+
+  it("should replace a file with one of the same name, changing no articles", async () => {
+    const { dir, store } = await copySite();
+    expect(
+      await store.replaceFile(
+        "article",
+        "first",
+        "thumb.png",
+        "Thumb.PNG",
+        new Uint8Array([1, 2]),
+      ),
+    ).toEqual({ name: "thumb.png", articles: [] });
+    expect([
+      ...(await readFile(join(dir, "articles/article/first/thumb.png"))),
+    ]).toEqual([1, 2]);
+    expect((await store.queryFiles({ search: "thumb" })).files[0]?.size).toBe(
+      2,
+    );
+  });
+
+  it("should replace a file with another name, switching references to it in every article", async () => {
+    const { dir, store } = await copySite();
+    await writeFile(
+      join(dir, "articles/page/about-us/article.md"),
+      `<!--yaml\ndate: ${DATE}\n-->\n# About us\n\n![](/news/first/thumb.png)`,
+    );
+    expect(
+      await store.replaceFile(
+        "article",
+        "first",
+        "thumb.png",
+        "New thumb.jpg",
+        new Uint8Array([3]),
+      ),
+    ).toEqual({
+      name: "new-thumb.jpg",
+      articles: [
+        { type: "article", slug: "first" },
+        { type: "page", slug: "about-us" },
+      ],
+    });
+    const first = await readFile(
+      join(dir, "articles/article/first/article.md"),
+      "utf8",
+    );
+    expect(first).toContain("thumbnail: new-thumb.jpg");
+    expect(first).toContain("![an image](new-thumb.jpg)");
+    expect(first).not.toContain("thumb.png");
+    expect(
+      await readFile(join(dir, "articles/page/about-us/article.md"), "utf8"),
+    ).toContain("![](/news/first/new-thumb.jpg)");
+    expect(await readdir(join(dir, "articles/article/first"))).toEqual([
+      "article.md",
+      "guide.pdf",
+      "new-thumb.jpg",
+    ]);
+    expect(
+      (await store.queryFiles({ type: "article" })).files.map((f) => f.name),
+    ).toEqual(["guide.pdf", "new-thumb.jpg"]);
+  });
+
+  it("should refuse a replacement whose name another file has, or files that aren't there", async () => {
+    const { store } = await copySite();
+    await expect(
+      store.replaceFile(
+        "article",
+        "first",
+        "thumb.png",
+        "guide.pdf",
+        new Uint8Array(),
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "A file called guide.pdf is already in article/first",
+    });
+    for (const name of ["missing.png", "article.md", ".hidden", "../x.png"])
+      await expect(
+        store.deleteFile("article", "first", name),
+      ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("should delete a file, removing references to it in every article", async () => {
+    const { dir, store } = await copySite();
+    expect(await store.deleteFile("article", "first", "thumb.png")).toEqual({
+      articles: [{ type: "article", slug: "first" }],
+    });
+    const first = await readFile(
+      join(dir, "articles/article/first/article.md"),
+      "utf8",
+    );
+    expect(first).not.toContain("thumb.png");
+    expect(first).toContain("  - url: guide.pdf\n");
+    expect(await readdir(join(dir, "articles/article/first"))).toEqual([
+      "article.md",
+      "guide.pdf",
+    ]);
+  });
+
+  describe("custom metadata", () => {
+    /** A copy of the site whose pages use "featured" and "rating", with a page using them */
+    const metadataSite = async () => {
+      const site = await copySite();
+      const config = await readFile(join(site.dir, "edahaconfig.yml"), "utf8");
+      await writeFile(
+        join(site.dir, "edahaconfig.yml"),
+        [
+          config.trimEnd(),
+          "  page:",
+          "    metadata: [featured, rating]",
+          "metadata:",
+          "  featured:",
+          "    type: string",
+          "    $edahaField: { file: true }",
+          "  rating:",
+          "    type: number",
+          "    maximum: 10",
+          "    $edahaField: { number: true }",
+          "  credit:",
+          "    type: string",
+          "    $edahaField: { text: true }",
+          "",
+        ].join("\n"),
+      );
+      await writeFile(
+        join(site.dir, "articles/page/about-us/article.md"),
+        `<!--yaml\ndate: ${DATE}\nfeatured: hero.png\nrating: 11\ncredit: Me\noops: true\n-->\n# About us\n\nBody\n`,
+      );
+      return { ...site, store: await openStore(site.dir) };
+    };
+
+    it("should read an article's other settings and their problems", async () => {
+      const { store } = await metadataSite();
+      const article = await store.read("page", "about-us");
+      expect(article.meta).toEqual({
+        featured: "hero.png",
+        rating: 11,
+        credit: "Me",
+        oops: true,
+      });
+      expect(article.problems).toEqual([
+        { path: "rating", message: "must be at most 10", level: "error" },
+        { path: "credit", message: "isn't used by Pages", level: "warning" },
+        { path: "oops", message: "isn't a known setting", level: "warning" },
+      ]);
+      expect(await store.metadataInfo()).toMatchObject({
+        types: { page: ["featured", "rating"] },
+      });
+      expect(Object.keys((await store.metadataInfo()).definitions)).toEqual([
+        "featured",
+        "rating",
+        "credit",
+      ]);
+    });
+
+    it("should give summaries their problems, and find articles with errors, warnings or either", async () => {
+      const { store } = await metadataSite();
+      await store.load();
+      const slugs = async (problems: "errors" | "warnings" | "any") =>
+        (await store.query({ problems })).articles.map((a) => a.slug);
+      expect(await slugs("errors")).toEqual(["about-us"]);
+      expect(await slugs("warnings")).toEqual(["about-us"]);
+      expect(await slugs("any")).toEqual(["about-us"]);
+      expect(
+        (await store.query({ search: "first" })).articles[0]?.problems,
+      ).toBeUndefined();
+    });
+
+    it("should refuse to save invalid values, and keep other settings when saving", async () => {
+      const { dir, store } = await metadataSite();
+      const article = await store.read("page", "about-us");
+      await expect(
+        store.save(article, { type: "page", slug: "about-us" }),
+      ).rejects.toMatchObject({
+        status: 400,
+        message: 'Some values aren\'t valid: "rating" must be at most 10',
+        problems: [
+          { path: "rating", message: "must be at most 10", level: "error" },
+        ],
+      });
+      await store.save(
+        { ...article, meta: { ...article.meta, rating: 7 } },
+        { type: "page", slug: "about-us" },
+      );
+      const saved = await readFile(
+        join(dir, "articles/page/about-us/article.md"),
+        "utf8",
+      );
+      expect(saved).toContain(
+        "featured: hero.png\nrating: 7\ncredit: Me\noops: true\n",
+      );
+    });
+
+    it("should read the config again when it changes, checking every article again", async () => {
+      const { dir, store } = await metadataSite();
+      await store.load();
+      expect((await store.query({ problems: "errors" })).total).toBe(1);
+      // "rating" is now allowed up to 20, so 11 is fine
+      const config = await readFile(join(dir, "edahaconfig.yml"), "utf8");
+      await writeFile(
+        join(dir, "edahaconfig.yml"),
+        config.replace("maximum: 10", "maximum: 20"),
+      );
+      const later = new Date(Date.now() + 5000);
+      await utimes(join(dir, "edahaconfig.yml"), later, later);
+      expect((await store.query({ problems: "errors" })).total).toBe(0);
+      expect(
+        (await store.read("page", "about-us")).problems?.map((p) => p.path),
+      ).toEqual(["credit", "oops"]);
+    });
+
+    it("should give previews the type's valid values as article.meta", async () => {
+      const { dir, store } = await metadataSite();
+      await mkdir(join(dir, "templates/page"), { recursive: true });
+      await writeFile(
+        join(dir, "templates/page/single.njk"),
+        "{{ article.meta | dump | safe }}",
+      );
+      const article = await store.read("page", "about-us");
+      expect(
+        JSON.parse(
+          await store.preview(
+            article,
+            { type: "page", slug: "about-us" },
+            new EmbedResolver({
+              fetch: (async () => new Response("")) as unknown as typeof fetch,
+              logger: { warn: () => undefined },
+              renderers: [],
+            }),
+          ),
+        ),
+      ).toEqual({ featured: "/files/page/about-us/hero.png" });
+    });
+  });
+
+  it("should watch the articles folder for changes by default, until closed", async () => {
+    const { dir } = await copySite();
+    let updates = 0;
+    const store = new ArticleStore(
+      await loadSiteConfig({ siteDir: dir }),
+      undefined,
+      { watchDelay: 10, onWatchUpdate: () => updates++ },
+    );
+    expect((await store.query({ search: "outside" })).total).toBe(0);
+    await mkdir(join(dir, "articles/article/outside"));
+    // Written again until seen, as the watcher can take a moment to start
+    await vi.waitFor(
+      async () => {
+        await writeFile(
+          join(dir, "articles/article/outside/article.md"),
+          `<!--yaml\ndate: ${DATE}\n-->\n# Written outside`,
+        );
+        expect(updates).toBeGreaterThan(0);
+        expect((await store.query({ search: "outside" })).total).toBe(1);
+      },
+      { timeout: 5000, interval: 100 },
+    );
+    store.close();
+    // Closing a store that never read its index does nothing
+    (await openStore(dir)).close();
+  });
+
+  it("should give the website's name and default author", async () => {
+    const { dir, store } = await copySite();
+    expect(await store.site()).toEqual({
+      name: "Test News",
+      author: { name: "Test News" },
+      types: {},
+    });
+    const config = await readFile(join(dir, "edahaconfig.yml"), "utf8");
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `author: Matt\n${config}    author: false\n`,
+    );
+    expect(await store.site()).toEqual({
+      name: "Test News",
+      author: { name: "Matt" },
+      types: { article: false },
+    });
+    await writeFile(join(dir, "edahaconfig.yml"), `author: false\n${config}`);
+    expect((await store.site()).author).toBeUndefined();
   });
 
   it("should give the configured article types with their labels", async () => {
@@ -228,7 +690,7 @@ describe("ArticleStore", () => {
       `articlesDir: content\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
     );
     const store = await openStore(dir);
-    expect((await store.list()).length).toBeGreaterThan(0);
+    expect((await listAll(store)).length).toBeGreaterThan(0);
     await store.save(data({ slug: "in-content" }));
     expect(
       await readFile(
@@ -238,10 +700,10 @@ describe("ArticleStore", () => {
     ).toContain("# ");
   });
 
-  it("should list nothing when there is no articles folder", async () => {
+  it("should find nothing when there is no articles folder", async () => {
     const dir = await mkdtemp(join(tmpdir(), "edaha-empty-"));
     await cp(join(FIXTURE, "edahaconfig.yml"), join(dir, "edahaconfig.yml"));
-    expect(await (await openStore(dir)).list()).toEqual([]);
+    expect(await listAll(await openStore(dir))).toEqual([]);
   });
 
   it("should list an article titled by its slug when it has no title", async () => {
@@ -251,9 +713,9 @@ describe("ArticleStore", () => {
       join(dir, "articles/article/untitled/article.md"),
       `<!--yaml\ndate: ${DATE}\n-->\nText`,
     );
-    expect((await store.list()).find((a) => a.slug === "untitled")?.title).toBe(
-      "untitled",
-    );
+    expect(
+      (await listAll(store)).find((a) => a.slug === "untitled")?.title,
+    ).toBe("untitled");
   });
 
   it("should read an article for editing", async () => {

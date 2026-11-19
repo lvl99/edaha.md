@@ -15,7 +15,7 @@
 }
 
 .theme-switcher::after {
-  content: "🍂";
+  content: "🌚";
 }
 
 /* Dark colours: the device's choice unless the theme switcher chose light, or the theme switcher's choice */
@@ -31,7 +31,7 @@
   }
 
   :root:not([data-theme="light"]) .theme-switcher::after {
-    content: "🍃";
+    content: "🌝";
   }
 }
 

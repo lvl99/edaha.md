@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  articleAuthor,
   authorData,
   loadArticle,
   parseArticleConfig,
@@ -19,6 +20,7 @@ const site: TemplateDataSite = {
   url: "https://example.com",
   path: "/",
   types: {},
+  author: { name: "Test News" },
 };
 
 const FIRST_DIR = fileURLToPath(
@@ -140,6 +142,10 @@ describe("parseArticleConfig", () => {
       attachments: [],
       tags: [],
     });
+  });
+
+  it("should read author: false as no author", () => {
+    expect(parse({ date: DATE, author: false }, "article").author).toBe(false);
   });
 
   it("should read every field", () => {
@@ -286,18 +292,36 @@ describe("splitContent", () => {
   });
 });
 
-describe("authorData and tagData", () => {
+describe("articleAuthor, authorData and tagData", () => {
+  it("should use the article's author, then its type's, then the website's, with false for none", () => {
+    const own = { name: "Zoë" };
+    const type = { name: "Docs team" };
+    const site = { name: "Matt" };
+    expect(articleAuthor(own, type, site)).toBe(own);
+    expect(articleAuthor(false, type, site)).toBeUndefined();
+    expect(articleAuthor(undefined, type, site)).toBe(type);
+    expect(articleAuthor(undefined, false, site)).toBeUndefined();
+    expect(articleAuthor(undefined, undefined, site)).toBe(site);
+    expect(articleAuthor(undefined, undefined, undefined)).toBeUndefined();
+  });
+
   it("should build slugs and list URLs", () => {
-    expect(authorData({ name: "Zoë Ångström" }, "Test News", "/news/")).toEqual(
-      {
-        name: "Zoë Ångström",
-        slug: "zoe-angstrom",
-        email: undefined,
-        url: undefined,
-        listUrl: "/news/authors/zoe-angstrom/",
-      },
-    );
-    expect(authorData(undefined, "Test News", "/news/").name).toBe("Test News");
+    expect(
+      authorData(
+        {
+          name: "Zoë Ångström",
+          email: "zoe@example.com",
+          url: "https://z.com",
+        },
+        "/news/",
+      ),
+    ).toEqual({
+      name: "Zoë Ångström",
+      slug: "zoe-angstrom",
+      email: "zoe@example.com",
+      url: "https://z.com",
+      listUrl: "/news/authors/zoe-angstrom/",
+    });
     expect(tagData("Release Notes", "/news/")).toEqual({
       name: "Release Notes",
       slug: "release-notes",

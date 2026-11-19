@@ -7,13 +7,19 @@ import globals from "globals";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/coverage/**", "**/node_modules/**"],
+    // build/ is the website built from site/ (generated)
+    ignores: ["**/dist/**", "**/coverage/**", "**/node_modules/**", "build/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.strict,
   {
     files: ["src/client/**/*.ts"],
     ...lit.configs["flat/recommended"],
+    languageOptions: { globals: globals.browser },
+  },
+  {
+    // Scripts the website's pages load in the browser
+    files: ["site/static/**/*.js", "theme/static/**/*.js"],
     languageOptions: { globals: globals.browser },
   },
   {

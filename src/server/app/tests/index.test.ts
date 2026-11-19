@@ -3,8 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { PREVIEW_CSP, createEditorApp, previewCsp } from "..";
-import { ArticleStore } from "../../store";
+import {
+  PREVIEW_CSP,
+  articleQuery,
+  createEditorApp,
+  fileQuery,
+  previewCsp,
+} from "..";
+import { ArticleStore, EditorError } from "../../store";
 import { loadSiteConfig } from "../../../generator/configFile";
 
 const FIXTURE = fileURLToPath(
@@ -16,7 +22,11 @@ const ORIGIN = "http://127.0.0.1:5180";
 const setup = async () => {
   const dir = await mkdtemp(join(tmpdir(), "edaha-app-"));
   await cp(FIXTURE, dir, { recursive: true });
-  const store = new ArticleStore(await loadSiteConfig({ siteDir: dir }));
+  const store = new ArticleStore(
+    await loadSiteConfig({ siteDir: dir }),
+    undefined,
+    { watch: false },
+  );
   return {
     dir,
     store,
@@ -60,17 +70,109 @@ describe("createEditorApp", () => {
     expect(await (await app.request("/api/templates/article")).json()).toEqual([
       "single",
     ]);
+    expect(await (await app.request("/api/site")).json()).toEqual({
+      name: "Test News",
+      author: { name: "Test News" },
+      types: {},
+    });
     expect(await (await app.request("/api/types")).json()).toEqual({
       article: { labelSingle: "Article", labelPlural: "Articles" },
     });
-    const list = (await (await app.request("/api/articles")).json()) as {
-      slug: string;
-    }[];
-    expect(list.map((a) => a.slug)).toContain("first");
+    const page = (await (await app.request("/api/articles")).json()) as {
+      articles: { slug: string }[];
+      total: number;
+    };
+    expect(page.articles.map((a) => a.slug)).toContain("first");
+    expect(page.total).toBe(5);
     const article = (await (
       await app.request("/api/articles/article/first")
     ).json()) as { title: string };
     expect(article.title).toBe("First article");
+  });
+
+  it("should search articles, and give each type's recent articles and the filters' choices", async () => {
+    const { app } = await setup();
+    const found = (await (
+      await app.request(
+        "/api/articles?search=article&tag=news&sort=title&perPage=1&page=2",
+      )
+    ).json()) as { articles: { slug: string }[]; total: number; page: number };
+    expect(found).toMatchObject({ total: 2, page: 2 });
+    expect(found.articles.map((a) => a.slug)).toEqual(["second"]);
+    const recent = (await (
+      await app.request("/api/articles/recent")
+    ).json()) as { type: string; total: number }[];
+    expect(recent.map(({ type, total }) => [type, total])).toEqual([
+      ["article", 4],
+      ["page", 1],
+    ]);
+    expect(await (await app.request("/api/articles/filters")).json()).toEqual({
+      types: ["article", "page"],
+      authors: ["Matt Scheurich", "Zoë Ångström"],
+      tags: ["News", "Release Notes"],
+    });
+  });
+
+  it("should find, replace and delete files, refusing changes from other origins", async () => {
+    const { app } = await setup();
+    const found = (await (
+      await app.request("/api/files?kind=image&sort=name")
+    ).json()) as { files: { name: string; url: string }[]; total: number };
+    expect(found.files).toEqual([
+      expect.objectContaining({
+        name: "thumb.png",
+        url: "/news/first/thumb.png",
+      }),
+    ]);
+    expect(await (await app.request("/api/files/filters")).json()).toEqual({
+      kinds: ["document", "image"],
+      types: ["article"],
+    });
+    expect(
+      await (
+        await app.request("/api/files/article/first/guide.pdf/references")
+      ).json(),
+    ).toEqual([{ type: "article", slug: "first" }]);
+
+    const upload = (name: string) => {
+      const body = new FormData();
+      body.append("file", new File([new Uint8Array([1])], name));
+      return body;
+    };
+    expect(
+      (
+        await app.request("/api/files/article/first/thumb.png", {
+          method: "PUT",
+          body: upload("thumb.png"),
+        })
+      ).status,
+    ).toBe(403);
+    const replaced = await app.request("/api/files/article/first/thumb.png", {
+      method: "PUT",
+      headers: { Origin: ORIGIN },
+      body: upload("Cover.png"),
+    });
+    expect(await replaced.json()).toEqual({
+      name: "cover.png",
+      articles: [{ type: "article", slug: "first" }],
+    });
+    const noFile = await app.request("/api/files/article/first/cover.png", {
+      method: "PUT",
+      headers: { Origin: ORIGIN },
+      body: new FormData(),
+    });
+    expect(noFile.status).toBe(400);
+    const deleted = await app.request("/api/files/article/first/cover.png", {
+      method: "DELETE",
+      headers: { Origin: ORIGIN },
+    });
+    expect(await deleted.json()).toEqual({
+      articles: [{ type: "article", slug: "first" }],
+    });
+    expect(
+      (await app.request("/api/files/article/first/cover.png/references"))
+        .status,
+    ).toBe(404);
   });
 
   it("should create, save, move and delete articles", async () => {
@@ -101,9 +203,37 @@ describe("createEditorApp", () => {
     });
   });
 
+  it("should give the custom metadata fields, and the problems when saving is refused", async () => {
+    const { app, store } = await setup();
+    expect(await (await app.request("/api/metadata")).json()).toMatchObject({
+      definitions: {},
+      types: {},
+      groups: [
+        { key: "info" },
+        { key: "categorise" },
+        { key: "customise" },
+        { key: "files" },
+        { key: "custom" },
+      ],
+    });
+    const problems = [{ path: "a", message: "is wrong", level: "error" }];
+    vi.spyOn(store, "save").mockRejectedValue(
+      new EditorError(400, "Some values aren't valid", problems as never),
+    );
+    const refused = await app.request(
+      "/api/articles/article/first",
+      json("PUT", ARTICLE),
+    );
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({
+      error: "Some values aren't valid",
+      problems,
+    });
+  });
+
   it("should answer unexpected errors with 500", async () => {
     const { app, store } = await setup();
-    vi.spyOn(store, "list").mockRejectedValue(new Error("disk on fire"));
+    vi.spyOn(store, "query").mockRejectedValue(new Error("disk on fire"));
     const response = await app.request("/api/articles");
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({ error: "disk on fire" });
@@ -375,6 +505,78 @@ export default {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: 'Expected a file in the "file" field',
+    });
+  });
+});
+
+describe("articleQuery", () => {
+  it("should read a query from search parameters, leaving out what it can't use", () => {
+    expect(
+      articleQuery(
+        new URLSearchParams(
+          "search=hi&type=news&author=Matt&tag=News&status=draft&problems=errors&sort=title&order=desc&page=2&perPage=10",
+        ),
+      ),
+    ).toEqual({
+      search: "hi",
+      type: "news",
+      author: "Matt",
+      tag: "News",
+      status: "draft",
+      problems: "errors",
+      sort: "title",
+      order: "desc",
+      page: 2,
+      perPage: 10,
+    });
+    expect(
+      articleQuery(
+        new URLSearchParams(
+          "search=&status=gone&problems=lots&sort=random&order=sideways&page=two",
+        ),
+      ),
+    ).toEqual({});
+    for (const problems of ["warnings", "any"])
+      expect(articleQuery(new URLSearchParams(`problems=${problems}`))).toEqual(
+        { problems },
+      );
+    expect(articleQuery(new URLSearchParams("sort=status"))).toEqual({
+      sort: "status",
+    });
+    expect(articleQuery(new URLSearchParams("sort=date&order=asc"))).toEqual({
+      sort: "date",
+      order: "asc",
+    });
+    expect(articleQuery(new URLSearchParams("sort=updated"))).toEqual({
+      sort: "updated",
+    });
+  });
+});
+
+describe("fileQuery", () => {
+  it("should read a file query from search parameters, leaving out what it can't use", () => {
+    expect(
+      fileQuery(
+        new URLSearchParams(
+          "search=photo&kind=image&type=news&sort=size&order=asc&page=2&perPage=10",
+        ),
+      ),
+    ).toEqual({
+      search: "photo",
+      kind: "image",
+      type: "news",
+      sort: "size",
+      order: "asc",
+      page: 2,
+      perPage: 10,
+    });
+    expect(
+      fileQuery(
+        new URLSearchParams("kind=video-game&sort=colour&order=up&page=x"),
+      ),
+    ).toEqual({});
+    expect(fileQuery(new URLSearchParams("order=desc"))).toEqual({
+      order: "desc",
     });
   });
 });

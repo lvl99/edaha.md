@@ -5,10 +5,15 @@ import type {
   EditorArticleData,
 } from "../../../../server/types";
 import type { EditorApi } from "../../../editorApi";
+import { ApiError } from "../../../editorApi";
+import type { EdahaMetadataField } from "../../edaha-metadata-field";
+import { metadataLayout } from "../../../../generator/metadataGroups";
 import {
+  METADATA_ERRORS,
   applyFieldChange,
   changedFields,
   cleanArticleData,
+  nextTabIndex,
   RESET_QUESTION,
   newArticleData,
   type EdahaArticle,
@@ -16,6 +21,7 @@ import {
 import "..";
 import type { EdahaArticleDataField } from "../../edaha-article-data-field";
 import type { EdahaArticleDataGroup } from "../../edaha-article-data-group";
+import type { EdahaMarkdown } from "../../edaha-markdown";
 import type { EdahaRichtext } from "../../edaha-richtext";
 import type { ToastMessage } from "../../edaha-toasts";
 import {
@@ -239,6 +245,7 @@ describe("edaha-article", () => {
       "/files/article/hello/thumb.png",
     ]);
     expect(element.querySelector(".hint")).toBeNull();
+    expect(element.querySelector(".unsaved-notice")).toBeNull();
     expect(button(element, "Delete…")).toBeDefined();
   });
 
@@ -253,6 +260,12 @@ describe("edaha-article", () => {
     ).toBeUndefined();
     expect(find(element, ".hint").textContent).toContain(
       "Save the article before uploading files",
+    );
+    // Below the title, before the body
+    const notice = find(element, "main .unsaved-notice");
+    expect(notice.previousElementSibling).toBe(field(element, "title"));
+    expect(notice.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "⚠️ Uploading images and attachments will require a title and slug to be defined first",
     );
     expect(element.querySelector(".files")).toBeNull();
     // No tag inputs until "Add" is pressed
@@ -281,6 +294,7 @@ describe("edaha-article", () => {
     expect(toasts).toEqual([{ kind: "success", message: "Saved" }]);
     // Now saved, uploads are possible
     expect(field(element, "thumbnail").disabled).toBe(false);
+    expect(element.querySelector(".unsaved-notice")).toBeNull();
   });
 
   it("should save an existing article to its location and show errors", async () => {
@@ -354,6 +368,28 @@ describe("edaha-article", () => {
     api.upload.mockRejectedValueOnce(new Error("Disk full"));
     await expect(uploadImage(new File(["x"], "Pic.png"))).rejects.toThrow(
       "Upload failed",
+    );
+  });
+
+  it("should upload images for the body's Markdown, referring to them by file name", async () => {
+    const { element, api } = await setup();
+    await element.setMode("markdown");
+    await settle(element);
+    const uploadImage = find<EdahaMarkdown>(
+      element,
+      "edaha-markdown",
+    ).uploadImage!;
+    expect(await uploadImage(new File(["x"], "Pic.png"))).toBe("pic.png");
+    api.upload.mockRejectedValueOnce(new Error("Disk full"));
+    await expect(uploadImage(new File(["x"], "Pic.png"))).rejects.toThrow(
+      "Upload failed",
+    );
+    // A new article has no folder to upload into until it is saved
+    const { element: fresh } = await setup(undefined);
+    await fresh.setMode("markdown");
+    await settle(fresh);
+    expect(find<EdahaMarkdown>(fresh, "edaha-markdown").uploadImage).toBe(
+      undefined,
     );
   });
 
@@ -557,7 +593,7 @@ describe("edaha-article", () => {
 describe("edaha-article body modes", () => {
   /** A body mode's button */
   const modeButton = (element: HTMLElement, mode: string) =>
-    find<HTMLButtonElement>(element, `.body-modes [data-mode="${mode}"]`);
+    find<HTMLButtonElement>(element, `.body-tabs [data-mode="${mode}"]`);
 
   /** Switch the body's mode and wait for it */
   const switchTo = async (element: EdahaArticle, mode: string) => {
@@ -567,11 +603,11 @@ describe("edaha-article body modes", () => {
 
   it("should edit the body as Markdown and switch back to rich text", async () => {
     const { api, element } = await setup();
-    expect(modeButton(element, "wysiwyg").getAttribute("aria-pressed")).toBe(
+    expect(modeButton(element, "wysiwyg").getAttribute("aria-selected")).toBe(
       "true",
     );
     expect(
-      [...element.querySelectorAll(".body-modes button")].map((b) =>
+      [...element.querySelectorAll(".body-tabs button")].map((b) =>
         b.textContent?.trim(),
       ),
     ).toEqual(["WYSIWYG", "Markdown", "Preview"]);
@@ -580,7 +616,7 @@ describe("edaha-article body modes", () => {
       type: "article",
       slug: "hello",
     });
-    expect(modeButton(element, "markdown").getAttribute("aria-pressed")).toBe(
+    expect(modeButton(element, "markdown").getAttribute("aria-selected")).toBe(
       "true",
     );
     const textarea = find<HTMLTextAreaElement>(
@@ -601,6 +637,48 @@ describe("edaha-article body modes", () => {
     const calls = api.toHtml.mock.calls.length;
     await switchTo(element, "wysiwyg");
     expect(api.toHtml).toHaveBeenCalledTimes(calls);
+  });
+
+  it("should show the modes as tabs controlling the body's panel", async () => {
+    const { element } = await setup();
+    const tablist = find(element, '[role="tablist"]');
+    expect(tablist.getAttribute("aria-label")).toBe("Body");
+    const panel = find(element, '[role="tabpanel"]');
+    expect(panel.id).toBe("body-panel");
+    expect(panel.getAttribute("aria-labelledby")).toBe("body-tab-wysiwyg");
+    expect(modeButton(element, "wysiwyg").tabIndex).toBe(0);
+    expect(modeButton(element, "markdown").tabIndex).toBe(-1);
+    expect(modeButton(element, "markdown").getAttribute("aria-controls")).toBe(
+      "body-panel",
+    );
+    await switchTo(element, "markdown");
+    expect(panel.getAttribute("aria-labelledby")).toBe("body-tab-markdown");
+    expect(panel.classList.contains("body-panel-markdown")).toBe(true);
+    expect(modeButton(element, "markdown").tabIndex).toBe(0);
+  });
+
+  it("should move focus between tabs with the arrow keys, Home and End, without switching", async () => {
+    const { element } = await setup();
+    const press = (key: string) => {
+      const event = new KeyboardEvent("keydown", {
+        key,
+        bubbles: true,
+        cancelable: true,
+      });
+      (document.activeElement as HTMLElement).dispatchEvent(event);
+      return event;
+    };
+    modeButton(element, "wysiwyg").focus();
+    expect(press("ArrowRight").defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(modeButton(element, "markdown"));
+    press("End");
+    expect(document.activeElement).toBe(modeButton(element, "preview"));
+    press("Home");
+    expect(document.activeElement).toBe(modeButton(element, "wysiwyg"));
+    press("ArrowLeft");
+    expect(document.activeElement).toBe(modeButton(element, "preview"));
+    expect(press("a").defaultPrevented).toBe(false);
+    expect(element.mode).toBe("wysiwyg");
   });
 
   it("should save the Markdown as the body", async () => {
@@ -643,6 +721,42 @@ describe("edaha-article body modes", () => {
     );
   });
 
+  it("should change the preview's width without rendering it again", async () => {
+    const { api, element } = await setup();
+    await switchTo(element, "preview");
+    const frame = () => find<HTMLIFrameElement>(element, "iframe.preview");
+    const select = find<HTMLSelectElement>(element, "select#preview-width");
+    expect(find(element, 'label[for="preview-width"]').textContent).toBe(
+      "Width",
+    );
+    expect([...select.options].map((o) => [o.value, o.text.trim()])).toEqual([
+      ["full", "Full"],
+      ["900", "900px"],
+      ["600", "600px"],
+      ["320", "320px"],
+    ]);
+    expect(frame().style.width).toBe("100%");
+    for (const [value, width] of [
+      ["320", "320px"],
+      ["600", "600px"],
+      ["900", "900px"],
+      ["full", "100%"],
+    ]) {
+      input(select, value as string, "change");
+      await settle(element);
+      expect(frame().style.width).toBe(width);
+    }
+    expect(api.preview).toHaveBeenCalledOnce();
+    // The width stays when the preview is shown again
+    input(select, "320", "change");
+    await switchTo(element, "wysiwyg");
+    await switchTo(element, "preview");
+    expect(frame().style.width).toBe("320px");
+    expect(find<HTMLSelectElement>(element, "select#preview-width").value).toBe(
+      "320",
+    );
+  });
+
   it("should stay in the current mode, showing the error, when converting or rendering fails", async () => {
     const { api, element } = await setup();
     api.toMarkdown.mockRejectedValueOnce(new Error("No markdown"));
@@ -669,6 +783,96 @@ describe("edaha-article body modes", () => {
     element.article = { ...ARTICLE, slug: "other" };
     await settle(element);
     expect(element.mode).toBe("wysiwyg");
+  });
+});
+
+describe("edaha-article settings on narrow screens", () => {
+  afterEach(() => {
+    // @ts-expect-error -- jsdom has no matchMedia
+    delete window.matchMedia;
+  });
+
+  it("should open the settings full screen from the bar, and close them with the button or Escape", async () => {
+    const { element } = await setup();
+    const toggle = find<HTMLButtonElement>(element, ".btn-metadata-toggle");
+    const aside = find(element, "aside");
+    const main = find(element, "main");
+    const fields = find(element, "#article-metadata-fields");
+    expect(fields.contains(field(element, "type"))).toBe(true);
+    expect(toggle.getAttribute("aria-controls")).toBe(fields.id);
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "︽ Article settings",
+    );
+    expect(toggle.title).toBe("Show article settings");
+
+    toggle.click();
+    await settle(element);
+    expect(aside.classList.contains("open")).toBe(true);
+    expect(main.hasAttribute("inert")).toBe(true);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(toggle.title).toBe("Hide article settings");
+    expect(toggle.textContent).toContain("︾");
+    toggle.click();
+    await settle(element);
+    expect(element.metadataOpen).toBe(false);
+    expect(main.hasAttribute("inert")).toBe(false);
+
+    toggle.click();
+    await settle(element);
+    find(element, "#field-slug").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "a", bubbles: true }),
+    );
+    expect(element.metadataOpen).toBe(true);
+    find(element, "#field-slug").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    await settle(element);
+    expect(element.metadataOpen).toBe(false);
+  });
+
+  it("should close the settings when the screen stops being narrow, until removed", async () => {
+    const listeners: (() => void)[] = [];
+    const removeEventListener = vi.fn();
+    window.matchMedia = vi.fn(() => ({
+      matches: true,
+      addEventListener: (_type: string, listener: () => void) =>
+        listeners.push(listener),
+      removeEventListener,
+    })) as unknown as typeof window.matchMedia;
+    const { element } = await setup();
+    element.metadataOpen = true;
+    listeners.forEach((listener) => listener());
+    expect(element.metadataOpen).toBe(false);
+    element.remove();
+    expect(removeEventListener).toHaveBeenCalled();
+  });
+});
+
+describe("edaha-article title focus", () => {
+  it("should focus the title of a new article, but not of an opened one", async () => {
+    const { element: opened } = await setup();
+    const openedTitle = find<HTMLInputElement>(field(opened, "title"), "input");
+    expect(document.activeElement).not.toBe(openedTitle);
+    opened.remove();
+
+    const { element } = await setup(undefined);
+    await settle(element);
+    expect(document.activeElement).toBe(
+      find<HTMLInputElement>(field(element, "title"), "input"),
+    );
+  });
+});
+
+describe("nextTabIndex", () => {
+  it("should move to the previous or next tab, wrapping around, or the first or last", () => {
+    expect(nextTabIndex("ArrowRight", 0, 3)).toBe(1);
+    expect(nextTabIndex("ArrowRight", 2, 3)).toBe(0);
+    expect(nextTabIndex("ArrowLeft", 0, 3)).toBe(2);
+    expect(nextTabIndex("ArrowLeft", 2, 3)).toBe(1);
+    expect(nextTabIndex("Home", 2, 3)).toBe(0);
+    expect(nextTabIndex("End", 0, 3)).toBe(2);
+    expect(nextTabIndex("Enter", 0, 3)).toBeUndefined();
   });
 });
 
@@ -896,9 +1100,447 @@ describe("edaha-article changes", () => {
     });
     // Reset sits between Save and Delete…
     expect(
-      [...element.querySelectorAll(".edaha-article-controls button")].map((b) =>
-        b.textContent?.trim(),
+      [...element.querySelectorAll(".edaha-article-controls .btn")].map((b) =>
+        b.textContent?.replace(/\s+/g, " ").trim(),
       ),
-    ).toEqual(["Save", "Reset…", "Delete…"]);
+    ).toEqual(["Save", "Reset…", "Delete…", "︽ Article settings"]);
+  });
+});
+
+describe("edaha-article custom settings", () => {
+  /** Custom fields: articles use "rating" and "credit"; news uses none */
+  const DEFINITIONS = {
+    rating: {
+      type: "number",
+      maximum: 10,
+      $edahaField: { number: true },
+    },
+    credit: {
+      type: "object",
+      properties: {
+        name: { type: "string", $edahaField: { text: true } },
+      },
+      required: ["name"],
+    },
+    hero: {
+      type: "string",
+      $edahaField: { file: true, group: { key: "files", after: "thumbnail" } },
+    },
+  } as const;
+  const METADATA = {
+    definitions: DEFINITIONS,
+    types: { article: ["rating", "credit", "hero"], news: false },
+    groups: metadataLayout(DEFINITIONS as never, {}),
+  };
+
+  /** An article with custom settings, its form showing them */
+  const setupMetadata = async (
+    meta: Record<string, unknown> = { rating: 3, oops: true },
+    problems: EditorArticle["problems"] = [],
+  ) => {
+    const result = await setup({ ...ARTICLE, meta, problems });
+    result.element.metadata = structuredClone(METADATA) as never;
+    await settle(result.element);
+    return result;
+  };
+
+  /** The warnings about other settings, without their Remove buttons */
+  const warnings = (element: HTMLElement) =>
+    [...element.querySelectorAll(".metadata-warnings li > span")].map((span) =>
+      span.textContent?.replace(/\s+/g, " ").trim(),
+    );
+
+  /** A settings group */
+  const group = (element: HTMLElement, key = "custom") =>
+    find<HTMLDetailsElement>(element, `.settings-group[data-group="${key}"]`);
+
+  /** Leave a custom field, as moving focus out of it does */
+  const blur = (element: HTMLElement, path: string) =>
+    find(element, `edaha-metadata-field[path="${path}"]`).dispatchEvent(
+      new CustomEvent("metadata-blur", { detail: path, bubbles: true }),
+    );
+
+  it("should show the type's custom fields, and warn about other settings", async () => {
+    const { element } = await setupMetadata();
+    expect(
+      [...group(element).querySelectorAll(":scope > edaha-metadata-field")].map(
+        (f) => (f as EdahaMetadataField).path,
+      ),
+    ).toEqual(["rating", "credit"]);
+    // "hero" is in Files, after the thumbnail
+    expect(
+      [
+        ...group(element, "files").querySelectorAll(
+          ":scope > edaha-article-data-field, :scope > edaha-metadata-field",
+        ),
+      ].map((f) => f.getAttribute("name") ?? (f as EdahaMetadataField).path),
+    ).toEqual(["thumbnail", "hero"]);
+    expect(find<HTMLInputElement>(element, "#meta-rating").value).toBe("3");
+    expect(warnings(element)).toEqual([
+      '"oops" isn\'t a known setting; it is kept unless you remove it.',
+    ]);
+    // The Custom group says it has warnings, even closed
+    expect(
+      find(group(element), "summary").textContent?.replace(/\s+/g, " ").trim(),
+    ).toBe("Custom ⚠️ has warnings");
+    // News articles use no custom fields, so "rating" is kept with a warning
+    input(
+      find<HTMLSelectElement>(field(element, "type"), "select"),
+      "news",
+      "change",
+    );
+    await settle(element);
+    expect(
+      group(element).querySelectorAll(":scope > edaha-metadata-field"),
+    ).toHaveLength(0);
+    expect(element.querySelector("edaha-metadata-field")).toBeNull();
+    expect(warnings(element)).toEqual([
+      "\"rating\" isn't used by this article's type; it is kept unless you remove it.",
+      '"oops" isn\'t a known setting; it is kept unless you remove it.',
+    ]);
+  });
+
+  it("should remove other settings with their Remove buttons, once saved", async () => {
+    const { element, api } = await setupMetadata({ rating: 3, oops: true });
+    button(element, 'Remove "oops"').click();
+    await settle(element);
+    expect(element.data.meta).toEqual({ rating: 3 });
+    expect(element.querySelector(".metadata-warnings")).toBeNull();
+    expect(element.dirty).toBe(true);
+    await element.save();
+    expect(api.save.mock.calls[0]![1].meta).toEqual({ rating: 3 });
+  });
+
+  it("should leave out the Custom group without custom fields or other settings", async () => {
+    const { element } = await setup();
+    expect(element.querySelector('[data-group="custom"]')).toBeNull();
+    element.metadata = {
+      definitions: {},
+      types: {},
+      groups: metadataLayout({}, {}),
+    };
+    await settle(element);
+    expect(element.querySelector('[data-group="custom"]')).toBeNull();
+  });
+
+  it("should change values, checking a field when it is left and saying when errors are found", async () => {
+    const { element } = await setupMetadata();
+    input(find<HTMLInputElement>(element, "#meta-rating"), "20");
+    await settle(element);
+    expect(element.data.meta).toEqual({ rating: 20, oops: true });
+    expect(element.dirty).toBe(true);
+    expect(find(group(element), "summary .changed").textContent).toBe("*");
+    blur(element, "rating");
+    await settle(element);
+    expect(find(element, "#meta-rating-problems").textContent).toContain(
+      "must be at most 10",
+    );
+    expect(toasts).toEqual([{ kind: "error", message: METADATA_ERRORS }]);
+    // Still wrong: no more toasts
+    blur(element, "rating");
+    expect(toasts).toHaveLength(1);
+    input(find<HTMLInputElement>(element, "#meta-rating"), "");
+    blur(element, "rating");
+    await settle(element);
+    expect(element.metaProblems).toEqual([]);
+    expect(element.data.meta).toEqual({ oops: true });
+    // A value inside another is checked with it
+    input(find<HTMLInputElement>(element, "#meta-credit-name"), "Matt");
+    blur(element, "credit/name");
+    await settle(element);
+    expect(element.data.meta).toEqual({ oops: true, credit: { name: "Matt" } });
+    expect(element.metaProblems).toEqual([]);
+  });
+
+  it("should not save while values are invalid, showing where", async () => {
+    const { element, api } = await setupMetadata({ rating: 20, credit: {} });
+    expect(await element.save()).toBe(false);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(element.metaProblems.map(({ path }) => path)).toEqual([
+      "rating",
+      "credit/name",
+    ]);
+    expect(toasts.at(-1)).toEqual({ kind: "error", message: METADATA_ERRORS });
+  });
+
+  it("should save valid values, and show problems the server refused them for", async () => {
+    const { element, api } = await setupMetadata({ rating: 3 });
+    expect(await element.save()).toBe(true);
+    expect(api.save.mock.calls[0]![1]).toMatchObject({ meta: { rating: 3 } });
+    const problems = [
+      { path: "rating", message: "is wrong", level: "error" as const },
+    ];
+    api.save.mockRejectedValueOnce(new ApiError("Not valid", problems));
+    expect(await element.save()).toBe(false);
+    expect(element.metaProblems).toEqual(problems);
+  });
+
+  it("should show the errors it was loaded with, and show them again on reset", async () => {
+    const problems = [
+      {
+        path: "rating",
+        message: "must be at most 10",
+        level: "error" as const,
+      },
+      {
+        path: "oops",
+        message: "isn't a known setting",
+        level: "warning" as const,
+      },
+    ];
+    const { element } = await setupMetadata({ rating: 20, oops: 1 }, problems);
+    expect(element.metaProblems).toEqual([problems[0]]);
+    element.confirm = () => true;
+    input(find<HTMLInputElement>(element, "#meta-rating"), "5");
+    blur(element, "rating");
+    await settle(element);
+    expect(element.metaProblems).toEqual([]);
+    element.reset();
+    expect(element.metaProblems).toEqual([problems[0]]);
+    // A new article starts without problems
+    element.article = undefined;
+    await settle(element);
+    expect(element.metaProblems).toEqual([]);
+  });
+
+  it("should upload files for file fields once saved, showing them from the article's folder", async () => {
+    const { element } = await setupMetadata({ hero: "a.png" });
+    const hero = find<EdahaMetadataField>(
+      element,
+      'edaha-metadata-field[path="hero"]',
+    );
+    expect(await hero.uploadFile!(new File(["x"], "B.png"))).toBe("b.png");
+    expect(hero.fileUrl!("a.png")).toBe("/files/article/hello/a.png");
+    const { element: unsaved } = await setup(undefined);
+    unsaved.metadata = structuredClone(METADATA) as never;
+    await settle(unsaved);
+    expect(
+      find<EdahaMetadataField>(unsaved, 'edaha-metadata-field[path="hero"]')
+        .uploadFile,
+    ).toBeUndefined();
+  });
+});
+
+describe("edaha-article settings groups", () => {
+  /** A form with a custom group "seo" (open, with a description) holding a "rating" field */
+  const setupGroups = async () => {
+    const definitions = {
+      rating: {
+        type: "number",
+        maximum: 10,
+        $edahaField: { number: true, group: "seo" },
+      },
+    };
+    const result = await setup({ ...ARTICLE, meta: { rating: 3 } });
+    result.element.metadata = {
+      definitions,
+      types: {},
+      groups: metadataLayout(definitions as never, {
+        seo: {
+          title: "SEO",
+          description: "For search engines",
+          after: "info",
+          openedByDefault: true,
+        },
+      }),
+    };
+    await settle(result.element);
+    return result;
+  };
+
+  /** The settings groups as [key, title, open] */
+  const groups = (element: HTMLElement) =>
+    [...element.querySelectorAll<HTMLDetailsElement>(".settings-group")].map(
+      (group) => [
+        group.dataset.group,
+        group
+          .querySelector("summary")
+          ?.textContent?.replace(/\s+/g, " ")
+          .trim(),
+        group.open,
+      ],
+    );
+
+  it("should show the built-in groups with their settings, Info, Customise and Files open", async () => {
+    const { element } = await setup();
+    expect(groups(element)).toEqual([
+      ["info", "Info", true],
+      ["categorise", "Categorise", false],
+      ["customise", "Customise", true],
+      ["files", "Files", true],
+    ]);
+    const settings = (key: string) =>
+      [
+        ...element.querySelectorAll(
+          `[data-group="${key}"] > edaha-article-data-field, [data-group="${key}"] > edaha-article-data-group`,
+        ),
+      ].map((field) => field.getAttribute("name"));
+    expect(settings("info")).toEqual([
+      "type",
+      "status",
+      "slug",
+      "date",
+      "author",
+    ]);
+    expect(settings("categorise")).toEqual(["tags"]);
+    expect(settings("customise")).toEqual(["excerpt", "template"]);
+    expect(settings("files")).toEqual(["thumbnail", "attachments"]);
+    expect(
+      find(element, '[data-group="files"] .files-title').textContent?.trim(),
+    ).toBe("Files in this article's folder (2)");
+  });
+
+  it("should show custom groups where the config puts them, open as it says, with their description", async () => {
+    const { element } = await setupGroups();
+    expect(groups(element).slice(0, 2)).toEqual([
+      ["info", "Info", true],
+      ["seo", "SEO", true],
+    ]);
+    expect(
+      find(
+        element,
+        '[data-group="seo"] .settings-group-description',
+      ).textContent?.trim(),
+    ).toBe("For search engines");
+    expect(
+      find(element, '[data-group="seo"] edaha-metadata-field').getAttribute(
+        "path",
+      ),
+    ).toBe("rating");
+  });
+
+  it("should keep groups as they were left, even when the config is read again", async () => {
+    const { element } = await setupGroups();
+    const info = find<HTMLDetailsElement>(element, '[data-group="info"]');
+    info.open = false;
+    info.dispatchEvent(new Event("toggle"));
+    const categorise = find<HTMLDetailsElement>(
+      element,
+      '[data-group="categorise"]',
+    );
+    categorise.open = true;
+    categorise.dispatchEvent(new Event("toggle"));
+    await settle(element);
+    element.metadata = structuredClone(element.metadata);
+    await settle(element);
+    expect(element.openGroups).toEqual(
+      new Set(["seo", "categorise", "customise", "files"]),
+    );
+  });
+
+  it("should open and mark a group with errors, and mark changed groups", async () => {
+    const { element } = await setupGroups();
+    const seo = find<HTMLDetailsElement>(element, '[data-group="seo"]');
+    seo.open = false;
+    seo.dispatchEvent(new Event("toggle"));
+    await settle(element);
+    expect(element.openGroups.has("seo")).toBe(false);
+    input(find<HTMLInputElement>(element, "#meta-rating"), "20");
+    await element.save();
+    await settle(element);
+    expect(element.openGroups.has("seo")).toBe(true);
+    expect(seo.classList.contains("has-errors")).toBe(true);
+    expect(find(seo, "summary").textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "SEO* ⚠️ has errors",
+    );
+    // Errors in an open group leave the groups as they are
+    const before = element.openGroups;
+    element.metaProblems = [...element.metaProblems];
+    await settle(element);
+    expect(element.openGroups).toBe(before);
+    // A changed core setting marks its group
+    input(find<HTMLInputElement>(field(element, "slug"), "input"), "new-slug");
+    await settle(element);
+    expect(find(element, '[data-group="info"] summary .changed')).toBeDefined();
+  });
+});
+
+describe("edaha-article default author", () => {
+  /** The author fields' placeholders */
+  const placeholders = (element: HTMLElement) =>
+    ["name", "email", "url"].map(
+      (name) =>
+        find<HTMLInputElement>(field(element, `author[${name}]`), "input")
+          .placeholder,
+    );
+
+  /** A form for an article without an author, knowing the site's default authors */
+  const setupAuthors = async () => {
+    const result = await setup({ ...ARTICLE, author: undefined });
+    result.element.site = {
+      name: "Test News",
+      author: {
+        name: "Matt",
+        email: "matt@example.com",
+        url: "https://matt.example",
+      },
+      types: { news: { name: "News desk" }, notes: false },
+    };
+    await settle(result.element);
+    return result;
+  };
+
+  it("should show the site's default author as placeholders, when the article has no author", async () => {
+    const { element: unknown } = await setup({ ...ARTICLE, author: undefined });
+    expect(placeholders(unknown)).toEqual([
+      "Defaults to the site name",
+      "",
+      "https://example.com",
+    ]);
+    const { element } = await setupAuthors();
+    expect(element.defaultAuthor()).toEqual(element.site?.author);
+    expect(placeholders(element)).toEqual([
+      "Defaults to Matt",
+      "matt@example.com",
+      "https://matt.example",
+    ]);
+    // With its own author, the default's details don't apply
+    input(
+      find<HTMLInputElement>(field(element, "author[name]"), "input"),
+      "Zoë",
+    );
+    await settle(element);
+    expect(placeholders(element)).toEqual([
+      "Defaults to Matt",
+      "",
+      "https://example.com",
+    ]);
+  });
+
+  it("should show the type's default author, or none", async () => {
+    const { element } = await setupAuthors();
+    element.data = { ...element.data, type: "news" };
+    await settle(element);
+    expect(element.defaultAuthor()).toEqual({ name: "News desk" });
+    expect(placeholders(element)[0]).toBe("Defaults to News desk");
+    element.data = { ...element.data, type: "notes" };
+    await settle(element);
+    expect(element.defaultAuthor()).toBeUndefined();
+    expect(placeholders(element)[0]).toBe("No author unless you name one");
+  });
+
+  it("should choose no author, disabling the author's fields, and type one to have an author again", async () => {
+    const { element, api } = await setupAuthors();
+    const noAuthor = find<HTMLInputElement>(element, ".no-author input");
+    expect(noAuthor.checked).toBe(false);
+    noAuthor.checked = true;
+    noAuthor.dispatchEvent(new Event("change"));
+    await settle(element);
+    expect(element.data.author).toBe(false);
+    expect(placeholders(element)).toEqual(["", "", "https://example.com"]);
+    expect(field(element, "author[name]").disabled).toBe(true);
+    await element.save();
+    expect(api.save.mock.calls[0]![1]).toMatchObject({ author: false });
+    noAuthor.checked = false;
+    noAuthor.dispatchEvent(new Event("change"));
+    await settle(element);
+    expect(element.data.author).toBeUndefined();
+    // Typing an author after "no author" starts a new one
+    element.data = { ...element.data, author: false };
+    input(
+      find<HTMLInputElement>(field(element, "author[email]"), "input"),
+      "a@b.c",
+    );
+    expect(element.data.author).toEqual({ name: "", email: "a@b.c" });
   });
 });

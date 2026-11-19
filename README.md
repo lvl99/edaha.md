@@ -99,6 +99,8 @@ publishDir: ../app/dist
 siteUrl: https://example.com
 # Optional; paths at the website's root that articles and types can't use, e.g. another app's routes
 reservedPaths: [app, api]
+# Optional; the author of articles that don't name one: a name, { name, email, url }, or false for none. Types can set their own. Default: the website's name
+author: Jo Bloggs
 # Optional; custom embed renderers, only in a JavaScript config file (see Embeds)
 # embeds: [vimeo]
 # Optional; settings for each article type (a folder in the articles folder)
@@ -137,7 +139,7 @@ The config header at the top is YAML (`<!--yaml` or `<!--yml`) or JSON (`<!--jso
 <!--yaml
 date: 2026-10-19T12:00:00.000Z # required
 status: published # published (default), draft (not built) or unlisted (own page only, not in lists or feeds)
-author: Jo Bloggs # or { name, email, url }; defaults to the website name
+author: Jo Bloggs # or { name, email, url }, or false for none; defaults to the type's or config's author, then the website name
 template: single # optional; a template in templates/<type>/ (or templates/article/), e.g. home
 tags: [News]
 thumbnail: thumb.jpg # relative to the article folder, or an absolute URL
@@ -221,11 +223,15 @@ The full types are exported as `TemplateData*`.
 
 `edaha editor` runs a local WYSIWYG editor for a site's articles. It only listens on `127.0.0.1` and must never be deployed.
 
-- **Articles:** it lists every article (including drafts), grouped by type with the newest first. It edits the title, template, body and settings.
+- **Articles:** the welcome prompt shows the 6 most recently changed articles when the editor opens. The nav shows each type's 5 most recently changed articles (including drafts) and a title search. The article browser ("All articles") finds any article by title, type, author, tag and status, in a table sorted by any column (title, type, status, publication date or last change), 50 at a time. It edits the title, template, body and settings.
+- **Settings groups:** the editor shows settings in groups that open and close (Info, Categorise, Customise, Files and Custom); `metadataGroups` adds more, and custom settings choose theirs with `$edahaField.group`.
+- **Custom settings:** the config file's `metadata` defines custom article settings as JSON Schema, with how the editor shows each (text, number, select, checkbox, radio, file and more, in groups and lists). Each type chooses which it uses. Values are checked with ajv: the editor won't save invalid ones, the build warns about them, and templates get the valid ones as `article.meta`.
+- **Index:** the editor keeps an index of the articles in memory, read when it starts and updated when it saves, moves or deletes an article. It watches the articles folder, so changes made outside the editor (e.g. a `git pull`) show too. Nothing is written besides the articles themselves.
 - **Body:** rich text with images, links, tables, small and big text, collapsible details blocks, raw blocks, embeds and the read more break.
-- **Files:** it uploads images and attachments into the article's folder. Uploads need the article to be saved first.
+- **Files:** it uploads images and attachments into the article's folder. Uploads need the article to be saved first. The file browser ("Files") lists every article's files to open, copy the website path of, replace or delete; replacing a file with another name and deleting one update references to it in every article.
 - **Moving:** changing an article's type or slug moves its folder.
-- **Views:** "WYSIWYG", "Markdown" and "Preview" switch between rich text, the body's Markdown, and the unsaved article rendered with its type's "single" template. The preview uses the site's templates and static files over the theme's. It is sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API.
+- **Layout:** three columns that scroll on their own: the article list, the title and body, and the article's buttons and settings. On narrow screens (below 900px), the list opens from a menu button, and the buttons are a bar at the bottom of the screen that opens the settings full screen.
+- **Views:** the "WYSIWYG", "Markdown" and "Preview" tabs switch between rich text, the body's Markdown, and the unsaved article rendered with its type's "single" template. The Markdown view has the same toolbar as the rich text one, writing Markdown (or HTML where Markdown has none). The preview can be shown at full width, 900px, 600px or 320px. The preview uses the site's templates and static files over the theme's. It is sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API.
 - **Safety:** its API only accepts changes from the editor page itself.
 - **Theme:** it follows the device's light or dark setting, and its theme switcher swaps them, remembering the choice in the browser.
 - **Saving:** saving rewrites `article.md` in a normalised form (e.g. the read more break on its own line). The config header keeps its format (`yaml`, `yml` or `json`); new articles get `yaml`.
@@ -273,9 +279,9 @@ pnpm test:coverage  # unit tests with coverage
 pnpm typecheck
 pnpm lint
 pnpm format:check
-EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for the site whose config file is found from there
-pnpm site:build     # build edaha.md's own website (site/) into site/build
-pnpm site:serve     # serve site/build at http://127.0.0.1:5181 (PORT=... for another port)
+EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for the site whose config file is found from there (restarts when the API's code changes)
+pnpm site:build     # build edaha.md's own website (site/) into build/ (kept in git)
+pnpm site:serve     # serve build/ at http://127.0.0.1:5181 (PORT=... for another port)
 pnpm site:dev       # build and serve site/ at http://127.0.0.1:8449, rebuilding and reloading pages on changes
 ```
 

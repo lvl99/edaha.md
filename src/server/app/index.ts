@@ -13,9 +13,108 @@ import {
 import { bodyBaseUrl, EditorError, type ArticleStore } from "../store/index.ts";
 import type {
   ArticleLocation,
+  ArticleQuery,
+  ArticleSort,
+  ArticleStatus,
   EditorArticleData,
+  FileKind,
+  FileQuery,
+  FileSort,
   EmbedPreview,
 } from "../types/index.ts";
+
+/** Read search parameters as text or numbers, undefined when empty or not a number */
+const paramReader = (params: URLSearchParams) => ({
+  text: (name: string) => params.get(name) || undefined,
+  number: (name: string) => {
+    const value = Number(params.get(name) || NaN);
+    return Number.isFinite(value) ? value : undefined;
+  },
+});
+
+/** The kinds of files a file query can filter by */
+const FILE_KINDS: readonly FileKind[] = [
+  "image",
+  "document",
+  "archive",
+  "video",
+  "audio",
+  "other",
+];
+
+/** The ways a file query can sort */
+const FILE_SORTS: readonly FileSort[] = ["name", "kind", "size", "location"];
+
+/**
+ * Read a file query from a URL's search parameters, e.g. "?search=photo&kind=image&sort=size&order=desc&page=2".
+ * Unknown kinds, sorts and orders, and pages that aren't numbers, are left out.
+ *
+ * @example
+ * fileQuery(new URLSearchParams("kind=image&page=2")); // { kind: "image", page: 2 }
+ */
+export const fileQuery = (params: URLSearchParams): FileQuery => {
+  const { text, number } = paramReader(params);
+  const kind = text("kind") as FileKind | undefined;
+  const sort = text("sort") as FileSort | undefined;
+  const order = text("order");
+  return Object.fromEntries(
+    Object.entries({
+      search: text("search"),
+      kind: kind && FILE_KINDS.includes(kind) ? kind : undefined,
+      type: text("type"),
+      sort: sort && FILE_SORTS.includes(sort) ? sort : undefined,
+      order: order === "asc" || order === "desc" ? order : undefined,
+      page: number("page"),
+      perPage: number("perPage"),
+    }).filter(([, value]) => value !== undefined),
+  );
+};
+
+/** The ways an article query can sort */
+const SORTS: readonly ArticleSort[] = [
+  "title",
+  "type",
+  "status",
+  "date",
+  "updated",
+];
+
+/** The statuses an article query can filter by */
+const STATUSES: readonly ArticleStatus[] = ["published", "draft", "unlisted"];
+
+/**
+ * Read an article query from a URL's search parameters, e.g. "?search=hello&type=news&sort=title&order=desc&page=2".
+ * Unknown statuses, sorts and orders, and pages that aren't numbers, are left out.
+ *
+ * @example
+ * articleQuery(new URLSearchParams("search=hello&page=2")); // { search: "hello", page: 2 }
+ */
+export const articleQuery = (params: URLSearchParams): ArticleQuery => {
+  const { text, number } = paramReader(params);
+  const status = text("status") as ArticleStatus | undefined;
+  const problems = text("problems");
+  const sort = text("sort");
+  const order = text("order");
+  return Object.fromEntries(
+    Object.entries({
+      search: text("search"),
+      type: text("type"),
+      author: text("author"),
+      tag: text("tag"),
+      status: status && STATUSES.includes(status) ? status : undefined,
+      problems:
+        problems === "errors" || problems === "warnings" || problems === "any"
+          ? problems
+          : undefined,
+      sort: SORTS.includes(sort as ArticleSort)
+        ? (sort as ArticleSort)
+        : undefined,
+      order: order === "asc" || order === "desc" ? order : undefined,
+      page: number("page"),
+      perPage: number("perPage"),
+    }).filter(([, value]) => value !== undefined),
+  );
+};
 
 /** Options for the editor API */
 export interface EditorAppOptions {
@@ -103,13 +202,71 @@ export const createEditorApp = (
 
   app.onError((error, c) =>
     error instanceof EditorError
-      ? c.json({ error: error.message }, error.status as 400)
+      ? c.json(
+          {
+            error: error.message,
+            ...(error.problems ? { problems: error.problems } : {}),
+          },
+          error.status as 400,
+        )
       : c.json({ error: error.message }, 500),
   );
 
-  app.get("/api/articles", async (c) => c.json(await store.list()));
+  app.get("/api/articles", async (c) =>
+    c.json(await store.query(articleQuery(new URL(c.req.url).searchParams))),
+  );
+
+  app.get("/api/articles/recent", async (c) => c.json(await store.recent()));
+
+  app.get("/api/files", async (c) =>
+    c.json(await store.queryFiles(fileQuery(new URL(c.req.url).searchParams))),
+  );
+
+  app.get("/api/files/filters", async (c) => c.json(await store.fileFilters()));
+
+  app.get("/api/files/:type/:slug/:name/references", async (c) =>
+    c.json(
+      await store.fileReferences(
+        c.req.param("type"),
+        c.req.param("slug"),
+        c.req.param("name"),
+      ),
+    ),
+  );
+
+  app.put("/api/files/:type/:slug/:name", async (c) => {
+    const body = await c.req.parseBody();
+    const file = body.file;
+    if (!(file instanceof File))
+      throw new EditorError(400, 'Expected a file in the "file" field');
+    return c.json(
+      await store.replaceFile(
+        c.req.param("type"),
+        c.req.param("slug"),
+        c.req.param("name"),
+        file.name,
+        new Uint8Array(await file.arrayBuffer()),
+      ),
+    );
+  });
+
+  app.delete("/api/files/:type/:slug/:name", async (c) =>
+    c.json(
+      await store.deleteFile(
+        c.req.param("type"),
+        c.req.param("slug"),
+        c.req.param("name"),
+      ),
+    ),
+  );
+
+  app.get("/api/articles/filters", async (c) => c.json(await store.filters()));
 
   app.get("/api/types", async (c) => c.json(await store.types()));
+
+  app.get("/api/site", async (c) => c.json(await store.site()));
+
+  app.get("/api/metadata", async (c) => c.json(await store.metadataInfo()));
 
   app.get("/api/templates/:type", (c) =>
     c.json(store.templates(c.req.param("type"))),

@@ -13,20 +13,33 @@ Someone who manages the project starts the editor on your computer (see [Startin
 
 The editor only works on your own computer: nobody else can see it or use it.
 
+The editor fills the window in three columns, each scrolling on its own: the list of articles, the article's title and body, and its buttons and settings.
+
+On a phone or a narrow window, the list of articles opens from the menu button at the top, and **Save**, **Reset…** and **Delete…** sit in a bar at the bottom of the screen. Its **︽** button opens the article's settings over the whole screen; **︾** or Escape closes them.
+
 ## Finding articles
 
-The list of articles shows every article, including drafts, grouped by type with the newest first. Each shows its title, then its type and slug, status and date. Use **Type** to show one type only, and pick an article to open it.
+When the editor opens (or you choose **edaha.md** at the top of the list), the welcome prompt in the middle offers to **Write a new article** or **edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Open article browser** opens the article browser.
+
+The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, **Show all** opens them all in the article browser.
+
+To find any other article:
+
+- Type in **Search titles** to see up to 10 articles whose titles contain your text. **See all results** shows every match in the article browser. Press Escape to clear the search.
+- Choose **All articles** (the button beside the search) to open the article browser. Search titles and filter by **Type**, **Author**, **Tag** and **Status**. The articles are listed in a table with their title, type, status, publication date and when they last changed, newest published first. Choose a column's heading to sort by it: once for ascending, again for descending, and a third time to go back to newest published first. It shows 50 articles at a time; **Previous** and **Next** move between pages.
+
+Searches and the article browser include changes made outside the editor straight away, e.g. articles added by someone else or edited in a text editor. The list of recent articles shows them after you save or delete an article, or reload the page.
 
 ## Writing an article
 
 1. Choose **New article**, or open an existing one.
 2. Give it a **Title**.
-3. Write in the **Body**. The toolbar formats your text:
+3. Write in the **Body**. The toolbar's buttons format your text. Each shows an icon; point at it to see its name:
    - **Bold**, **Italic**, **Small** and **Big** text;
    - **Link**, **Heading** and **Subheading**;
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
-   - **Image URL**, **Upload image** and **Table**;
+   - **Image URL**, **Upload image** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
    - **Embed**: a YouTube video, Bandcamp player or other [embed](/docs/07-embeds/), from its address;
    - **Raw**: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;
    - **Read more**: where the article's summary in lists ends.
@@ -36,7 +49,9 @@ The list of articles shows every article, including drafts, grouped by type with
 
 ## Settings
 
-The **Configuration** section holds the article's settings:
+The settings are in groups you can open and close: **Info** (type, status, slug, date and author), **Categorise** (tags), **Customise** (excerpt and template), **Files** (thumbnail, attachments and the article's files) and **Custom** (custom settings). Your website may add groups of its own. A group's heading is marked `*` when a setting in it has changed, and ⚠️ when one isn't valid; a group with an invalid setting opens.
+
+What the settings do:
 
 | Setting              | What it does                                                                                     |
 | -------------------- | ------------------------------------------------------------------------------------------------ |
@@ -52,13 +67,33 @@ The form also has the **Author** (name, email address and homepage), **Tags**, a
 
 Changing an article's type or slug moves it, with all its files.
 
+## Custom settings
+
+If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields upload into the article's folder (once it's saved).
+
+When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren't valid. The article can't be saved until they are fixed. Settings the article's type doesn't use, or that nobody defined (e.g. after a custom setting was removed from the config file), are listed in **Custom**, marked ⚠️. They are kept in the article unless you choose **Remove** beside one and save.
+
+When the editor opens, **Needs attention** on the welcome prompt lists articles with problems in their settings. In the article browser, **Problems** shows only articles with errors, warnings or either.
+
 ## Checking your work
 
-Three buttons by the body change what you see:
+Three tabs above the body change what you see. Move between them with the arrow keys, and press Enter or Space to show one.
 
 - **WYSIWYG**: the rich text editor.
-- **Markdown**: the body as Markdown, if you'd like to edit it directly.
-- **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published.
+- **Markdown**: the body as Markdown, if you'd like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.
+- **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred.
+
+## Managing files
+
+Choose **Files** (beside **All articles**) to see every file in your articles' folders. Search their names, filter by **Type** (image, document, archive, video, audio or other) and **Article type**, and choose a column's heading to sort by it, as in the article browser. **Name** opens the file, and **Location** opens its article in a new tab.
+
+Each file has three buttons:
+
+- **Copy URL** copies the file's address on your website, e.g. `/news/welcome/photo.jpg`, to paste into an article.
+- **Replace…** swaps the file for another you choose. If the new file has another name, every article that shows or links to the old file is changed to use the new one.
+- **Delete…** deletes the file after asking you. Articles that show it no longer do, links to it keep their text, and it is removed from thumbnails and attachments.
+
+The editor finds a file's uses in article bodies, thumbnails and attachments: by its name in its own article, and by its address in any article.
 
 ## Saving, resetting and deleting
 
@@ -78,7 +113,9 @@ npx edaha editor
 
 It finds the site's [config file](/docs/03-configuration/#where-it-is-found) like `edaha build` does, and takes the same `--config` and `--dir` options, plus `--port` (default `5180`). It only listens on `127.0.0.1`, as it reads and writes the site's files: **never deploy it**. Its API only accepts changes from the editor page itself.
 
-The editor reads and writes the same `article.md` files you would edit by hand. A saved article keeps its header format (`yaml`, `yml` or `json`); new articles get `yaml`. Settings edaha.md doesn't know are left out when saving. Changes to the config file and templates show without restarting it.
+The editor reads and writes the same `article.md` files you would edit by hand. A saved article keeps its header format (`yaml`, `yml` or `json`); new articles get `yaml`. Settings edaha.md doesn't know are kept as they are when saving, with a warning. Changes to the config file and templates show without restarting it.
+
+To list and search articles quickly, the editor keeps an index of every article's settings in memory: it reads them all when it starts, updates an article's entry when it saves, moves or deletes it, and watches the articles folder for changes made outside it. The article files stay the only source of truth: no database or index file is written. Recently changed means when an article's `article.md` file last changed.
 
 Preview pages are sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API. Frames are only allowed from the origins that embeds list in `frameSources`.
 

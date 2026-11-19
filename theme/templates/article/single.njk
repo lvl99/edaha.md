@@ -1,8 +1,8 @@
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ article.title }} | {{ site.name }}{% endblock %}
+{% block headTitle %}{{ article.title }} | {{ site.name }}{% endblock %}
 
-{% block head_description %}{{ article.excerptText }}{% endblock %}
+{% block headDescription %}{{ article.excerptText }}{% endblock %}
 
 {% block breadcrumbItems %}
 {% set typeSettings = site.types[article.type] %}
@@ -44,11 +44,13 @@
 {% block aside %}
 <aside>
   <dl>
+    {% if article.author %}
     <dt>Author</dt>
     <dd>
       {{ article.author.name }}
       {% if article.author.url %}(<a href="{{ article.author.url }}" rel="author">website</a>){% endif %}
     </dd>
+    {% endif %}
     <dt>Date</dt>
     <dd><time datetime="{{ article.date }}">{{ article.date | date }}</time></dd>
     {% if article.tags.length %}

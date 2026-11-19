@@ -22,6 +22,7 @@ import {
   type EmbedRenderer,
 } from "../../embeds/index.ts";
 import { loadArticle } from "../article/index.ts";
+import { MetadataValidator, typeMetadataKeys } from "../metadata/index.ts";
 import {
   defaultTypeConfig,
   RESERVED_TYPES,
@@ -192,7 +193,8 @@ export const staticFiles = async (
   const files = new Map<string, string>();
   for (const dir of dirs)
     for (const file of await listFiles(dir)) files.set(file, join(dir, file));
-  return new Map([...files].sort(([a], [b]) => (a < b ? -1 : 1)));
+  // Sorted by path, comparing characters (not the locale's order)
+  return new Map([...files].sort(([a], [b]) => Number(a > b) - Number(a < b)));
 };
 
 /**
@@ -207,8 +209,8 @@ const typeData = (
 });
 
 /**
- * The website's template data: its name, description, absolute URL and home URL, and each article type's settings and
- * URL.
+ * The website's template data: its name, description, absolute URL and home URL, default author, and each article
+ * type's settings and URL.
  *
  * @param typeConfigs - the article types' settings (configured ones, plus defaults for any others)
  * @param url - the website's absolute URL (a trailing slash is removed)
@@ -225,6 +227,10 @@ export const siteData = (
   description: config.description,
   url: url.replace(/\/+$/, ""),
   path: folderUrl(folderPath(config.path)),
+  author:
+    config.author === false
+      ? undefined
+      : (config.author ?? { name: config.name }),
   types: Object.fromEntries(
     Object.entries(typeConfigs).map(([type, typeConfig]) => [
       type,
@@ -368,6 +374,9 @@ export const buildSite = async (
     files.push(file);
   };
 
+  // Validates articles' custom metadata
+  const validator = new MetadataValidator(config.metadata);
+
   // Load articles (types that generate nothing are still checked for errors)
   const articles: {
     article: TemplateDataArticle;
@@ -412,6 +421,12 @@ export const buildSite = async (
           ? (md) => embeds.replaceBlocks(md, source)
           : async (md) => md,
         renderMarkdown: (md, baseUrl) => renderMarkdown(markdown, md, baseUrl),
+        metadata: {
+          validator,
+          keys: typeMetadataKeys(config.metadata, typeConfigs[type]?.metadata),
+          typeLabel: typeConfig.labelPlural,
+          warn: (message) => logger.warn(message),
+        },
       });
       if (article && built) articles.push({ article, dir, folder });
     }

@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>edaha.md</title>
-    <meta name="description" content="Static site generator powered by TypeScript and markdown" />
+    <title>Articles | edaha.md</title>
+    <meta name="description" content="An article is a Markdown file with a short header of settings, in its own folder with its images and attachments." />
 
 
   <link rel="stylesheet" href="/base.css" />
@@ -12,7 +12,7 @@
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="http://127.0.0.1:8449">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -106,8 +106,8 @@ The rest of the article, with an image: ![A photo](photo.jpg)
 </tr>
 <tr>
 <td><code>author</code></td>
-<td>The author’s name, or <code>{ name, email, url }</code>.</td>
-<td>The website’s name</td>
+<td>The author’s name, <code>{ name, email, url }</code>, or <code>false</code> for no author.</td>
+<td>The type’s or the config’s <a href="/docs/03-configuration/#author"><code>author</code></a>, or the website’s name</td>
 </tr>
 <tr>
 <td><code>tags</code></td>
@@ -141,7 +141,7 @@ The rest of the article, with an image: ![A photo](photo.jpg)
 </tr>
 </tbody>
 </table>
-<p>Settings that edaha.md doesn’t know are ignored: they aren’t passed to templates yet, and the editor leaves them out when it saves an article.</p>
+<p>Articles can also have the custom settings defined in the config file’s <a href="/docs/03-configuration/#metadata"><code>metadata</code></a>, for the types that use them. Their values are checked: an invalid value is a warning when building (and is left out of templates), and the editor won’t save it. Settings nobody defined, and custom settings the article’s type doesn’t use, are kept as they are with a warning.</p>
 <p>An author with more details:</p>
 <pre><code class="language-yaml">author:
   name: Jo Bloggs

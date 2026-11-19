@@ -1,21 +1,65 @@
 import type {
+  ArticleFilters,
   ArticleLocation,
-  ArticleSummary,
+  FileChange,
+  FileFilters,
+  FilePage,
+  FileQuery,
+  MetadataInfo,
+  MetadataProblem,
+  SiteInfo,
+  ArticlePage,
+  ArticleQuery,
   ArticleTypeLabels,
   EditorArticle,
   EditorArticleData,
   EmbedPreview,
+  RecentArticles,
   UploadResult,
 } from "../../server/types/index.ts";
 
 export type { ArticleLocation } from "../../server/types/index.ts";
+
+/** A failed request: the server's message, and the problems with an article's metadata when saving it was refused */
+export class ApiError extends Error {
+  readonly problems?: MetadataProblem[] | undefined;
+
+  constructor(message: string, problems?: MetadataProblem[]) {
+    super(message);
+    this.problems = problems;
+  }
+}
+
+/** A file in an article's folder */
+export interface FileLocation extends ArticleLocation {
+  name: string;
+}
+
+/**
+ * A query as URL search parameters, leaving out empty parts, e.g. "?search=hi&page=2" (or "" for none).
+ *
+ * @example
+ * searchParams({ search: "hi", type: "", page: 2 }); // "?search=hi&page=2"
+ */
+export const searchParams = (query: object): string => {
+  const params = new URLSearchParams(
+    Object.entries(query)
+      .filter(([, value]) => value !== undefined && value !== "")
+      .map(([name, value]) => [name, String(value)]),
+  );
+  return params.size ? `?${params}` : "";
+};
+
+/** A file's API route */
+const fileRoute = ({ type, slug, name }: FileLocation) =>
+  `/api/files/${type}/${slug}/${encodeURIComponent(name)}`;
 
 /**
  * Talks to the editor's local server (see src/server/app.ts).
  *
  * @example
  * const api = new EditorApi();
- * const articles = await api.list();
+ * const { articles, total } = await api.query({ search: "hello" });
  */
 export class EditorApi {
   private readonly fetch: typeof fetch;
@@ -32,9 +76,13 @@ export class EditorApi {
     if (response.status === 204) return undefined as T;
     const body = (await response.json().catch(() => ({}))) as {
       error?: string;
+      problems?: MetadataProblem[];
     };
     if (!response.ok)
-      throw new Error(body.error ?? `Request failed with ${response.status}`);
+      throw new ApiError(
+        body.error ?? `Request failed with ${response.status}`,
+        body.problems,
+      );
     return body as T;
   }
 
@@ -47,9 +95,67 @@ export class EditorApi {
     });
   }
 
-  /** List all articles, newest first */
-  list(): Promise<ArticleSummary[]> {
-    return this.request("/api/articles");
+  /**
+   * Find articles by title, type, author, tag and status, sorted by title or date, a page at a time.
+   *
+   * @example
+   * await api.query({ search: "hello", sort: "title", page: 2 });
+   */
+  query(query: ArticleQuery = {}): Promise<ArticlePage> {
+    return this.request(`/api/articles${searchParams(query)}`);
+  }
+
+  /**
+   * Find files in the articles' folders by name, kind and article type, sorted by name, kind, size or location, a page
+   * at a time.
+   *
+   * @example
+   * await api.queryFiles({ kind: "image", sort: "size", order: "desc" });
+   */
+  queryFiles(query: FileQuery = {}): Promise<FilePage> {
+    return this.request(`/api/files${searchParams(query)}`);
+  }
+
+  /** The kinds of files and the article types they are in, for the file browser's filters */
+  fileFilters(): Promise<FileFilters> {
+    return this.request("/api/files/filters");
+  }
+
+  /** The articles that refer to a file */
+  fileReferences(file: FileLocation): Promise<ArticleLocation[]> {
+    return this.request(`${fileRoute(file)}/references`);
+  }
+
+  /** Replace a file with another, updating references to it if the new one's name differs */
+  replaceFile(file: FileLocation, replacement: File): Promise<FileChange> {
+    const body = new FormData();
+    body.append("file", replacement);
+    return this.request(fileRoute(file), { method: "PUT", body });
+  }
+
+  /** Delete a file, removing references to it from every article */
+  deleteFile(file: FileLocation): Promise<FileChange> {
+    return this.request(fileRoute(file), { method: "DELETE" });
+  }
+
+  /** Each type's most recently changed articles, for the nav */
+  recent(): Promise<RecentArticles[]> {
+    return this.request("/api/articles/recent");
+  }
+
+  /** The types, authors and tags articles use, for the article browser's filters */
+  filters(): Promise<ArticleFilters> {
+    return this.request("/api/articles/filters");
+  }
+
+  /** The custom metadata fields, and which fields each configured type uses */
+  metadata(): Promise<MetadataInfo> {
+    return this.request("/api/metadata");
+  }
+
+  /** The website's name, and the author of articles that don't name one */
+  site(): Promise<SiteInfo> {
+    return this.request("/api/site");
   }
 
   /** The article types from the config file, with their labels */

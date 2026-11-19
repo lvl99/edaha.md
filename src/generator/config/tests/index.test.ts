@@ -35,6 +35,8 @@ describe("parseConfig", () => {
       reservedPaths: [],
       types: {},
       embeds: [],
+      metadata: {},
+      metadataGroups: {},
     });
     expect(parseYaml(`${VALID}path: docs\n`).path).toBe("docs");
   });
@@ -258,5 +260,124 @@ describe("article types", () => {
       expect(() => withTypes(types), types).toThrow(
         `edahaconfig.yml: ${message}`,
       );
+  });
+});
+
+describe("custom metadata", () => {
+  /** Parse a config with settings added */
+  const withSettings = (settings: Record<string, unknown>) =>
+    parseConfig({ name: "News", description: "Updates", ...settings });
+  const featured = {
+    type: "string",
+    format: "uri",
+    $edahaField: { file: { accept: "image/*" } },
+  };
+
+  it("should read metadata definitions and the types' metadata settings", () => {
+    const config = withSettings({
+      metadata: {
+        featured,
+        rating: { type: "number", $edahaField: { number: true } },
+      },
+      types: {
+        news: { metadata: ["featured"] },
+        docs: { metadata: false },
+        page: {},
+      },
+    });
+    expect(config.metadata).toEqual({
+      featured,
+      rating: { type: "number", $edahaField: { number: true } },
+    });
+    expect(config.types.news?.metadata).toEqual(["featured"]);
+    expect(config.types.docs?.metadata).toBe(false);
+    expect(config.types.page?.metadata).toBeUndefined();
+    expect(withSettings({}).metadata).toEqual({});
+  });
+
+  it("should reject types using metadata that isn't defined, or settings that aren't lists or false", () => {
+    expect(() =>
+      withSettings({
+        metadata: { featured },
+        types: { news: { metadata: ["featured", "missing"] } },
+      }),
+    ).toThrow(
+      'config: "types.news.metadata" lists "missing", which isn\'t defined in "metadata"',
+    );
+    expect(() =>
+      withSettings({ types: { news: { metadata: "all" } } }),
+    ).toThrow(
+      '"types.news.metadata" must be a list of metadata keys, or false for none',
+    );
+    expect(() => withSettings({ metadata: [] })).toThrow(
+      '"metadata" must be a map of settings',
+    );
+  });
+});
+
+describe("default author", () => {
+  /** Parse a config with an author setting */
+  const withAuthor = (author: unknown) =>
+    parseConfig({ name: "News", description: "Updates", author }).author;
+
+  it("should read a name, or a name with an email address and homepage", () => {
+    expect(withAuthor(undefined)).toBeUndefined();
+    expect(withAuthor(" Matt ")).toEqual({ name: "Matt" });
+    expect(
+      withAuthor({
+        name: "Matt",
+        email: "matt@example.com",
+        url: "https://x.com",
+      }),
+    ).toEqual({
+      name: "Matt",
+      email: "matt@example.com",
+      url: "https://x.com",
+    });
+    expect(withAuthor({ name: "Matt" })).toEqual({
+      name: "Matt",
+      email: undefined,
+      url: undefined,
+    });
+  });
+
+  it("should read false as no author, for the site and for a type", () => {
+    expect(withAuthor(false)).toBe(false);
+    const config = parseConfig({
+      name: "News",
+      description: "Updates",
+      types: {
+        docs: { author: { name: "Docs team" } },
+        notes: { author: false },
+        news: {},
+      },
+    });
+    expect(config.types.docs?.author).toEqual({
+      name: "Docs team",
+      email: undefined,
+      url: undefined,
+    });
+    expect(config.types.notes?.author).toBe(false);
+    expect(config.types.news?.author).toBeUndefined();
+    expect(() =>
+      parseConfig({
+        name: "News",
+        description: "Updates",
+        types: { docs: { author: "!!" } },
+      }),
+    ).toThrow('"types.docs.author" needs a name with letters or numbers');
+  });
+
+  it("should need a name with letters or numbers, and no other settings", () => {
+    for (const author of ["!!", {}, { name: "--" }])
+      expect(() => withAuthor(author)).toThrow(
+        '"author" needs a name with letters or numbers, or false for no author',
+      );
+    expect(() => withAuthor({ name: "Matt", twitter: "@m" })).toThrow(
+      'unknown "author" setting "twitter"',
+    );
+    expect(() => withAuthor(["Matt"])).toThrow(
+      '"author" must be a map of settings',
+    );
   });
 });

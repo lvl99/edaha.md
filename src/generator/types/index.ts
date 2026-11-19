@@ -15,6 +15,13 @@ export interface TemplateDataSite {
   path: string;
   /** Article type settings (configured types, plus any other types articles use) */
   types: Record<string, TemplateDataArticleType>;
+  /**
+   * The author of articles that don't name one (unless their type has its own): the config file's `author`, the
+   * website's name without one, or undefined when it is `false`
+   */
+  author?:
+    | { name: string; email?: string | undefined; url?: string | undefined }
+    | undefined;
 }
 
 /** What is built for an article type */
@@ -85,8 +92,8 @@ export interface TemplateDataArticle {
   url: string;
   /** The article title */
   title: string;
-  /** The article author */
-  author: TemplateDataAuthor;
+  /** The article's author: its own, its type's or the website's default, or undefined for none */
+  author?: TemplateDataAuthor | undefined;
   /** The article thumbnail URL */
   thumbnail?: string | undefined;
   /** The article tags */
@@ -105,6 +112,11 @@ export interface TemplateDataArticle {
   bodyHtml: string;
   /** Article attachments */
   attachments: TemplateDataAttachment[];
+  /**
+   * The article's custom metadata (see the config file's `metadata`): the valid values of the fields its type uses, by
+   * key, with file fields as paths on the website
+   */
+  meta: Record<string, unknown>;
 }
 
 /** One page of a paginated list */

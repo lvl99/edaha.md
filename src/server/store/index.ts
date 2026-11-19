@@ -15,6 +15,7 @@ import {
   DEFAULT_HEADER_FORMAT,
   headerFormat,
   loadArticle,
+  type MetadataContext,
   parseArticleConfig,
   splitArticle,
   splitContent,
@@ -51,9 +52,45 @@ import {
   filesUrl,
   markdownToEditorHtml,
 } from "../convert/index.ts";
+import {
+  articleMetadata,
+  CORE_FIELDS,
+  MetadataValidator,
+  typeMetadataKeys,
+} from "../../generator/metadata/index.ts";
+import type { EdahaConfig } from "../../generator/config/index.ts";
+import { metadataLayout } from "../../generator/metadataGroups/index.ts";
+import {
+  ArticleIndex,
+  type MetadataCheck,
+  articleFilters,
+  queryArticles,
+  recentArticles,
+  RECENT_COUNT,
+  type ArticleIndexOptions,
+} from "../articleIndex/index.ts";
+import {
+  changeArticleReferences,
+  fileFilters,
+  fileReferences,
+  queryFiles,
+  type ReferenceChange,
+} from "../files/index.ts";
+import { folderPath, folderUrl } from "../../generator/urls/index.ts";
 import type {
-  ArticleSummary,
+  ArticleFilters,
+  ArticleLocation,
+  ArticlePage,
+  ArticleQuery,
+  FileChange,
+  FileFilters,
+  FilePage,
+  FileQuery,
+  MetadataInfo,
+  MetadataProblem,
+  SiteInfo,
   ArticleTypeLabels,
+  RecentArticles,
   EditorArticle,
   EditorArticleData,
   UploadResult,
@@ -63,24 +100,30 @@ import type {
 export class EditorError extends Error {
   readonly status: number;
 
-  constructor(status: number, message: string) {
+  /** Problems with the article's custom metadata, when saving it was refused because of them */
+  readonly problems?: MetadataProblem[] | undefined;
+
+  constructor(status: number, message: string, problems?: MetadataProblem[]) {
     super(message);
     this.status = status;
+    this.problems = problems;
   }
 }
 
-/** List the names of sub-folders in a folder (none if it doesn't exist) */
-const subfolders = async (dir: string): Promise<string[]> => {
-  try {
-    const entries = await readdir(dir, { withFileTypes: true });
-    return entries
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .sort();
-  } catch {
-    return [];
-  }
-};
+/** Options for an `ArticleStore` */
+export interface ArticleStoreOptions extends ArticleIndexOptions {
+  /** Whether the article index watches the articles folder for changes made outside the editor (default: true) */
+  watch?: boolean;
+}
+
+/** What articles' custom metadata is checked with (see `ArticleStore.metadata`) */
+interface MetadataTools {
+  config: EdahaConfig;
+  /** An article's problems, from its type and settings */
+  check: MetadataCheck;
+  /** What `loadArticle` reads a type's metadata with (besides `warn`) */
+  context(type: string): Omit<MetadataContext, "warn">;
+}
 
 /** How many previews the editor remembers (the newest) */
 export const MAX_PREVIEWS = 20;
@@ -157,12 +200,15 @@ export const serializeArticle = (
   body: string,
   format: HeaderFormat = DEFAULT_HEADER_FORMAT,
 ): string => {
+  // No author is written as `false`; a name alone as just the name
   const author =
-    data.author && (data.author.email || data.author.url)
-      ? Object.fromEntries(
-          Object.entries(data.author).filter(([, value]) => value),
-        )
-      : data.author?.name;
+    data.author === false
+      ? false
+      : data.author && (data.author.email || data.author.url)
+        ? Object.fromEntries(
+            Object.entries(data.author).filter(([, value]) => value),
+          )
+        : data.author?.name;
   const config = Object.fromEntries(
     Object.entries({
       status: data.status,
@@ -179,6 +225,8 @@ export const serializeArticle = (
           )
         : undefined,
       tags: data.tags.length ? data.tags : undefined,
+      // Custom metadata and other settings, after the core ones
+      ...data.meta,
     }).filter(([, value]) => value !== undefined && value !== ""),
   );
   const header =
@@ -190,11 +238,14 @@ export const serializeArticle = (
 
 /**
  * Reads and writes articles in the site's articles folder (`articlesDir`) for the editor, and renders previews with the site's
- * templates over the default theme's.
+ * templates over the default theme's. Articles are listed and searched from an in-memory index (see `ArticleIndex`),
+ * read on first use and kept up to date as the editor saves and deletes articles, and (unless `watch` is false) as their
+ * files change outside the editor. Call `close` to stop watching.
  *
  * @example
  * const store = new ArticleStore(await loadSiteConfig({ siteDir: "my-site" }));
- * await store.list();
+ * await store.query({ search: "hello" });
+ * store.close();
  */
 export class ArticleStore {
   private readonly articlesDir: string;
@@ -214,12 +265,29 @@ export class ArticleStore {
 
   private readonly themeDir: string;
 
+  /** What custom metadata is checked with, once read from the config file */
+  private metadataLoad?: Promise<MetadataTools> | undefined;
+
+  /** When the config file had last changed when its custom metadata was read */
+  private metadataChanged?: number | undefined;
+
+  /** The article index, once its first load has started */
+  private indexLoad?: Promise<ArticleIndex> | undefined;
+
+  private readonly indexOptions: ArticleStoreOptions;
+
   /**
    * @param site - the site's config file, folder (which holds the articles, templates and static files folders) and
    *   settings
    * @param themeDir - the default theme folder that the site's templates and static files override
+   * @param options - how the article index watches for changes
    */
-  constructor(site: SiteConfig, themeDir: string = THEME_DIR) {
+  constructor(
+    site: SiteConfig,
+    themeDir: string = THEME_DIR,
+    options: ArticleStoreOptions = {},
+  ) {
+    this.indexOptions = options;
     this.configFile = site.configFile;
     this.siteDir = site.siteDir;
     this.themeDir = themeDir;
@@ -259,6 +327,26 @@ export class ArticleStore {
   }
 
   /**
+   * The website's name, the author of articles that don't name one (the config file's `author`, the website without
+   * one, or none for `false`), and the types with their own default author.
+   */
+  async site(): Promise<SiteInfo> {
+    const config = await this.config();
+    return {
+      name: config.name,
+      author:
+        config.author === false
+          ? undefined
+          : (config.author ?? { name: config.name }),
+      types: Object.fromEntries(
+        Object.entries(config.types).flatMap(([type, { author }]) =>
+          author === undefined ? [] : [[type, author]],
+        ),
+      ),
+    };
+  }
+
+  /**
    * The article types from the config file, with their labels.
    */
   async types(): Promise<Record<string, ArticleTypeLabels>> {
@@ -290,43 +378,271 @@ export class ArticleStore {
   }
 
   /**
-   * List every article, including drafts, newest first. Articles that can't be read are listed with their error.
+   * What articles' custom metadata is checked with, from the config file: a check giving an article's problems from its
+   * type and settings, and the context `loadArticle` reads a type's metadata with. It is read again when the config file
+   * changes, which checks every article again.
    */
-  async list(): Promise<ArticleSummary[]> {
-    const summaries: ArticleSummary[] = [];
-    for (const type of await subfolders(this.articlesDir)) {
-      for (const slug of await subfolders(join(this.articlesDir, type))) {
-        let source: string;
-        try {
-          source = await this.source(type, slug);
-        } catch {
-          continue;
-        }
-        try {
-          const { header, content } = splitArticle(source);
-          const config = parseArticleConfig(header, type, `${type}/${slug}`);
-          summaries.push({
-            type,
-            slug,
-            title: config.title ?? splitContent(content).heading ?? slug,
-            status: config.status,
-            date: config.date,
-          });
-        } catch (error) {
-          summaries.push({
-            type,
-            slug,
-            title: slug,
-            status: "draft",
-            date: "",
-            error: (error as Error).message,
-          });
-        }
+  private async metadata(): Promise<MetadataTools> {
+    // Read again when the config file changes, as the editor keeps running while it is edited
+    const changed = (await stat(this.configFile)).mtimeMs;
+    if (this.metadataLoad && changed === this.metadataChanged)
+      return this.metadataLoad;
+    this.metadataChanged = changed;
+    // Articles are checked again with the new settings
+    const oldIndex = this.indexLoad;
+    this.indexLoad = undefined;
+    void oldIndex?.then((index) => index.close());
+    this.metadataLoad = (async () => {
+      const config = await this.config();
+      const validator = new MetadataValidator(config.metadata);
+      const context = (type: string) => {
+        const typeConfig = config.types[type] ?? defaultTypeConfig(type);
+        return {
+          validator,
+          keys: typeMetadataKeys(config.metadata, typeConfig.metadata),
+          typeLabel: typeConfig.labelPlural,
+        };
+      };
+      const check: MetadataCheck = (type, settings) => {
+        const { keys, typeLabel } = context(type);
+        return articleMetadata(settings, keys, validator, typeLabel).problems;
+      };
+      return { config, check, context };
+    })();
+    return this.metadataLoad;
+  }
+
+  /**
+   * Read the config file's custom metadata and every article now, rather than on first use, so the editor starts with
+   * every article checked.
+   */
+  async load(): Promise<void> {
+    await this.index();
+  }
+
+  /**
+   * The custom metadata fields, which fields each configured type uses, and the groups the article form shows settings
+   * in.
+   */
+  async metadataInfo(): Promise<MetadataInfo> {
+    const { config } = await this.metadata();
+    return {
+      definitions: config.metadata,
+      groups: metadataLayout(config.metadata, config.metadataGroups),
+      types: Object.fromEntries(
+        Object.entries(config.types).flatMap(([type, { metadata }]) =>
+          metadata === undefined ? [] : [[type, metadata]],
+        ),
+      ),
+    };
+  }
+
+  /** The article index, read on first use (and then watched, unless turned off) */
+  private async index(): Promise<ArticleIndex> {
+    // Checking the config file first starts afresh when it has changed
+    const { check } = await this.metadata();
+    this.indexLoad ??= (async () => {
+      const index = new ArticleIndex(this.articlesDir, {
+        ...this.indexOptions,
+        check,
+      });
+      await index.load();
+      if (this.indexOptions.watch !== false) index.watch();
+      return index;
+    })();
+    return this.indexLoad;
+  }
+
+  /**
+   * Find articles by title, type, author, tag and status, sorted by title or date, a page at a time (see
+   * `queryArticles`).
+   *
+   * @example
+   * await store.query({ search: "hello", sort: "title", page: 2 });
+   */
+  async query(query: ArticleQuery): Promise<ArticlePage> {
+    return queryArticles((await this.index()).articles(), query);
+  }
+
+  /**
+   * Each type's most recently changed articles, for the editor's nav (see `recentArticles`).
+   */
+  async recent(count = RECENT_COUNT): Promise<RecentArticles[]> {
+    return recentArticles((await this.index()).articles(), count);
+  }
+
+  /**
+   * The types, authors and tags articles use, for the article browser's filters.
+   */
+  async filters(): Promise<ArticleFilters> {
+    return articleFilters((await this.index()).articles());
+  }
+
+  /**
+   * Where articles are on the website, from the config file: a function giving an article's path (e.g. "/news/hello/";
+   * an index article is at its type's path), and the website's address without a trailing slash, if it has one.
+   */
+  private async articleUrls() {
+    const config = await this.config();
+    const typeUrl = (type: string) =>
+      folderUrl(
+        folderPath(
+          config.path,
+          (config.types[type] ?? defaultTypeConfig(type)).path,
+        ),
+      );
+    return {
+      articleUrl: (type: string, slug: string) =>
+        slug === "index" ? typeUrl(type) : `${typeUrl(type)}${slug}/`,
+      siteUrl: config.siteUrl?.replace(/\/+$/, ""),
+    };
+  }
+
+  /**
+   * Find files in the articles' folders by name, kind and article type, sorted by name, kind, size or location, a page
+   * at a time, with their paths on the website.
+   *
+   * @example
+   * await store.queryFiles({ kind: "image", sort: "size" });
+   */
+  async queryFiles(query: FileQuery): Promise<FilePage> {
+    const { articleUrl } = await this.articleUrls();
+    const page = queryFiles((await this.index()).files(), query);
+    return {
+      ...page,
+      files: page.files.map((file) => ({
+        ...file,
+        url: articleUrl(file.type, file.slug) + file.name,
+      })),
+    };
+  }
+
+  /** The kinds of files and the article types they are in, for the file browser's filters */
+  async fileFilters(): Promise<FileFilters> {
+    return fileFilters((await this.index()).files());
+  }
+
+  /** A file's path in an article's folder. Throws a 404 EditorError if there is no such file. */
+  private async filePath(type: string, slug: string, name: string) {
+    if (
+      name === "article.md" ||
+      name !== basename(name) ||
+      name.startsWith(".")
+    )
+      throw new EditorError(404, "File not found");
+    const path = join(this.dir(type, slug), name);
+    if (!(await exists(path))) throw new EditorError(404, "File not found");
+    return path;
+  }
+
+  /**
+   * Change references to a file in every article (see `changeArticleReferences`), or only find them with `dryRun`.
+   * Returns the articles that refer to it.
+   */
+  private async changeReferences(
+    file: ArticleLocation & { name: string },
+    change: ReferenceChange,
+    dryRun = false,
+  ): Promise<ArticleLocation[]> {
+    const index = await this.index();
+    const { articleUrl, siteUrl } = await this.articleUrls();
+    const url = articleUrl(file.type, file.slug) + file.name;
+    const changed: ArticleLocation[] = [];
+    for (const { type, slug } of index.articles()) {
+      const references = fileReferences(
+        file.name,
+        url,
+        siteUrl,
+        type === file.type && slug === file.slug,
+      );
+      let source: string;
+      let next: string | undefined;
+      try {
+        source = await this.source(type, slug);
+        next = changeArticleReferences(source, references, change);
+      } catch {
+        // Articles that can't be read are left alone
+        continue;
+      }
+      if (next === undefined) continue;
+      changed.push({ type, slug });
+      if (!dryRun) {
+        await writeFile(join(this.dir(type, slug), "article.md"), next);
+        await index.update(type, slug);
       }
     }
-    return summaries.sort(
-      (a, b) => b.date.localeCompare(a.date) || a.slug.localeCompare(b.slug),
+    return changed;
+  }
+
+  /**
+   * The articles that refer to a file, e.g. to say which will change before replacing or deleting it.
+   */
+  async fileReferences(
+    type: string,
+    slug: string,
+    name: string,
+  ): Promise<ArticleLocation[]> {
+    await this.filePath(type, slug, name);
+    return this.changeReferences({ type, slug, name }, { remove: true }, true);
+  }
+
+  /**
+   * Replace a file in an article's folder with an uploaded one. With the same (safe) name, the file is overwritten;
+   * with another, the new file is saved under its own name, references to the old one switch to it in every article,
+   * and the old file is removed. Throws a 409 EditorError if another file already has the new name.
+   */
+  async replaceFile(
+    type: string,
+    slug: string,
+    name: string,
+    fileName: string,
+    contents: Uint8Array,
+  ): Promise<FileChange> {
+    const oldPath = await this.filePath(type, slug, name);
+    const newName = safeFileName(fileName);
+    const newPath = join(this.dir(type, slug), newName);
+    if (newName !== name && (await exists(newPath)))
+      throw new EditorError(
+        409,
+        `A file called ${newName} is already in ${type}/${slug}`,
+      );
+    await writeFile(newPath, contents);
+    const articles: ArticleLocation[] = [];
+    if (newName !== name) {
+      articles.push(
+        ...(await this.changeReferences(
+          { type, slug, name },
+          { rename: newName },
+        )),
+      );
+      await rm(oldPath);
+    }
+    await (await this.index()).update(type, slug);
+    return { name: newName, articles };
+  }
+
+  /**
+   * Delete a file from an article's folder, removing references to it in every article (images are removed, links keep
+   * their text, a thumbnail is cleared and attachments are removed).
+   */
+  async deleteFile(
+    type: string,
+    slug: string,
+    name: string,
+  ): Promise<FileChange> {
+    const path = await this.filePath(type, slug, name);
+    const articles = await this.changeReferences(
+      { type, slug, name },
+      { remove: true },
     );
+    await rm(path);
+    await (await this.index()).update(type, slug);
+    return { articles };
+  }
+
+  /** Stop watching the articles folder for changes */
+  close(): void {
+    void this.indexLoad?.then((index) => index.close());
   }
 
   /**
@@ -347,6 +663,8 @@ export class ArticleStore {
     const files = (await readdir(this.dir(type, slug)))
       .filter((name) => name !== "article.md")
       .sort();
+    const settings = header as Record<string, unknown>;
+    const { check } = await this.metadata();
     return {
       type,
       slug,
@@ -361,6 +679,10 @@ export class ArticleStore {
       attachments: config.attachments,
       bodyHtml: markdownToEditorHtml(body, filesUrl(type, slug)),
       files,
+      meta: Object.fromEntries(
+        Object.entries(settings).filter(([key]) => !CORE_FIELDS.includes(key)),
+      ),
+      problems: check(type, settings),
     };
   }
 
@@ -389,6 +711,16 @@ export class ArticleStore {
       throw new EditorError(400, `The slug can't be used: ${problem}`);
     if (!data.title.trim())
       throw new EditorError(400, "The article needs a title");
+    // Custom metadata values that aren't valid aren't saved
+    const errors = (await this.metadata())
+      .check(data.type, data.meta ?? {})
+      .filter(({ level }) => level === "error");
+    if (errors.length)
+      throw new EditorError(
+        400,
+        `Some values aren't valid: ${errors.map(({ path, message }) => `"${path}" ${message}`).join("; ")}`,
+        errors,
+      );
     const moving = !from || from.type !== data.type || from.slug !== data.slug;
     if (moving && (await exists(dir)))
       throw new EditorError(
@@ -422,6 +754,9 @@ export class ArticleStore {
       await rename(fromDir, dir);
     } else await mkdir(dir, { recursive: true });
     await writeFile(join(dir, "article.md"), source);
+    const index = await this.index();
+    if (from && moving) index.delete(from.type, from.slug);
+    await index.update(data.type, data.slug);
     return { type: data.type, slug: data.slug };
   }
 
@@ -456,6 +791,7 @@ export class ArticleStore {
     );
     const name = `${data.type}/${data.slug || "new"}`;
     const markdown = createMarkdown();
+    const metadata = await this.metadata();
     try {
       // Published, so always rendered
       const article = (await loadArticle(source, data.type, {
@@ -470,6 +806,11 @@ export class ArticleStore {
         source: name,
         replaceEmbeds: (md) => embeds.replaceBlocks(md, name),
         renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
+        metadata: {
+          ...metadata.context(data.type),
+          // The editor shows problems itself
+          warn: () => undefined,
+        },
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
       return templates.render(
@@ -487,6 +828,7 @@ export class ArticleStore {
   async remove(type: string, slug: string): Promise<void> {
     await this.source(type, slug);
     await rm(this.dir(type, slug), { recursive: true });
+    (await this.index()).delete(type, slug);
   }
 
   /**

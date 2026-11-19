@@ -95,7 +95,7 @@ describe("createEditorServer", () => {
     expect(await (await app.request("/api/types")).json()).toEqual({
       article: { labelSingle: "Article", labelPlural: "Articles" },
     });
-    expect((await app.request("/site.css")).status).toBe(200);
+    expect((await app.request("/base.css")).status).toBe(200);
     const remove = (origin: string) =>
       app.request("/api/articles/article/first", {
         method: "DELETE",

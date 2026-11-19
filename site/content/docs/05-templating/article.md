@@ -79,6 +79,7 @@ The editor lists the templates an article can use.
 Every template gets:
 
 - `site.name` and `site.description`: the website's name and description.
+- `site.author`: the author of articles that don't name one (`name`, `email` and `url`): the config file's `author`, the website's name without one, or nothing when it is `false`.
 - `site.url`: the website's absolute URL, e.g. `https://example.com`, for links that leave the website (e.g. in feeds).
 - `site.path`: the URL of the website's home page, e.g. `/` (or `/docs/` with the `path` setting `docs`).
 - `site.types`: each article type's settings (`labelSingle`, `labelPlural`, `path`, `generate`) and `url`.
@@ -96,18 +97,19 @@ These make it easy to show something on some pages only, e.g. in your `layouts/h
 
 Article pages also get `article`:
 
-| Variable                                         | Description                                                                                  |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| `article.title`                                  | The title.                                                                                   |
-| `article.url`                                    | The page's URL, e.g. `/news/hello-world/`.                                                   |
-| `article.type`, `article.slug`, `article.status` | The type, slug and status (`published` or `unlisted`).                                       |
-| `article.date`                                   | The date, as an ISO 8601 timestamp. Use the `date` filter to show it.                        |
-| `article.author`                                 | `name`, `email`, `url`, and `listUrl` (the author's list).                                   |
-| `article.tags`                                   | Each tag's `name` and `url` (the tag's list).                                                |
-| `article.thumbnail`                              | The thumbnail's URL, if there is one.                                                        |
-| `article.bodyHtml`, `article.bodyText`           | The body as HTML, and as plain text.                                                         |
-| `article.excerptHtml`, `article.excerptText`     | The excerpt as HTML, and as plain text.                                                      |
-| `article.attachments`                            | Each attachment's `name`, `url`, `thumbnail`, `mimeType` and `sizeRelative` (e.g. "2.5 MB"). |
+| Variable                                         | Description                                                                                                                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `article.title`                                  | The title.                                                                                                                                                                              |
+| `article.url`                                    | The page's URL, e.g. `/news/hello-world/`.                                                                                                                                              |
+| `article.type`, `article.slug`, `article.status` | The type, slug and status (`published` or `unlisted`).                                                                                                                                  |
+| `article.date`                                   | The date, as an ISO 8601 timestamp. Use the `date` filter to show it.                                                                                                                   |
+| `article.author`                                 | `name`, `email`, `url`, and `listUrl` (the author's list); nothing for articles without an author, so check it first: `{% if article.author %}`.                                        |
+| `article.tags`                                   | Each tag's `name` and `url` (the tag's list).                                                                                                                                           |
+| `article.thumbnail`                              | The thumbnail's URL, if there is one.                                                                                                                                                   |
+| `article.bodyHtml`, `article.bodyText`           | The body as HTML, and as plain text.                                                                                                                                                    |
+| `article.excerptHtml`, `article.excerptText`     | The excerpt as HTML, and as plain text.                                                                                                                                                 |
+| `article.attachments`                            | Each attachment's `name`, `url`, `thumbnail`, `mimeType` and `sizeRelative` (e.g. "2.5 MB").                                                                                            |
+| `article.meta`                                   | The article's [custom settings](/docs/03-configuration/#metadata) by key, e.g. `article.meta.featured`: the valid values of those its type uses, with file fields' names as their URLs. |
 
 List pages (and [index articles](/docs/06-lists/#index-articles)) get `list`:
 
@@ -140,7 +142,7 @@ As well as Nunjucks' own filters, templates have:
 
 ### Change the page layout
 
-The theme's templates extend `layouts/html.njk` and fill in its blocks: `head_title`, `head_description`, `bodyClass`, `header`, `breadcrumb`, `breadcrumbItems`, `main`, `aside` and `footer`. Copy it into `templates/layouts/html.njk` to change every page at once, e.g. to add a navigation menu:
+The theme's templates extend `layouts/html.njk` and fill in its blocks: `headTitle`, `headDescription`, `headImports` (stylesheets), `bodyClass`, `header`, `headerNav`, `breadcrumb`, `breadcrumbItems`, `main`, `aside`, `footer`, `footerNav`, `colophon` and `bodyImports` (scripts). Copy it into `templates/layouts/html.njk` to change every page at once, e.g. to add a navigation menu:
 
 ```njk
 {% block header %}
@@ -161,7 +163,7 @@ The theme's templates extend `layouts/html.njk` and fill in its blocks: `head_ti
 ```njk
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ article.title }} | {{ site.name }}{% endblock %}
+{% block headTitle %}{{ article.title }} | {{ site.name }}{% endblock %}
 
 {% block main %}
 <article>
@@ -179,7 +181,7 @@ The theme's templates extend `layouts/html.njk` and fill in its blocks: `head_ti
 ```njk
 {% extends "layouts/html.njk" %}
 
-{% block head_title %}{{ list.name }} | {{ site.name }}{% endblock %}
+{% block headTitle %}{{ list.name }} | {{ site.name }}{% endblock %}
 
 {% block main %}
 <h1>{{ list.name }}</h1>

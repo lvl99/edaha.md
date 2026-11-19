@@ -1,6 +1,17 @@
 import { isAbsolute, normalize, sep } from "node:path";
 import type { EmbedRenderer } from "../../embeds/types/index.ts";
-import { isSlug } from "../slug/index.ts";
+import { isSlug, slugify } from "../slug/index.ts";
+import type { AuthorConfig } from "../article/index.ts";
+import {
+  parseMetadata,
+  parseTypeMetadata,
+  type MetadataDefinitions,
+} from "../metadata/index.ts";
+import {
+  metadataLayout,
+  parseMetadataGroups,
+  type MetadataGroupConfig,
+} from "../metadataGroups/index.ts";
 
 /** What is built for an article type */
 export interface GenerateConfig {
@@ -26,6 +37,10 @@ export interface ArticleTypeConfig {
   labelPlural: string;
   /** What is built for the type */
   generate: GenerateConfig;
+  /** The custom metadata fields the type uses: those listed, none for `false`, or all when undefined */
+  metadata?: string[] | false | undefined;
+  /** The author of the type's articles that don't name one, or `false` for none. Default: the site's `author` */
+  author?: AuthorConfig | false | undefined;
 }
 
 /** The site's settings from the config file */
@@ -54,6 +69,12 @@ export interface EdahaConfig {
   types: Record<string, ArticleTypeConfig>;
   /** Custom embed renderers, tried before the built-in ones. Only JavaScript config files can set them. Default: none */
   embeds: EmbedRenderer[];
+  /** Custom metadata fields' JSON Schemas, by the key articles store their values under. Default: none */
+  metadata: MetadataDefinitions;
+  /** Groups of settings in the editor, besides the built-in ones, by key. Default: none */
+  metadataGroups: Record<string, MetadataGroupConfig>;
+  /** The author of articles that don't name one (unless their type has its own), or `false` for none. Default: none (the website's name is used) */
+  author?: AuthorConfig | false | undefined;
 }
 
 /** Settings under `generate` */
@@ -66,7 +87,14 @@ const GENERATE_KEYS: (keyof GenerateConfig)[] = [
 ];
 
 /** Settings of an article type */
-const TYPE_KEYS = ["labelSingle", "labelPlural", "path", "generate"];
+const TYPE_KEYS = [
+  "labelSingle",
+  "labelPlural",
+  "path",
+  "generate",
+  "metadata",
+  "author",
+];
 
 /** The site's settings */
 const CONFIG_KEYS = [
@@ -82,6 +110,9 @@ const CONFIG_KEYS = [
   "reservedPaths",
   "types",
   "embeds",
+  "metadata",
+  "metadataGroups",
+  "author",
 ];
 
 /** List folders that can't be used as article types */
@@ -159,6 +190,11 @@ const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
     config[label] = text.trim();
   }
   config.path = parsePath(fields.path, `"types.${type}.path"`) ?? type;
+  config.author = parseAuthor(fields.author, `"types.${type}.author"`);
+  config.metadata = parseTypeMetadata(
+    fields.metadata,
+    `"types.${type}.metadata"`,
+  );
   const generate = fields.generate;
   if (generate === false)
     for (const key of GENERATE_KEYS) config.generate[key] = false;
@@ -179,6 +215,38 @@ const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
   if (!config.generate.article)
     for (const key of GENERATE_KEYS) config.generate[key] = false;
   return config;
+};
+
+/**
+ * Read a default author: a name, a map with a `name` and optionally an `email` and `url` (like an article's), or `false`
+ * for none.
+ *
+ * @param what - the setting, for errors, e.g. '"author"'
+ *
+ * @example
+ * parseAuthor("Matt", '"author"'); // { name: "Matt" }
+ * parseAuthor(false, '"author"'); // false
+ */
+const parseAuthor = (
+  value: unknown,
+  what: string,
+): AuthorConfig | false | undefined => {
+  if (value === undefined || value === null) return undefined;
+  if (value === false) return false;
+  const nameNeeded = `${what} needs a name with letters or numbers, or false for no author`;
+  if (typeof value === "string") {
+    if (!slugify(value)) throw new Error(nameNeeded);
+    return { name: value.trim() };
+  }
+  const fields = asMap(value, what);
+  checkKeys(fields, ["name", "email", "url"], what);
+  const name = optionalString(fields, "name");
+  if (!name || !slugify(name)) throw new Error(nameNeeded);
+  return {
+    name,
+    email: optionalString(fields, "email"),
+    url: optionalString(fields, "url"),
+  };
 };
 
 /**
@@ -326,6 +394,23 @@ const validateConfig = (data: unknown): EdahaConfig => {
     fields.types === undefined || fields.types === null
       ? {}
       : asMap(fields.types, '"types"');
+  const metadata = parseMetadata(fields.metadata);
+  const metadataGroups = parseMetadataGroups(fields.metadataGroups);
+  // Every field's group, and what each field and group follows, must exist
+  metadataLayout(metadata, metadataGroups);
+  const typeConfigs = Object.fromEntries(
+    Object.entries(types).map(([type, value]) => [
+      type,
+      parseTypeConfig(type, value),
+    ]),
+  );
+  // Types can only use custom metadata that is defined
+  for (const [type, { metadata: keys }] of Object.entries(typeConfigs))
+    for (const key of keys || [])
+      if (!(key in metadata))
+        throw new Error(
+          `"types.${type}.metadata" lists "${key}", which isn't defined in "metadata"`,
+        );
   return {
     name: requireString(fields, "name"),
     description: requireString(fields, "description"),
@@ -336,12 +421,10 @@ const validateConfig = (data: unknown): EdahaConfig => {
     siteUrl: parseSiteUrl(fields),
     reservedPaths: parseReservedPaths(fields),
     embeds: parseEmbeds(fields),
-    types: Object.fromEntries(
-      Object.entries(types).map(([type, value]) => [
-        type,
-        parseTypeConfig(type, value),
-      ]),
-    ),
+    metadata,
+    metadataGroups,
+    author: parseAuthor(fields.author, '"author"'),
+    types: typeConfigs,
   };
 };
 

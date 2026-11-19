@@ -23,8 +23,8 @@ describe("EditorApi", () => {
     const fetch = vi
       .spyOn(globalThis, "fetch")
       .mockResolvedValue(new Response("[]"));
-    expect(await new EditorApi().list()).toEqual([]);
-    expect(fetch).toHaveBeenCalledWith("/api/articles", undefined);
+    expect(await new EditorApi().recent()).toEqual([]);
+    expect(fetch).toHaveBeenCalledWith("/api/articles/recent", undefined);
     fetch.mockRestore();
   });
 
@@ -32,7 +32,28 @@ describe("EditorApi", () => {
     const fetch = answer(200, { ok: true });
     const api = new EditorApi(fetch);
     const data = { title: "Hi" } as never;
-    await api.list();
+    await api.query();
+    await api.query({
+      search: "hi there",
+      type: "news",
+      author: "",
+      tag: undefined,
+      sort: "title",
+      page: 2,
+    });
+    await api.recent();
+    await api.filters();
+    await api.queryFiles();
+    await api.queryFiles({ kind: "image", sort: "size", order: "desc" });
+    await api.fileFilters();
+    await api.metadata();
+    await api.site();
+    await api.fileReferences({ ...LOCATION, name: "my photo.png" });
+    await api.replaceFile(
+      { ...LOCATION, name: "a.png" },
+      new File(["x"], "b.png"),
+    );
+    await api.deleteFile({ ...LOCATION, name: "a.png" });
     await api.types();
     await api.templates("page");
     await api.read(LOCATION);
@@ -45,6 +66,17 @@ describe("EditorApi", () => {
       calls.map(([path, init]) => `${init?.method ?? "GET"} ${path}`),
     ).toEqual([
       "GET /api/articles",
+      "GET /api/articles?search=hi+there&type=news&sort=title&page=2",
+      "GET /api/articles/recent",
+      "GET /api/articles/filters",
+      "GET /api/files",
+      "GET /api/files?kind=image&sort=size&order=desc",
+      "GET /api/files/filters",
+      "GET /api/metadata",
+      "GET /api/site",
+      "GET /api/files/article/hello/my%20photo.png/references",
+      "PUT /api/files/article/hello/a.png",
+      "DELETE /api/files/article/hello/a.png",
       "GET /api/types",
       "GET /api/templates/page",
       "GET /api/articles/article/hello",
@@ -53,11 +85,14 @@ describe("EditorApi", () => {
       "POST /api/articles/article/hello/files",
       "GET /api/embed?url=https%3A%2F%2Fyoutu.be%2Fx%3Fa%3D1%26b%3D2",
     ]);
-    expect(calls[4]![1]).toMatchObject({
+    expect(
+      (calls[10]![1]!.body as FormData).get("file") as File,
+    ).toHaveProperty("name", "b.png");
+    expect(calls[15]![1]).toMatchObject({
       headers: { "Content-Type": "application/json" },
       body: '{"title":"Hi"}',
     });
-    expect((calls[6]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
+    expect((calls[17]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
   });
 
   it("should convert bodies and render previews, returning their result", async () => {
@@ -96,12 +131,22 @@ describe("EditorApi", () => {
     expect(await new EditorApi(answer(204)).remove(LOCATION)).toBeUndefined();
   });
 
+  it("should give the problems when saving was refused because of them", async () => {
+    const problems = [{ path: "a", message: "is wrong", level: "error" }];
+    await expect(
+      new EditorApi(answer(400, { error: "Not valid", problems })).save(
+        LOCATION,
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ message: "Not valid", problems });
+  });
+
   it("should throw the server's error message, or the status", async () => {
     await expect(
-      new EditorApi(answer(409, { error: "Exists" })).list(),
+      new EditorApi(answer(409, { error: "Exists" })).recent(),
     ).rejects.toThrow("Exists");
-    await expect(new EditorApi(answer(500, "not json")).list()).rejects.toThrow(
-      "Request failed with 500",
-    );
+    await expect(
+      new EditorApi(answer(500, "not json")).recent(),
+    ).rejects.toThrow("Request failed with 500");
   });
 });

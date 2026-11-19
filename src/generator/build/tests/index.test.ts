@@ -115,11 +115,20 @@ describe("siteData", () => {
       description: "Updates",
       url: "https://e.com",
       path: "/docs/",
+      // Without an author setting, articles' default author is the website
+      author: { name: "Site" },
       types: { news: { ...defaultTypeConfig("news"), url: "/docs/news/" } },
     });
     expect(siteData({ ...config, path: "" }, {}, "https://e.com").path).toBe(
       "/",
     );
+    expect(
+      siteData({ ...config, author: { name: "Matt" } }, {}, "https://e.com")
+        .author,
+    ).toEqual({ name: "Matt" });
+    expect(
+      siteData({ ...config, author: false }, {}, "https://e.com").author,
+    ).toBeUndefined();
   });
 });
 
@@ -174,6 +183,8 @@ describe("buildSite", () => {
       "page/about-us",
     ]);
     expect(result.files).toEqual([
+      // The default theme's stylesheet
+      "base.css",
       "news/authors/matt-scheurich/feed.xml",
       "news/authors/matt-scheurich/index.html",
       "news/authors/zoe-angstrom/feed.xml",
@@ -194,8 +205,6 @@ describe("buildSite", () => {
       "page/authors/test-news/index.html",
       "page/feed.xml",
       "page/index.html",
-      // The default theme's stylesheet
-      "site.css",
     ]);
     expect(logger.warn.mock.calls.map(([message]) => message)).toEqual([
       'articles/page: type "page" is not in edahaconfig.yml; using the default settings',
@@ -354,8 +363,10 @@ describe("buildSite", () => {
     );
     const { result, read } = await build(space, "https://example.com");
     // page/index is the website's front page, page/about-us is at the root
-    expect(await read("index.html")).toContain(
-      '<h1 class="site-title">Welcome</h1>',
+    // The front page's title is in the page title, and its body is the page's main content
+    expect(await read("index.html")).toContain("| Welcome</title>");
+    expect(await read("index.html")).toMatch(
+      /<div class="home-body">\s*<p>Hello!<\/p>/,
     );
     expect(await read("index.html")).not.toContain('aria-label="Breadcrumb"');
     expect(result.files).toContain("about-us/index.html");
@@ -594,7 +605,7 @@ describe("buildSite", () => {
     );
     const { result } = await build({ root, siteDir }, "https://example.com");
     // Only the theme's static files
-    expect(result.files).toEqual(["site.css"]);
+    expect(result.files).toEqual(["base.css"]);
 
     // And with a theme without static files, nothing at all
     const theme = join(root, "theme");
@@ -755,5 +766,92 @@ describe("buildSite", () => {
     expect(result.articles.find((a) => a.slug === "first")?.title).toBe("Only");
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+});
+
+describe("buildSite custom metadata", () => {
+  it("should give templates the valid values of the type's fields, warning about problems", async () => {
+    const space = await workspace();
+    // Pages use "featured" and "rating", not "credit"
+    await writeSiteFile(
+      space,
+      "edahaconfig.yml",
+      [
+        await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8"),
+        "  page:",
+        "    metadata: [featured, rating]",
+        "metadata:",
+        "  featured:",
+        "    type: string",
+        "    $edahaField:",
+        "      file: true",
+        "  rating:",
+        "    type: number",
+        "    maximum: 10",
+        "    $edahaField:",
+        "      number: true",
+        "  credit:",
+        "    type: string",
+        "    $edahaField:",
+        "      text: true",
+        "",
+      ].join("\n"),
+    );
+    await writeArticle(
+      space,
+      "page/meta",
+      "<!--yaml\ndate: 2026-10-19\nfeatured: hero.png\nrating: 11\ncredit: Me\noops: true\n-->\n# Meta",
+    );
+    await writeSiteFile(
+      space,
+      "templates/page/single.njk",
+      "{{ article.meta | dump | safe }}",
+    );
+    const { read, logger } = await build(space);
+    expect(JSON.parse(await read("page/meta/index.html"))).toEqual({
+      featured: "/page/meta/hero.png",
+    });
+    expect(logger.warn.mock.calls.map(([message]) => message)).toEqual(
+      expect.arrayContaining([
+        'articles/page/meta: "rating" must be at most 10',
+        'articles/page/meta: "credit" isn\'t used by Pages',
+        'articles/page/meta: "oops" isn\'t a known setting',
+      ]),
+    );
+  });
+});
+
+describe("buildSite authors", () => {
+  it("should use the type's default author, and leave articles without one out of author lists", async () => {
+    const space = await workspace();
+    // Pages have no author by default; one page names its own
+    await configurePages(space, "    author: false\n");
+    await writeArticle(
+      space,
+      "page/anon",
+      "<!--yaml\ndate: 2026-10-19\n-->\n# Anon",
+    );
+    await writeArticle(
+      space,
+      "page/signed",
+      "<!--yaml\ndate: 2026-10-19\nauthor: Zoë\n-->\n# Signed",
+    );
+    // A news article without an author, which can't have one
+    await writeArticle(
+      space,
+      "article/nobody",
+      "<!--yaml\ndate: 2026-10-19\nauthor: false\n-->\n# Nobody",
+    );
+    const { read, result } = await build(space, "https://example.com");
+    // The article page shows no author (the theme's page template never does)
+    expect(await read("news/nobody/index.html")).not.toContain(
+      "<dt>Author</dt>",
+    );
+    expect(await read("news/first/index.html")).toContain("<dt>Author</dt>");
+    expect(result.files).toContain("page/authors/zoe/index.html");
+    // Without an author, articles are in no author's list
+    expect(
+      result.files.filter((file) => file.startsWith("page/authors/")),
+    ).toEqual(["page/authors/zoe/feed.xml", "page/authors/zoe/index.html"]);
   });
 });

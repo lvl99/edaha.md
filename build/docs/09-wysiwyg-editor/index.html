@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>edaha.md</title>
-    <meta name="description" content="Static site generator powered by TypeScript and markdown" />
+    <title>WYSIWYG editor | edaha.md</title>
+    <meta name="description" content="edaha.md comes with an editor that lets you write and manage your website’s articles in your browser, without editing Markdown files. What you see as you write is what your visitors will see." />
 
 
   <link rel="stylesheet" href="/base.css" />
@@ -12,7 +12,7 @@
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="http://127.0.0.1:8449">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -38,19 +38,28 @@
 <h2 id="opening-the-editor">Opening the editor</h2>
 <p>Someone who manages the project starts the editor on your computer (see <a href="#starting-the-editor">Starting the editor</a>). Then open <a href="http://127.0.0.1:5180">http://127.0.0.1:5180</a> in your browser.</p>
 <p>The editor only works on your own computer: nobody else can see it or use it.</p>
+<p>The editor fills the window in three columns, each scrolling on its own: the list of articles, the article’s title and body, and its buttons and settings.</p>
+<p>On a phone or a narrow window, the list of articles opens from the menu button at the top, and <strong>Save</strong>, <strong>Reset…</strong> and <strong>Delete…</strong> sit in a bar at the bottom of the screen. Its <strong>︽</strong> button opens the article’s settings over the whole screen; <strong>︾</strong> or Escape closes them.</p>
 <h2 id="finding-articles">Finding articles</h2>
-<p>The list of articles shows every article, including drafts, grouped by type with the newest first. Each shows its title, then its type and slug, status and date. Use <strong>Type</strong> to show one type only, and pick an article to open it.</p>
+<p>When the editor opens, the welcome prompt in the middle offers to <strong>Write a new article</strong> or <strong>edit an existing one</strong> (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, <strong>Open article browser</strong> opens the article browser.</p>
+<p>The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, <strong>Show all</strong> opens them all in the article browser.</p>
+<p>To find any other article:</p>
+<ul>
+<li>Type in <strong>Search titles</strong> to see up to 10 articles whose titles contain your text. <strong>See all results</strong> shows every match in the article browser. Press Escape to clear the search.</li>
+<li>Choose <strong>All articles</strong> (the button beside the search) to open the article browser. Search titles and filter by <strong>Type</strong>, <strong>Author</strong>, <strong>Tag</strong> and <strong>Status</strong>. The articles are listed in a table with their title, type, status, publication date and when they last changed, newest published first. Choose a column’s heading to sort by it: once for ascending, again for descending, and a third time to go back to newest published first. It shows 50 articles at a time; <strong>Previous</strong> and <strong>Next</strong> move between pages.</li>
+</ul>
+<p>Searches and the article browser include changes made outside the editor straight away, e.g. articles added by someone else or edited in a text editor. The list of recent articles shows them after you save or delete an article, or reload the page.</p>
 <h2 id="writing-an-article">Writing an article</h2>
 <ol>
 <li>Choose <strong>New article</strong>, or open an existing one.</li>
 <li>Give it a <strong>Title</strong>.</li>
-<li>Write in the <strong>Body</strong>. The toolbar formats your text:
+<li>Write in the <strong>Body</strong>. The toolbar’s buttons format your text. Each shows an icon; point at it to see its name:
 <ul>
 <li><strong>Bold</strong>, <strong>Italic</strong>, <strong>Small</strong> and <strong>Big</strong> text;</li>
 <li><strong>Link</strong>, <strong>Heading</strong> and <strong>Subheading</strong>;</li>
 <li><strong>Bullet list</strong>, <strong>Numbered list</strong>, <strong>Quote</strong> and <strong>Code</strong>;</li>
 <li><strong>Details</strong>: a block readers can open and close;</li>
-<li><strong>Image URL</strong>, <strong>Upload image</strong> and <strong>Table</strong>;</li>
+<li><strong>Image URL</strong>, <strong>Upload image</strong> and <strong>Table</strong>, with <strong>Add row</strong>, <strong>Add column</strong>, <strong>Remove row</strong>, <strong>Remove column</strong> and <strong>Remove table</strong> while you are in a table;</li>
 <li><strong>Embed</strong>: a YouTube video, Bandcamp player or other <a href="/docs/07-embeds/">embed</a>, from its address;</li>
 <li><strong>Raw</strong>: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;</li>
 <li><strong>Read more</strong>: where the article’s summary in lists ends.</li>
@@ -60,7 +69,8 @@
 </ol>
 <p><strong>Upload image</strong> saves the image into the article’s folder, so it needs the article to be saved first.</p>
 <h2 id="settings">Settings</h2>
-<p>The <strong>Configuration</strong> section holds the article’s settings:</p>
+<p>The settings are in groups you can open and close: <strong>Info</strong> (type, status, slug, date and author), <strong>Categorise</strong> (tags), <strong>Customise</strong> (excerpt and template), <strong>Files</strong> (thumbnail, attachments and the article’s files) and <strong>Custom</strong> (custom settings). Your website may add groups of its own. A group’s heading is marked <code>*</code> when a setting in it has changed, and ⚠️ when one isn’t valid; a group with an invalid setting opens.</p>
+<p>What the settings do:</p>
 <table>
 <thead>
 <tr>
@@ -101,13 +111,26 @@
 </table>
 <p>The form also has the <strong>Author</strong> (name, email address and homepage), <strong>Tags</strong>, and <strong>Attachments</strong>: files to download, uploaded with <strong>Upload file</strong> or linked by address. Uploads need the article to be saved first.</p>
 <p>Changing an article’s type or slug moves it, with all its files.</p>
+<h2 id="custom-settings">Custom settings</h2>
+<p>If your website defines <a href="/docs/03-configuration/#metadata">custom settings</a>, such as a featured image or a rating, the ones the article’s type uses are in the groups your website puts them in, or in <strong>Custom</strong>. Lists have <strong>Add</strong> and <strong>Delete</strong> buttons, and file fields upload into the article’s folder (once it’s saved).</p>
+<p>When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren’t valid. The article can’t be saved until they are fixed. Settings the article’s type doesn’t use, or that nobody defined, are listed there too; they are kept as they are.</p>
+<p>When the editor opens, <strong>Needs attention</strong> on the welcome prompt lists articles with problems in their settings. In the article browser, <strong>Problems</strong> shows only articles with errors, warnings or either.</p>
 <h2 id="checking-your-work">Checking your work</h2>
-<p>Three buttons by the body change what you see:</p>
+<p>Three tabs above the body change what you see. Move between them with the arrow keys, and press Enter or Space to show one.</p>
 <ul>
 <li><strong>WYSIWYG</strong>: the rich text editor.</li>
-<li><strong>Markdown</strong>: the body as Markdown, if you’d like to edit it directly.</li>
-<li><strong>Preview</strong>: the article as your website will show it, with its layout and styles. Drafts are shown as if published.</li>
+<li><strong>Markdown</strong>: the body as Markdown, if you’d like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.</li>
+<li><strong>Preview</strong>: the article as your website will show it, with its layout and styles. Drafts are shown as if published. <strong>Width</strong> shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred.</li>
 </ul>
+<h2 id="managing-files">Managing files</h2>
+<p>Choose <strong>Files</strong> (beside <strong>All articles</strong>) to see every file in your articles’ folders. Search their names, filter by <strong>Type</strong> (image, document, archive, video, audio or other) and <strong>Article type</strong>, and choose a column’s heading to sort by it, as in the article browser. <strong>Name</strong> opens the file, and <strong>Location</strong> opens its article in a new tab.</p>
+<p>Each file has three buttons:</p>
+<ul>
+<li><strong>Copy URL</strong> copies the file’s address on your website, e.g. <code>/news/welcome/photo.jpg</code>, to paste into an article.</li>
+<li><strong>Replace…</strong> swaps the file for another you choose. If the new file has another name, every article that shows or links to the old file is changed to use the new one.</li>
+<li><strong>Delete…</strong> deletes the file after asking you. Articles that show it no longer do, links to it keep their text, and it is removed from thumbnails and attachments.</li>
+</ul>
+<p>The editor finds a file’s uses in article bodies, thumbnails and attachments: by its name in its own article, and by its address in any article.</p>
 <h2 id="saving-resetting-and-deleting">Saving, resetting and deleting</h2>
 <ul>
 <li><strong>Save</strong> writes your changes. Saving also tidies the file’s Markdown.</li>
@@ -120,7 +143,8 @@
 <pre><code class="language-sh">npx edaha editor
 </code></pre>
 <p>It finds the site’s <a href="/docs/03-configuration/#where-it-is-found">config file</a> like <code>edaha build</code> does, and takes the same <code>--config</code> and <code>--dir</code> options, plus <code>--port</code> (default <code>5180</code>). It only listens on <code>127.0.0.1</code>, as it reads and writes the site’s files: <strong>never deploy it</strong>. Its API only accepts changes from the editor page itself.</p>
-<p>The editor reads and writes the same <code>article.md</code> files you would edit by hand. A saved article keeps its header format (<code>yaml</code>, <code>yml</code> or <code>json</code>); new articles get <code>yaml</code>. Settings edaha.md doesn’t know are left out when saving. Changes to the config file and templates show without restarting it.</p>
+<p>The editor reads and writes the same <code>article.md</code> files you would edit by hand. A saved article keeps its header format (<code>yaml</code>, <code>yml</code> or <code>json</code>); new articles get <code>yaml</code>. Settings edaha.md doesn’t know are kept as they are when saving, with a warning. Changes to the config file and templates show without restarting it.</p>
+<p>To list and search articles quickly, the editor keeps an index of every article’s settings in memory: it reads them all when it starts, updates an article’s entry when it saves, moves or deletes it, and watches the articles folder for changes made outside it. The article files stay the only source of truth: no database or index file is written. Recently changed means when an article’s <code>article.md</code> file last changed.</p>
 <p>Preview pages are sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor’s API. Frames are only allowed from the origins that embeds list in <code>frameSources</code>.</p>
 <h3 id="extending-the-editor-with-custom-embeds">Extending the editor with custom embeds</h3>
 <p>Embeds you add to a JavaScript config file’s <code>embeds</code> setting work in the editor too: the <strong>Embed</strong> button previews them, and the preview pages render them as the website will.</p>

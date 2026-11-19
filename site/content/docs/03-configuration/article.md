@@ -90,26 +90,29 @@ The folder that holds the config file is the **site folder**. Every folder in th
 
 ## Settings
 
-| Setting                           | Required | Description                                                                      |
-| --------------------------------- | -------- | -------------------------------------------------------------------------------- |
-| [`name`](#name)                   | Yes      | The website's name.                                                              |
-| [`description`](#description)     | Yes      | The website's description.                                                       |
-| [`path`](#path)                   | No       | A URL path that every article type's URLs start with.                            |
-| [`articlesDir`](#articlesdir)     | No       | The folder that holds the articles.                                              |
-| [`templatesDir`](#templatesdir)   | No       | The folder that holds your own templates.                                        |
-| [`staticDir`](#staticdir)         | No       | The folder that holds your own static files.                                     |
-| [`outputDir`](#outputdir)         | No       | The folder the website is built into.                                            |
-| [`publishDir`](#publishdir)       | No       | A folder outside the site folder that the built website is copied into.          |
-| [`siteUrl`](#siteurl)             | No       | The website's absolute URL, for links in RSS feeds.                              |
-| [`reservedPaths`](#reservedpaths) | No       | Paths at the website's root that articles and article types can't use.           |
-| [`types`](#types)                 | No       | Settings for each article type: URL path, labels and what is built.              |
-| [`embeds`](#embeds)               | No       | Custom embed renderers, tried before the built-in ones (JavaScript config only). |
+| Setting                             | Required | Description                                                                      |
+| ----------------------------------- | -------- | -------------------------------------------------------------------------------- |
+| [`name`](#name)                     | Yes      | The website's name.                                                              |
+| [`description`](#description)       | Yes      | The website's description.                                                       |
+| [`path`](#path)                     | No       | A URL path that every article type's URLs start with.                            |
+| [`articlesDir`](#articlesdir)       | No       | The folder that holds the articles.                                              |
+| [`templatesDir`](#templatesdir)     | No       | The folder that holds your own templates.                                        |
+| [`staticDir`](#staticdir)           | No       | The folder that holds your own static files.                                     |
+| [`outputDir`](#outputdir)           | No       | The folder the website is built into.                                            |
+| [`publishDir`](#publishdir)         | No       | A folder outside the site folder that the built website is copied into.          |
+| [`siteUrl`](#siteurl)               | No       | The website's absolute URL, for links in RSS feeds.                              |
+| [`reservedPaths`](#reservedpaths)   | No       | Paths at the website's root that articles and article types can't use.           |
+| [`types`](#types)                   | No       | Settings for each article type: URL path, labels and what is built.              |
+| [`embeds`](#embeds)                 | No       | Custom embed renderers, tried before the built-in ones (JavaScript config only). |
+| [`metadata`](#metadata)             | No       | Custom settings for articles, with how the editor shows them.                    |
+| [`metadataGroups`](#metadatagroups) | No       | Groups of settings in the editor, besides the built-in ones.                     |
+| [`author`](#author)                 | No       | The author of articles that don't name one.                                      |
 
 Unknown settings stop the build, so a typo doesn't go unnoticed.
 
 ### `name`
 
-The website's name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don't name one.
+The website's name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don't name one, unless [`author`](#author) is set.
 
 ```yaml
 name: My Site
@@ -226,12 +229,14 @@ reservedPaths: [app, api, jwks.json]
 
 Settings for each article type, by its folder name. Each type can set:
 
-| Setting       | Description                                                              | Default                       |
-| ------------- | ------------------------------------------------------------------------ | ----------------------------- |
-| `path`        | The type's URL path: lowercase kebab-case, or `""` for the website root. | The type's name               |
-| `labelSingle` | The label for one article, e.g. "Article".                               | The name, capitalised         |
-| `labelPlural` | The label for several articles, e.g. "Articles".                         | `labelSingle` followed by "s" |
-| `generate`    | What is built for the type (see below), or `false` to build nothing.     | Everything                    |
+| Setting       | Description                                                                                           | Default                       |
+| ------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `path`        | The type's URL path: lowercase kebab-case, or `""` for the website root.                              | The type's name               |
+| `labelSingle` | The label for one article, e.g. "Article".                                                            | The name, capitalised         |
+| `labelPlural` | The label for several articles, e.g. "Articles".                                                      | `labelSingle` followed by "s" |
+| `generate`    | What is built for the type (see below), or `false` to build nothing.                                  | Everything                    |
+| `metadata`    | The [custom settings](#metadata) the type uses, or `false` for none.                                  | All of them                   |
+| `author`      | The author of the type's articles that don't name one, or `false` for none ([see `author`](#author)). | The site's `author`           |
 
 `generate` has these settings, all `true` by default:
 
@@ -289,6 +294,152 @@ export default {
 ```
 
 See [Embeds](/docs/07-embeds/) for how to write one.
+
+### `author`
+
+The author of articles that don't name one (unless their type has its own `author`): their author lists and feeds use it, and the editor shows it in the author fields. `false` means no author: those articles have none, and aren't in any author's list.
+
+- **Accepted values:** a name, `{ name, email, url }` like an article's [`author`](/docs/04-articles/#settings), or `false`.
+- **Default:** the website's [`name`](#name)
+
+```yaml
+author:
+  name: Jo Bloggs
+  email: jo@example.com
+  url: https://example.com
+types:
+  docs:
+    author: Docs team # docs articles without an author have this one
+  page:
+    author: false # pages without an author have none
+```
+
+An article chooses its own author, or `author: false` for none, whatever the defaults are.
+
+### `metadata`
+
+Custom settings articles can have besides the core ones (`type`, `status`, `date`, `title`, `template`, `author`, `excerpt`, `thumbnail`, `attachments` and `tags`), e.g. a featured image or a rating. Each is a [JSON Schema](https://json-schema.org/) under the key articles store it with, plus an `$edahaField` saying how the editor shows it.
+
+- **Accepted values:** a map of keys (a letter or `_`, then letters, digits, `_` and `-`; not a core setting's name) to JSON Schemas.
+- **Default:** none
+
+```yaml
+metadata:
+  featured:
+    title: Featured image # the label, and in messages (default: the key)
+    description: A large image at the top of the article
+    type: string
+    $edahaField:
+      info: JPG, PNG, GIF or WebP
+      file:
+        accept: image/jpg, image/png, image/gif, image/webp
+  rating:
+    type: number
+    minimum: 0
+    maximum: 10
+    $edahaField:
+      number:
+        step: 1
+types:
+  news:
+    metadata: [featured] # news articles use only "featured"
+  docs:
+    metadata: false # docs use none
+  # Types without a metadata setting use them all
+```
+
+`$edahaField` has an optional `title`, `description` and `info` (shown under the label), and exactly one field kind, set to `true` or to its options:
+
+| Field kind                                                               | Shows                                                                                                          |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| `text`, `email`, `url`, `tel`, `color`, `date`, `time`, `datetime-local` | An input of that type.                                                                                         |
+| `number`, `range`                                                        | A number input or slider, e.g. with `step`.                                                                    |
+| `textarea`                                                               | A multi-line text box, e.g. with `rows`.                                                                       |
+| `select`                                                                 | A dropdown of `options` (each a `value` and `title`, or the schema's `enum`); `list: true` shows it as a list. |
+| `checkbox`                                                               | A checkbox, for `type: boolean`.                                                                               |
+| `radio`                                                                  | Radio buttons for `options` (each with an optional `description`), or the schema's `enum`.                     |
+| `file`                                                                   | A file chooser that uploads into the article's folder (e.g. with `accept`).                                    |
+
+Options are the input's HTML attributes. JSON Schema's own keywords set them too: `minimum` and `maximum` become `min` and `max`, `minLength` and `maxLength` become `minlength` and `maxlength`, and `pattern` stays `pattern`; a field's own options win.
+
+A `type: object` setting is a group of fields, one per property (each with its own `$edahaField`; `required` marks them). A `type: array` setting is a list with Add and Delete buttons, its `items` having the `$edahaField` (`maxItems` limits it). Or give the array itself an `$edahaField`, e.g. a `select` with `multiple: true`, to choose several at once.
+
+```yaml
+metadata:
+  credit:
+    title: Credit
+    type: object
+    properties:
+      name:
+        type: string
+        $edahaField: { text: true }
+      email:
+        type: string
+        format: email
+        $edahaField: { email: true }
+    required: [name]
+  images:
+    title: Images
+    type: array
+    items:
+      type: string
+      $edahaField:
+        file: { accept: image/* }
+    maxItems: 5
+```
+
+Each custom setting appears in a group of the editor's settings: `$edahaField.group` names the group (see [`metadataGroups`](#metadatagroups)), or is `{ key, after }` to come after a given setting in it. Without one, it's in the **Custom** group. A map's or list's `$edahaField` may set only its group.
+
+```yaml
+metadata:
+  featured:
+    type: string
+    $edahaField:
+      group:
+        key: files
+        after: thumbnail # right after the thumbnail
+      file: true
+```
+
+Values are checked against their schemas with [ajv](https://ajv.js.org/), including formats like `uri` and `email`. Problems are described in plain words, e.g. "Rating must be at most 10" or "Credit name is required", and show above the field in the editor. The build and the editor stop with an error if a key is a core setting's name, a type lists a key that isn't defined, a value has no field kind or more than one, or a schema isn't valid.
+
+### `metadataGroups`
+
+The editor shows articles' settings in groups that open and close. These are built in, in this order:
+
+| Group        | Settings                                                                    | Starts |
+| ------------ | --------------------------------------------------------------------------- | ------ |
+| `info`       | Type, status, slug, publication date and author.                            | Open   |
+| `categorise` | Tags.                                                                       | Closed |
+| `customise`  | Excerpt and template.                                                       | Open   |
+| `files`      | Thumbnail, attachments, and the files in the article's folder (`uploaded`). | Open   |
+| `custom`     | Custom settings without a group.                                            | Closed |
+
+`metadataGroups` adds groups of your own, for [custom settings](#metadata) to be in.
+
+- **Accepted values:** a map of keys (a letter, then letters, digits, `_` and `-`; not a built-in group's key) to a group's settings:
+  - `title` (required): the group's heading.
+  - `description`: shown above its settings.
+  - `after`: the group it comes after. Without it, groups go at the end.
+  - `openedByDefault`: whether it starts open (`true`) or closed (`false`, the default).
+- **Default:** none
+
+```yaml
+metadataGroups:
+  seo:
+    title: Search engines
+    description: How the article appears in search results.
+    after: info
+    openedByDefault: true
+metadata:
+  keywords:
+    type: string
+    $edahaField:
+      group: seo
+      text: true
+```
+
+A setting in a group that doesn't exist, or coming after a setting or group that isn't there, stops the build and the editor with an error.
 
 ## Commands
 

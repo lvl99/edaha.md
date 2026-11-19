@@ -94,13 +94,20 @@ const clientFile = async (
  */
 export const createEditorServer = async (
   options: EditorServerOptions,
-): Promise<Hono> => {
+): Promise<Hono> => (await editorServerParts(options)).app;
+
+/** The editor's web app, and the article store it uses (which watches the articles folder until closed) */
+const editorServerParts = async (
+  options: EditorServerOptions,
+): Promise<{ app: Hono; store: ArticleStore }> => {
   const port = editorPort(options);
   const clientDir = options.clientDir ?? CLIENT_DIR;
   const store = new ArticleStore(
     await loadSiteConfig(options),
     options.themeDir,
   );
+  // Every article is read and checked as the editor starts
+  await store.load();
   const editorApp = createEditorApp(store, {
     allowedOrigins: [editorUrl(port)],
     fetch: options.fetch,
@@ -129,7 +136,7 @@ export const createEditorServer = async (
     });
   });
   app.route("/", editorApp);
-  return app;
+  return { app, store };
 };
 
 /**
@@ -145,17 +152,19 @@ export const startEditor = async (
   options: EditorServerOptions,
 ): Promise<EditorServer> => {
   const port = editorPort(options);
-  const app = await createEditorServer(options);
+  const { app, store } = await editorServerParts(options);
   return new Promise((resolve, reject) => {
     const server: ServerType = serve(
       { fetch: app.fetch, hostname: EDITOR_HOST, port },
       () =>
         resolve({
           url: editorUrl(port),
-          close: () =>
-            new Promise((done, fail) =>
+          close: () => {
+            store.close();
+            return new Promise((done, fail) =>
               server.close((error) => (error ? fail(error) : done())),
-            ),
+            );
+          },
         }),
     );
     server.once("error", reject);
