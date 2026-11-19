@@ -1,5 +1,7 @@
 import { html, LitElement, nothing } from "lit";
 import type {
+  MetadataProblem,
+  ProblemFilter,
   ArticleFilters,
   ArticleOrder,
   ArticlePage,
@@ -18,7 +20,33 @@ export interface ArticleBrowserOptions {
   /** Text the titles contain */
   search?: string | undefined;
   type?: string | undefined;
+  /** Only articles with metadata problems of this kind */
+  problems?: ProblemFilter | undefined;
 }
+
+/** The kinds of metadata problems to filter by */
+export const PROBLEM_FILTERS: readonly {
+  value: ProblemFilter;
+  label: string;
+}[] = [
+  { value: "errors", label: "With errors" },
+  { value: "warnings", label: "With warnings" },
+  { value: "any", label: "With errors or warnings" },
+];
+
+/**
+ * Count an article's metadata problems, e.g. "1 error, 2 warnings" ("" without any).
+ *
+ * @example
+ * countProblems([{ level: "error", ... }, { level: "warning", ... }]); // "1 error, 1 warning"
+ */
+export const countProblems = (problems: MetadataProblem[] = []): string => {
+  const count = (level: MetadataProblem["level"]) => {
+    const n = problems.filter((problem) => problem.level === level).length;
+    return n ? `${n} ${level}${n === 1 ? "" : "s"}` : "";
+  };
+  return [count("error"), count("warning")].filter(Boolean).join(", ");
+};
 
 /** The statuses to filter by */
 export const STATUS_FILTERS: readonly {
@@ -71,6 +99,7 @@ export class EdahaArticleBrowser extends LitElement {
     author: { state: true },
     tag: { state: true },
     status: { state: true },
+    problems: { state: true },
     sort: { state: true },
     order: { state: true },
     page: { state: true },
@@ -89,6 +118,8 @@ export class EdahaArticleBrowser extends LitElement {
   declare author: string;
   declare tag: string;
   declare status: string;
+  /** The kind of metadata problems articles must have ("" for any article) */
+  declare problems: string;
   /** The column the results are sorted by (undefined: the default order, newest published first) */
   declare sort?: ArticleSort | undefined;
   declare order?: ArticleOrder | undefined;
@@ -117,6 +148,7 @@ export class EdahaArticleBrowser extends LitElement {
     this.author = "";
     this.tag = "";
     this.status = "";
+    this.problems = "";
     this.page = 1;
     this.filters = { types: [], authors: [], tags: [] };
     this.loading = false;
@@ -147,6 +179,7 @@ export class EdahaArticleBrowser extends LitElement {
     this.author = "";
     this.tag = "";
     this.status = "";
+    this.problems = options.problems ?? "";
     this.page = 1;
     await this.updateComplete;
     if (!this.open) this.dialog?.showModal();
@@ -181,6 +214,7 @@ export class EdahaArticleBrowser extends LitElement {
         author: this.author,
         tag: this.tag,
         status: (this.status || undefined) as ArticleStatus | undefined,
+        problems: (this.problems || undefined) as ProblemFilter | undefined,
         sort: this.sort,
         order: this.order,
         page: this.page,
@@ -196,7 +230,10 @@ export class EdahaArticleBrowser extends LitElement {
   }
 
   /** Change a filter or the sort, going back to the first page */
-  private choose(name: "type" | "author" | "tag" | "status", value: string) {
+  private choose(
+    name: "type" | "author" | "tag" | "status" | "problems",
+    value: string,
+  ) {
     this[name] = value;
     this.page = 1;
     void this.load();
@@ -240,7 +277,7 @@ export class EdahaArticleBrowser extends LitElement {
 
   /** Render a select filter with an "any" choice first */
   private renderSelect(
-    name: "type" | "author" | "tag" | "status",
+    name: "type" | "author" | "tag" | "status" | "problems",
     label: string,
     any: string,
     options: readonly { value: string; label: string }[],
@@ -303,6 +340,13 @@ export class EdahaArticleBrowser extends LitElement {
                   >${article.title}</a
                 >
                 ${article.error ? html`<small class="error">${article.error}</small>` : nothing}
+                ${
+                  article.problems
+                    ? html`<small class="problems"
+                        >⚠️ ${countProblems(article.problems)}</small
+                      >`
+                    : nothing
+                }
               </td>
               <td>${typeLabel(this.types, article.type)}</td>
               <td>${statusLabels[article.status]}</td>
@@ -395,6 +439,7 @@ export class EdahaArticleBrowser extends LitElement {
           toOptions(this.filters.tags),
         )}
         ${this.renderSelect("status", "Status", "Any status", STATUS_FILTERS)}
+        ${this.renderSelect("problems", "Problems", "Any article", PROBLEM_FILTERS)}
       </div>
       <p
         class="article-browser-status ${this.error ? "error" : ""}"

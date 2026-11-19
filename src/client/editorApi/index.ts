@@ -5,6 +5,8 @@ import type {
   FileFilters,
   FilePage,
   FileQuery,
+  MetadataInfo,
+  MetadataProblem,
   ArticlePage,
   ArticleQuery,
   ArticleTypeLabels,
@@ -16,6 +18,16 @@ import type {
 } from "../../server/types/index.ts";
 
 export type { ArticleLocation } from "../../server/types/index.ts";
+
+/** A failed request: the server's message, and the problems with an article's metadata when saving it was refused */
+export class ApiError extends Error {
+  readonly problems?: MetadataProblem[] | undefined;
+
+  constructor(message: string, problems?: MetadataProblem[]) {
+    super(message);
+    this.problems = problems;
+  }
+}
 
 /** A file in an article's folder */
 export interface FileLocation extends ArticleLocation {
@@ -63,9 +75,13 @@ export class EditorApi {
     if (response.status === 204) return undefined as T;
     const body = (await response.json().catch(() => ({}))) as {
       error?: string;
+      problems?: MetadataProblem[];
     };
     if (!response.ok)
-      throw new Error(body.error ?? `Request failed with ${response.status}`);
+      throw new ApiError(
+        body.error ?? `Request failed with ${response.status}`,
+        body.problems,
+      );
     return body as T;
   }
 
@@ -129,6 +145,11 @@ export class EditorApi {
   /** The types, authors and tags articles use, for the article browser's filters */
   filters(): Promise<ArticleFilters> {
     return this.request("/api/articles/filters");
+  }
+
+  /** The custom metadata fields, and which fields each configured type uses */
+  metadata(): Promise<MetadataInfo> {
+    return this.request("/api/metadata");
   }
 
   /** The article types from the config file, with their labels */

@@ -110,8 +110,8 @@ export const fieldOptions = (field: EdahaField): Record<string, unknown> => {
 };
 
 /**
- * Check a schema has editor fields: objects need properties, lists need items, and every value has an `$edahaField`
- * with exactly one field kind. Throws an Error naming the schema's path.
+ * Check a schema has editor fields: objects need properties, lists need items (or one field for the whole list), and
+ * every value has an `$edahaField` with exactly one field kind. Throws an Error naming the schema's path.
  */
 const checkFields = (schema: unknown, path: string): void => {
   const fields = asMap(schema, `"${path}"`);
@@ -121,7 +121,8 @@ const checkFields = (schema: unknown, path: string): void => {
       checkFields(property, `${path}.properties.${name}`);
     return;
   }
-  if (fields.type === "array") {
+  // A list is edited item by item, unless one field edits it all (e.g. a select with `multiple`)
+  if (fields.type === "array" && fields.$edahaField === undefined) {
     checkFields(fields.items, `${path}.items`);
     return;
   }

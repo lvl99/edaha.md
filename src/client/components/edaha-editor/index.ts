@@ -6,6 +6,8 @@ import type {
   ArticleSummary,
   ArticleTypeLabels,
   EditorArticle,
+  MetadataInfo,
+  MetadataProblem,
   RecentArticles,
 } from "../../../server/types/index.ts";
 import type { FieldOption } from "../edaha-article-data-field/index.ts";
@@ -13,7 +15,7 @@ import { EditorApi, type ArticleLocation } from "../../editorApi/index.ts";
 import { defineElement } from "../define/index.ts";
 import "../edaha-article/index.ts";
 import type { EdahaArticle } from "../edaha-article/index.ts";
-import { typeLabel } from "../edaha-article-browser/index.ts";
+import { countProblems, typeLabel } from "../edaha-article-browser/index.ts";
 import "../edaha-file-browser/index.ts";
 import type {
   EdahaFileBrowser,
@@ -65,6 +67,9 @@ export const UNSAVED_DIALOG = {
 
 /** How many of the most recently changed articles the welcome prompt shows */
 export const WELCOME_COUNT = 6;
+
+/** How many articles with metadata problems the welcome prompt shows */
+export const ATTENTION_COUNT = 5;
 
 /** How many matches the nav's title search shows (the article browser shows them all) */
 export const NAV_SEARCH_COUNT = 10;
@@ -127,6 +132,8 @@ export class EdahaEditor extends LitElement {
     searchText: { state: true },
     searchResult: { state: true },
     welcome: { state: true },
+    metadata: { state: true },
+    attention: { state: true },
     unsaved: { state: true },
     navOpen: { state: true },
   };
@@ -151,6 +158,10 @@ export class EdahaEditor extends LitElement {
   declare searchResult?: ArticlePage | undefined;
   /** The most recently changed articles, for the welcome prompt */
   declare welcome?: ArticlePage | undefined;
+  /** The custom metadata fields, and which each type uses */
+  declare metadata?: MetadataInfo | undefined;
+  /** Articles whose custom metadata has problems, for the welcome prompt */
+  declare attention?: ArticlePage | undefined;
   /** The open "Save changes first?" question, with what to do with the answer */
   declare unsaved?: ((choice: UnsavedChoice) => void) | undefined;
   /** Whether the article list is open over the page (on narrow screens) */
@@ -284,11 +295,18 @@ export class EdahaEditor extends LitElement {
    */
   async refresh(): Promise<void> {
     try {
-      [this.recent, this.types, this.welcome] = await Promise.all([
-        this.api.recent(),
-        this.api.types(),
-        this.api.query({ sort: "updated", perPage: WELCOME_COUNT }),
-      ]);
+      [this.recent, this.types, this.welcome, this.metadata, this.attention] =
+        await Promise.all([
+          this.api.recent(),
+          this.api.types(),
+          this.api.query({ sort: "updated", perPage: WELCOME_COUNT }),
+          this.api.metadata(),
+          this.api.query({
+            problems: "any",
+            sort: "title",
+            perPage: ATTENTION_COUNT,
+          }),
+        ]);
       this.error = "";
     } catch (error) {
       this.error = (error as Error).message;
@@ -521,8 +539,57 @@ export class EdahaEditor extends LitElement {
               </button>`
             : nothing
         }
+        ${this.renderAttention()}
       </div>
     </div>`;
+  }
+
+  /**
+   * Render the articles whose custom metadata has problems (errors or warnings), each with its count and first problem,
+   * with a link to them all in the article browser when there are more.
+   */
+  private renderAttention() {
+    const attention = this.attention;
+    if (!attention?.total) return nothing;
+    return html`<section
+      class="welcome-attention"
+      aria-labelledby="welcome-attention-title"
+    >
+      <h2 id="welcome-attention-title">Needs attention</h2>
+      <ul class="welcome-prompt-list">
+        ${attention.articles.map((article) => {
+          // Found by their problems, so they have some
+          const [first] = article.problems as MetadataProblem[];
+          return html`<li>
+            <a
+              href="#${article.type}/${article.slug}"
+              @click=${(event: Event) => {
+                event.preventDefault();
+                void this.open(article);
+              }}
+              >${article.title}</a
+            >
+            <small class="welcome-prompt-meta"
+              >⚠️
+              ${countProblems(article.problems)}${
+                first ? html`: "${first.path}" ${first.message}` : nothing
+              }</small
+            >
+          </li>`;
+        })}
+      </ul>
+      ${
+        attention.total > attention.articles.length
+          ? html`<button
+              type="button"
+              class="btn-link welcome-prompt-browse"
+              @click=${() => void this.openBrowser({ problems: "any" })}
+            >
+              See all ${attention.total} articles with problems
+            </button>`
+          : nothing
+      }
+    </section>`;
   }
 
   /** Render the title search's matches, with a link to see them all in the article browser */
@@ -719,6 +786,7 @@ export class EdahaEditor extends LitElement {
                   .api=${this.api}
                   .article=${this.article}
                   .typeOptions=${this.typeOptions()}
+                  .metadata=${this.metadata}
                   @article-saved=${(event: CustomEvent<ArticleLocation>) => void this.onSaved(event)}
                   @article-deleted=${() => void this.onDeleted()}
                 ></edaha-article>`,

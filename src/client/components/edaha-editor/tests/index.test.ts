@@ -11,6 +11,7 @@ import type { EdahaArticle } from "../../edaha-article";
 import "..";
 import {
   groupRecent,
+  ATTENTION_COUNT,
   NAV_SEARCH_COUNT,
   WELCOME_COUNT,
   UNSAVED_DIALOG,
@@ -70,8 +71,12 @@ const ARTICLE = {
 const setup = async (recent = vi.fn(async () => RECENT)) => {
   const api = {
     recent,
-    query: vi.fn(async () => matches([SUMMARIES[0]!])),
+    // No articles have metadata problems unless a test says so
+    query: vi.fn(async (query: { problems?: string }) =>
+      query.problems ? matches([]) : matches([SUMMARIES[0]!]),
+    ),
     filters: vi.fn(async () => ({ types: [], authors: [], tags: [] })),
+    metadata: vi.fn(async () => ({ definitions: {}, types: {} })),
     templates: vi.fn(async () => ["single"]),
     types: vi.fn(async () => ({
       article: { labelSingle: "Article", labelPlural: "Articles" },
@@ -158,7 +163,9 @@ describe("edaha-editor", () => {
     await element.updateComplete;
     const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
     const show = vi.spyOn(browser, "show").mockResolvedValue();
-    expect(element.querySelectorAll(".welcome-prompt-list li")).toHaveLength(2);
+    expect(
+      element.querySelectorAll(".welcome-prompt-box > .welcome-prompt-list li"),
+    ).toHaveLength(2);
     button(element, "Open article browser").click();
     expect(show).toHaveBeenCalledWith({});
   });
@@ -177,12 +184,64 @@ describe("edaha-editor", () => {
     expect(element.querySelector(".welcome-prompt")).toBeNull();
   });
 
+  it("should list articles with metadata problems on the welcome prompt", async () => {
+    const { element, api } = await setup();
+    expect(api.query).toHaveBeenCalledWith({
+      problems: "any",
+      sort: "title",
+      perPage: ATTENTION_COUNT,
+    });
+    expect(element.querySelector(".welcome-attention")).toBeNull();
+    const withProblems = {
+      ...SUMMARIES[1]!,
+      problems: [
+        { path: "rating", message: "must be <= 10", level: "error" as const },
+      ],
+    };
+    api.query.mockImplementation(async (query: { problems?: string }) =>
+      query.problems
+        ? matches([withProblems, { ...SUMMARIES[0]!, problems: [] }], 7)
+        : matches([SUMMARIES[0]!]),
+    );
+    await element.refresh();
+    await element.updateComplete;
+    const section = find(element, ".welcome-attention");
+    expect(find(section, "h2").textContent).toBe("Needs attention");
+    expect(section.getAttribute("aria-labelledby")).toBe(
+      "welcome-attention-title",
+    );
+    expect(
+      [...section.querySelectorAll("li")].map((li) =>
+        li.textContent?.replace(/\s+/g, " ").trim(),
+      ),
+    ).toEqual(['broken ⚠️ 1 error: "rating" must be <= 10', "Hello ⚠️"]);
+    const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
+    const show = vi.spyOn(browser, "show").mockResolvedValue();
+    button(element, "See all 7 articles with problems").click();
+    expect(show).toHaveBeenCalledWith({ problems: "any" });
+    find<HTMLAnchorElement>(section, "a").click();
+    await settle(element);
+    expect(api.read).toHaveBeenCalledWith(withProblems);
+    // All of them shown: no link
+    api.query.mockImplementation(async (query: { problems?: string }) =>
+      query.problems ? matches([withProblems]) : matches([SUMMARIES[0]!]),
+    );
+    element.editing = false;
+    await element.refresh();
+    await element.updateComplete;
+    expect(
+      element.querySelector(".welcome-attention .welcome-prompt-browse"),
+    ).toBeNull();
+  });
+
   it("should welcome with the message alone when there are no articles", async () => {
     const { element, api } = await setup();
     api.query.mockResolvedValueOnce(matches([]));
     await element.refresh();
     await element.updateComplete;
-    expect(element.querySelector(".welcome-prompt-list")).toBeNull();
+    expect(
+      element.querySelector(".welcome-prompt-box > .welcome-prompt-list"),
+    ).toBeNull();
     expect(
       find(element, ".welcome-prompt-message")
         .textContent?.replace(/\s+/g, " ")

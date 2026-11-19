@@ -3,11 +3,16 @@ import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
 import { slugify } from "../../../generator/slug/index.ts";
 import type {
+  MetadataInfo,
   EditorArticle,
   EditorArticleData,
   EditorAttachment,
 } from "../../../server/types/index.ts";
-import type { ArticleLocation, EditorApi } from "../../editorApi/index.ts";
+import {
+  ApiError,
+  type ArticleLocation,
+  type EditorApi,
+} from "../../editorApi/index.ts";
 import { fromLocalInput, toLocalInput } from "../../dates/index.ts";
 import { defineElement } from "../define/index.ts";
 import "../edaha-article-data-field/index.ts";
@@ -18,6 +23,16 @@ import type {
   FieldOption,
 } from "../edaha-article-data-field/index.ts";
 import { showToast } from "../edaha-toasts/index.ts";
+import "../edaha-metadata-field/index.ts";
+import type { MetadataChange } from "../edaha-metadata-field/index.ts";
+import {
+  MetadataValidator,
+  typeMetadataKeys,
+  type MetadataDefinitions,
+  type MetadataProblem,
+  type MetadataSchema,
+} from "../../../generator/metadata/index.ts";
+import { setAt } from "../../metadataForm/index.ts";
 import { onNarrowChange } from "../../narrow/index.ts";
 
 const STATUS_OPTIONS: FieldOption[] = [
@@ -187,6 +202,7 @@ const COMPARED_FIELDS = [
   "thumbnail",
   "tags",
   "attachments",
+  "meta",
 ] as const satisfies readonly (keyof EditorArticleData)[];
 
 /** A value with object keys sorted and undefined properties left out, so equal values compare equal */
@@ -220,6 +236,10 @@ export const changedFields = (
         JSON.stringify(normalise(saved[name])),
     ),
   );
+
+/** Said when custom metadata values aren't valid */
+export const METADATA_ERRORS =
+  "Some values aren't valid. Fix the fields marked in Custom settings.";
 
 /** Asked before putting back the last saved version */
 export const RESET_QUESTION =
@@ -256,6 +276,8 @@ export class EdahaArticle extends LitElement {
     metadataOpen: { state: true },
     savedData: { state: true },
     bodyChanged: { state: true },
+    metadata: { attribute: false },
+    metaProblems: { state: true },
   };
 
   declare api: EditorApi;
@@ -288,6 +310,18 @@ export class EdahaArticle extends LitElement {
   declare savedData: EditorArticleData;
   /** Whether the body differs from the saved one, compared as Markdown */
   declare bodyChanged: boolean;
+  /** The custom metadata fields, and which each type uses (none without it) */
+  declare metadata?: MetadataInfo | undefined;
+  /** Errors in the custom metadata values, from checking them or from the last save */
+  declare metaProblems: MetadataProblem[];
+
+  /** The errors the article was loaded or last saved with, which resetting shows again */
+  private savedProblems: MetadataProblem[] = [];
+
+  /** Validates custom metadata values, for the definitions it was made for */
+  private validatorFor?:
+    | { definitions: MetadataDefinitions; validator: MetadataValidator }
+    | undefined;
 
   /** How long to wait after a body edit before checking whether it changed, in ms (replaceable for tests) */
   bodyCheckDelay = 300;
@@ -325,6 +359,7 @@ export class EdahaArticle extends LitElement {
     // A copy, so both have the same date
     this.savedData = structuredClone(this.data);
     this.bodyChanged = false;
+    this.metaProblems = [];
   }
 
   protected override createRenderRoot() {
@@ -357,10 +392,17 @@ export class EdahaArticle extends LitElement {
 
   protected override willUpdate(changed: PropertyValues<this>): void {
     if (changed.has("article")) {
-      const { files, ...data }: EditorArticle = this.article ?? {
+      const {
+        files,
+        problems = [],
+        ...data
+      }: EditorArticle = this.article ?? {
         ...newArticleData(),
         files: [],
       };
+      // Warnings are worked out as the article changes; errors stay until checked again
+      this.savedProblems = problems.filter(({ level }) => level === "error");
+      this.metaProblems = this.savedProblems;
       this.data = data;
       this.files = files;
       this.location = this.article
@@ -405,6 +447,9 @@ export class EdahaArticle extends LitElement {
       return await action();
     } catch (error) {
       this.error = (error as Error).message;
+      // Saving refused because of metadata errors shows them on their fields
+      if (error instanceof ApiError && error.problems)
+        this.metaProblems = error.problems;
       showToast(this, { kind: "error", message: this.error });
       return undefined;
     } finally {
@@ -562,6 +607,15 @@ export class EdahaArticle extends LitElement {
    * Save the article (creating or moving it as needed). Returns whether it was saved.
    */
   async save(): Promise<boolean> {
+    // Invalid custom metadata values aren't saved
+    const errors = this.metadataKeys().flatMap((key) =>
+      this.checkMetadata(key),
+    );
+    if (errors.length) {
+      this.metaProblems = errors;
+      showToast(this, { kind: "error", message: METADATA_ERRORS });
+      return false;
+    }
     if (!(await this.syncBody())) return false;
     const data = cleanArticleData(this.data);
     const from = this.location;
@@ -571,6 +625,8 @@ export class EdahaArticle extends LitElement {
     if (!location) return false;
     this.data = data;
     this.savedData = structuredClone(data);
+    this.savedProblems = [];
+    this.metaProblems = [];
     this.location = location;
     this.message = "Saved";
     showToast(this, { kind: "success", message: this.message });
@@ -597,6 +653,7 @@ export class EdahaArticle extends LitElement {
     clearTimeout(this.bodyTimer);
     this.bodyChecks++;
     this.data = structuredClone(this.savedData);
+    this.metaProblems = this.savedProblems;
     this.mode = "wysiwyg";
     this.bodyChanged = false;
     this.error = "";
@@ -624,6 +681,112 @@ export class EdahaArticle extends LitElement {
       message: `Deleted "${this.data.title}"`,
     });
     this.dispatchEvent(new CustomEvent("article-deleted", { bubbles: true }));
+  }
+
+  /** The validator for the custom metadata definitions, made once for them */
+  private validator(): MetadataValidator {
+    // Only used for the type's custom fields, so the definitions are there
+    const { definitions } = this.metadata as MetadataInfo;
+    if (this.validatorFor?.definitions !== definitions)
+      this.validatorFor = {
+        definitions,
+        validator: new MetadataValidator(definitions),
+      };
+    return this.validatorFor.validator;
+  }
+
+  /** The custom metadata fields the article's type uses */
+  metadataKeys(): string[] {
+    return typeMetadataKeys(
+      this.metadata?.definitions ?? {},
+      this.metadata?.types[this.data.type],
+    );
+  }
+
+  /** The errors in a custom metadata field's value (none when it has no value) */
+  private checkMetadata(key: string): MetadataProblem[] {
+    const value = this.data.meta?.[key];
+    return value === undefined ? [] : this.validator().validate(key, value);
+  }
+
+  /** Change a custom metadata value (or a value inside one) */
+  private onMetadataChange(event: CustomEvent<MetadataChange>) {
+    const { path, value } = event.detail;
+    this.data = {
+      ...this.data,
+      meta: setAt(this.data.meta, path.split("/"), value) as Record<
+        string,
+        unknown
+      >,
+    };
+  }
+
+  /** Check a custom metadata field once focus leaves it, saying so when errors are found */
+  private onMetadataBlur(event: CustomEvent<string>) {
+    const key = event.detail.split("/")[0] as string;
+    const isKey = (problem: MetadataProblem) =>
+      problem.path.split("/")[0] === key;
+    const hadErrors = this.metaProblems.some(isKey);
+    const errors = this.checkMetadata(key);
+    this.metaProblems = [
+      ...this.metaProblems.filter((problem) => !isKey(problem)),
+      ...errors,
+    ];
+    if (errors.length && !hadErrors)
+      showToast(this, { kind: "error", message: METADATA_ERRORS });
+  }
+
+  /** Warnings about the article's other settings: values of fields its type doesn't use, and unknown settings */
+  private metadataWarnings(): MetadataProblem[] {
+    const keys = this.metadataKeys();
+    const definitions = this.metadata?.definitions ?? {};
+    return Object.keys(this.data.meta ?? {})
+      .filter((key) => !keys.includes(key))
+      .map((key) => ({
+        path: key,
+        message:
+          key in definitions
+            ? "isn't used by this article's type"
+            : "isn't a known setting",
+        level: "warning",
+      }));
+  }
+
+  /** Render the custom metadata fields the article's type uses, and warnings about its other settings */
+  private renderMetadata() {
+    const keys = this.metadataKeys();
+    const warnings = this.metadataWarnings();
+    if (!keys.length && !warnings.length) return nothing;
+    const definitions = this.metadata?.definitions ?? {};
+    return html`<edaha-article-data-group
+      name="meta"
+      label="Custom settings"
+      ?changed=${this.isChanged("meta")}
+      @metadata-change=${this.onMetadataChange}
+      @metadata-blur=${this.onMetadataBlur}
+    >
+      ${keys.map(
+        (key) =>
+          html`<edaha-metadata-field
+            path=${key}
+            .schema=${definitions[key] as MetadataSchema}
+            .value=${this.data.meta?.[key]}
+            .problems=${this.metaProblems}
+            .uploadFile=${this.location ? this.uploadMarkdownImage : undefined}
+            .fileUrl=${(name: string) => this.fileUrl(name)}
+          ></edaha-metadata-field>`,
+      )}
+      ${
+        warnings.length
+          ? html`<ul class="metadata-warnings">
+              ${warnings.map(
+                ({ path, message }) =>
+                  html`<li>"${path}" ${message}; it is kept as it is.</li>`,
+              )}
+            </ul>`
+          : nothing
+      }
+    </edaha-article-data-group>`;
   }
 
   /** Whether a field or group differs from the saved article */
@@ -1016,6 +1179,7 @@ export class EdahaArticle extends LitElement {
             ?disabled=${!this.location}
           ></edaha-article-data-field>
           ${this.renderTags()} ${this.renderAttachments()}
+          ${this.renderMetadata()}
           ${this.location ? nothing : html`<p class="hint">Save the article before uploading files.</p>`}
           ${
             this.files.length

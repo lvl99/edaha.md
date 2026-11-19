@@ -46,6 +46,7 @@ describe("EditorApi", () => {
     await api.queryFiles();
     await api.queryFiles({ kind: "image", sort: "size", order: "desc" });
     await api.fileFilters();
+    await api.metadata();
     await api.fileReferences({ ...LOCATION, name: "my photo.png" });
     await api.replaceFile(
       { ...LOCATION, name: "a.png" },
@@ -70,6 +71,7 @@ describe("EditorApi", () => {
       "GET /api/files",
       "GET /api/files?kind=image&sort=size&order=desc",
       "GET /api/files/filters",
+      "GET /api/metadata",
       "GET /api/files/article/hello/my%20photo.png/references",
       "PUT /api/files/article/hello/a.png",
       "DELETE /api/files/article/hello/a.png",
@@ -81,15 +83,15 @@ describe("EditorApi", () => {
       "POST /api/articles/article/hello/files",
       "GET /api/embed?url=https%3A%2F%2Fyoutu.be%2Fx%3Fa%3D1%26b%3D2",
     ]);
-    expect((calls[8]![1]!.body as FormData).get("file") as File).toHaveProperty(
+    expect((calls[9]![1]!.body as FormData).get("file") as File).toHaveProperty(
       "name",
       "b.png",
     );
-    expect(calls[13]![1]).toMatchObject({
+    expect(calls[14]![1]).toMatchObject({
       headers: { "Content-Type": "application/json" },
       body: '{"title":"Hi"}',
     });
-    expect((calls[15]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
+    expect((calls[16]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
   });
 
   it("should convert bodies and render previews, returning their result", async () => {
@@ -126,6 +128,16 @@ describe("EditorApi", () => {
 
   it("should return nothing for 204 responses", async () => {
     expect(await new EditorApi(answer(204)).remove(LOCATION)).toBeUndefined();
+  });
+
+  it("should give the problems when saving was refused because of them", async () => {
+    const problems = [{ path: "a", message: "is wrong", level: "error" }];
+    await expect(
+      new EditorApi(answer(400, { error: "Not valid", problems })).save(
+        LOCATION,
+        {} as never,
+      ),
+    ).rejects.toMatchObject({ message: "Not valid", problems });
   });
 
   it("should throw the server's error message, or the status", async () => {

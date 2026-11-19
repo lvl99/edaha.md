@@ -9,6 +9,7 @@
   --colour-link: #3b9a04;
   --colour-link-hover: #2b6f04;
   --colour-focus: #3b9a04;
+  --colour-error: #b3261e;
   /* Toasts use the opposite theme's colours, so they stand out */
   --toast-scheme: dark;
   --toast-text: #ececf0;
@@ -57,6 +58,7 @@
   --colour-link: #dc6d2c;
   --colour-link-hover: #fda26d;
   --colour-focus: #fda26d;
+  --colour-error: #ffb4ab;
   --toast-scheme: light;
   --toast-text: #1d1d1f;
   --toast-background: #ffffff;
@@ -83,6 +85,7 @@
     --colour-link: #dc6d2c;
     --colour-link-hover: #fda26d;
     --colour-focus: #fda26d;
+    --colour-error: #ffb4ab;
     --toast-scheme: light;
     --toast-text: #1d1d1f;
     --toast-background: #ffffff;
@@ -1159,4 +1162,107 @@ edaha-article .preview {
   min-width: 2.25rem;
   min-height: 2.25rem;
   color: var(--colour-text);
+}
+
+/* Custom metadata fields, built from the config file's schemas */
+edaha-metadata-field {
+  display: block;
+  margin-block: 0.5rem;
+}
+
+.metadata-field label {
+  display: block;
+}
+
+.metadata-field input:not([type="checkbox"], [type="radio"], [type="color"]),
+.metadata-field select,
+.metadata-field textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.metadata-group,
+.metadata-radio {
+  margin: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--border-radius);
+}
+
+.metadata-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.metadata-item edaha-metadata-field {
+  flex: 1;
+}
+
+.metadata-choice {
+  display: block;
+  margin-block: 0.25rem;
+}
+
+.metadata-choice small {
+  display: block;
+  margin-inline-start: 1.5rem;
+  color: var(--colour-muted);
+}
+
+.metadata-description,
+.metadata-info {
+  margin: 0.25rem 0;
+  color: var(--colour-muted);
+  font-size: var(--font-size-s);
+}
+
+/* Problems show above their field */
+.metadata-problems,
+.metadata-warnings {
+  margin: 0.25rem 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-s);
+}
+
+.metadata-problems .error {
+  color: var(--colour-error);
+  font-weight: bold;
+}
+
+.metadata-problems .error::before {
+  content: "⚠️ ";
+}
+
+.metadata-warnings li,
+.metadata-problems .warning {
+  color: var(--colour-muted);
+}
+
+[aria-invalid="true"] {
+  border-color: var(--colour-error);
+  outline: 1px solid var(--colour-error);
+}
+
+.metadata-file {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0.25rem 0;
+}
+
+/* Articles with metadata problems, on the welcome prompt and in the article browser */
+.welcome-attention {
+  margin-top: 1.5rem;
+}
+
+.welcome-attention h2 {
+  margin: 0 0 0.5rem;
+  font-size: var(--font-size-h5);
+}
+
+.article-browser-table td .problems {
+  display: block;
+  color: var(--colour-muted);
 }

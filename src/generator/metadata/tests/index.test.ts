@@ -87,6 +87,15 @@ describe("parseMetadata", () => {
     );
   });
 
+  it("should accept one field for a whole list", () => {
+    const tags = {
+      type: "array",
+      items: { type: "string", enum: ["a", "b"] },
+      $edahaField: { select: { multiple: true } },
+    };
+    expect(parseMetadata({ tags2: tags })).toEqual({ tags2: tags });
+  });
+
   it("should reject schemas ajv can't compile", () => {
     expect(() =>
       parseMetadata({ a: { type: "strin", $edahaField: { text: true } } }),

@@ -5,7 +5,10 @@ import type {
   EditorArticleData,
 } from "../../../../server/types";
 import type { EditorApi } from "../../../editorApi";
+import { ApiError } from "../../../editorApi";
+import type { EdahaMetadataField } from "../../edaha-metadata-field";
 import {
+  METADATA_ERRORS,
   applyFieldChange,
   changedFields,
   cleanArticleData,
@@ -1100,5 +1103,180 @@ describe("edaha-article changes", () => {
         b.textContent?.replace(/\s+/g, " ").trim(),
       ),
     ).toEqual(["Save", "Reset…", "Delete…", "︽ Article settings"]);
+  });
+});
+
+describe("edaha-article custom settings", () => {
+  /** Custom fields: articles use "rating" and "credit"; news uses none */
+  const METADATA = {
+    definitions: {
+      rating: {
+        type: "number",
+        maximum: 10,
+        $edahaField: { number: true },
+      },
+      credit: {
+        type: "object",
+        properties: {
+          name: { type: "string", $edahaField: { text: true } },
+        },
+        required: ["name"],
+      },
+      hero: { type: "string", $edahaField: { file: true } },
+    },
+    types: { article: ["rating", "credit", "hero"], news: false },
+  } as const;
+
+  /** An article with custom settings, its form showing them */
+  const setupMetadata = async (
+    meta: Record<string, unknown> = { rating: 3, oops: true },
+    problems: EditorArticle["problems"] = [],
+  ) => {
+    const result = await setup({ ...ARTICLE, meta, problems });
+    result.element.metadata = structuredClone(METADATA) as never;
+    await settle(result.element);
+    return result;
+  };
+
+  /** The custom settings group */
+  const group = (element: HTMLElement) =>
+    find(element, 'edaha-article-data-group[name="meta"]');
+
+  /** Leave a custom field, as moving focus out of it does */
+  const blur = (element: HTMLElement, path: string) =>
+    find(element, `edaha-metadata-field[path="${path}"]`).dispatchEvent(
+      new CustomEvent("metadata-blur", { detail: path, bubbles: true }),
+    );
+
+  it("should show the type's custom fields, and warn about other settings", async () => {
+    const { element } = await setupMetadata();
+    expect(
+      [...group(element).querySelectorAll(":scope > edaha-metadata-field")].map(
+        (f) => (f as EdahaMetadataField).path,
+      ),
+    ).toEqual(["rating", "credit", "hero"]);
+    expect(find<HTMLInputElement>(element, "#meta-rating").value).toBe("3");
+    expect(find(element, ".metadata-warnings").textContent?.trim()).toBe(
+      '"oops" isn\'t a known setting; it is kept as it is.',
+    );
+    // News articles use no custom fields, so "rating" is kept with a warning
+    input(
+      find<HTMLSelectElement>(field(element, "type"), "select"),
+      "news",
+      "change",
+    );
+    await settle(element);
+    expect(
+      group(element).querySelectorAll(":scope > edaha-metadata-field"),
+    ).toHaveLength(0);
+    expect(
+      [...element.querySelectorAll(".metadata-warnings li")].map((li) =>
+        li.textContent?.trim(),
+      ),
+    ).toEqual([
+      "\"rating\" isn't used by this article's type; it is kept as it is.",
+      '"oops" isn\'t a known setting; it is kept as it is.',
+    ]);
+  });
+
+  it("should show no custom settings without fields or other settings", async () => {
+    const { element } = await setup();
+    expect(element.querySelector('[name="meta"]')).toBeNull();
+    element.metadata = { definitions: {}, types: {} };
+    await settle(element);
+    expect(element.querySelector('[name="meta"]')).toBeNull();
+  });
+
+  it("should change values, checking a field when it is left and saying when errors are found", async () => {
+    const { element } = await setupMetadata();
+    input(find<HTMLInputElement>(element, "#meta-rating"), "20");
+    await settle(element);
+    expect(element.data.meta).toEqual({ rating: 20, oops: true });
+    expect(element.dirty).toBe(true);
+    expect(group(element).hasAttribute("changed")).toBe(true);
+    blur(element, "rating");
+    await settle(element);
+    expect(find(element, "#meta-rating-problems").textContent).toContain(
+      "must be <= 10",
+    );
+    expect(toasts).toEqual([{ kind: "error", message: METADATA_ERRORS }]);
+    // Still wrong: no more toasts
+    blur(element, "rating");
+    expect(toasts).toHaveLength(1);
+    input(find<HTMLInputElement>(element, "#meta-rating"), "");
+    blur(element, "rating");
+    await settle(element);
+    expect(element.metaProblems).toEqual([]);
+    expect(element.data.meta).toEqual({ oops: true });
+    // A value inside another is checked with it
+    input(find<HTMLInputElement>(element, "#meta-credit-name"), "Matt");
+    blur(element, "credit/name");
+    await settle(element);
+    expect(element.data.meta).toEqual({ oops: true, credit: { name: "Matt" } });
+    expect(element.metaProblems).toEqual([]);
+  });
+
+  it("should not save while values are invalid, showing where", async () => {
+    const { element, api } = await setupMetadata({ rating: 20, credit: {} });
+    expect(await element.save()).toBe(false);
+    expect(api.save).not.toHaveBeenCalled();
+    expect(element.metaProblems.map(({ path }) => path)).toEqual([
+      "rating",
+      "credit",
+    ]);
+    expect(toasts.at(-1)).toEqual({ kind: "error", message: METADATA_ERRORS });
+  });
+
+  it("should save valid values, and show problems the server refused them for", async () => {
+    const { element, api } = await setupMetadata({ rating: 3 });
+    expect(await element.save()).toBe(true);
+    expect(api.save.mock.calls[0]![1]).toMatchObject({ meta: { rating: 3 } });
+    const problems = [
+      { path: "rating", message: "is wrong", level: "error" as const },
+    ];
+    api.save.mockRejectedValueOnce(new ApiError("Not valid", problems));
+    expect(await element.save()).toBe(false);
+    expect(element.metaProblems).toEqual(problems);
+  });
+
+  it("should show the errors it was loaded with, and show them again on reset", async () => {
+    const problems = [
+      { path: "rating", message: "must be <= 10", level: "error" as const },
+      {
+        path: "oops",
+        message: "isn't a known setting",
+        level: "warning" as const,
+      },
+    ];
+    const { element } = await setupMetadata({ rating: 20, oops: 1 }, problems);
+    expect(element.metaProblems).toEqual([problems[0]]);
+    element.confirm = () => true;
+    input(find<HTMLInputElement>(element, "#meta-rating"), "5");
+    blur(element, "rating");
+    await settle(element);
+    expect(element.metaProblems).toEqual([]);
+    element.reset();
+    expect(element.metaProblems).toEqual([problems[0]]);
+    // A new article starts without problems
+    element.article = undefined;
+    await settle(element);
+    expect(element.metaProblems).toEqual([]);
+  });
+
+  it("should upload files for file fields once saved, showing them from the article's folder", async () => {
+    const { element } = await setupMetadata({ hero: "a.png" });
+    const hero = find<EdahaMetadataField>(
+      element,
+      'edaha-metadata-field[path="hero"]',
+    );
+    expect(await hero.uploadFile!(new File(["x"], "B.png"))).toBe("b.png");
+    expect(hero.fileUrl!("a.png")).toBe("/files/article/hello/a.png");
+    const { element: unsaved } = await setup(undefined);
+    unsaved.metadata = structuredClone(METADATA) as never;
+    await settle(unsaved);
+    expect(
+      find<EdahaMetadataField>(unsaved, 'edaha-metadata-field[path="hero"]')
+        .uploadFile,
+    ).toBeUndefined();
   });
 });

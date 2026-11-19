@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ArticlePage, ArticleSummary } from "../../../../server/types";
 import type { EditorApi } from "../../../editorApi";
 import "..";
-import { typeLabel, type EdahaArticleBrowser } from "..";
+import { countProblems, typeLabel, type EdahaArticleBrowser } from "..";
 import {
   button,
   find,
@@ -95,6 +95,24 @@ describe("typeLabel", () => {
     const types = { news: { labelSingle: "News item", labelPlural: "News" } };
     expect(typeLabel(types, "news")).toBe("News item");
     expect(typeLabel(types, "page")).toBe("page");
+  });
+});
+
+describe("countProblems", () => {
+  it("should count errors and warnings", () => {
+    const problem = (level: "error" | "warning") => ({
+      path: "a",
+      message: "x",
+      level,
+    });
+    expect(countProblems()).toBe("");
+    expect(countProblems([problem("error")])).toBe("1 error");
+    expect(
+      countProblems([problem("error"), problem("error"), problem("warning")]),
+    ).toBe("2 errors, 1 warning");
+    expect(countProblems([problem("warning"), problem("warning")])).toBe(
+      "2 warnings",
+    );
   });
 });
 
@@ -226,6 +244,49 @@ describe("edaha-article-browser", () => {
         order: undefined,
         page: 1,
       }),
+    );
+  });
+
+  it("should find articles with metadata problems, showing how many each has", async () => {
+    const { element, api } = await setup();
+    api.query.mockResolvedValue(
+      page([
+        summary({
+          problems: [
+            { path: "a", message: "is wrong", level: "error" },
+            { path: "b", message: "isn't used", level: "warning" },
+          ],
+        }),
+      ]),
+    );
+    await element.show({ problems: "any" });
+    await settle(element);
+    expect(api.query).toHaveBeenLastCalledWith(
+      expect.objectContaining({ problems: "any" }),
+    );
+    const select = find<HTMLSelectElement>(
+      element,
+      "#article-browser-problems",
+    );
+    expect(select.value).toBe("any");
+    expect([...select.options].map((o) => o.textContent?.trim())).toEqual([
+      "Any article",
+      "With errors",
+      "With warnings",
+      "With errors or warnings",
+    ]);
+    expect(find(element, "tbody .problems").textContent?.trim()).toBe(
+      "⚠️ 1 error, 1 warning",
+    );
+    input(select, "errors", "change");
+    await settle(element);
+    expect(api.query).toHaveBeenLastCalledWith(
+      expect.objectContaining({ problems: "errors" }),
+    );
+    // Opening it again without problems finds every article
+    await element.show();
+    expect(api.query).toHaveBeenLastCalledWith(
+      expect.objectContaining({ problems: undefined }),
     );
   });
 
