@@ -37,13 +37,25 @@ export const themeLoader = (dir: string): nunjucks.ILoader => {
 };
 
 /**
- * Make root-relative `href` and `src` URLs in HTML absolute, e.g. for RSS feeds read outside the website.
+ * Make a root-relative URL absolute on the website's domain, e.g. for RSS feeds read outside the website. Template
+ * data URLs already start with the website's base URL, so only its origin is added.
+ *
+ * @example
+ * absoluteUrl("/news/", "https://example.com"); // "https://example.com/news/"
+ * absoluteUrl("/edaha.md/news/", "https://lvl99.github.io/edaha.md"); // "https://lvl99.github.io/edaha.md/news/"
+ */
+export const absoluteUrl = (url: string, siteUrl: string): string =>
+  new URL(url, siteUrl).href;
+
+/**
+ * Make root-relative `href` and `src` URLs in HTML absolute (see absoluteUrl), e.g. for RSS feeds read outside the
+ * website.
  *
  * @example
  * absoluteUrls('<a href="/news/">', "https://example.com"); // '<a href="https://example.com/news/">'
  */
 export const absoluteUrls = (html: string, siteUrl: string): string =>
-  html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${siteUrl}/`);
+  html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${new URL(siteUrl).origin}/`);
 
 /**
  * Loads and renders the site's Nunjucks templates from one or more folders. A file in an earlier folder overrides the
@@ -86,6 +98,7 @@ export class Templates {
     );
     this.env.addFilter("date", formatDate);
     this.env.addFilter("rfc822", formatRfc822);
+    this.env.addFilter("absoluteUrl", absoluteUrl);
     this.env.addFilter("absoluteUrls", absoluteUrls);
   }
 

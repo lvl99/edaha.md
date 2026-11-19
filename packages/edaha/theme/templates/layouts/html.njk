@@ -11,7 +11,7 @@
     {% endif %}
 
     {% block headImports %}
-      <link rel="stylesheet" href="{{ site.path }}/base.css" />
+      <link rel="stylesheet" href="{{ site.baseUrl }}/base.css" />
     {% endblock %}
   </head>
   <body class="{% if type %}{{ type }} {% endif %}{% block bodyClass %}{% endblock %}">

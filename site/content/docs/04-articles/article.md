@@ -108,7 +108,7 @@ attachments:
 After the header comes the article in Markdown:
 
 - **The title** is the first `# Title` heading, unless the header sets `title`. It is taken out of the body, as templates show it on its own.
-- **Images and links** to files in the article's folder are written relative to it, e.g. `![A photo](photo.jpg)`.
+- **Images and links** to files in the article's folder are written relative to it, e.g. `![A photo](photo.jpg)`. Links to other pages of the website can start at its root, e.g. `[Configuration](/docs/03-configuration/)`; for a website in a sub-folder (see [`siteUrl`](/docs/03-configuration/#siteurl)), they are put under it when built. Links in raw HTML are left as they are.
 - **Headings** get IDs from their text, so they can be linked to: `## Getting started` can be linked as `#getting-started`.
 - **Embeds** turn a URL into a video or player. See [Embeds](/docs/07-embeds/).
 - **Raw content** is shown exactly as it is written. See [Raw content](#raw-content).

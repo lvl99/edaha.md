@@ -84,7 +84,8 @@ Every template gets:
 - `site.name` and `site.description`: the website's name and description.
 - `site.author`: the author of articles that don't name one (`name`, `email` and `url`): the config file's `author`, the website's name without one, or nothing when it is `false`.
 - `site.url`: the website's absolute URL, e.g. `https://example.com`, for links that leave the website (e.g. in feeds).
-- `site.path`: the URL of the website's home page, e.g. `/` (or `/docs/` with the `path` setting `docs`).
+- `site.baseUrl`: the path of `site.url`, e.g. `/edaha.md` for `https://lvl99.github.io/edaha.md`, or nothing for a website at its domain's root. Every URL in the template data already starts with it. Use it for links you write yourself, such as static files: `{{ site.baseUrl }}/base.css`.
+- `site.path`: the URL of the website's home page, e.g. `/` (or `/docs/` with the `path` setting `docs`), after `site.baseUrl`.
 - `site.types`: each article type's settings (`labelSingle`, `labelPlural`, `path`, `generate`) and `url`.
 - `type`: the page's article type, e.g. `news`: the article's, or the list's.
 - `isArticle`: `true` on an article's page (index articles and the editor's previews included).
@@ -139,6 +140,7 @@ As well as Nunjucks' own filters, templates have:
 | --- | --- | --- |
 | `date` | `{{ article.date \| date }}` | 16 November 2026 |
 | `rfc822` | `{{ article.date \| rfc822 }}` | Mon, 16 Nov 2026 09:00:00 GMT |
+| `absoluteUrl(site.url)` | `{{ article.url \| absoluteUrl(site.url) }}` | `https://example.com/news/hello/` |
 | `absoluteUrls(site.url)` | `{{ article.excerptHtml \| absoluteUrls(site.url) }}` | The HTML with absolute links |
 
 ## Examples
@@ -152,8 +154,8 @@ The theme's templates extend `layouts/html.njk` and fill in its blocks: `headTit
 <header class="site-header">
   <p class="site-title"><a href="{{ site.path }}">{{ site.name }}</a></p>
   <nav aria-label="Main">
-    <a href="/docs/">Docs</a>
-    <a href="/news/">News</a>
+    <a href="{{ site.baseUrl }}/docs/">Docs</a>
+    <a href="{{ site.baseUrl }}/news/">News</a>
   </nav>
 </header>
 {% endblock %}

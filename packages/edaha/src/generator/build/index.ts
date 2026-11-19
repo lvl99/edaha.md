@@ -47,6 +47,7 @@ import type {
 import {
   checkTypePaths,
   folderPath,
+  baseUrlOf,
   folderUrl,
   slugProblem,
 } from "../urls/index.ts";
@@ -203,9 +204,10 @@ export const staticFiles = async (
 const typeData = (
   sitePath: string,
   config: ArticleTypeConfig,
+  baseUrl: string,
 ): TemplateDataArticleType => ({
   ...config,
-  url: folderUrl(folderPath(sitePath, config.path)),
+  url: folderUrl(folderPath(sitePath, config.path), baseUrl),
 });
 
 /**
@@ -222,22 +224,26 @@ export const siteData = (
   config: EdahaConfig,
   typeConfigs: Record<string, ArticleTypeConfig>,
   url: string,
-): TemplateDataSite => ({
-  name: config.name,
-  description: config.description,
-  url: url.replace(/\/+$/, ""),
-  path: folderUrl(folderPath(config.path)),
-  author:
-    config.author === false
-      ? undefined
-      : (config.author ?? { name: config.name }),
-  types: Object.fromEntries(
-    Object.entries(typeConfigs).map(([type, typeConfig]) => [
-      type,
-      typeData(config.path, typeConfig),
-    ]),
-  ),
-});
+): TemplateDataSite => {
+  const baseUrl = baseUrlOf(url);
+  return {
+    name: config.name,
+    description: config.description,
+    url: url.replace(/\/+$/, ""),
+    baseUrl,
+    path: folderUrl(folderPath(config.path), baseUrl),
+    author:
+      config.author === false
+        ? undefined
+        : (config.author ?? { name: config.name }),
+    types: Object.fromEntries(
+      Object.entries(typeConfigs).map(([type, typeConfig]) => [
+        type,
+        typeData(config.path, typeConfig, baseUrl),
+      ]),
+    ),
+  };
+};
 
 /**
  * The template data for an article's page, with its type's list for an index article.
@@ -386,7 +392,8 @@ export const buildSite = async (
   for (const type of typeFolders) {
     const typeConfig = site.types[type] as TemplateDataArticleType;
     const built = typeConfig.generate.article;
-    const typeFolder = typeConfig.url.slice(1);
+    // The type's folder in the output folder: its URL without the site's base URL
+    const typeFolder = typeConfig.url.slice(site.baseUrl.length + 1);
     for (const slug of await subfolders(join(articlesDir, type))) {
       const source = `${config.articlesDir}/${type}/${slug}`;
       if (!isSlug(slug))
@@ -413,14 +420,15 @@ export const buildSite = async (
         site,
         dir,
         slug,
-        url: folderUrl(folder),
+        url: folderUrl(folder, site.baseUrl),
         typeUrl: typeConfig.url,
         source,
         // Embeds aren't fetched for articles that won't be built
         replaceEmbeds: built
           ? (md) => embeds.replaceBlocks(md, source)
           : async (md) => md,
-        renderMarkdown: (md, baseUrl) => renderMarkdown(markdown, md, baseUrl),
+        renderMarkdown: (md, baseUrl) =>
+          renderMarkdown(markdown, md, baseUrl, site.baseUrl),
         metadata: {
           validator,
           keys: typeMetadataKeys(config.metadata, typeConfigs[type]?.metadata),

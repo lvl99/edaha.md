@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { defaultTypeConfig } from "../../config";
-import { checkTypePaths, folderPath, folderUrl, slugProblem } from "..";
+import {
+  baseUrlOf,
+  checkTypePaths,
+  folderPath,
+  folderUrl,
+  slugProblem,
+} from "..";
 
 const types = {
   news: defaultTypeConfig("news"),
@@ -14,6 +20,17 @@ describe("folderPath and folderUrl", () => {
     expect(folderPath("", "")).toBe("");
     expect(folderUrl("news/")).toBe("/news/");
     expect(folderUrl("")).toBe("/");
+    expect(folderUrl("news/", "/edaha.md")).toBe("/edaha.md/news/");
+    expect(folderUrl("", "/edaha.md")).toBe("/edaha.md/");
+  });
+});
+
+describe("baseUrlOf", () => {
+  it("should give the website URL's path without a trailing slash", () => {
+    expect(baseUrlOf("https://lvl99.github.io/edaha.md")).toBe("/edaha.md");
+    expect(baseUrlOf("https://example.com/a/b/")).toBe("/a/b");
+    expect(baseUrlOf("https://example.com")).toBe("");
+    expect(baseUrlOf("https://example.com/")).toBe("");
   });
 });
 

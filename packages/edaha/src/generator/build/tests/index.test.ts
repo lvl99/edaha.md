@@ -114,6 +114,7 @@ describe("siteData", () => {
       name: "Site",
       description: "Updates",
       url: "https://e.com",
+      baseUrl: "",
       path: "/docs/",
       // Without an author setting, articles' default author is the website
       author: { name: "Site" },
@@ -122,6 +123,16 @@ describe("siteData", () => {
     expect(siteData({ ...config, path: "" }, {}, "https://e.com").path).toBe(
       "/",
     );
+    // A website in a sub-folder: every URL starts with its base URL
+    const sub = siteData(
+      config,
+      { news: defaultTypeConfig("news") },
+      "https://lvl99.github.io/edaha.md/",
+    );
+    expect(sub.url).toBe("https://lvl99.github.io/edaha.md");
+    expect(sub.baseUrl).toBe("/edaha.md");
+    expect(sub.path).toBe("/edaha.md/docs/");
+    expect(sub.types.news?.url).toBe("/edaha.md/docs/news/");
     expect(
       siteData({ ...config, author: { name: "Matt" } }, {}, "https://e.com")
         .author,
@@ -592,6 +603,35 @@ describe("buildSite", () => {
     );
     expect(await read("news/feed.xml")).toContain(
       "<link>http://127.0.0.1:5002/news/</link>",
+    );
+  });
+
+  it("should put every URL under siteUrl's path, keeping files where they are", async () => {
+    const space = await workspace();
+    const { result, read } = await build(
+      space,
+      "https://lvl99.github.io/edaha.md",
+    );
+    // Files are written at the same paths as for a website at a domain's root
+    expect(result.files).toContain("news/first/index.html");
+    expect(result.files).toContain("news/feed.xml");
+    const page = await read("news/first/index.html");
+    expect(page).toContain('href="/edaha.md/base.css"');
+    expect(page).toContain('src="/edaha.md/news/first/thumb.png"');
+    expect(page).toContain('href="/edaha.md/news/tags/news/"');
+    expect(page).toContain('href="/edaha.md/news/first/guide.pdf"');
+    const list = await read("news/index.html");
+    expect(list).toContain('href="/edaha.md/news/first/"');
+    const feed = await read("news/feed.xml");
+    expect(feed).toContain(
+      "<link>https://lvl99.github.io/edaha.md/news/</link>",
+    );
+    expect(feed).toContain(
+      "<link>https://lvl99.github.io/edaha.md/news/first/</link>",
+    );
+    expect(feed).toContain(
+      // Excerpts are escaped in the feed
+      "src=&quot;https://lvl99.github.io/edaha.md/news/first/thumb.png&quot;",
     );
   });
 

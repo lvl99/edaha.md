@@ -17,13 +17,26 @@ export const folderPath = (...segments: string[]): string =>
     .join("");
 
 /**
- * The root-relative URL of a folder path.
+ * The root-relative URL of a folder path, under the website's base URL (see baseUrlOf).
  *
  * @example
  * folderUrl("news/"); // "/news/"
  * folderUrl(""); // "/"
+ * folderUrl("news/", "/edaha.md"); // "/edaha.md/news/"
  */
-export const folderUrl = (folder: string): string => `/${folder}`;
+export const folderUrl = (folder: string, baseUrl = ""): string =>
+  `${baseUrl}/${folder}`;
+
+/**
+ * The URL path a website lives under: its absolute URL's path, without a trailing slash, or "" at a domain's root.
+ * Every URL in its pages starts with it, e.g. for a website in a sub-folder like a GitHub Pages project site.
+ *
+ * @example
+ * baseUrlOf("https://lvl99.github.io/edaha.md"); // "/edaha.md"
+ * baseUrlOf("https://example.com/"); // ""
+ */
+export const baseUrlOf = (siteUrl: string): string =>
+  new URL(siteUrl).pathname.replace(/\/+$/, "");
 
 /**
  * Check article types' URL paths: no two the same, and none clashing with the website's reserved paths at its root

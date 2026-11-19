@@ -8,6 +8,7 @@ const site: TemplateDataSite = {
   name: "Site",
   description: "Updates",
   url: "https://example.com",
+  baseUrl: "",
   path: "/",
   types: {
     news: { ...defaultTypeConfig("news"), labelPlural: "News", url: "/news/" },

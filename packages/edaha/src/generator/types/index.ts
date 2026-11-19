@@ -11,7 +11,13 @@ export interface TemplateDataSite {
   description: string;
   /** The website's absolute URL, without a trailing slash, e.g. "https://example.com" */
   url: string;
-  /** The URL of the site's home: "/", or its `path` setting's folder, e.g. "/docs/" */
+  /**
+   * The URL path the website lives under: `url`'s path without a trailing slash, e.g. "/edaha.md", or "" at a domain's
+   * root. Every URL in the template data already starts with it; use it for the site's static files, e.g.
+   * `{{ site.baseUrl }}/base.css`.
+   */
+  baseUrl: string;
+  /** The URL of the site's home: "/", or its `path` setting's folder, e.g. "/docs/" (after `baseUrl`) */
   path: string;
   /** Article type settings (configured types, plus any other types articles use) */
   types: Record<string, TemplateDataArticleType>;
