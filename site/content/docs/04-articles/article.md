@@ -1,11 +1,14 @@
 <!--yaml
 status: published
-date: 2026-11-15T20:36:00.000+02:00
+date: 2026-11-15T18:36:00.000Z
+author: false
 -->
 
 # Articles
 
-An article is a Markdown file with a short header of settings, in its own folder with its images and attachments. <!-- readmore -->
+An article is a Markdown file with a short header of settings, in its own folder with its images and attachments.
+
+<!-- readmore -->
 
 Markdown is a simple text format: headings, lists, links and images are written with a few characters, so articles are easy to read and edit in any text editor. If you would rather not edit Markdown, the built-in [WYSIWYG editor](/docs/09-wysiwyg-editor/) gives you a rich text interface for the same files.
 
@@ -45,9 +48,9 @@ The first paragraph. <!-- readmore -->
 The rest of the article, with an image: ![A photo](photo.jpg)
 ```
 
-### The header
+### Article metadata
 
-The header is an HTML comment at the very top of the file. Its first word says what format the settings are written in:
+Article metadata is contained within an HTML comment at the very top of the file. Its first word says what format the settings are written in:
 
 - `<!--yaml` or `<!--yml`: YAML (the default, used by the editor for new articles);
 - `<!--json`: JSON.
@@ -115,22 +118,21 @@ After the header comes the article in Markdown:
 
 Put content between `<!-- raw -->` and `<!-- /raw -->` to show it exactly as it is written. Nothing inside is read as Markdown, embeds, read more breaks or HTML, and quotes and dashes aren't made typographic:
 
-<!-- prettier-ignore -->
 ```md
 <!-- raw -->
-*Not italic*, # not a heading, <b>not bold</b>
+
+_Not italic_, # not a heading, <b>not bold</b>
 <!-- readmore --> isn't a read more break here
 <!-- /raw -->
 ```
 
 Shows on the page as:
 
-<!-- prettier-ignore-start -->
 <!-- raw -->
-*Not italic*, # not a heading, <b>not bold</b>
+
+_Not italic_, # not a heading, <b>not bold</b>
 <!-- readmore --> isn't a read more break here
 <!-- /raw -->
-<!-- prettier-ignore-end -->
 
 - **On its own lines**, raw content is a block, `<pre class="raw">`, keeping its spaces and line breaks.
 - **Within a line**, e.g. `Type <!-- raw -->*<!-- /raw --> for a star`, it is inline, `<span class="raw">`.
@@ -145,12 +147,11 @@ If your project formats Markdown with a tool like [Prettier](https://prettier.io
 
 Tell it to leave them alone. For Prettier, wrap raw blocks in `prettier-ignore-start` and `prettier-ignore-end` comments, or put `<!-- prettier-ignore -->` just before a code block:
 
-<!-- prettier-ignore -->
 ```md
 <!-- prettier-ignore-start -->
-<!-- raw -->
-*Shown with its stars*
-<!-- /raw -->
+
+<pre class="raw">&#42;Shown with its stars&#42;</pre>
+
 <!-- prettier-ignore-end -->
 ```
 

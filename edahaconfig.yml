@@ -10,10 +10,13 @@ types:
   news:
     labelSingle: News
     labelPlural: News
+    author: false
   page:
     labelSingle: Page
     labelPlural: Pages
     path: ""
+    author: false
+    metadata: false
     generate:
       list: false
       feed: false
@@ -22,6 +25,7 @@ types:
   docs:
     labelSingle: Documentation
     labelPlural: Documentation
+    author: false
     generate:
       list: true
       feed: true

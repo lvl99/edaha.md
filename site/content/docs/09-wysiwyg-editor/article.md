@@ -1,15 +1,18 @@
 <!--yaml
 status: published
-date: 2026-11-15T20:36:00.000+02:00
+date: 2026-11-15T18:36:00.000Z
+author: false
 -->
 
 # WYSIWYG editor
 
-edaha.md comes with an editor that lets you write and manage your website's articles in your browser, without editing Markdown files. What you see as you write is what your visitors will see. <!-- readmore -->
+edaha.md comes with an editor that lets you write and manage your website's articles in your browser, without editing Markdown files. What you see as you write is what your visitors will see.
+
+<!-- readmore -->
 
 ## Opening the editor
 
-Someone who manages the project starts the editor on your computer (see [Starting the editor](#starting-the-editor)). Then open <http://127.0.0.1:5180> in your browser.
+Someone who manages the project starts the editor on your computer (see [Starting the editor](#starting-the-editor)). Then open [http://127.0.0.1:5180](http://127.0.0.1:5180) in your browser.
 
 The editor only works on your own computer: nobody else can see it or use it.
 
@@ -57,15 +60,15 @@ The settings are in groups you can open and close: **Info** (type, status, slug,
 
 What the settings do:
 
-| Setting              | What it does                                                                                     |
-| -------------------- | ------------------------------------------------------------------------------------------------ |
-| **Type**             | The kind of article, e.g. News or Page.                                                          |
-| **Template**         | How the article is laid out, if your website has more than one layout for it.                    |
-| **Status**           | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website).      |
-| **Slug**             | The last part of the article's address. Left empty, it is made from the title.                   |
-| **Publication date** | The article's date.                                                                              |
-| **Excerpt**          | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
-| **Thumbnail**        | An image shown in lists.                                                                         |
+| Setting | What it does |
+| --- | --- |
+| **Type** | The kind of article, e.g. News or Page. |
+| **Template** | How the article is laid out, if your website has more than one layout for it. |
+| **Status** | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website). |
+| **Slug** | The last part of the article's address. Left empty, it is made from the title. |
+| **Publication date** | The article's date. |
+| **Excerpt** | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
+| **Thumbnail** | An image shown in lists. |
 
 The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file**, chosen with **Choose existing file…**, or linked by address. Uploads need the article to be saved first. The thumbnail can also be chosen with **Choose existing file…**.
 

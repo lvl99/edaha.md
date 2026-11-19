@@ -1,11 +1,14 @@
 <!--yaml
 status: published
-date: 2026-11-15T20:36:00.000+02:00
+date: 2026-11-15T18:36:00.000Z
+author: false
 -->
 
 # Introduction
 
-**edaha.md** is a static site generator written in TypeScript. It converts Markdown files into HTML pages and RSS feeds. <!-- readmore -->
+**edaha.md** is a static site generator written in TypeScript. It converts Markdown files into HTML pages and RSS feeds.
+
+<!-- readmore -->
 
 You control the templates, so the pages can look however you like.
 

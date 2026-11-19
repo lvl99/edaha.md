@@ -1,11 +1,12 @@
 <!--yaml
 status: published
-date: 2026-11-15T20:36:00.000+02:00
+date: 2026-11-15T18:36:00.000Z
+author: false
 -->
 
 # About
 
-> ### <span class="leaf-device">枝葉</span> (えだは; e&middot;da&middot;ha)
+> **枝葉 (えだは; e·da·ha)**
 >
 > 1. Branches and leaves (_noun_).
 > 2. Unimportant details; nonessentials; side issue; digression (_noun_).

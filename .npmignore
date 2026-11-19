@@ -1,1 +1,6 @@
-site
+collaboration/
+coverage/
+node_modules/
+site/
+AGENTS.md
+CLAUDE.md

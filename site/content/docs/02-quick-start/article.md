@@ -1,11 +1,14 @@
 <!--yaml
 status: published
-date: 2026-11-15T20:36:00.000+02:00
+date: 2026-11-15T18:36:00.000Z
+author: false
 -->
 
 # Quick start
 
-This builds a small website with one news article, using as little configuration as possible. You need [Node.js](https://nodejs.org/) 22 or later. <!-- readmore -->
+This builds a small website with one news article, using as little configuration as possible. You need [Node.js](https://nodejs.org/) 22 or later.
+
+<!-- readmore -->
 
 ## 1. Install edaha.md
 
@@ -89,7 +92,7 @@ yarn edaha editor
 pnpx edaha editor
 ```
 
-Open <http://127.0.0.1:8449> to write and edit articles without touching Markdown. See [WYSIWYG editor](/docs/09-wysiwyg-editor/).
+Open [http://127.0.0.1:8449](http://127.0.0.1:8449) to write and edit articles without touching Markdown. See [WYSIWYG editor](/docs/09-wysiwyg-editor/).
 
 ## Next steps
 
