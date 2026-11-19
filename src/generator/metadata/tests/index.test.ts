@@ -88,6 +88,24 @@ describe("parseMetadata", () => {
     );
   });
 
+  it("should let maps and lists set only their group, editing lists item by item", () => {
+    const list = {
+      type: "array",
+      items: { type: "string", $edahaField: { text: true } },
+      $edahaField: { group: "files" },
+    };
+    expect(parseMetadata({ list })).toEqual({ list });
+    expect(() =>
+      parseMetadata({
+        list: {
+          type: "array",
+          items: { type: "string" },
+          $edahaField: { group: "files" },
+        },
+      }),
+    ).toThrow('"metadata.list.items.$edahaField" must be a map of settings');
+  });
+
   it("should accept one field for a whole list", () => {
     const tags = {
       type: "array",

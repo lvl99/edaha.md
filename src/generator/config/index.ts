@@ -6,6 +6,11 @@ import {
   parseTypeMetadata,
   type MetadataDefinitions,
 } from "../metadata/index.ts";
+import {
+  metadataLayout,
+  parseMetadataGroups,
+  type MetadataGroupConfig,
+} from "../metadataGroups/index.ts";
 
 /** What is built for an article type */
 export interface GenerateConfig {
@@ -63,6 +68,8 @@ export interface EdahaConfig {
   embeds: EmbedRenderer[];
   /** Custom metadata fields' JSON Schemas, by the key articles store their values under. Default: none */
   metadata: MetadataDefinitions;
+  /** Groups of settings in the editor, besides the built-in ones, by key. Default: none */
+  metadataGroups: Record<string, MetadataGroupConfig>;
 }
 
 /** Settings under `generate` */
@@ -98,6 +105,7 @@ const CONFIG_KEYS = [
   "types",
   "embeds",
   "metadata",
+  "metadataGroups",
 ];
 
 /** List folders that can't be used as article types */
@@ -347,6 +355,9 @@ const validateConfig = (data: unknown): EdahaConfig => {
       ? {}
       : asMap(fields.types, '"types"');
   const metadata = parseMetadata(fields.metadata);
+  const metadataGroups = parseMetadataGroups(fields.metadataGroups);
+  // Every field's group, and what each field and group follows, must exist
+  metadataLayout(metadata, metadataGroups);
   const typeConfigs = Object.fromEntries(
     Object.entries(types).map(([type, value]) => [
       type,
@@ -371,6 +382,7 @@ const validateConfig = (data: unknown): EdahaConfig => {
     reservedPaths: parseReservedPaths(fields),
     embeds: parseEmbeds(fields),
     metadata,
+    metadataGroups,
     types: typeConfigs,
   };
 };

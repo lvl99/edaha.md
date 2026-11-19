@@ -38,6 +38,17 @@ describe("editorKind", () => {
     expect(editorKind({ $edahaField: { textarea: true } })).toBe("textarea");
     expect(editorKind({ type: "object", properties: {} })).toBe("object");
     expect(editorKind({ type: "array", items: {} })).toBe("list");
+    // Setting only their group, maps and lists are still edited field by field
+    expect(
+      editorKind({
+        type: "object",
+        properties: {},
+        $edahaField: { group: "files" },
+      }),
+    ).toBe("object");
+    expect(
+      editorKind({ type: "array", items: {}, $edahaField: { group: "files" } }),
+    ).toBe("list");
   });
 });
 

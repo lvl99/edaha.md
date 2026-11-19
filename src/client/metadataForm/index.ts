@@ -1,6 +1,8 @@
 import {
   fieldKind,
   fieldOptions,
+  hasFieldKind,
+  type EdahaField,
   type FieldChoice,
   type FieldKind,
   type MetadataProblem,
@@ -26,7 +28,8 @@ export const fieldDescription = (schema: MetadataSchema): string | undefined =>
 export const editorKind = (
   schema: MetadataSchema,
 ): FieldKind | "object" | "list" => {
-  if (schema.$edahaField) return fieldKind(schema.$edahaField);
+  if (hasFieldKind(schema.$edahaField))
+    return fieldKind(schema.$edahaField as EdahaField);
   return schema.type === "object" ? "object" : "list";
 };
 

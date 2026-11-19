@@ -36,6 +36,7 @@ describe("parseConfig", () => {
       types: {},
       embeds: [],
       metadata: {},
+      metadataGroups: {},
     });
     expect(parseYaml(`${VALID}path: docs\n`).path).toBe("docs");
   });

@@ -100,6 +100,19 @@ export const fieldKind = (field: EdahaField): FieldKind =>
   FIELD_KINDS.find((kind) => kind in field) as FieldKind;
 
 /**
+ * Whether an `$edahaField` names a field kind (maps' and lists' may only set their group and labels).
+ *
+ * @example
+ * hasFieldKind({ group: "files" }); // false
+ */
+export const hasFieldKind = (field: unknown): boolean =>
+  Boolean(
+    field &&
+    typeof field === "object" &&
+    FIELD_KINDS.some((kind) => kind in field),
+  );
+
+/**
  * A field kind's options, e.g. `{ accept: "image/*" }` for `{ file: { accept: "image/*" } }` (none for `true`).
  */
 export const fieldOptions = (field: EdahaField): Record<string, unknown> => {
@@ -111,7 +124,8 @@ export const fieldOptions = (field: EdahaField): Record<string, unknown> => {
 
 /**
  * Check a schema has editor fields: objects need properties, lists need items (or one field for the whole list), and
- * every value has an `$edahaField` with exactly one field kind. Throws an Error naming the schema's path.
+ * every value has an `$edahaField` with exactly one field kind. Objects' and lists' own `$edahaField` may set only their
+ * group and labels. Throws an Error naming the schema's path.
  */
 const checkFields = (schema: unknown, path: string): void => {
   const fields = asMap(schema, `"${path}"`);
@@ -122,7 +136,7 @@ const checkFields = (schema: unknown, path: string): void => {
     return;
   }
   // A list is edited item by item, unless one field edits it all (e.g. a select with `multiple`)
-  if (fields.type === "array" && fields.$edahaField === undefined) {
+  if (fields.type === "array" && !hasFieldKind(fields.$edahaField)) {
     checkFields(fields.items, `${path}.items`);
     return;
   }
