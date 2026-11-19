@@ -7,7 +7,7 @@ import {
   type FieldKind,
   type MetadataProblem,
   type MetadataSchema,
-} from "@lvl99dotcom/edaha/generator/metadata";
+} from "@lvl99dotcom/edaha.md/generator/metadata";
 
 /**
  * A metadata value's label: its field's title, its schema's title, or its key.

@@ -1,5 +1,5 @@
 // Builds the published package into dist/: the editor server's Node.js code and types with tsc, then the editor page
-// with Vite. Needs @lvl99dotcom/edaha built first. Run with `pnpm build`.
+// with Vite. Needs @lvl99dotcom/edaha.md built first. Run with `pnpm build`.
 import { execFileSync } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { resolve } from "node:path";

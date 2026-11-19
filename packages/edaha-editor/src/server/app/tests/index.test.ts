@@ -12,7 +12,7 @@ import {
   previewCsp,
 } from "..";
 import { ArticleStore, EditorError } from "../../store";
-import { loadSiteConfig } from "@lvl99dotcom/edaha/generator/configFile";
+import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
 
 const FIXTURE = fileURLToPath(
   new URL(

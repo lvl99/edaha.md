@@ -1,7 +1,7 @@
 import { html, LitElement, nothing, type PropertyValues } from "lit";
 import { classMap } from "lit/directives/class-map.js";
 import { styleMap } from "lit/directives/style-map.js";
-import { slugify } from "@lvl99dotcom/edaha/generator/slug";
+import { slugify } from "@lvl99dotcom/edaha.md/generator/slug";
 import type {
   MetadataInfo,
   EditorArticle,
@@ -36,13 +36,13 @@ import {
   type MetadataDefinitions,
   type MetadataProblem,
   type MetadataSchema,
-} from "@lvl99dotcom/edaha/generator/metadata";
+} from "@lvl99dotcom/edaha.md/generator/metadata";
 import { setAt } from "../../metadataForm/index.ts";
 import { icon } from "../../icons/index.ts";
 import {
   BUILT_IN_GROUPS,
   type MetadataGroup,
-} from "@lvl99dotcom/edaha/generator/metadataGroups";
+} from "@lvl99dotcom/edaha.md/generator/metadataGroups";
 
 const STATUS_OPTIONS: FieldOption[] = [
   { value: "published", label: "Published" },

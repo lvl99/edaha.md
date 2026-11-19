@@ -10,12 +10,12 @@ import {
   relative,
   resolve,
 } from "node:path";
-import { buildSite } from "@lvl99dotcom/edaha/generator/build";
+import { buildSite } from "@lvl99dotcom/edaha.md/generator/build";
 import {
   CONFIG_FILES,
   loadSiteConfig,
-} from "@lvl99dotcom/edaha/generator/configFile";
-import { THEME_DIR } from "@lvl99dotcom/edaha/theme";
+} from "@lvl99dotcom/edaha.md/generator/configFile";
+import { THEME_DIR } from "@lvl99dotcom/edaha.md/theme";
 import { startSiteServer } from "./site-server.ts";
 
 const projectDir = resolve(import.meta.dirname, "..");

@@ -14,4 +14,4 @@ await rm(dist, { recursive: true, force: true });
 run("pnpm", ["exec", "tsc", "-p", "tsconfig.build.json"]);
 // The `edaha` command runs directly
 await chmod(resolve(dist, "cli/bin.js"), 0o755);
-console.log(`Built @lvl99dotcom/edaha into ${dist}`);
+console.log(`Built @lvl99dotcom/edaha.md into ${dist}`);

@@ -5,7 +5,7 @@ import { resolve, sep } from "node:path";
 import { getRequestListener } from "@hono/node-server";
 import { defineConfig } from "vite";
 import { EDITOR_BASE, EDITOR_HOST, EDITOR_PORT } from "./src/editor/index.ts";
-import { loadSiteConfig } from "@lvl99dotcom/edaha/generator/configFile";
+import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
 import { createEditorApp } from "./src/server/app/index.ts";
 import { ArticleStore } from "./src/server/store/index.ts";
 

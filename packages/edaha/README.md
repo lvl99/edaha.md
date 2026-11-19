@@ -1,9 +1,9 @@
-# @lvl99dotcom/edaha
+# @lvl99dotcom/edaha.md
 
 edaha.md's static website generator: the `edaha` command, the build, embeds and the default theme. It builds pages, paginated lists, tag and author pages and RSS feeds from Markdown articles with Nunjucks templates.
 
 ```sh
-npm add @lvl99dotcom/edaha --save-dev
+npm add @lvl99dotcom/edaha.md --save-dev
 npx edaha build --dir my-site
 ```
 

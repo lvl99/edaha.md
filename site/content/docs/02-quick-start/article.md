@@ -15,9 +15,9 @@ This builds a small website with one news article, using as little configuration
 Add edaha.md to your project with your favourite package manager:
 
 ```sh
-npm install --save-dev @lvl99dotcom/edaha
-yarn add --dev @lvl99dotcom/edaha
-pnpm add --save-dev @lvl99dotcom/edaha
+npm install --save-dev @lvl99dotcom/edaha.md
+yarn add --dev @lvl99dotcom/edaha.md
+pnpm add --save-dev @lvl99dotcom/edaha.md
 ```
 
 To also write articles in the [WYSIWYG editor](/docs/09-wysiwyg-editor/), add its package too:

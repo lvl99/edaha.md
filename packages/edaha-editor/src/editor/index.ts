@@ -4,14 +4,14 @@ import { fileURLToPath } from "node:url";
 import { serve, type ServerType } from "@hono/node-server";
 import { Hono } from "hono";
 import mime from "mime-types";
-import { EDITOR_PORT } from "@lvl99dotcom/edaha/cli";
-import type { EmbedRenderer } from "@lvl99dotcom/edaha/embeds";
+import { EDITOR_PORT } from "@lvl99dotcom/edaha.md/cli";
+import type { EmbedRenderer } from "@lvl99dotcom/edaha.md/embeds";
 import { createEditorApp } from "../server/app/index.ts";
 import { ArticleStore } from "../server/store/index.ts";
 import {
   loadSiteConfig,
   type SiteConfigOptions,
-} from "@lvl99dotcom/edaha/generator/configFile";
+} from "@lvl99dotcom/edaha.md/generator/configFile";
 
 /** The editor only listens on this computer's own address, so nothing else on the network can reach it */
 export const EDITOR_HOST = "127.0.0.1";

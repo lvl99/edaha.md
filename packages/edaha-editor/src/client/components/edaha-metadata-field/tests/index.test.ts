@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "..";
 import type { EdahaMetadataField } from "..";
-import type { MetadataSchema } from "@lvl99dotcom/edaha/generator/metadata";
+import type { MetadataSchema } from "@lvl99dotcom/edaha.md/generator/metadata";
 import {
   button,
   chooseFile,

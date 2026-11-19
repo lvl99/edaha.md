@@ -10,7 +10,10 @@ import {
 } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { stringify } from "yaml";
-import type { EmbedRenderer, EmbedResolver } from "@lvl99dotcom/edaha/embeds";
+import type {
+  EmbedRenderer,
+  EmbedResolver,
+} from "@lvl99dotcom/edaha.md/embeds";
 import {
   DEFAULT_HEADER_FORMAT,
   headerFormat,
@@ -20,33 +23,33 @@ import {
   splitArticle,
   splitContent,
   type HeaderFormat,
-} from "@lvl99dotcom/edaha/generator/article";
+} from "@lvl99dotcom/edaha.md/generator/article";
 import {
   articlePageData,
   DEFAULT_SITE_URL,
   siteData,
-} from "@lvl99dotcom/edaha/generator/build";
+} from "@lvl99dotcom/edaha.md/generator/build";
 import {
   defaultTypeConfig,
   parseConfig,
   RESERVED_TYPES,
-} from "@lvl99dotcom/edaha/generator/config";
+} from "@lvl99dotcom/edaha.md/generator/config";
 import {
   readConfigFile,
   type SiteConfig,
-} from "@lvl99dotcom/edaha/generator/configFile";
+} from "@lvl99dotcom/edaha.md/generator/configFile";
 import {
   createMarkdown,
   renderMarkdown,
-} from "@lvl99dotcom/edaha/generator/markdown";
-import { Templates } from "@lvl99dotcom/edaha/generator/templates";
-import { THEME_DIR } from "@lvl99dotcom/edaha/theme";
+} from "@lvl99dotcom/edaha.md/generator/markdown";
+import { Templates } from "@lvl99dotcom/edaha.md/generator/templates";
+import { THEME_DIR } from "@lvl99dotcom/edaha.md/theme";
 import type {
   TemplateDataArticle,
   TemplateDataArticleType,
-} from "@lvl99dotcom/edaha/generator/types";
-import { slugProblem } from "@lvl99dotcom/edaha/generator/urls";
-import { isSlug, slugify } from "@lvl99dotcom/edaha/generator/slug";
+} from "@lvl99dotcom/edaha.md/generator/types";
+import { slugProblem } from "@lvl99dotcom/edaha.md/generator/urls";
+import { isSlug, slugify } from "@lvl99dotcom/edaha.md/generator/slug";
 import {
   editorHtmlToMarkdown,
   filesUrl,
@@ -57,9 +60,9 @@ import {
   CORE_FIELDS,
   MetadataValidator,
   typeMetadataKeys,
-} from "@lvl99dotcom/edaha/generator/metadata";
-import type { EdahaConfig } from "@lvl99dotcom/edaha/generator/config";
-import { metadataLayout } from "@lvl99dotcom/edaha/generator/metadataGroups";
+} from "@lvl99dotcom/edaha.md/generator/metadata";
+import type { EdahaConfig } from "@lvl99dotcom/edaha.md/generator/config";
+import { metadataLayout } from "@lvl99dotcom/edaha.md/generator/metadataGroups";
 import {
   ArticleIndex,
   type MetadataCheck,
@@ -76,7 +79,7 @@ import {
   queryFiles,
   type ReferenceChange,
 } from "../files/index.ts";
-import { folderPath, folderUrl } from "@lvl99dotcom/edaha/generator/urls";
+import { folderPath, folderUrl } from "@lvl99dotcom/edaha.md/generator/urls";
 import type {
   ArticleFilters,
   ArticleLocation,

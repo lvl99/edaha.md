@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { EmbedResolver } from "@lvl99dotcom/edaha/embeds";
+import { EmbedResolver } from "@lvl99dotcom/edaha.md/embeds";
 import {
   ArticleStore,
   bodyBaseUrl,
@@ -23,7 +23,7 @@ import {
   serializeArticle,
 } from "..";
 import type { EditorArticleData } from "../../types";
-import { loadSiteConfig } from "@lvl99dotcom/edaha/generator/configFile";
+import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
 
 const FIXTURE = fileURLToPath(
   new URL(

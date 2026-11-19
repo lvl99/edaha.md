@@ -1,17 +1,17 @@
 // Data exchanged between the article editor's client and its local server.
-import type { ArticleStatus } from "@lvl99dotcom/edaha/generator/types";
+import type { ArticleStatus } from "@lvl99dotcom/edaha.md/generator/types";
 import type {
   MetadataDefinitions,
   MetadataProblem,
-} from "@lvl99dotcom/edaha/generator/metadata";
-import type { MetadataGroup } from "@lvl99dotcom/edaha/generator/metadataGroups";
+} from "@lvl99dotcom/edaha.md/generator/metadata";
+import type { MetadataGroup } from "@lvl99dotcom/edaha.md/generator/metadataGroups";
 
-export type { ArticleStatus } from "@lvl99dotcom/edaha/generator/types";
+export type { ArticleStatus } from "@lvl99dotcom/edaha.md/generator/types";
 export type {
   MetadataDefinitions,
   MetadataProblem,
-} from "@lvl99dotcom/edaha/generator/metadata";
-export type { MetadataGroup } from "@lvl99dotcom/edaha/generator/metadataGroups";
+} from "@lvl99dotcom/edaha.md/generator/metadata";
+export type { MetadataGroup } from "@lvl99dotcom/edaha.md/generator/metadataGroups";
 
 /** Where an article is saved */
 export interface ArticleLocation {

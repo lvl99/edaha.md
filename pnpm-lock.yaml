@@ -169,12 +169,12 @@ importers:
       '@eslint/js':
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.15.0(supports-color@7.2.0))
-      '@lvl99dotcom/edaha':
-        specifier: workspace:^
-        version: link:packages/edaha
       '@lvl99dotcom/edaha-editor':
         specifier: workspace:^
         version: link:packages/edaha-editor
+      '@lvl99dotcom/edaha.md':
+        specifier: workspace:^
+        version: link:packages/edaha
       '@types/markdown-it':
         specifier: ^14.1.2
         version: 14.2.0
@@ -256,7 +256,7 @@ importers:
       '@hono/node-server':
         specifier: ^2.1.5
         version: 2.1.8(hono@4.13.18)
-      '@lvl99dotcom/edaha':
+      '@lvl99dotcom/edaha.md':
         specifier: workspace:^
         version: link:../edaha
       hono:

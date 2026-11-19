@@ -7,7 +7,7 @@ import type {
 import type { EditorApi } from "../../../editorApi";
 import { ApiError } from "../../../editorApi";
 import type { EdahaMetadataField } from "../../edaha-metadata-field";
-import { metadataLayout } from "@lvl99dotcom/edaha/generator/metadataGroups";
+import { metadataLayout } from "@lvl99dotcom/edaha.md/generator/metadataGroups";
 import {
   METADATA_ERRORS,
   applyFieldChange,

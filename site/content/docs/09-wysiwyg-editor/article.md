@@ -116,7 +116,7 @@ If you open another article or start a new one with changes that aren't saved, t
 
 ### Starting the editor
 
-The editor is in its own package, `@lvl99dotcom/edaha-editor`. Install it next to `@lvl99dotcom/edaha` (see [Quick start](/docs/02-quick-start/)), then:
+The editor is in its own package, `@lvl99dotcom/edaha-editor`. Install it next to `@lvl99dotcom/edaha.md` (see [Quick start](/docs/02-quick-start/)), then:
 
 ```sh
 npx edaha editor

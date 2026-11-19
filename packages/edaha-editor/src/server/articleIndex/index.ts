@@ -5,8 +5,8 @@ import {
   parseArticleConfig,
   splitArticle,
   splitContent,
-} from "@lvl99dotcom/edaha/generator/article";
-import { isSlug } from "@lvl99dotcom/edaha/generator/slug";
+} from "@lvl99dotcom/edaha.md/generator/article";
+import { isSlug } from "@lvl99dotcom/edaha.md/generator/slug";
 import { DEFAULT_ORDERS, type ArticleSort } from "../types/index.ts";
 import { fileKind } from "../files/index.ts";
 import type {

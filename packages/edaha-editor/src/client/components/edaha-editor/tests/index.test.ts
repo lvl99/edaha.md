@@ -19,7 +19,7 @@ import {
 } from "..";
 import type { EdahaArticleBrowser } from "../../edaha-article-browser";
 import type { EdahaFileBrowser } from "../../edaha-file-browser";
-import { metadataLayout } from "@lvl99dotcom/edaha/generator/metadataGroups";
+import { metadataLayout } from "@lvl99dotcom/edaha.md/generator/metadataGroups";
 import { button, find, input, settle } from "../../../../shared/tests/helpers";
 
 afterEach(() => document.body.replaceChildren());

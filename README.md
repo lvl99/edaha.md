@@ -13,9 +13,9 @@ Licensed under the [Apache License 2.0](LICENSE).
 Requires Node.js 22 or later.
 
 ```sh
-npm add @lvl99dotcom/edaha --save-dev
-yarn add @lvl99dotcom/edaha -D
-pnpm add @lvl99dotcom/edaha -D
+npm add @lvl99dotcom/edaha.md --save-dev
+yarn add @lvl99dotcom/edaha.md -D
+pnpm add @lvl99dotcom/edaha.md -D
 ```
 
 The WYSIWYG editor is a separate package. Add it to use `edaha editor`:
@@ -28,9 +28,8 @@ pnpm add @lvl99dotcom/edaha-editor -D
 
 | Package                     | What it has                                              |
 | --------------------------- | -------------------------------------------------------- |
-| `@lvl99dotcom/edaha`        | The `edaha` command, the build, embeds and default theme |
+| `@lvl99dotcom/edaha.md`     | The `edaha` command, the build, embeds and default theme |
 | `@lvl99dotcom/edaha-editor` | The local WYSIWYG article editor (`edaha editor`)        |
-| `@lvl99dotcom/edaha.md`     | Deprecated: the package before it was split              |
 
 ## Quick start
 
@@ -145,7 +144,7 @@ When defining article types in the [config](https://lvl99.github.io/edaha.md/sit
 
 ## Templates and the default theme
 
-edaha.md ships a neutral default theme in `@lvl99dotcom/edaha`'s `theme/` folder: Nunjucks templates in `theme/templates/` and a stylesheet in `theme/static/base.css`.
+edaha.md ships a neutral default theme in `@lvl99dotcom/edaha.md`'s `theme/` folder: Nunjucks templates in `theme/templates/` and a stylesheet in `theme/static/base.css`.
 
 A site's own templates folder (`templates/`, or `templatesDir`) overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type.
 
@@ -170,7 +169,7 @@ edaha.md was designed to be file-system first, with an editor as a convenience f
 You can programmatically trigger when and how to build your site using TypeScript or JavaScript code, as well as start the editor:
 
 ```ts
-import { buildSite } from "@lvl99dotcom/edaha";
+import { buildSite } from "@lvl99dotcom/edaha.md";
 import { startEditor } from "@lvl99dotcom/edaha-editor";
 
 const result = await buildSite({
@@ -203,7 +202,7 @@ pnpm site:dev       # build and serve site/ at http://127.0.0.1:8449, rebuilding
 
 ### Project layout
 
-- `packages/edaha/` (`@lvl99dotcom/edaha`):
+- `packages/edaha/` (`@lvl99dotcom/edaha.md`):
   - `src/generator/`: finds and reads the config file and articles, renders templates and builds the site (`buildSite`).
   - `src/embeds/`: embed renderers.
   - `src/cli/`: the `edaha` command. `edaha editor` loads `@lvl99dotcom/edaha-editor` when it is installed.
@@ -220,6 +219,6 @@ pnpm site:dev       # build and serve site/ at http://127.0.0.1:8449, rebuilding
 
 Source imports name their files with `.ts` extensions (e.g. `../slug/index.ts`), so scripts run directly with Node.js type stripping. The build rewrites them to `.js`.
 
-The editor imports the core's modules by their folder, e.g. `@lvl99dotcom/edaha/generator/article`. In the workspace, packages' `exports` point at their `src/` TypeScript files, so nothing needs building first; `publishConfig` points them at `dist/` for npm. `pnpm build` builds `@lvl99dotcom/edaha` first, as the other packages' types are built from its `dist/`.
+The editor imports the core's modules by their folder, e.g. `@lvl99dotcom/edaha.md/generator/article`. In the workspace, packages' `exports` point at their `src/` TypeScript files, so nothing needs building first; `publishConfig` points them at `dist/` for npm. `pnpm build` builds `@lvl99dotcom/edaha.md` first, as the other packages' types are built from its `dist/`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.

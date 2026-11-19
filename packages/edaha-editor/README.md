@@ -1,9 +1,9 @@
 # @lvl99dotcom/edaha-editor
 
-edaha.md's local WYSIWYG article editor, with an article browser and a file browser. Install it next to [`@lvl99dotcom/edaha`](https://www.npmjs.com/package/@lvl99dotcom/edaha), then run it with `edaha editor`:
+edaha.md's local WYSIWYG article editor, with an article browser and a file browser. Install it next to [`@lvl99dotcom/edaha.md`](https://www.npmjs.com/package/@lvl99dotcom/edaha.md), then run it with `edaha editor`:
 
 ```sh
-npm add @lvl99dotcom/edaha @lvl99dotcom/edaha-editor --save-dev
+npm add @lvl99dotcom/edaha.md @lvl99dotcom/edaha-editor --save-dev
 npx edaha editor --dir my-site
 ```
 

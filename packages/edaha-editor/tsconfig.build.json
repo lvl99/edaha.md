@@ -11,8 +11,8 @@
     "lib": ["es2022", "dom"],
     "types": ["node"],
     "paths": {
-      "@lvl99dotcom/edaha": ["../edaha/dist/index.d.ts"],
-      "@lvl99dotcom/edaha/*": ["../edaha/dist/*/index.d.ts"]
+      "@lvl99dotcom/edaha.md": ["../edaha/dist/index.d.ts"],
+      "@lvl99dotcom/edaha.md/*": ["../edaha/dist/*/index.d.ts"]
     }
   },
   "include": ["src"],

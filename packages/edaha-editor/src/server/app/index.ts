@@ -4,8 +4,8 @@ import {
   EMBED_RENDERERS,
   EmbedResolver,
   type EmbedRenderer,
-} from "@lvl99dotcom/edaha/embeds";
-import type { Logger } from "@lvl99dotcom/edaha/generator/types";
+} from "@lvl99dotcom/edaha.md/embeds";
+import type { Logger } from "@lvl99dotcom/edaha.md/generator/types";
 import {
   editorHtmlToMarkdown,
   markdownToEditorHtml,

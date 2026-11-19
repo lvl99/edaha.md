@@ -1,16 +1,16 @@
 import TurndownService from "turndown";
-import { EMBED_BLOCK } from "@lvl99dotcom/edaha/embeds";
-import { READMORE } from "@lvl99dotcom/edaha/generator/article";
+import { EMBED_BLOCK } from "@lvl99dotcom/edaha.md/embeds";
+import { READMORE } from "@lvl99dotcom/edaha.md/generator/article";
 import {
   escapeHtml,
   rawHtml,
   replaceOutsideCode,
   replaceRawBlocks,
-} from "@lvl99dotcom/edaha/generator/format";
+} from "@lvl99dotcom/edaha.md/generator/format";
 import {
   createMarkdown,
   renderMarkdown,
-} from "@lvl99dotcom/edaha/generator/markdown";
+} from "@lvl99dotcom/edaha.md/generator/markdown";
 
 // Without typographer, so text converts back to the same markdown
 const markdown = createMarkdown({ typographer: false });

@@ -4,7 +4,7 @@ import type {
   FieldKind,
   MetadataProblem,
   MetadataSchema,
-} from "@lvl99dotcom/edaha/generator/metadata";
+} from "@lvl99dotcom/edaha.md/generator/metadata";
 import {
   editorKind,
   fieldChoices,
@@ -14,7 +14,7 @@ import {
   inputValue,
   problemsAt,
 } from "../../metadataForm/index.ts";
-import { fieldOptions } from "@lvl99dotcom/edaha/generator/metadata";
+import { fieldOptions } from "@lvl99dotcom/edaha.md/generator/metadata";
 import { defineElement } from "../define/index.ts";
 import { acceptedKind, type FileChooser } from "../edaha-file-browser/index.ts";
 

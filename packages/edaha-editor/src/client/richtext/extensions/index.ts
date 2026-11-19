@@ -12,7 +12,7 @@ import {
   TextSelection,
 } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type NodeView } from "@tiptap/pm/view";
-import { headingIds } from "@lvl99dotcom/edaha/generator/slug";
+import { headingIds } from "@lvl99dotcom/edaha.md/generator/slug";
 import type { EmbedPreview } from "../../../server/types/index.ts";
 
 declare module "@tiptap/core" {

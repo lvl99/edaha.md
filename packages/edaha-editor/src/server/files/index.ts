@@ -1,7 +1,7 @@
 import { stringify } from "yaml";
-import { splitArticle } from "@lvl99dotcom/edaha/generator/article";
-import { replaceOutsideCode } from "@lvl99dotcom/edaha/generator/format";
-import { CORE_FIELDS } from "@lvl99dotcom/edaha/generator/metadata";
+import { splitArticle } from "@lvl99dotcom/edaha.md/generator/article";
+import { replaceOutsideCode } from "@lvl99dotcom/edaha.md/generator/format";
+import { CORE_FIELDS } from "@lvl99dotcom/edaha.md/generator/metadata";
 import {
   DEFAULT_FILE_ORDERS,
   type FileFilters,
