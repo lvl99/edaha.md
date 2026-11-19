@@ -18,6 +18,7 @@
     "site:build": "edaha build",
     "site:serve": "node scripts/serve-site.ts",
     "site:dev": "node scripts/dev-site.ts",
+    "site:publish": "node scripts/publish-site.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
