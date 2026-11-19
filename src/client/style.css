@@ -344,8 +344,55 @@ edaha-editor {
   overflow: hidden;
 }
 
-.edaha-editor-composer > p {
+/* The welcome prompt: centred in the pane until an article is opened or started */
+.welcome-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
   padding: 1rem;
+  overflow-y: auto;
+}
+
+.welcome-prompt-box {
+  width: min(28rem, 100%);
+  margin: auto;
+}
+
+.welcome-prompt-message {
+  margin: 0 0 1rem;
+  font-size: var(--font-size-l);
+  text-align: center;
+}
+
+/* Its links are part of the sentence, so they keep its size */
+.welcome-prompt-message .btn-link {
+  padding: 0;
+  font-size: inherit;
+}
+
+.welcome-prompt-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--colour-border);
+}
+
+.welcome-prompt-list li {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--colour-border);
+}
+
+.welcome-prompt-meta {
+  color: var(--colour-muted);
+  font-size: var(--font-size-s);
+}
+
+.welcome-prompt-browse {
+  display: block;
+  margin: 0.75rem auto 0;
 }
 
 edaha-article {

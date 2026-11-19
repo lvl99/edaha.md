@@ -13,7 +13,7 @@ import { EditorApi, type ArticleLocation } from "../../editorApi/index.ts";
 import { defineElement } from "../define/index.ts";
 import "../edaha-article/index.ts";
 import type { EdahaArticle } from "../edaha-article/index.ts";
-import "../edaha-article-browser/index.ts";
+import { typeLabel } from "../edaha-article-browser/index.ts";
 import type {
   ArticleBrowserOptions,
   EdahaArticleBrowser,
@@ -57,6 +57,9 @@ export const UNSAVED_DIALOG = {
   message: string;
   choices: readonly { value: UnsavedChoice; label: string }[];
 };
+
+/** How many of the most recently changed articles the welcome prompt shows */
+export const WELCOME_COUNT = 6;
 
 /** How many matches the nav's title search shows (the article browser shows them all) */
 export const NAV_SEARCH_COUNT = 10;
@@ -118,6 +121,7 @@ export class EdahaEditor extends LitElement {
     error: { state: true },
     searchText: { state: true },
     searchResult: { state: true },
+    welcome: { state: true },
     unsaved: { state: true },
     navOpen: { state: true },
   };
@@ -140,6 +144,8 @@ export class EdahaEditor extends LitElement {
   declare searchText: string;
   /** The nav's title search matches, while searching */
   declare searchResult?: ArticlePage | undefined;
+  /** The most recently changed articles, for the welcome prompt */
+  declare welcome?: ArticlePage | undefined;
   /** The open "Save changes first?" question, with what to do with the answer */
   declare unsaved?: ((choice: UnsavedChoice) => void) | undefined;
   /** Whether the article list is open over the page (on narrow screens) */
@@ -259,13 +265,15 @@ export class EdahaEditor extends LitElement {
   }
 
   /**
-   * Reload the nav: each type's most recently changed articles, and the title search's matches.
+   * Reload the nav (each type's most recently changed articles, and the title search's matches) and the welcome
+   * prompt's articles.
    */
   async refresh(): Promise<void> {
     try {
-      [this.recent, this.types] = await Promise.all([
+      [this.recent, this.types, this.welcome] = await Promise.all([
         this.api.recent(),
         this.api.types(),
+        this.api.query({ sort: "updated", perPage: WELCOME_COUNT }),
       ]);
       this.error = "";
     } catch (error) {
@@ -398,6 +406,73 @@ export class EdahaEditor extends LitElement {
               ${label}
             </button>`,
         )}
+      </div>
+    </div>`;
+  }
+
+  /**
+   * Render the welcome prompt, shown until an article is opened or started: links to a new article and to the article
+   * browser, then the most recently changed articles, with a link to the article browser when there are more.
+   */
+  private renderWelcome() {
+    const welcome = this.welcome;
+    return html`<div class="welcome-prompt">
+      <div class="welcome-prompt-box">
+        <!-- "Write a new article" starts a new article; "edit an existing one" opens the article browser -->
+        <p class="welcome-prompt-message">
+          <button
+            type="button"
+            class="btn-link"
+            @click=${() => void this.create()}
+          >
+            Write a new article
+          </button>
+          or
+          <button
+            type="button"
+            class="btn-link"
+            @click=${() => void this.openBrowser()}
+          >
+            edit an existing one</button
+          >...
+        </p>
+        ${
+          welcome?.articles.length
+            ? html`<ul
+                class="welcome-prompt-list"
+                aria-label="Recently changed articles"
+              >
+                ${welcome.articles.map(
+                  (article) =>
+                    html`<li>
+                      <a
+                        href="#${article.type}/${article.slug}"
+                        @click=${(event: Event) => {
+                          event.preventDefault();
+                          void this.open(article);
+                        }}
+                        >${article.title}</a
+                      >
+                      <small class="welcome-prompt-meta"
+                        >${typeLabel(this.types, article.type)} · changed
+                        ${article.updated.slice(0, 10)}</small
+                      >
+                    </li>`,
+                )}
+              </ul>`
+            : nothing
+        }
+        ${
+          welcome && welcome.total > welcome.articles.length
+            ? html`<button
+                type="button"
+                class="btn-link welcome-prompt-browse"
+                @click=${() => void this.openBrowser()}
+              >
+                Open article browser
+              </button>`
+            : nothing
+        }
       </div>
     </div>`;
   }
@@ -589,7 +664,7 @@ export class EdahaEditor extends LitElement {
                   @article-deleted=${() => void this.onDeleted()}
                 ></edaha-article>`,
               )
-            : html`<p>Choose an article or write a new one.</p>`
+            : this.renderWelcome()
         }
       </section>
       <edaha-article-browser

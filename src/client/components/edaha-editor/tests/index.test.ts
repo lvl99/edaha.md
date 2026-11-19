@@ -12,6 +12,7 @@ import "..";
 import {
   groupRecent,
   NAV_SEARCH_COUNT,
+  WELCOME_COUNT,
   UNSAVED_DIALOG,
   type EdahaEditor,
 } from "..";
@@ -111,9 +112,81 @@ describe("edaha-editor", () => {
       "broken · draft",
     );
     expect(items[1]!.querySelector(".error")!.textContent).toBe("Bad date");
-    expect(find(element, "section p").textContent).toBe(
-      "Choose an article or write a new one.",
-    );
+  });
+
+  it("should welcome with the most recently changed articles, centred in the pane, until an article is opened", async () => {
+    const { element, api } = await setup();
+    expect(api.query).toHaveBeenCalledWith({
+      sort: "updated",
+      perPage: WELCOME_COUNT,
+    });
+    const welcome = find(element, ".edaha-editor-composer .welcome-prompt");
+    // The message comes first, above the articles
+    expect(
+      welcome
+        .querySelector(".welcome-prompt-box")!
+        .firstElementChild!.textContent?.replace(/\s+/g, " ")
+        .trim(),
+    ).toBe("Write a new article or edit an existing one...");
+    const list = find(welcome, ".welcome-prompt-list");
+    expect(list.getAttribute("aria-label")).toBe("Recently changed articles");
+    expect(
+      [...list.querySelectorAll("li")].map((li) => [
+        li.querySelector("a")!.textContent,
+        li.querySelector("small")!.textContent?.replace(/\s+/g, " "),
+      ]),
+    ).toEqual([["Hello", "Article · changed 2026-11-01"]]);
+    // All the articles are shown, so there's no link to the browser
+    expect(welcome.querySelector(".welcome-prompt-browse")).toBeNull();
+    expect(
+      [...welcome.querySelectorAll(".welcome-prompt-message button")].map((b) =>
+        b.textContent?.trim(),
+      ),
+    ).toEqual(["Write a new article", "edit an existing one"]);
+
+    find<HTMLAnchorElement>(list, "a").click();
+    await settle(element);
+    expect(api.read).toHaveBeenCalledWith(SUMMARIES[0]);
+    expect(element.querySelector(".welcome-prompt")).toBeNull();
+  });
+
+  it("should link to the article browser when there are more articles than the welcome prompt shows", async () => {
+    const { element, api } = await setup();
+    api.query.mockResolvedValueOnce(matches(SUMMARIES, 9));
+    await element.refresh();
+    await element.updateComplete;
+    const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
+    const show = vi.spyOn(browser, "show").mockResolvedValue();
+    expect(element.querySelectorAll(".welcome-prompt-list li")).toHaveLength(2);
+    button(element, "Open article browser").click();
+    expect(show).toHaveBeenCalledWith({});
+  });
+
+  it('should start a new article from "Write a new article", and open the article browser from "edit an existing one"', async () => {
+    const { element } = await setup();
+    const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
+    const show = vi.spyOn(browser, "show").mockResolvedValue();
+    button(element, "edit an existing one").click();
+    expect(show).toHaveBeenCalledWith({});
+    button(element, "Write a new article").click();
+    await settle(element);
+    expect(
+      find<EdahaArticle>(element, "edaha-article").article,
+    ).toBeUndefined();
+    expect(element.querySelector(".welcome-prompt")).toBeNull();
+  });
+
+  it("should welcome with the message alone when there are no articles", async () => {
+    const { element, api } = await setup();
+    api.query.mockResolvedValueOnce(matches([]));
+    await element.refresh();
+    await element.updateComplete;
+    expect(element.querySelector(".welcome-prompt-list")).toBeNull();
+    expect(
+      find(element, ".welcome-prompt-message")
+        .textContent?.replace(/\s+/g, " ")
+        .trim(),
+    ).toBe("Write a new article or edit an existing one...");
   });
 
   it("should label the groups, linking to all of a type's articles when it has more", async () => {
@@ -251,14 +324,17 @@ describe("edaha-editor", () => {
 
   it("should search again when the list refreshes, and stop waiting to search when removed", async () => {
     const { element, api } = await setup();
+    /** How many title searches were made */
+    const searches = () =>
+      api.query.mock.calls.filter(([query]) => query.search).length;
     element.searchText = "hello";
     await element.refresh();
-    expect(api.query).toHaveBeenCalledTimes(1);
+    expect(searches()).toBe(1);
     element.searchDelay = 1000;
     input(find<HTMLInputElement>(element, "#article-search"), "later");
     element.remove();
     await new Promise((resolve) => setTimeout(resolve, 10));
-    expect(api.query).toHaveBeenCalledTimes(1);
+    expect(searches()).toBe(1);
   });
 
   it("should show list errors", async () => {
