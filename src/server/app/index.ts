@@ -162,7 +162,8 @@ export const PREVIEW_CSP = previewCsp(EMBED_RENDERERS);
  * - `POST /api/preview`: remember unsaved article data (`{ data, location? }`) for a preview page, and give its URL
  *   (`{ url }`); answers 400 if it can't be rendered
  * - `GET /preview/:id/`: render a remembered preview with its type's "single" template, and `GET /<path>`: one of the
- *   site's static files (e.g. `/site.css`), both with a Content Security Policy that forbids scripts (`previewCsp`)
+ *   site's static files (e.g. `/site.css`) or an article's file at its path on the website (e.g.
+ *   `/news/welcome/photo.png`), both with a Content Security Policy that forbids scripts (`previewCsp`)
  *
  * Embeds are rendered with the config file's `embeds`, then `embedRenderers`.
  *
@@ -382,7 +383,7 @@ export const createEditorApp = (
     });
   });
 
-  // The site's static files (stylesheet, fonts), at the root as preview pages link them
+  // The site's static files (stylesheet, fonts) and articles' files, at their paths on the website as pages link them
   app.get("/*", async (c) => {
     const path = decodeURIComponent(c.req.path.slice(1));
     return c.body(
