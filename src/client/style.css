@@ -475,6 +475,18 @@ edaha-article form {
   min-height: 300px;
 }
 
+/* The title, with the focus mode button at the top right */
+.edaha-article-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.edaha-article-title > edaha-article-data-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* Below a new article's title, until it is saved */
 .unsaved-notice {
   margin: 0;
@@ -847,129 +859,146 @@ edaha-article .preview {
   display: none;
 }
 
-/* Narrow screens (keep in step with NARROW_QUERY in src/client/narrow): one column, the article list opens over the
-   page from the menu bar, and the article's buttons are a bar at the bottom of the screen that opens its settings */
-@media (max-width: 899.98px) {
-  edaha-editor {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
-  }
+/* The compact layout, on narrow screens and in focus mode (edaha-editor sets the `compact` attribute): one column, the
+   article list opens over the page from the menu bar, and the article's buttons are a bar at the bottom of the screen
+   that opens its settings */
+edaha-editor[compact] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+}
 
-  .edaha-editor-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.25rem 0.5rem;
-    border-bottom: 1px solid var(--colour-border);
-  }
+edaha-editor[compact] .edaha-editor-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid var(--colour-border);
+}
 
-  .edaha-editor-bar-title {
-    font-weight: bold;
-  }
+edaha-editor[compact] .edaha-editor-bar-title {
+  font-weight: bold;
+}
 
-  .edaha-editor-nav {
-    position: fixed;
-    inset: 0 auto 0 0;
-    z-index: 20;
-    width: min(20rem, 85vw);
-    padding-top: 3.5rem;
-    background: var(--colour-background);
-    border-right: 1px solid var(--colour-border);
-    transform: translateX(-100%);
-    visibility: hidden;
-    transition:
-      transform 0.2s ease,
-      visibility 0.2s;
-  }
+edaha-editor[compact] .edaha-editor-nav {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 20;
+  width: min(20rem, 85vw);
+  padding-top: 3.5rem;
+  background: var(--colour-background);
+  border-right: 1px solid var(--colour-border);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition:
+    transform 0.2s ease,
+    visibility 0.2s;
+}
 
-  /* Shown at once when opening, so focus can move into it, and hidden after sliding away when closing */
-  .edaha-editor-nav.open {
-    transform: none;
-    visibility: visible;
-    transition:
-      transform 0.2s ease,
-      visibility 0s;
-  }
+/* Shown at once when opening, so focus can move into it, and hidden after sliding away when closing */
+edaha-editor[compact] .edaha-editor-nav.open {
+  transform: none;
+  visibility: visible;
+  transition:
+    transform 0.2s ease,
+    visibility 0s;
+}
 
-  .nav-close {
-    display: inline-flex;
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-  }
+edaha-editor[compact] .nav-close {
+  display: inline-flex;
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
 
-  .edaha-editor-nav .theme-switcher {
-    top: 0.5rem;
-    right: 3.75rem;
-    min-width: 2.75rem;
-    min-height: 2.75rem;
-  }
+edaha-editor[compact] .edaha-editor-nav .theme-switcher {
+  top: 0.5rem;
+  right: 3.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+}
 
-  .nav-backdrop.open {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 19;
-    background: rgb(0 0 0 / 40%);
-  }
+edaha-editor[compact] .nav-backdrop.open {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 19;
+  background: rgb(0 0 0 / 40%);
+}
 
-  edaha-article form {
-    grid-template-columns: minmax(0, 1fr);
-  }
+edaha-editor[compact] edaha-article form {
+  grid-template-columns: minmax(0, 1fr);
+}
 
-  /* Room for the bar at the bottom of the screen */
-  .edaha-article-main {
-    padding-bottom: 5rem;
-  }
+/* Room for the bar at the bottom of the screen */
+edaha-editor[compact] .edaha-article-main {
+  padding-bottom: 5rem;
+}
 
-  .edaha-article-metadata {
-    position: fixed;
-    inset: auto 0 0;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    overflow: hidden;
-    background: var(--colour-background);
-    border-top: 1px solid var(--colour-border);
-    box-shadow: 0 -2px 8px rgb(0 0 0 / 15%);
-  }
+edaha-editor[compact] .edaha-article-metadata {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  background: var(--colour-background);
+  border-top: 1px solid var(--colour-border);
+  box-shadow: 0 -2px 8px rgb(0 0 0 / 15%);
+}
 
-  .edaha-article-metadata.open {
-    top: 0;
-    border-top: 0;
-  }
+edaha-editor[compact] .edaha-article-metadata.open {
+  top: 0;
+  border-top: 0;
+}
 
+edaha-editor[compact] .edaha-article-metadata-fields {
+  display: none;
+}
+
+edaha-editor[compact]
+  .edaha-article-metadata.open
   .edaha-article-metadata-fields {
+  display: block;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.5rem 1rem 1rem;
+}
+
+/* The bar stays at the bottom, also while the settings are open */
+edaha-editor[compact] .edaha-article-controls {
+  order: 2;
+  position: static;
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--colour-border);
+  border-bottom: 0;
+}
+
+edaha-editor[compact] .btn-metadata-toggle {
+  display: inline-block;
+  margin-inline-start: auto;
+  min-width: 2.75rem;
+}
+
+/* Focus mode: the title and body centred, at most 900px wide */
+edaha-editor[focus-mode] .edaha-article-main {
+  box-sizing: border-box;
+  justify-self: center;
+  width: 100%;
+  max-width: 900px;
+}
+
+/* Narrow screens (keep in step with NARROW_QUERY in src/client/narrow) always have the compact layout */
+@media (max-width: 899.98px) {
+  .btn-focus-mode {
     display: none;
-  }
-
-  .edaha-article-metadata.open .edaha-article-metadata-fields {
-    display: block;
-    flex: 1 1 0;
-    min-height: 0;
-    overflow-y: auto;
-    padding: 0.5rem 1rem 1rem;
-  }
-
-  /* The bar stays at the bottom, also while the settings are open */
-  .edaha-article-controls {
-    order: 2;
-    position: static;
-    padding: 0.5rem 1rem;
-    border-top: 1px solid var(--colour-border);
-    border-bottom: 0;
-  }
-
-  .btn-metadata-toggle {
-    display: inline-block;
-    margin-inline-start: auto;
-    min-width: 2.75rem;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .edaha-editor-nav {
+  edaha-editor[compact] .edaha-editor-nav,
+  edaha-editor[compact] .edaha-editor-nav.open {
     transition: none;
   }
 }

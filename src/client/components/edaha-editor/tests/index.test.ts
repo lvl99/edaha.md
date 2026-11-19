@@ -827,14 +827,51 @@ describe("edaha-editor article list on narrow screens", () => {
     expect(element.navOpen).toBe(false);
   });
 
-  it("should close the list when the screen stops being narrow, until removed", async () => {
+  it("should follow the screen's width until removed, closing the list when the screen stops being narrow", async () => {
     const { change, query } = watchNarrow();
     const { element } = await setup();
+    expect(element.narrow).toBe(true);
+    expect(element.hasAttribute("compact")).toBe(true);
     await element.openNav();
+    query.matches = false;
     change();
     await settle(element);
+    expect(element.narrow).toBe(false);
+    expect(element.hasAttribute("compact")).toBe(false);
     expect(element.navOpen).toBe(false);
     element.remove();
     expect(query.removeEventListener).toHaveBeenCalled();
+  });
+});
+
+describe("edaha-editor focus mode", () => {
+  it("should be off at first, and turned on and off by the article form, with the compact layout", async () => {
+    const { element } = await setup();
+    expect(element.focusMode).toBe(false);
+    expect(element.hasAttribute("compact")).toBe(false);
+    expect(element.hasAttribute("focus-mode")).toBe(false);
+    button(element, "New article").click();
+    await settle(element);
+    const article = find<EdahaArticle>(element, "edaha-article");
+    expect(article.compact).toBe(false);
+
+    find(article, ".btn-focus-mode").click();
+    await settle(element);
+    expect(element.focusMode).toBe(true);
+    expect(element.hasAttribute("compact")).toBe(true);
+    expect(element.hasAttribute("focus-mode")).toBe(true);
+    expect(article.compact).toBe(true);
+    expect(article.focusMode).toBe(true);
+
+    // Turning it off closes the article list and the settings, which are shown beside the article again
+    await element.openNav();
+    article.metadataOpen = true;
+    find(article, ".btn-focus-mode").click();
+    await settle(element);
+    await settle(article);
+    expect(element.focusMode).toBe(false);
+    expect(element.hasAttribute("compact")).toBe(false);
+    expect(element.navOpen).toBe(false);
+    expect(article.metadataOpen).toBe(false);
   });
 });

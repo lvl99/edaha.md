@@ -263,7 +263,9 @@ describe("edaha-article", () => {
     );
     // Below the title, before the body
     const notice = find(element, "main .unsaved-notice");
-    expect(notice.previousElementSibling).toBe(field(element, "title"));
+    expect(notice.previousElementSibling).toBe(
+      field(element, "title").parentElement,
+    );
     expect(notice.textContent?.replace(/\s+/g, " ").trim()).toBe(
       "⚠️ Uploading images and attachments will require a title and slug to be defined first",
     );
@@ -786,12 +788,7 @@ describe("edaha-article body modes", () => {
   });
 });
 
-describe("edaha-article settings on narrow screens", () => {
-  afterEach(() => {
-    // @ts-expect-error -- jsdom has no matchMedia
-    delete window.matchMedia;
-  });
-
+describe("edaha-article settings in the compact layout", () => {
   it("should open the settings full screen from the bar, and close them with the button or Escape", async () => {
     const { element } = await setup();
     const toggle = find<HTMLButtonElement>(element, ".btn-metadata-toggle");
@@ -831,21 +828,41 @@ describe("edaha-article settings on narrow screens", () => {
     expect(element.metadataOpen).toBe(false);
   });
 
-  it("should close the settings when the screen stops being narrow, until removed", async () => {
-    const listeners: (() => void)[] = [];
-    const removeEventListener = vi.fn();
-    window.matchMedia = vi.fn(() => ({
-      matches: true,
-      addEventListener: (_type: string, listener: () => void) =>
-        listeners.push(listener),
-      removeEventListener,
-    })) as unknown as typeof window.matchMedia;
+  it("should close the settings when the layout stops being compact, but not when it becomes compact", async () => {
     const { element } = await setup();
     element.metadataOpen = true;
-    listeners.forEach((listener) => listener());
+    element.compact = true;
+    await settle(element);
+    expect(element.metadataOpen).toBe(true);
+    element.compact = false;
+    await settle(element);
     expect(element.metadataOpen).toBe(false);
-    element.remove();
-    expect(removeEventListener).toHaveBeenCalled();
+  });
+});
+
+describe("edaha-article focus mode button", () => {
+  it("should be a toggle button at the top right of the title, asking to turn focus mode on and off", async () => {
+    const { element } = await setup();
+    const toggle = find<HTMLButtonElement>(element, ".btn-focus-mode");
+    expect(toggle.parentElement).toBe(field(element, "title").parentElement);
+    expect(toggle.title).toBe("Focus mode");
+    expect(toggle.textContent?.trim()).toBe("Focus mode");
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.querySelector(".icon-fullscreen")).not.toBeNull();
+
+    const requests: boolean[] = [];
+    document.addEventListener("focus-mode-change", (event) =>
+      requests.push((event as CustomEvent<boolean>).detail),
+    );
+    toggle.click();
+    expect(requests).toEqual([true]);
+    // The editor turns it on
+    element.focusMode = true;
+    await settle(element);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle.querySelector(".icon-fullscreen_exit")).not.toBeNull();
+    toggle.click();
+    expect(requests).toEqual([true, false]);
   });
 });
 
