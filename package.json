@@ -18,12 +18,12 @@
     "site:build": "edaha build",
     "site:serve": "node scripts/serve-site.ts",
     "site:dev": "node scripts/dev-site.ts",
-    "typecheck": "tsc -p .",
-    "test": "vitest --run",
-    "test:coverage": "vitest --run --coverage",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p .",
+    "test": "vitest --run",
+    "test:coverage": "vitest --run --coverage"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

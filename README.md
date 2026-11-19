@@ -1,4 +1,4 @@
-# edaha.md
+# edaha.md 🍃🍂
 
 A static website generator using markdown.
 

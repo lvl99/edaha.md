@@ -40,11 +40,11 @@ To add it to your project's scripts, in `package.json`:
 
 | Setting | What it does |
 | --- | --- |
-| [`outputDir`](/docs/03-configuration/#outputdir) | Where the website is built. Emptied on every build. Default: `build`. |
-| [`siteUrl`](/docs/03-configuration/#siteurl) | The website's address, for RSS feed links. |
-| [`publishDir`](/docs/03-configuration/#publishdir) | Another folder the website is copied into, e.g. an app's build folder. |
-| [`path`](/docs/03-configuration/#path) | A URL path every article type's URLs start with. |
-| [`types`](/docs/03-configuration/#types) | What is built for each article type. |
+| `outputDir` | Where the website is built. Emptied on every build. Default: `build`. |
+| `siteUrl` | The website's address, for RSS feed links. |
+| `publishDir` | Another folder the website is copied into, e.g. an app's build folder. |
+| `path` | A URL path every article type's URLs start with. |
+| `types` | What is built for each article type. |
 
 The website's address can also come from the `SITE_URL` environment variable or the `--site-url` option, which take the place of `siteUrl`. That's handy when the same site is built for a staging and a live address:
 
@@ -66,7 +66,7 @@ Upload the contents of the build folder to your host's web root. That's all: the
 
 - **Any web host:** copy the files with your host's file manager, FTP, `rsync` or `scp`.
 - **Static hosting services** (GitHub Pages, Netlify, Cloudflare Pages, Vercel and others): set the build command to `npx edaha build` and the folder to publish to your `outputDir`.
-- **Next to another app:** set [`publishDir`](/docs/03-configuration/#publishdir) to the app's build folder, so the website is deployed with it. Use [`reservedPaths`](/docs/03-configuration/#reservedpaths) to keep articles off the app's routes.
+- **Next to another app:** set `publishDir` to the app's build folder, so the website is deployed with it. Use `reservedPaths` to keep articles off the app's routes.
 
 edaha.md's URLs start at the website's root (e.g. `/site.css`, `/news/`), so publish the website at the root of its domain or sub-domain.
 
