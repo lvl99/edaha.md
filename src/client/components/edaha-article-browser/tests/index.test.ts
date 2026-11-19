@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ArticlePage, ArticleSummary } from "../../../../server/types";
 import type { EditorApi } from "../../../editorApi";
 import "..";
-import { typeLabel, type EdahaArticleBrowser } from "..";
+import { nextSort, typeLabel, type EdahaArticleBrowser } from "..";
 import {
   button,
   find,
@@ -98,6 +98,21 @@ describe("typeLabel", () => {
   });
 });
 
+describe("nextSort", () => {
+  it("should sort another column ascending, then descending, then go back to the default order", () => {
+    expect(nextSort({}, "title")).toEqual({ sort: "title", order: "asc" });
+    expect(nextSort({ sort: "date", order: "desc" }, "title")).toEqual({
+      sort: "title",
+      order: "asc",
+    });
+    expect(nextSort({ sort: "title", order: "asc" }, "title")).toEqual({
+      sort: "title",
+      order: "desc",
+    });
+    expect(nextSort({ sort: "title", order: "desc" }, "title")).toEqual({});
+  });
+});
+
 describe("edaha-article-browser", () => {
   it("should be closed before it renders", () => {
     const element = document.createElement(
@@ -133,23 +148,38 @@ describe("edaha-article-browser", () => {
       author: "",
       tag: "",
       status: undefined,
-      sort: "date",
+      sort: undefined,
+      order: undefined,
       page: 1,
     });
     expect(find(element, '[role="status"]').textContent?.trim()).toBe(
       "2 articles found",
     );
-    const items = [...element.querySelectorAll(".article-browser-list li")];
+    const table = find(element, "table.article-browser-table");
     expect(
-      items.map((li) => [
-        li.querySelector("a")!.textContent,
-        li.querySelector(".article-browser-meta")!.textContent,
+      [...table.querySelectorAll("thead th")].map((th) => [
+        th.getAttribute("scope"),
+        th.textContent?.trim(),
       ]),
     ).toEqual([
-      ["Hello", "News item · published · 2026-10-19 · Zoë"],
-      ["broken", "page · published"],
+      ["col", "Title"],
+      ["col", "Type"],
+      ["col", "Status"],
+      ["col", "Published"],
+      ["col", "Changed"],
     ]);
-    expect(items[1]!.querySelector(".error")!.textContent).toBe("Bad date");
+    const rows = [...table.querySelectorAll("tbody tr")];
+    expect(
+      rows.map((row) =>
+        [...row.querySelectorAll("td")].map((td) =>
+          (td.querySelector("a") ?? td).textContent?.trim(),
+        ),
+      ),
+    ).toEqual([
+      ["Hello", "News item", "Published", "2026-10-19", "2026-11-01"],
+      ["broken", "page", "Published", "", "2026-11-01"],
+    ]);
+    expect(rows[1]!.querySelector(".error")!.textContent).toBe("Bad date");
     // Showing it again while open keeps it open
     await element.show();
     expect(element.open).toBe(true);
@@ -180,17 +210,16 @@ describe("edaha-article-browser", () => {
       "Draft",
       "Unlisted",
     ]);
-    expect(options("article-browser-sort")).toEqual([
-      "Date (newest first)",
-      "Title (A–Z)",
-    ]);
-    for (const id of ["type", "author", "tag", "status", "sort"])
+    // Sorting is done by the column headers
+    expect(element.querySelector("#article-browser-sort")).toBeNull();
+    expect(element.querySelector("#article-browser-order")).toBeNull();
+    for (const id of ["type", "author", "tag", "status"])
       expect(
         find(element, `label[for="article-browser-${id}"]`).textContent,
       ).toBeTruthy();
   });
 
-  it("should search, filter and sort, going back to the first page", async () => {
+  it("should search and filter, going back to the first page", async () => {
     const { element, api } = await setup();
     await element.show();
     await settle(element);
@@ -200,7 +229,6 @@ describe("edaha-article-browser", () => {
     await choose(element, "article-browser-status", "draft");
     await choose(element, "article-browser-type", "page");
     element.page = 2;
-    await choose(element, "article-browser-sort", "title");
     input(find<HTMLInputElement>(element, "#article-browser-search"), "bro");
     await vi.waitFor(() =>
       expect(api.query).toHaveBeenLastCalledWith({
@@ -209,10 +237,57 @@ describe("edaha-article-browser", () => {
         author: "Zoë",
         tag: "Releases",
         status: "draft",
-        sort: "title",
+        sort: undefined,
+        order: undefined,
         page: 1,
       }),
     );
+  });
+
+  it("should sort by a column ascending, then descending, then go back to the default order", async () => {
+    const { element, api } = await setup();
+    await element.show();
+    await settle(element);
+    const header = (label: string) =>
+      [...element.querySelectorAll("thead th")].find(
+        (th) => th.textContent?.replace(/[▲▼]/g, "").trim() === label,
+      )!;
+    const press = async (label: string) => {
+      header(label).querySelector("button")!.click();
+      await settle(element);
+    };
+    const lastQuery = () => api.query.mock.calls.at(-1)![0];
+    expect(header("Title").getAttribute("aria-sort")).toBe("none");
+    expect(header("Title").querySelector("button")!.title).toBe(
+      "Sort by title, ascending",
+    );
+
+    element.page = 2;
+    await press("Title");
+    expect(lastQuery()).toMatchObject({ sort: "title", order: "asc", page: 1 });
+    expect(header("Title").getAttribute("aria-sort")).toBe("ascending");
+    expect(header("Title").textContent).toContain("▲");
+    expect(header("Title").querySelector("button")!.title).toBe(
+      "Sort by title, descending",
+    );
+
+    await press("Title");
+    expect(lastQuery()).toMatchObject({ sort: "title", order: "desc" });
+    expect(header("Title").getAttribute("aria-sort")).toBe("descending");
+    expect(header("Title").textContent).toContain("▼");
+    expect(header("Title").querySelector("button")!.title).toBe(
+      "Go back to the default order",
+    );
+
+    await press("Title");
+    expect(lastQuery()).toMatchObject({ sort: undefined, order: undefined });
+    expect(header("Title").getAttribute("aria-sort")).toBe("none");
+
+    // Another column starts ascending
+    await press("Changed");
+    await press("Status");
+    expect(lastQuery()).toMatchObject({ sort: "status", order: "asc" });
+    expect(header("Changed").getAttribute("aria-sort")).toBe("none");
   });
 
   it("should page through the results, from the top of each page", async () => {
@@ -271,7 +346,7 @@ describe("edaha-article-browser", () => {
     element.addEventListener("article-choose", chosen);
     await element.show();
     await settle(element);
-    find(element, ".article-browser-list a").click();
+    find(element, ".article-browser-table tbody a").click();
     expect(element.open).toBe(false);
     expect(chosen.mock.calls[0]![0].detail).toEqual({
       type: "news",

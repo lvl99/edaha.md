@@ -1,6 +1,7 @@
 import { html, LitElement, nothing } from "lit";
 import type {
   ArticleFilters,
+  ArticleOrder,
   ArticlePage,
   ArticleSort,
   ArticleStatus,
@@ -28,11 +29,37 @@ export const STATUS_FILTERS: readonly {
   { value: "unlisted", label: "Unlisted" },
 ];
 
-/** The ways to sort */
-export const SORTS: readonly { value: ArticleSort; label: string }[] = [
-  { value: "date", label: "Date (newest first)" },
-  { value: "title", label: "Title (A–Z)" },
+/** The results' columns, each sorting by its own value when its header is pressed */
+export const COLUMNS: readonly { sort: ArticleSort; label: string }[] = [
+  { sort: "title", label: "Title" },
+  { sort: "type", label: "Type" },
+  { sort: "status", label: "Status" },
+  { sort: "date", label: "Published" },
+  { sort: "updated", label: "Changed" },
 ];
+
+/** How the results are sorted: by a column, ascending or descending, or neither (the default order) */
+export interface ResultsSort {
+  sort?: ArticleSort | undefined;
+  order?: ArticleOrder | undefined;
+}
+
+/**
+ * How the results are sorted after pressing a column's header: another column sorts ascending, the sorted column
+ * changes to descending, and a column sorted descending goes back to the default order (newest published first).
+ *
+ * @example
+ * nextSort({}, "title"); // { sort: "title", order: "asc" }
+ * nextSort({ sort: "title", order: "asc" }, "title"); // { sort: "title", order: "desc" }
+ * nextSort({ sort: "title", order: "desc" }, "title"); // {}
+ */
+export const nextSort = (
+  current: ResultsSort,
+  column: ArticleSort,
+): ResultsSort => {
+  if (current.sort !== column) return { sort: column, order: "asc" };
+  return current.order === "asc" ? { sort: column, order: "desc" } : {};
+};
 
 /** The event fired when an article is chosen (detail: its location) */
 export const ARTICLE_CHOOSE_EVENT = "article-choose";
@@ -49,9 +76,9 @@ export const typeLabel = (
 ): string => types[type]?.labelSingle ?? type;
 
 /**
- * The article browser: a dialog that finds articles by title, filters them by type, author, tag and status, sorts them
- * by date or title, and shows them 50 at a time. Choosing one closes it and fires `article-choose` (detail: the
- * article's location). Rendered in the light DOM.
+ * The article browser: a dialog that finds articles by title, filters them by type, author, tag and status, and shows
+ * them 50 at a time in a table whose column headers sort it (see `nextSort`). Choosing one closes it and fires
+ * `article-choose` (detail: the article's location). Rendered in the light DOM.
  *
  * @example
  * html`<edaha-article-browser .api=${api} .types=${types} @article-choose=${open}></edaha-article-browser>`
@@ -67,6 +94,7 @@ export class EdahaArticleBrowser extends LitElement {
     tag: { state: true },
     status: { state: true },
     sort: { state: true },
+    order: { state: true },
     page: { state: true },
     result: { state: true },
     filters: { state: true },
@@ -83,7 +111,9 @@ export class EdahaArticleBrowser extends LitElement {
   declare author: string;
   declare tag: string;
   declare status: string;
-  declare sort: ArticleSort;
+  /** The column the results are sorted by (undefined: the default order, newest published first) */
+  declare sort?: ArticleSort | undefined;
+  declare order?: ArticleOrder | undefined;
   declare page: number;
   /** The articles found, once loaded */
   declare result?: ArticlePage | undefined;
@@ -109,7 +139,6 @@ export class EdahaArticleBrowser extends LitElement {
     this.author = "";
     this.tag = "";
     this.status = "";
-    this.sort = "date";
     this.page = 1;
     this.filters = { types: [], authors: [], tags: [] };
     this.loading = false;
@@ -175,6 +204,7 @@ export class EdahaArticleBrowser extends LitElement {
         tag: this.tag,
         status: (this.status || undefined) as ArticleStatus | undefined,
         sort: this.sort,
+        order: this.order,
         page: this.page,
       });
       if (search !== this.searches) return;
@@ -200,6 +230,16 @@ export class EdahaArticleBrowser extends LitElement {
     this.page = 1;
     clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => void this.load(), this.searchDelay);
+  }
+
+  /** Sort by a column (see `nextSort`), going back to the first page */
+  private sortBy(column: ArticleSort) {
+    ({ sort: this.sort, order: this.order } = nextSort(
+      { sort: this.sort, order: this.order },
+      column,
+    ));
+    this.page = 1;
+    void this.load();
   }
 
   /** Show another page, from its top */
@@ -249,38 +289,68 @@ export class EdahaArticleBrowser extends LitElement {
     </div>`;
   }
 
-  /** Render the found articles */
+  /** Render a column's header: a button that sorts by it, showing which way it is sorted */
+  private renderHeader({ sort, label }: (typeof COLUMNS)[number]) {
+    const order = this.sort === sort ? this.order : undefined;
+    const next = nextSort({ sort: this.sort, order: this.order }, sort);
+    const hint = next.sort
+      ? `Sort by ${label.toLowerCase()}, ${next.order === "asc" ? "ascending" : "descending"}`
+      : "Go back to the default order";
+    return html`<th
+      scope="col"
+      aria-sort=${order ? (order === "asc" ? "ascending" : "descending") : "none"}
+    >
+      <button
+        type="button"
+        class="article-browser-sort"
+        title=${hint}
+        @click=${() => this.sortBy(sort)}
+      >
+        ${label}<span class="article-browser-sort-arrow" aria-hidden="true"
+          >${order === "asc" ? "▲" : order === "desc" ? "▼" : ""}</span
+        >
+      </button>
+    </th>`;
+  }
+
+  /** Render the found articles as a table */
   private renderResults() {
     const result = this.result;
     if (!result) return nothing;
     if (!result.articles.length)
       return html`<p class="article-browser-empty">No articles found.</p>`;
-    return html`<ul class="article-browser-list">
-      ${result.articles.map(
-        (article) =>
-          html`<li>
-            <a
-              href="#${article.type}/${article.slug}"
-              @click=${(event: Event) => {
-                event.preventDefault();
-                this.chooseArticle(article);
-              }}
-              >${article.title}</a
-            >
-            <small class="article-browser-meta"
-              >${[
-                typeLabel(this.types, article.type),
-                article.status,
-                article.date.slice(0, 10),
-                article.author,
-              ]
-                .filter(Boolean)
-                .join(" · ")}</small
-            >
-            ${article.error ? html`<small class="error">${article.error}</small>` : nothing}
-          </li>`,
-      )}
-    </ul>`;
+    const statusLabels = Object.fromEntries(
+      STATUS_FILTERS.map(({ value, label }) => [value, label]),
+    ) as Record<ArticleStatus, string>;
+    return html`<table class="article-browser-table">
+      <thead>
+        <tr>
+          ${COLUMNS.map((column) => this.renderHeader(column))}
+        </tr>
+      </thead>
+      <tbody>
+        ${result.articles.map(
+          (article) =>
+            html`<tr>
+              <td>
+                <a
+                  href="#${article.type}/${article.slug}"
+                  @click=${(event: Event) => {
+                    event.preventDefault();
+                    this.chooseArticle(article);
+                  }}
+                  >${article.title}</a
+                >
+                ${article.error ? html`<small class="error">${article.error}</small>` : nothing}
+              </td>
+              <td>${typeLabel(this.types, article.type)}</td>
+              <td>${statusLabels[article.status]}</td>
+              <td>${article.date.slice(0, 10)}</td>
+              <td>${article.updated.slice(0, 10)}</td>
+            </tr>`,
+        )}
+      </tbody>
+    </table>`;
   }
 
   /** Render the page buttons, when there is more than one page */
@@ -364,28 +434,6 @@ export class EdahaArticleBrowser extends LitElement {
           toOptions(this.filters.tags),
         )}
         ${this.renderSelect("status", "Status", "Any status", STATUS_FILTERS)}
-        <div class="article-browser-field">
-          <label for="article-browser-sort">Sort by</label>
-          <select
-            id="article-browser-sort"
-            @change=${(event: Event) => {
-              this.sort = (event.target as HTMLSelectElement)
-                .value as ArticleSort;
-              this.page = 1;
-              void this.load();
-            }}
-          >
-            ${SORTS.map(
-              (sort) =>
-                html`<option
-                  value=${sort.value}
-                  ?selected=${this.sort === sort.value}
-                >
-                  ${sort.label}
-                </option>`,
-            )}
-          </select>
-        </div>
       </div>
       <p
         class="article-browser-status ${this.error ? "error" : ""}"

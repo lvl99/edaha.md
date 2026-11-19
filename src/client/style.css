@@ -1071,26 +1071,61 @@ edaha-article .preview {
 .article-browser-results {
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow: auto;
   padding: 0.5rem 1rem 1rem;
 }
 
-.article-browser-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.article-browser-list li {
-  display: flex;
-  flex-direction: column;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--colour-border);
-}
-
-.article-browser-meta {
-  color: var(--colour-muted);
+/* The results table: on narrow screens it scrolls sideways within the results */
+.article-browser-table {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
   font-size: var(--font-size-s);
+}
+
+.article-browser-table th,
+.article-browser-table td {
+  padding: 0.5rem 0.75rem 0.5rem 0;
+  border-bottom: 1px solid var(--colour-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.article-browser-table td:not(:first-child) {
+  color: var(--colour-muted);
+  white-space: nowrap;
+}
+
+.article-browser-table td:first-child {
+  font-size: 1rem;
+}
+
+.article-browser-table td .error {
+  display: block;
+}
+
+/* Column headers are buttons that sort by their column */
+.article-browser-sort {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--colour-text);
+  font: inherit;
+  font-weight: bold;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.article-browser-sort:hover {
+  color: var(--colour-link);
+}
+
+.article-browser-sort-arrow {
+  font-size: 0.7em;
 }
 
 .article-browser-pages {
