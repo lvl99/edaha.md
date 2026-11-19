@@ -62,6 +62,7 @@ describe("EditorApi", () => {
     await api.upload(LOCATION, new File(["x"], "a.png"));
     await api.embeds();
     await api.embedFrame("youtube", "https://youtu.be/x");
+    await api.validateEmbed("youtube", "x");
     const calls = fetch.mock.calls as unknown as [string, RequestInit?][];
     expect(
       calls.map(([path, init]) => `${init?.method ?? "GET"} ${path}`),
@@ -86,6 +87,7 @@ describe("EditorApi", () => {
       "POST /api/articles/article/hello/files",
       "GET /api/embeds",
       "POST /api/embed-frames",
+      "POST /api/embed-validations",
     ]);
     expect(calls[19]![1]!.body).toBe(
       '{"key":"youtube","content":"https://youtu.be/x"}',

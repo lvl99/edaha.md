@@ -10,6 +10,9 @@ export interface EmbedValue {
   content: string;
 }
 
+/** Gives why an embed's content isn't valid for its kind (none when it is) */
+export type EmbedValidator = (value: EmbedValue) => Promise<string[]>;
+
 /** What the rich text and Markdown editors need for embed blocks */
 export interface EmbedTools {
   /** The site's embed plugins */

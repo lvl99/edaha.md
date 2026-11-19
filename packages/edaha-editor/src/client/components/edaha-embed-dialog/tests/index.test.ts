@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "..";
 import type { EdahaEmbedDialog } from "..";
 import type { EmbedInfo } from "../../../../server/types";
@@ -130,6 +130,93 @@ describe("edaha-embed-dialog", () => {
     const replaced = element.edit(EMBEDS);
     void element.edit(EMBEDS);
     expect(await replaced).toBeUndefined();
+  });
+
+  it("should check the content before saving it, showing why it isn't valid", async () => {
+    const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
+    let answer: (errors: string[]) => void = () => undefined;
+    const validate = vi.fn(
+      () => new Promise<string[]>((resolve) => (answer = resolve)),
+    );
+    const result = element.edit(
+      EMBEDS,
+      { key: "youtube", content: "bad" },
+      validate,
+    );
+    await settle(element);
+    const dialog = find<HTMLDialogElement>(element, "dialog");
+    submit(element);
+    await element.updateComplete;
+    expect(validate).toHaveBeenCalledWith({ key: "youtube", content: "bad" });
+    expect(button(element, "Checking…").getAttribute("aria-disabled")).toBe(
+      "true",
+    );
+    // Saving again while it is checked does nothing
+    submit(element);
+    expect(validate).toHaveBeenCalledOnce();
+    answer(["Not a URL", "No video ID"]);
+    await settle(element);
+    expect(dialog.open).toBe(true);
+    expect(
+      [...element.querySelectorAll("#embed-dialog-errors li")].map(
+        (li) => li.textContent,
+      ),
+    ).toEqual(["Not a URL", "No video ID"]);
+    expect(find(element, "#embed-dialog-errors").getAttribute("role")).toBe(
+      "alert",
+    );
+    expect(content(element).getAttribute("aria-invalid")).toBe("true");
+    expect(content(element).getAttribute("aria-describedby")).toBe(
+      "embed-dialog-errors embed-dialog-content-hint",
+    );
+    expect(document.activeElement).toBe(content(element));
+    // Changing the content clears the errors, until it is checked again
+    input(content(element), "https://youtu.be/x");
+    await element.updateComplete;
+    expect(element.querySelector("#embed-dialog-errors li")).toBeNull();
+    expect(content(element).getAttribute("aria-invalid")).toBe("false");
+    submit(element);
+    answer([]);
+    expect(await result).toEqual({
+      key: "youtube",
+      content: "https://youtu.be/x",
+    });
+  });
+
+  it("should check again when the embed changes while it is checked, or say when it can't be checked", async () => {
+    const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
+    let answer: (errors: string[]) => void = () => undefined;
+    const validate = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise<string[]>((resolve) => (answer = resolve)),
+      )
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValue([]);
+    const result = element.edit(
+      EMBEDS,
+      { key: "youtube", content: "a" },
+      validate,
+    );
+    await settle(element);
+    submit(element);
+    // Another kind is chosen while the first is checked
+    kind(element, "mermaidjs").click();
+    answer(["Old problem"]);
+    await settle(element);
+    expect(element.querySelector("#embed-dialog-errors li")).toBeNull();
+    expect(find<HTMLDialogElement>(element, "dialog").open).toBe(true);
+    submit(element);
+    await settle(element);
+    expect(find(element, "#embed-dialog-errors li").textContent).toBe(
+      "The content couldn't be checked: offline",
+    );
+    // Choosing a kind clears the errors
+    kind(element, "youtube").click();
+    await element.updateComplete;
+    expect(element.querySelector("#embed-dialog-errors li")).toBeNull();
+    submit(element);
+    expect(await result).toEqual({ key: "youtube", content: "a" });
   });
 
   it("should explain when the site has no embeds", async () => {

@@ -842,6 +842,17 @@ edaha-article .preview {
   margin: 0;
 }
 
+/* Why the content isn't valid, under it */
+.embed-dialog-errors ul {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  color: var(--colour-error);
+}
+
+.embed-dialog textarea[aria-invalid="true"] {
+  border-color: var(--colour-error);
+}
+
 .embed-dialog textarea {
   font-family: ui-monospace, monospace;
   resize: vertical;

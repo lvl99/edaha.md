@@ -24,6 +24,7 @@ import type {
   FileSort,
   EmbedFrame,
   EmbedInfo,
+  EmbedValidation,
 } from "../types/index.ts";
 
 /** Read search parameters as text or numbers, undefined when empty or not a number */
@@ -129,6 +130,9 @@ export interface EditorAppOptions {
   plugins?: readonly EmbedPlugin[] | undefined;
 }
 
+/** A logger that leaves out warnings, for renders whose problems the editor shows itself (or doesn't need) */
+const QUIET: Logger = { warn: () => undefined };
+
 /** The kinds of embed sources, by the Content Security Policy directive that allows them */
 const SOURCE_DIRECTIVES: Record<keyof EmbedSources, string> = {
   frame: "frame-src",
@@ -231,6 +235,8 @@ ${FRAME_HEIGHT_SCRIPT}
  * - `POST /api/articles/:type/:slug/files`: upload a file (multipart field "file")
  * - `GET /files/:type/:slug/:name`: an article's file, for previews in the editor
  * - `GET /api/embeds`: the embed plugins (`EmbedInfo`), for the editor's embed dialog
+ * - `POST /api/embed-validations`: check an embed block's content (`{ key, content }`) with its plugin's `validate`,
+ *   giving why it isn't valid (`EmbedValidation`)
  * - `POST /api/embed-frames`: remember an embed block (`{ key, content }`) for its frame in the editor's body, and give
  *   the frame's URL and any problems (`EmbedFrame`); `GET /embed-frame/:id/?theme=light|dark` is the frame's page
  * - `POST /api/convert/markdown` and `POST /api/convert/html`: convert an article body between editor HTML and Markdown
@@ -361,6 +367,17 @@ export const createEditorApp = (
     ),
   );
 
+  app.post("/api/embed-validations", async (c) => {
+    const { key, content } = await c.req.json<{
+      key: string;
+      content: string;
+    }>();
+    const embeds = await embedResolver(QUIET);
+    return c.json<EmbedValidation>({
+      errors: await embeds.validate(key, content),
+    });
+  });
+
   app.post("/api/embed-frames", async (c) => {
     const { key, content } = await c.req.json<{
       key: string;
@@ -381,7 +398,7 @@ export const createEditorApp = (
   app.get("/embed-frame/:id/", async (c) => {
     const { key, content } = store.embedFrame(c.req.param("id"));
     const theme = c.req.query("theme");
-    const embeds = await embedResolver({ warn: () => undefined });
+    const embeds = await embedResolver(QUIET);
     const { html, usage } = await embeds.render(
       key,
       content,
@@ -431,7 +448,7 @@ export const createEditorApp = (
       data: EditorArticleData;
       location?: ArticleLocation;
     }>();
-    const embeds = await embedResolver({ warn: () => undefined });
+    const embeds = await embedResolver(QUIET);
     // Rendered now to report problems (e.g. a missing file), then again each time the page is shown
     await store.preview(data, location, embeds);
     return c.json({
@@ -496,7 +513,7 @@ export const createEditorApp = (
   app.get("/preview/:id/", async (c) => {
     const html = await store.renderPreview(
       c.req.param("id"),
-      await embedResolver({ warn: () => undefined }),
+      await embedResolver(QUIET),
     );
     return c.html(html, 200, {
       "Cache-Control": "no-store",

@@ -381,6 +381,37 @@ describe("createEditorApp", () => {
     expect((await app.request("/embed-frame/nope/")).status).toBe(404);
   });
 
+  it("should check embed blocks' content with their plugins", async () => {
+    const checked = {
+      ...MEDIA,
+      validate: (content: string) => {
+        if (!content.startsWith("https://")) throw new Error("Not a URL");
+        return true;
+      },
+    };
+    const { app } = await setup({ plugins: [checked] });
+    const check = async (key: string, content: string) =>
+      (
+        await (
+          await app.request(
+            "/api/embed-validations",
+            json("POST", { key, content }),
+          )
+        ).json()
+      ).errors as string[];
+    expect(await check("media", "https://media.example.com/v/1")).toEqual([]);
+    expect(await check("media", "v/1")).toEqual(["Not a URL"]);
+    expect(await check("nope", "x")).toEqual([
+      'No embed plugin with the key "nope"',
+    ]);
+    // Like other changes, only the editor page may ask
+    const other = await app.request("/api/embed-validations", {
+      method: "POST",
+      body: "{}",
+    });
+    expect(other.status).toBe(403);
+  });
+
   it("should fetch embed data with the given fetch, or the global one", async () => {
     const fetching = {
       ...MEDIA,

@@ -80,6 +80,7 @@ const fakeApi = () =>
     ),
     embeds: vi.fn(async () => [{ key: "youtube", name: "YouTube video" }]),
     embedFrame: vi.fn(async () => ({ url: "/embed-frame/x/", warnings: [] })),
+    validateEmbed: vi.fn(async () => ["Bad"]),
   }) as unknown as EditorApi &
     Record<
       | "create"
@@ -91,7 +92,8 @@ const fakeApi = () =>
       | "toHtml"
       | "preview"
       | "embeds"
-      | "embedFrame",
+      | "embedFrame"
+      | "validateEmbed",
       ReturnType<typeof vi.fn>
     >;
 
@@ -416,10 +418,15 @@ describe("edaha-article", () => {
     expect(element.querySelector("form")!.contains(dialog)).toBe(false);
     const edit = vi.spyOn(dialog, "edit").mockResolvedValue(undefined);
     await tools.edit({ key: "youtube", content: "x" });
-    expect(edit).toHaveBeenCalledWith(tools.embeds, {
-      key: "youtube",
-      content: "x",
-    });
+    expect(edit).toHaveBeenCalledWith(
+      tools.embeds,
+      { key: "youtube", content: "x" },
+      expect.any(Function),
+    );
+    // The dialog checks content with the API
+    const validate = edit.mock.calls[0]![2]!;
+    expect(await validate({ key: "youtube", content: "y" })).toEqual(["Bad"]);
+    expect(api.validateEmbed).toHaveBeenCalledWith("youtube", "y");
     // The Markdown body gets them too
     await element.setMode("markdown");
     await settle(element);

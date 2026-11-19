@@ -15,6 +15,7 @@ import type {
   EditorArticleData,
   EmbedFrame,
   EmbedInfo,
+  EmbedValidation,
   RecentArticles,
   UploadResult,
 } from "../../server/types/index.ts";
@@ -195,6 +196,16 @@ export class EditorApi {
   /** The site's embed plugins */
   embeds(): Promise<EmbedInfo[]> {
     return this.request("/api/embeds");
+  }
+
+  /** Why an embed block's content isn't valid for its plugin (none when it is) */
+  async validateEmbed(key: string, content: string): Promise<string[]> {
+    return (
+      await this.send<EmbedValidation>("POST", "/api/embed-validations", {
+        key,
+        content,
+      })
+    ).errors;
   }
 
   /** Render an embed block for its frame in the rich text body */

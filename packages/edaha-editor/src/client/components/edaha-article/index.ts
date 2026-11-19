@@ -616,6 +616,7 @@ export class EdahaArticle extends LitElement {
           (this.querySelector("edaha-embed-dialog") as EdahaEmbedDialog).edit(
             embeds,
             current,
+            ({ key, content }) => this.api.validateEmbed(key, content),
           ),
         loadFrame: ({ key, content }) => this.api.embedFrame(key, content),
       };

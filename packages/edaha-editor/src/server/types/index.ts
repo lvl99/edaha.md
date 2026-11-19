@@ -270,6 +270,11 @@ export interface EmbedInfo {
   icon?: string | undefined;
 }
 
+/** Why an embed block's content isn't valid for its plugin (none when it is) */
+export interface EmbedValidation {
+  errors: string[];
+}
+
 /** An embed block's frame in the editor's body */
 export interface EmbedFrame {
   /** The frame page's URL, e.g. "/embed-frame/<id>/" */
