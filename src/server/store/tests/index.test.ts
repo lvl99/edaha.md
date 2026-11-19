@@ -280,6 +280,181 @@ describe("ArticleStore", () => {
     expect(await slugs()).toEqual(before);
   });
 
+  it("should find files in the articles' folders, with their paths on the website", async () => {
+    const { dir, store } = await copySite();
+    await writeFile(join(dir, "articles/page/about-us/team.jpg"), "jpg");
+    const page = await store.queryFiles({ sort: "name" });
+    expect(
+      page.files.map(({ type, slug, name, kind, size, url }) => [
+        `${type}/${slug}`,
+        name,
+        kind,
+        size,
+        url,
+      ]),
+    ).toEqual([
+      ["article/first", "guide.pdf", "document", 13, "/news/first/guide.pdf"],
+      ["page/about-us", "team.jpg", "image", 3, "/page/about-us/team.jpg"],
+      ["article/first", "thumb.png", "image", 8, "/news/first/thumb.png"],
+    ]);
+    // Folders without an article.md aren't articles, so their files aren't listed
+    expect(page.files.map((file) => file.name)).not.toContain("notes.txt");
+    expect(await store.fileFilters()).toEqual({
+      kinds: ["document", "image"],
+      types: ["article", "page"],
+    });
+  });
+
+  it("should give index articles' files their type's path, and the website's address when it has one", async () => {
+    const { dir, store } = await copySite();
+    await mkdir(join(dir, "articles/article/index"));
+    await writeFile(
+      join(dir, "articles/article/index/article.md"),
+      `<!--yaml\ndate: ${DATE}\n-->\n# News`,
+    );
+    await writeFile(join(dir, "articles/article/index/banner.png"), "png");
+    expect((await store.queryFiles({ search: "banner" })).files[0]?.url).toBe(
+      "/news/banner.png",
+    );
+
+    // Other articles refer to it by its path or full address
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `siteUrl: https://example.com/\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
+    );
+    await writeFile(
+      join(dir, "articles/page/about-us/article.md"),
+      `<!--yaml\ndate: ${DATE}\n-->\n# About us\n\n![](https://example.com/news/banner.png) [b](/news/banner.png)`,
+    );
+    expect(
+      await store.fileReferences("article", "index", "banner.png"),
+    ).toEqual([{ type: "page", slug: "about-us" }]);
+  });
+
+  it("should list the articles that refer to a file, without changing them", async () => {
+    const { dir, store } = await copySite();
+    const before = await readFile(
+      join(dir, "articles/article/first/article.md"),
+      "utf8",
+    );
+    await writeFile(
+      join(dir, "articles/article/second/article.md"),
+      `<!--yaml\ndate: ${DATE}\n-->\n# Second\n\n[Guide](/news/first/guide.pdf)`,
+    );
+    // An article that can't be read is left alone
+    await mkdir(join(dir, "articles/article/broken"));
+    await writeFile(
+      join(dir, "articles/article/broken/article.md"),
+      "<!--yaml\n: :\n-->\nguide.pdf",
+    );
+    expect(await store.fileReferences("article", "first", "guide.pdf")).toEqual(
+      [
+        { type: "article", slug: "first" },
+        { type: "article", slug: "second" },
+      ],
+    );
+    expect(
+      await readFile(join(dir, "articles/article/first/article.md"), "utf8"),
+    ).toBe(before);
+  });
+
+  it("should replace a file with one of the same name, changing no articles", async () => {
+    const { dir, store } = await copySite();
+    expect(
+      await store.replaceFile(
+        "article",
+        "first",
+        "thumb.png",
+        "Thumb.PNG",
+        new Uint8Array([1, 2]),
+      ),
+    ).toEqual({ name: "thumb.png", articles: [] });
+    expect([
+      ...(await readFile(join(dir, "articles/article/first/thumb.png"))),
+    ]).toEqual([1, 2]);
+    expect((await store.queryFiles({ search: "thumb" })).files[0]?.size).toBe(
+      2,
+    );
+  });
+
+  it("should replace a file with another name, switching references to it in every article", async () => {
+    const { dir, store } = await copySite();
+    await writeFile(
+      join(dir, "articles/page/about-us/article.md"),
+      `<!--yaml\ndate: ${DATE}\n-->\n# About us\n\n![](/news/first/thumb.png)`,
+    );
+    expect(
+      await store.replaceFile(
+        "article",
+        "first",
+        "thumb.png",
+        "New thumb.jpg",
+        new Uint8Array([3]),
+      ),
+    ).toEqual({
+      name: "new-thumb.jpg",
+      articles: [
+        { type: "article", slug: "first" },
+        { type: "page", slug: "about-us" },
+      ],
+    });
+    const first = await readFile(
+      join(dir, "articles/article/first/article.md"),
+      "utf8",
+    );
+    expect(first).toContain("thumbnail: new-thumb.jpg");
+    expect(first).toContain("![an image](new-thumb.jpg)");
+    expect(first).not.toContain("thumb.png");
+    expect(
+      await readFile(join(dir, "articles/page/about-us/article.md"), "utf8"),
+    ).toContain("![](/news/first/new-thumb.jpg)");
+    expect(await readdir(join(dir, "articles/article/first"))).toEqual([
+      "article.md",
+      "guide.pdf",
+      "new-thumb.jpg",
+    ]);
+    expect(
+      (await store.queryFiles({ type: "article" })).files.map((f) => f.name),
+    ).toEqual(["guide.pdf", "new-thumb.jpg"]);
+  });
+
+  it("should refuse a replacement whose name another file has, or files that aren't there", async () => {
+    const { store } = await copySite();
+    await expect(
+      store.replaceFile(
+        "article",
+        "first",
+        "thumb.png",
+        "guide.pdf",
+        new Uint8Array(),
+      ),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "A file called guide.pdf is already in article/first",
+    });
+    for (const name of ["missing.png", "article.md", ".hidden", "../x.png"])
+      await expect(
+        store.deleteFile("article", "first", name),
+      ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("should delete a file, removing references to it in every article", async () => {
+    const { dir, store } = await copySite();
+    expect(await store.deleteFile("article", "first", "thumb.png")).toEqual({
+      articles: [{ type: "article", slug: "first" }],
+    });
+    const first = await readFile(
+      join(dir, "articles/article/first/article.md"),
+      "utf8",
+    );
+    expect(first).not.toContain("thumb.png");
+    expect(first).toContain("  - url: guide.pdf\n");
+    expect(await readdir(join(dir, "articles/article/first"))).toEqual([
+      "article.md",
+      "guide.pdf",
+    ]);
+  });
+
   it("should watch the articles folder for changes by default, until closed", async () => {
     const { dir } = await copySite();
     let updates = 0;

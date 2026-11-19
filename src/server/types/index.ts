@@ -77,6 +77,79 @@ export interface ArticlePage {
   perPage: number;
 }
 
+/** The kind of a file, by its extension */
+export type FileKind =
+  "image" | "document" | "archive" | "video" | "audio" | "other";
+
+/** A file in an article's folder, as the article index lists it */
+export interface IndexedFile {
+  /** The article's type and slug */
+  type: string;
+  slug: string;
+  /** The file's name in the article's folder */
+  name: string;
+  kind: FileKind;
+  /** Its size in bytes */
+  size: number;
+  /** When it last changed (ISO 8601) */
+  updated: string;
+}
+
+/** A file, as the file browser shows it */
+export interface FileSummary extends IndexedFile {
+  /** Its path on the website, e.g. "/news/welcome/photo.png" */
+  url: string;
+}
+
+/** What files are sorted by: their name, kind, size, or location (article type and slug) */
+export type FileSort = "name" | "kind" | "size" | "location";
+
+/** Each file sort's default order: sizes largest first, the others A to Z */
+export const DEFAULT_FILE_ORDERS: Readonly<Record<FileSort, ArticleOrder>> = {
+  name: "asc",
+  kind: "asc",
+  size: "desc",
+  location: "asc",
+};
+
+/** A search of the article folders' files; every part is optional */
+export interface FileQuery {
+  /** Text the name contains (ignoring case) */
+  search?: string | undefined;
+  kind?: FileKind | undefined;
+  /** The article type the files are in */
+  type?: string | undefined;
+  /** Default: "location" */
+  sort?: FileSort | undefined;
+  /** Default: the sort's own default (see `DEFAULT_FILE_ORDERS`) */
+  order?: ArticleOrder | undefined;
+  /** The page to show, from 1 (default: 1) */
+  page?: number | undefined;
+  /** Files per page, at most 50 (default: 50) */
+  perPage?: number | undefined;
+}
+
+/** A page of files found by a `FileQuery` */
+export interface FilePage {
+  files: FileSummary[];
+  total: number;
+  page: number;
+  pages: number;
+  perPage: number;
+}
+
+/** What the file browser's filters can choose from: the kinds of files and the article types they are in */
+export interface FileFilters {
+  kinds: FileKind[];
+  types: string[];
+}
+
+/** The result of replacing or deleting a file: the replacement's name, and the articles whose references changed */
+export interface FileChange {
+  name?: string | undefined;
+  articles: ArticleLocation[];
+}
+
 /** A type's most recently changed articles, for the editor's nav */
 export interface RecentArticles {
   type: string;

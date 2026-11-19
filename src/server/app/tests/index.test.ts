@@ -3,7 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { PREVIEW_CSP, articleQuery, createEditorApp, previewCsp } from "..";
+import {
+  PREVIEW_CSP,
+  articleQuery,
+  createEditorApp,
+  fileQuery,
+  previewCsp,
+} from "..";
 import { ArticleStore } from "../../store";
 import { loadSiteConfig } from "../../../generator/configFile";
 
@@ -100,6 +106,68 @@ describe("createEditorApp", () => {
       authors: ["Matt Scheurich", "Zoë Ångström"],
       tags: ["News", "Release Notes"],
     });
+  });
+
+  it("should find, replace and delete files, refusing changes from other origins", async () => {
+    const { app } = await setup();
+    const found = (await (
+      await app.request("/api/files?kind=image&sort=name")
+    ).json()) as { files: { name: string; url: string }[]; total: number };
+    expect(found.files).toEqual([
+      expect.objectContaining({
+        name: "thumb.png",
+        url: "/news/first/thumb.png",
+      }),
+    ]);
+    expect(await (await app.request("/api/files/filters")).json()).toEqual({
+      kinds: ["document", "image"],
+      types: ["article"],
+    });
+    expect(
+      await (
+        await app.request("/api/files/article/first/guide.pdf/references")
+      ).json(),
+    ).toEqual([{ type: "article", slug: "first" }]);
+
+    const upload = (name: string) => {
+      const body = new FormData();
+      body.append("file", new File([new Uint8Array([1])], name));
+      return body;
+    };
+    expect(
+      (
+        await app.request("/api/files/article/first/thumb.png", {
+          method: "PUT",
+          body: upload("thumb.png"),
+        })
+      ).status,
+    ).toBe(403);
+    const replaced = await app.request("/api/files/article/first/thumb.png", {
+      method: "PUT",
+      headers: { Origin: ORIGIN },
+      body: upload("Cover.png"),
+    });
+    expect(await replaced.json()).toEqual({
+      name: "cover.png",
+      articles: [{ type: "article", slug: "first" }],
+    });
+    const noFile = await app.request("/api/files/article/first/cover.png", {
+      method: "PUT",
+      headers: { Origin: ORIGIN },
+      body: new FormData(),
+    });
+    expect(noFile.status).toBe(400);
+    const deleted = await app.request("/api/files/article/first/cover.png", {
+      method: "DELETE",
+      headers: { Origin: ORIGIN },
+    });
+    expect(await deleted.json()).toEqual({
+      articles: [{ type: "article", slug: "first" }],
+    });
+    expect(
+      (await app.request("/api/files/article/first/cover.png/references"))
+        .status,
+    ).toBe(404);
   });
 
   it("should create, save, move and delete articles", async () => {
@@ -443,6 +511,34 @@ describe("articleQuery", () => {
     });
     expect(articleQuery(new URLSearchParams("sort=updated"))).toEqual({
       sort: "updated",
+    });
+  });
+});
+
+describe("fileQuery", () => {
+  it("should read a file query from search parameters, leaving out what it can't use", () => {
+    expect(
+      fileQuery(
+        new URLSearchParams(
+          "search=photo&kind=image&type=news&sort=size&order=asc&page=2&perPage=10",
+        ),
+      ),
+    ).toEqual({
+      search: "photo",
+      kind: "image",
+      type: "news",
+      sort: "size",
+      order: "asc",
+      page: 2,
+      perPage: 10,
+    });
+    expect(
+      fileQuery(
+        new URLSearchParams("kind=video-game&sort=colour&order=up&page=x"),
+      ),
+    ).toEqual({});
+    expect(fileQuery(new URLSearchParams("order=desc"))).toEqual({
+      order: "desc",
     });
   });
 });

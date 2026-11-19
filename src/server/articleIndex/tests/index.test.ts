@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   ArticleIndex,
+  articleFiles,
   articleFilters,
   comparable,
   MAX_PER_PAGE,
@@ -13,6 +14,18 @@ import {
   summarizeArticle,
 } from "..";
 import type { ArticleSummary } from "../../types";
+
+// Files named "vanishing…" are removed between being listed and being read
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const fs = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...fs,
+    stat: (async (path: string) =>
+      String(path).includes("vanishing")
+        ? Promise.reject(new Error("ENOENT"))
+        : fs.stat(path)) as typeof fs.stat,
+  };
+});
 
 const ARTICLES = fileURLToPath(
   new URL("../../../shared/tests/fixtures/site/articles", import.meta.url),
@@ -206,6 +219,27 @@ describe("recentArticles and articleFilters", () => {
   });
 });
 
+describe("articleFiles", () => {
+  it("should list an article folder's files with their kind, size and when they changed", async () => {
+    const dir = await copyArticles();
+    await mkdir(join(dir, "article/first/sub-folder"));
+    await writeFile(join(dir, "article/first/.hidden"), "x");
+    await writeFile(join(dir, "article/first/vanishing.png"), "x");
+    expect(await articleFiles(dir, "article", "first")).toEqual([
+      {
+        type: "article",
+        slug: "first",
+        name: "guide.pdf",
+        kind: "document",
+        size: 13,
+        updated: expect.stringMatching(/^\d{4}-\d\d-\d\dT/),
+      },
+      expect.objectContaining({ name: "thumb.png", kind: "image", size: 8 }),
+    ]);
+    expect(await articleFiles(dir, "article", "missing")).toEqual([]);
+  });
+});
+
 describe("ArticleIndex", () => {
   it("should read every article, skipping folders that aren't articles", async () => {
     const dir = await copyArticles();
@@ -223,6 +257,11 @@ describe("ArticleIndex", () => {
     expect(index.articles().find((a) => a.slug === "first")?.title).toBe(
       "First article",
     );
+    // With their files, but not those of folders without an article.md
+    expect(index.files().map((file) => `${file.slug}/${file.name}`)).toEqual([
+      "first/guide.pdf",
+      "first/thumb.png",
+    ]);
   });
 
   it("should update and drop entries", async () => {

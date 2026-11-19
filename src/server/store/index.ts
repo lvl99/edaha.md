@@ -59,10 +59,23 @@ import {
   RECENT_COUNT,
   type ArticleIndexOptions,
 } from "../articleIndex/index.ts";
+import {
+  changeArticleReferences,
+  fileFilters,
+  fileReferences,
+  queryFiles,
+  type ReferenceChange,
+} from "../files/index.ts";
+import { folderPath, folderUrl } from "../../generator/urls/index.ts";
 import type {
   ArticleFilters,
+  ArticleLocation,
   ArticlePage,
   ArticleQuery,
+  FileChange,
+  FileFilters,
+  FilePage,
+  FileQuery,
   ArticleTypeLabels,
   RecentArticles,
   EditorArticle,
@@ -341,6 +354,168 @@ export class ArticleStore {
    */
   async filters(): Promise<ArticleFilters> {
     return articleFilters((await this.index()).articles());
+  }
+
+  /**
+   * Where articles are on the website, from the config file: a function giving an article's path (e.g. "/news/hello/";
+   * an index article is at its type's path), and the website's address without a trailing slash, if it has one.
+   */
+  private async articleUrls() {
+    const config = await this.config();
+    const typeUrl = (type: string) =>
+      folderUrl(
+        folderPath(
+          config.path,
+          (config.types[type] ?? defaultTypeConfig(type)).path,
+        ),
+      );
+    return {
+      articleUrl: (type: string, slug: string) =>
+        slug === "index" ? typeUrl(type) : `${typeUrl(type)}${slug}/`,
+      siteUrl: config.siteUrl?.replace(/\/+$/, ""),
+    };
+  }
+
+  /**
+   * Find files in the articles' folders by name, kind and article type, sorted by name, kind, size or location, a page
+   * at a time, with their paths on the website.
+   *
+   * @example
+   * await store.queryFiles({ kind: "image", sort: "size" });
+   */
+  async queryFiles(query: FileQuery): Promise<FilePage> {
+    const { articleUrl } = await this.articleUrls();
+    const page = queryFiles((await this.index()).files(), query);
+    return {
+      ...page,
+      files: page.files.map((file) => ({
+        ...file,
+        url: articleUrl(file.type, file.slug) + file.name,
+      })),
+    };
+  }
+
+  /** The kinds of files and the article types they are in, for the file browser's filters */
+  async fileFilters(): Promise<FileFilters> {
+    return fileFilters((await this.index()).files());
+  }
+
+  /** A file's path in an article's folder. Throws a 404 EditorError if there is no such file. */
+  private async filePath(type: string, slug: string, name: string) {
+    if (
+      name === "article.md" ||
+      name !== basename(name) ||
+      name.startsWith(".")
+    )
+      throw new EditorError(404, "File not found");
+    const path = join(this.dir(type, slug), name);
+    if (!(await exists(path))) throw new EditorError(404, "File not found");
+    return path;
+  }
+
+  /**
+   * Change references to a file in every article (see `changeArticleReferences`), or only find them with `dryRun`.
+   * Returns the articles that refer to it.
+   */
+  private async changeReferences(
+    file: ArticleLocation & { name: string },
+    change: ReferenceChange,
+    dryRun = false,
+  ): Promise<ArticleLocation[]> {
+    const index = await this.index();
+    const { articleUrl, siteUrl } = await this.articleUrls();
+    const url = articleUrl(file.type, file.slug) + file.name;
+    const changed: ArticleLocation[] = [];
+    for (const { type, slug } of index.articles()) {
+      const references = fileReferences(
+        file.name,
+        url,
+        siteUrl,
+        type === file.type && slug === file.slug,
+      );
+      let source: string;
+      let next: string | undefined;
+      try {
+        source = await this.source(type, slug);
+        next = changeArticleReferences(source, references, change);
+      } catch {
+        // Articles that can't be read are left alone
+        continue;
+      }
+      if (next === undefined) continue;
+      changed.push({ type, slug });
+      if (!dryRun) {
+        await writeFile(join(this.dir(type, slug), "article.md"), next);
+        await index.update(type, slug);
+      }
+    }
+    return changed;
+  }
+
+  /**
+   * The articles that refer to a file, e.g. to say which will change before replacing or deleting it.
+   */
+  async fileReferences(
+    type: string,
+    slug: string,
+    name: string,
+  ): Promise<ArticleLocation[]> {
+    await this.filePath(type, slug, name);
+    return this.changeReferences({ type, slug, name }, { remove: true }, true);
+  }
+
+  /**
+   * Replace a file in an article's folder with an uploaded one. With the same (safe) name, the file is overwritten;
+   * with another, the new file is saved under its own name, references to the old one switch to it in every article,
+   * and the old file is removed. Throws a 409 EditorError if another file already has the new name.
+   */
+  async replaceFile(
+    type: string,
+    slug: string,
+    name: string,
+    fileName: string,
+    contents: Uint8Array,
+  ): Promise<FileChange> {
+    const oldPath = await this.filePath(type, slug, name);
+    const newName = safeFileName(fileName);
+    const newPath = join(this.dir(type, slug), newName);
+    if (newName !== name && (await exists(newPath)))
+      throw new EditorError(
+        409,
+        `A file called ${newName} is already in ${type}/${slug}`,
+      );
+    await writeFile(newPath, contents);
+    const articles: ArticleLocation[] = [];
+    if (newName !== name) {
+      articles.push(
+        ...(await this.changeReferences(
+          { type, slug, name },
+          { rename: newName },
+        )),
+      );
+      await rm(oldPath);
+    }
+    await (await this.index()).update(type, slug);
+    return { name: newName, articles };
+  }
+
+  /**
+   * Delete a file from an article's folder, removing references to it in every article (images are removed, links keep
+   * their text, a thumbnail is cleared and attachments are removed).
+   */
+  async deleteFile(
+    type: string,
+    slug: string,
+    name: string,
+  ): Promise<FileChange> {
+    const path = await this.filePath(type, slug, name);
+    const articles = await this.changeReferences(
+      { type, slug, name },
+      { remove: true },
+    );
+    await rm(path);
+    await (await this.index()).update(type, slug);
+    return { articles };
   }
 
   /** Stop watching the articles folder for changes */

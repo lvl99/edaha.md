@@ -8,8 +8,10 @@ import {
 } from "../../generator/article/index.ts";
 import { isSlug } from "../../generator/slug/index.ts";
 import { DEFAULT_ORDERS, type ArticleSort } from "../types/index.ts";
+import { fileKind } from "../files/index.ts";
 import type {
   ArticleFilters,
+  IndexedFile,
   ArticlePage,
   ArticleQuery,
   ArticleSummary,
@@ -215,6 +217,59 @@ export const articleFilters = (articles: ArticleSummary[]): ArticleFilters => ({
   tags: uniqueSorted(articles.flatMap((article) => article.tags)),
 });
 
+/** An article in the index: its summary and the files in its folder */
+interface IndexEntry {
+  summary: ArticleSummary;
+  files: IndexedFile[];
+}
+
+/**
+ * The files in an article's folder (not article.md or hidden files), with their kind, size and when they last changed.
+ *
+ * @example
+ * await articleFiles("my-site/articles", "news", "hello"); // [{ type: "news", slug: "hello", name: "photo.png", ... }]
+ */
+export const articleFiles = async (
+  articlesDir: string,
+  type: string,
+  slug: string,
+): Promise<IndexedFile[]> => {
+  const dir = join(articlesDir, type, slug);
+  let names: string[];
+  try {
+    names = (await readdir(dir, { withFileTypes: true }))
+      .filter(
+        (entry) =>
+          entry.isFile() &&
+          entry.name !== "article.md" &&
+          !entry.name.startsWith("."),
+      )
+      .map((entry) => entry.name)
+      .sort();
+  } catch {
+    return [];
+  }
+  const files = await Promise.all(
+    names.map(async (name) => {
+      try {
+        const info = await stat(join(dir, name));
+        return {
+          type,
+          slug,
+          name,
+          kind: fileKind(name),
+          size: info.size,
+          updated: info.mtime.toISOString(),
+        };
+      } catch {
+        // Removed while being read
+        return undefined;
+      }
+    }),
+  );
+  return files.filter((file) => file !== undefined);
+};
+
 /** An article's key in the index, e.g. "news/hello" */
 const key = (type: string, slug: string) => `${type}/${slug}`;
 
@@ -239,7 +294,8 @@ export interface ArticleIndexOptions {
  * queryArticles(index.articles(), { search: "hello" });
  */
 export class ArticleIndex {
-  private readonly entries = new Map<string, ArticleSummary>();
+  /** Each article's summary and the files in its folder, by "type/slug" */
+  private readonly entries = new Map<string, IndexEntry>();
 
   private readonly articlesDir: string;
 
@@ -265,43 +321,60 @@ export class ArticleIndex {
 
   /** Every indexed article */
   articles(): ArticleSummary[] {
-    return [...this.entries.values()];
+    return [...this.entries.values()].map((entry) => entry.summary);
+  }
+
+  /** Every file in the indexed articles' folders */
+  files(): IndexedFile[] {
+    return [...this.entries.values()].flatMap((entry) => entry.files);
+  }
+
+  /** An article's summary and files, or undefined if it has no article.md */
+  private async readEntry(
+    type: string,
+    slug: string,
+  ): Promise<IndexEntry | undefined> {
+    const [summary, files] = await Promise.all([
+      summarizeArticle(this.articlesDir, type, slug),
+      articleFiles(this.articlesDir, type, slug),
+    ]);
+    return summary && { summary, files };
   }
 
   /** Read every article again, replacing the index */
   async load(): Promise<void> {
-    const summaries = await Promise.all(
+    const entries = await Promise.all(
       (await slugFolders(this.articlesDir)).map((type) => this.readType(type)),
     );
     this.entries.clear();
-    for (const summary of summaries.flat())
-      this.entries.set(key(summary.type, summary.slug), summary);
+    for (const entry of entries.flat())
+      this.entries.set(key(entry.summary.type, entry.summary.slug), entry);
   }
 
   /** Read every article of a type */
-  private async readType(type: string): Promise<ArticleSummary[]> {
+  private async readType(type: string): Promise<IndexEntry[]> {
     const slugs = await slugFolders(join(this.articlesDir, type));
-    const summaries = await Promise.all(
-      slugs.map((slug) => summarizeArticle(this.articlesDir, type, slug)),
+    const entries = await Promise.all(
+      slugs.map((slug) => this.readEntry(type, slug)),
     );
-    return summaries.filter((summary) => summary !== undefined);
+    return entries.filter((entry) => entry !== undefined);
   }
 
   /** Read a type's articles again, dropping those that are gone */
   private async updateType(type: string): Promise<void> {
-    const summaries = await this.readType(type);
-    for (const [entry, summary] of this.entries)
-      if (summary.type === type) this.entries.delete(entry);
-    for (const summary of summaries)
-      this.entries.set(key(summary.type, summary.slug), summary);
+    const entries = await this.readType(type);
+    for (const [name, entry] of this.entries)
+      if (entry.summary.type === type) this.entries.delete(name);
+    for (const entry of entries)
+      this.entries.set(key(entry.summary.type, entry.summary.slug), entry);
   }
 
   /**
-   * Read an article again, e.g. after the editor saved it. It is dropped if it's gone.
+   * Read an article and its files again, e.g. after the editor saved it. It is dropped if it's gone.
    */
   async update(type: string, slug: string): Promise<void> {
-    const summary = await summarizeArticle(this.articlesDir, type, slug);
-    if (summary) this.entries.set(key(type, slug), summary);
+    const entry = await this.readEntry(type, slug);
+    if (entry) this.entries.set(key(type, slug), entry);
     else this.entries.delete(key(type, slug));
   }
 
