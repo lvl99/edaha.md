@@ -1447,19 +1447,31 @@ describe("edaha-article default author", () => {
           .placeholder,
     );
 
-  it("should show the default author as the author fields' placeholders, when the article has no author", async () => {
-    const { element } = await setup({ ...ARTICLE, author: undefined });
-    expect(placeholders(element)).toEqual([
+  /** A form for an article without an author, knowing the site's default authors */
+  const setupAuthors = async () => {
+    const result = await setup({ ...ARTICLE, author: undefined });
+    result.element.site = {
+      name: "Test News",
+      author: {
+        name: "Matt",
+        email: "matt@example.com",
+        url: "https://matt.example",
+      },
+      types: { news: { name: "News desk" }, notes: false },
+    };
+    await settle(result.element);
+    return result;
+  };
+
+  it("should show the site's default author as placeholders, when the article has no author", async () => {
+    const { element: unknown } = await setup({ ...ARTICLE, author: undefined });
+    expect(placeholders(unknown)).toEqual([
       "Defaults to the site name",
       "",
       "https://example.com",
     ]);
-    element.defaultAuthor = {
-      name: "Matt",
-      email: "matt@example.com",
-      url: "https://matt.example",
-    };
-    await settle(element);
+    const { element } = await setupAuthors();
+    expect(element.defaultAuthor()).toEqual(element.site?.author);
     expect(placeholders(element)).toEqual([
       "Defaults to Matt",
       "matt@example.com",
@@ -1476,5 +1488,42 @@ describe("edaha-article default author", () => {
       "",
       "https://example.com",
     ]);
+  });
+
+  it("should show the type's default author, or none", async () => {
+    const { element } = await setupAuthors();
+    element.data = { ...element.data, type: "news" };
+    await settle(element);
+    expect(element.defaultAuthor()).toEqual({ name: "News desk" });
+    expect(placeholders(element)[0]).toBe("Defaults to News desk");
+    element.data = { ...element.data, type: "notes" };
+    await settle(element);
+    expect(element.defaultAuthor()).toBeUndefined();
+    expect(placeholders(element)[0]).toBe("No author unless you name one");
+  });
+
+  it("should choose no author, disabling the author's fields, and type one to have an author again", async () => {
+    const { element, api } = await setupAuthors();
+    const noAuthor = find<HTMLInputElement>(element, ".no-author input");
+    expect(noAuthor.checked).toBe(false);
+    noAuthor.checked = true;
+    noAuthor.dispatchEvent(new Event("change"));
+    await settle(element);
+    expect(element.data.author).toBe(false);
+    expect(placeholders(element)).toEqual(["", "", "https://example.com"]);
+    expect(field(element, "author[name]").disabled).toBe(true);
+    await element.save();
+    expect(api.save.mock.calls[0]![1]).toMatchObject({ author: false });
+    noAuthor.checked = false;
+    noAuthor.dispatchEvent(new Event("change"));
+    await settle(element);
+    expect(element.data.author).toBeUndefined();
+    // Typing an author after "no author" starts a new one
+    element.data = { ...element.data, author: false };
+    input(
+      find<HTMLInputElement>(field(element, "author[email]"), "input"),
+      "a@b.c",
+    );
+    expect(element.data.author).toEqual({ name: "", email: "a@b.c" });
   });
 });

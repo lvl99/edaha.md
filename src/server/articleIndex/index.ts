@@ -89,7 +89,7 @@ export const summarizeArticle = async (
       title: config.title ?? splitContent(content).heading ?? slug,
       status: config.status,
       date: config.date,
-      author: config.author?.name,
+      author: config.author ? config.author.name : undefined,
       tags: config.tags,
       updated,
       ...(problems.length ? { problems } : {}),

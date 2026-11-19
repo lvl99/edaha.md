@@ -6,6 +6,7 @@ import type {
   MetadataInfo,
   EditorArticle,
   EditorAuthor,
+  SiteInfo,
   EditorArticleData,
   EditorAttachment,
 } from "../../../server/types/index.ts";
@@ -127,9 +128,10 @@ export const applyFieldChange = (
 ): EditorArticleData => {
   const author = /^author\[(name|email|url)\]$/.exec(name);
   if (author) {
+    // Typing an author replaces "no author"
     const next = {
       name: "",
-      ...data.author,
+      ...(data.author || {}),
       [author[1] as string]: value || undefined,
     };
     return {
@@ -310,7 +312,7 @@ export class EdahaArticle extends LitElement {
     savedData: { state: true },
     bodyChanged: { state: true },
     metadata: { attribute: false },
-    defaultAuthor: { attribute: false },
+    site: { attribute: false },
     metaProblems: { state: true },
     openGroups: { state: true },
   };
@@ -345,8 +347,8 @@ export class EdahaArticle extends LitElement {
   declare savedData: EditorArticleData;
   /** Whether the body differs from the saved one, compared as Markdown */
   declare bodyChanged: boolean;
-  /** The author of articles that don't name one (the website's, until it's known) */
-  declare defaultAuthor?: EditorAuthor | undefined;
+  /** The website's default authors: its own, and its types' (the website's name is assumed until it's known) */
+  declare site?: SiteInfo | undefined;
   /** The custom metadata fields, and which each type uses (none without it) */
   declare metadata?: MetadataInfo | undefined;
   /** Errors in the custom metadata values, from checking them or from the last save */
@@ -812,10 +814,32 @@ export class EdahaArticle extends LitElement {
   }
 
   /** Render the author fields */
+  /**
+   * The author the article has when it doesn't name one: its type's default, or the website's (undefined for none).
+   */
+  defaultAuthor(): EditorAuthor | undefined {
+    if (!this.site) return undefined;
+    const typeDefault = this.site.types[this.data.type];
+    if (typeDefault !== undefined) return typeDefault || undefined;
+    return this.site.author;
+  }
+
+  /** Render the author fields, with a choice of no author at all */
   private renderAuthor() {
-    const author = this.data.author;
-    // Without an author, the article has the default one, which the placeholders show
-    const fallback = author ? undefined : this.defaultAuthor;
+    const noAuthor = this.data.author === false;
+    const author = noAuthor
+      ? undefined
+      : (this.data.author as EditorAuthor | undefined);
+    const fallback = this.defaultAuthor();
+    // The default's details apply only when the article has no author of its own
+    const shown = author || noAuthor ? undefined : fallback;
+    const namePlaceholder = noAuthor
+      ? ""
+      : !this.site
+        ? "Defaults to the site name"
+        : fallback
+          ? `Defaults to ${fallback.name}`
+          : "No author unless you name one";
     return html`<edaha-article-data-group
       name="author"
       label="Author"
@@ -823,24 +847,41 @@ export class EdahaArticle extends LitElement {
       allowclear
       @group-clear=${() => (this.data = { ...this.data, author: undefined })}
     >
+      <label class="no-author">
+        <input
+          type="checkbox"
+          .checked=${noAuthor}
+          @change=${(event: Event) =>
+            (this.data = {
+              ...this.data,
+              author: (event.target as HTMLInputElement).checked
+                ? false
+                : undefined,
+            })}
+        />
+        No author
+      </label>
       <edaha-article-data-field
         name="author[name]"
         label="Name"
-        placeholder=${`Defaults to ${this.defaultAuthor?.name ?? "the site name"}`}
+        placeholder=${namePlaceholder}
+        ?disabled=${noAuthor}
         .value=${author?.name ?? ""}
       ></edaha-article-data-field>
       <edaha-article-data-field
         name="author[email]"
         type="email"
         label="Email address"
-        placeholder=${fallback?.email ?? ""}
+        placeholder=${shown?.email ?? ""}
+        ?disabled=${noAuthor}
         .value=${author?.email ?? ""}
       ></edaha-article-data-field>
       <edaha-article-data-field
         name="author[url]"
         type="url"
         label="Homepage"
-        placeholder=${fallback?.url ?? "https://example.com"}
+        placeholder=${shown?.url ?? "https://example.com"}
+        ?disabled=${noAuthor}
         .value=${author?.url ?? ""}
       ></edaha-article-data-field>
     </edaha-article-data-group>`;

@@ -129,6 +129,10 @@ describe("serializeArticle", () => {
     expect(serializeArticle(data({ author: { name: "Matt" } }), "")).toContain(
       "author: Matt\n",
     );
+    // No author is written as false
+    expect(serializeArticle(data({ author: false }), "")).toContain(
+      "author: false\n",
+    );
   });
 });
 
@@ -605,12 +609,20 @@ describe("ArticleStore", () => {
     expect(await store.site()).toEqual({
       name: "Test News",
       author: { name: "Test News" },
+      types: {},
     });
+    const config = await readFile(join(dir, "edahaconfig.yml"), "utf8");
     await writeFile(
       join(dir, "edahaconfig.yml"),
-      `author: Matt\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
+      `author: Matt\n${config}    author: false\n`,
     );
-    expect((await store.site()).author).toEqual({ name: "Matt" });
+    expect(await store.site()).toEqual({
+      name: "Test News",
+      author: { name: "Matt" },
+      types: { article: false },
+    });
+    await writeFile(join(dir, "edahaconfig.yml"), `author: false\n${config}`);
+    expect((await store.site()).author).toBeUndefined();
   });
 
   it("should give the configured article types with their labels", async () => {

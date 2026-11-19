@@ -80,6 +80,7 @@ const setup = async (recent = vi.fn(async () => RECENT)) => {
     site: vi.fn(async () => ({
       name: "Test News",
       author: { name: "Matt", email: "matt@example.com" },
+      types: {},
     })),
     metadata: vi.fn(async () => ({
       definitions: {},
@@ -424,9 +425,10 @@ describe("edaha-editor", () => {
     expect(api.read).toHaveBeenCalledWith(SUMMARIES[0]);
     const form = find<EdahaArticle>(element, "edaha-article");
     expect(form.article).toBe(ARTICLE);
-    expect(form.defaultAuthor).toEqual({
-      name: "Matt",
-      email: "matt@example.com",
+    expect(form.site).toEqual({
+      name: "Test News",
+      author: { name: "Matt", email: "matt@example.com" },
+      types: {},
     });
     // Configured types first, then other types articles use
     expect(form.typeOptions).toEqual([

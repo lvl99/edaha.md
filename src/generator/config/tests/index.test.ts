@@ -341,10 +341,37 @@ describe("default author", () => {
     });
   });
 
+  it("should read false as no author, for the site and for a type", () => {
+    expect(withAuthor(false)).toBe(false);
+    const config = parseConfig({
+      name: "News",
+      description: "Updates",
+      types: {
+        docs: { author: { name: "Docs team" } },
+        notes: { author: false },
+        news: {},
+      },
+    });
+    expect(config.types.docs?.author).toEqual({
+      name: "Docs team",
+      email: undefined,
+      url: undefined,
+    });
+    expect(config.types.notes?.author).toBe(false);
+    expect(config.types.news?.author).toBeUndefined();
+    expect(() =>
+      parseConfig({
+        name: "News",
+        description: "Updates",
+        types: { docs: { author: "!!" } },
+      }),
+    ).toThrow('"types.docs.author" needs a name with letters or numbers');
+  });
+
   it("should need a name with letters or numbers, and no other settings", () => {
     for (const author of ["!!", {}, { name: "--" }])
       expect(() => withAuthor(author)).toThrow(
-        '"author" needs a name with letters or numbers',
+        '"author" needs a name with letters or numbers, or false for no author',
       );
     expect(() => withAuthor({ name: "Matt", twitter: "@m" })).toThrow(
       'unknown "author" setting "twitter"',

@@ -44,11 +44,13 @@
 {% block aside %}
 <aside>
   <dl>
+    {% if article.author %}
     <dt>Author</dt>
     <dd>
       {{ article.author.name }}
       {% if article.author.url %}(<a href="{{ article.author.url }}" rel="author">website</a>){% endif %}
     </dd>
+    {% endif %}
     <dt>Date</dt>
     <dd><time datetime="{{ article.date }}">{{ article.date | date }}</time></dd>
     {% if article.tags.length %}

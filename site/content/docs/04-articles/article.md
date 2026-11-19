@@ -65,18 +65,18 @@ The header is never written into the built pages.
 
 ### Settings
 
-| Setting       | Description                                                                                                               | Default                                      |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `date`        | **Required.** The publication date, as an ISO 8601 timestamp, e.g. `2026-11-16T09:00:00Z` or `2026-11-16T10:00:00+01:00`. |                                              |
-| `status`      | `published` (in lists and feeds), `unlisted` (its own page only) or `draft` (not built).                                  | `published`                                  |
-| `title`       | The title, if the article doesn't start with a `# Title` heading.                                                         | The first `# Title` heading                  |
-| `author`      | The author's name, or `{ name, email, url }`.                                                                             | The config's `author`, or the website's name |
-| `tags`        | A list of tag names, e.g. `[News, Release notes]`.                                                                        | None                                         |
-| `excerpt`     | The excerpt shown in lists and feeds, in Markdown.                                                                        | See [Excerpts](#excerpts)                    |
-| `thumbnail`   | An image for lists: a file in the article's folder, or an absolute URL.                                                   | None                                         |
-| `attachments` | A list of files to download: `{ url, name, thumbnail, mimeType }`, where only `url` is required.                          | None                                         |
-| `template`    | The template to render the article with, e.g. `home`. See [Templating](/docs/05-templating/).                             | `single`                                     |
-| `type`        | The article's type. It must match its type folder.                                                                        | The type folder                              |
+| Setting       | Description                                                                                                               | Default                                                                                      |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `date`        | **Required.** The publication date, as an ISO 8601 timestamp, e.g. `2026-11-16T09:00:00Z` or `2026-11-16T10:00:00+01:00`. |                                                                                              |
+| `status`      | `published` (in lists and feeds), `unlisted` (its own page only) or `draft` (not built).                                  | `published`                                                                                  |
+| `title`       | The title, if the article doesn't start with a `# Title` heading.                                                         | The first `# Title` heading                                                                  |
+| `author`      | The author's name, `{ name, email, url }`, or `false` for no author.                                                      | The type's or the config's [`author`](/docs/03-configuration/#author), or the website's name |
+| `tags`        | A list of tag names, e.g. `[News, Release notes]`.                                                                        | None                                                                                         |
+| `excerpt`     | The excerpt shown in lists and feeds, in Markdown.                                                                        | See [Excerpts](#excerpts)                                                                    |
+| `thumbnail`   | An image for lists: a file in the article's folder, or an absolute URL.                                                   | None                                                                                         |
+| `attachments` | A list of files to download: `{ url, name, thumbnail, mimeType }`, where only `url` is required.                          | None                                                                                         |
+| `template`    | The template to render the article with, e.g. `home`. See [Templating](/docs/05-templating/).                             | `single`                                                                                     |
+| `type`        | The article's type. It must match its type folder.                                                                        | The type folder                                                                              |
 
 Articles can also have the custom settings defined in the config file's [`metadata`](/docs/03-configuration/#metadata), for the types that use them. Their values are checked: an invalid value is a warning when building (and is left out of templates), and the editor won't save it. Settings nobody defined, and custom settings the article's type doesn't use, are kept as they are with a warning.
 

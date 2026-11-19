@@ -229,13 +229,14 @@ reservedPaths: [app, api, jwks.json]
 
 Settings for each article type, by its folder name. Each type can set:
 
-| Setting       | Description                                                              | Default                       |
-| ------------- | ------------------------------------------------------------------------ | ----------------------------- |
-| `path`        | The type's URL path: lowercase kebab-case, or `""` for the website root. | The type's name               |
-| `labelSingle` | The label for one article, e.g. "Article".                               | The name, capitalised         |
-| `labelPlural` | The label for several articles, e.g. "Articles".                         | `labelSingle` followed by "s" |
-| `generate`    | What is built for the type (see below), or `false` to build nothing.     | Everything                    |
-| `metadata`    | The [custom settings](#metadata) the type uses, or `false` for none.     | All of them                   |
+| Setting       | Description                                                                                           | Default                       |
+| ------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `path`        | The type's URL path: lowercase kebab-case, or `""` for the website root.                              | The type's name               |
+| `labelSingle` | The label for one article, e.g. "Article".                                                            | The name, capitalised         |
+| `labelPlural` | The label for several articles, e.g. "Articles".                                                      | `labelSingle` followed by "s" |
+| `generate`    | What is built for the type (see below), or `false` to build nothing.                                  | Everything                    |
+| `metadata`    | The [custom settings](#metadata) the type uses, or `false` for none.                                  | All of them                   |
+| `author`      | The author of the type's articles that don't name one, or `false` for none ([see `author`](#author)). | The site's `author`           |
 
 `generate` has these settings, all `true` by default:
 
@@ -296,9 +297,9 @@ See [Embeds](/docs/07-embeds/) for how to write one.
 
 ### `author`
 
-The author of articles that don't name one: their author lists and feeds use it, and the editor shows it in the author fields.
+The author of articles that don't name one (unless their type has its own `author`): their author lists and feeds use it, and the editor shows it in the author fields. `false` means no author: those articles have none, and aren't in any author's list.
 
-- **Accepted values:** a name, or `{ name, email, url }` like an article's [`author`](/docs/04-articles/#settings).
+- **Accepted values:** a name, `{ name, email, url }` like an article's [`author`](/docs/04-articles/#settings), or `false`.
 - **Default:** the website's [`name`](#name)
 
 ```yaml
@@ -306,7 +307,14 @@ author:
   name: Jo Bloggs
   email: jo@example.com
   url: https://example.com
+types:
+  docs:
+    author: Docs team # docs articles without an author have this one
+  page:
+    author: false # pages without an author have none
 ```
+
+An article chooses its own author, or `author: false` for none, whatever the defaults are.
 
 ### `metadata`
 

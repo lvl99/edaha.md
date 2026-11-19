@@ -798,7 +798,7 @@ export class EdahaEditor extends LitElement {
                   .article=${this.article}
                   .typeOptions=${this.typeOptions()}
                   .metadata=${this.metadata}
-                  .defaultAuthor=${this.site?.author}
+                  .site=${this.site}
                   @article-saved=${(event: CustomEvent<ArticleLocation>) => void this.onSaved(event)}
                   @article-deleted=${() => void this.onDeleted()}
                 ></edaha-article>`,

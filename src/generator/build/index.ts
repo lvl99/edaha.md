@@ -227,7 +227,10 @@ export const siteData = (
   description: config.description,
   url: url.replace(/\/+$/, ""),
   path: folderUrl(folderPath(config.path)),
-  author: config.author ?? { name: config.name },
+  author:
+    config.author === false
+      ? undefined
+      : (config.author ?? { name: config.name }),
   types: Object.fromEntries(
     Object.entries(typeConfigs).map(([type, typeConfig]) => [
       type,

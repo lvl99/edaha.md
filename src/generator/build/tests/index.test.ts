@@ -126,6 +126,9 @@ describe("siteData", () => {
       siteData({ ...config, author: { name: "Matt" } }, {}, "https://e.com")
         .author,
     ).toEqual({ name: "Matt" });
+    expect(
+      siteData({ ...config, author: false }, {}, "https://e.com").author,
+    ).toBeUndefined();
   });
 });
 
@@ -815,5 +818,40 @@ describe("buildSite custom metadata", () => {
         'articles/page/meta: "oops" isn\'t a known setting',
       ]),
     );
+  });
+});
+
+describe("buildSite authors", () => {
+  it("should use the type's default author, and leave articles without one out of author lists", async () => {
+    const space = await workspace();
+    // Pages have no author by default; one page names its own
+    await configurePages(space, "    author: false\n");
+    await writeArticle(
+      space,
+      "page/anon",
+      "<!--yaml\ndate: 2026-10-19\n-->\n# Anon",
+    );
+    await writeArticle(
+      space,
+      "page/signed",
+      "<!--yaml\ndate: 2026-10-19\nauthor: Zoë\n-->\n# Signed",
+    );
+    // A news article without an author, which can't have one
+    await writeArticle(
+      space,
+      "article/nobody",
+      "<!--yaml\ndate: 2026-10-19\nauthor: false\n-->\n# Nobody",
+    );
+    const { read, result } = await build(space, "https://example.com");
+    // The article page shows no author (the theme's page template never does)
+    expect(await read("news/nobody/index.html")).not.toContain(
+      "<dt>Author</dt>",
+    );
+    expect(await read("news/first/index.html")).toContain("<dt>Author</dt>");
+    expect(result.files).toContain("page/authors/zoe/index.html");
+    // Without an author, articles are in no author's list
+    expect(
+      result.files.filter((file) => file.startsWith("page/authors/")),
+    ).toEqual(["page/authors/zoe/feed.xml", "page/authors/zoe/index.html"]);
   });
 });

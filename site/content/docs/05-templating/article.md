@@ -79,7 +79,7 @@ The editor lists the templates an article can use.
 Every template gets:
 
 - `site.name` and `site.description`: the website's name and description.
-- `site.author`: the author of articles that don't name one (`name`, `email` and `url`): the config file's `author`, or the website's name.
+- `site.author`: the author of articles that don't name one (`name`, `email` and `url`): the config file's `author`, the website's name without one, or nothing when it is `false`.
 - `site.url`: the website's absolute URL, e.g. `https://example.com`, for links that leave the website (e.g. in feeds).
 - `site.path`: the URL of the website's home page, e.g. `/` (or `/docs/` with the `path` setting `docs`).
 - `site.types`: each article type's settings (`labelSingle`, `labelPlural`, `path`, `generate`) and `url`.
@@ -103,7 +103,7 @@ Article pages also get `article`:
 | `article.url`                                    | The page's URL, e.g. `/news/hello-world/`.                                                                                                                                              |
 | `article.type`, `article.slug`, `article.status` | The type, slug and status (`published` or `unlisted`).                                                                                                                                  |
 | `article.date`                                   | The date, as an ISO 8601 timestamp. Use the `date` filter to show it.                                                                                                                   |
-| `article.author`                                 | `name`, `email`, `url`, and `listUrl` (the author's list).                                                                                                                              |
+| `article.author`                                 | `name`, `email`, `url`, and `listUrl` (the author's list); nothing for articles without an author, so check it first: `{% if article.author %}`.                                        |
 | `article.tags`                                   | Each tag's `name` and `url` (the tag's list).                                                                                                                                           |
 | `article.thumbnail`                              | The thumbnail's URL, if there is one.                                                                                                                                                   |
 | `article.bodyHtml`, `article.bodyText`           | The body as HTML, and as plain text.                                                                                                                                                    |

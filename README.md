@@ -99,7 +99,7 @@ publishDir: ../app/dist
 siteUrl: https://example.com
 # Optional; paths at the website's root that articles and types can't use, e.g. another app's routes
 reservedPaths: [app, api]
-# Optional; the author of articles that don't name one: a name or { name, email, url }. Default: the website's name
+# Optional; the author of articles that don't name one: a name, { name, email, url }, or false for none. Types can set their own. Default: the website's name
 author: Jo Bloggs
 # Optional; custom embed renderers, only in a JavaScript config file (see Embeds)
 # embeds: [vimeo]
@@ -139,7 +139,7 @@ The config header at the top is YAML (`<!--yaml` or `<!--yml`) or JSON (`<!--jso
 <!--yaml
 date: 2026-10-19T12:00:00.000Z # required
 status: published # published (default), draft (not built) or unlisted (own page only, not in lists or feeds)
-author: Jo Bloggs # or { name, email, url }; defaults to the config's author, then the website name
+author: Jo Bloggs # or { name, email, url }, or false for none; defaults to the type's or config's author, then the website name
 template: single # optional; a template in templates/<type>/ (or templates/article/), e.g. home
 tags: [News]
 thumbnail: thumb.jpg # relative to the article folder, or an absolute URL

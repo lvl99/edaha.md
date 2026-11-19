@@ -296,6 +296,11 @@ outputDir: site/build
 <td>The <a href="#metadata">custom settings</a> the type uses, or <code>false</code> for none.</td>
 <td>All of them</td>
 </tr>
+<tr>
+<td><code>author</code></td>
+<td>The author of the type’s articles that don’t name one, or <code>false</code> for none (<a href="#author">see <code>author</code></a>).</td>
+<td>The site’s <code>author</code></td>
+</tr>
 </tbody>
 </table>
 <p><code>generate</code> has these settings, all <code>true</code> by default:</p>
@@ -372,16 +377,22 @@ export default {
 </code></pre>
 <p>See <a href="/docs/07-embeds/">Embeds</a> for how to write one.</p>
 <h3 id="author"><code>author</code></h3>
-<p>The author of articles that don’t name one: their author lists and feeds use it, and the editor shows it in the author fields.</p>
+<p>The author of articles that don’t name one (unless their type has its own <code>author</code>): their author lists and feeds use it, and the editor shows it in the author fields. <code>false</code> means no author: those articles have none, and aren’t in any author’s list.</p>
 <ul>
-<li><strong>Accepted values:</strong> a name, or <code>{ name, email, url }</code> like an article’s <a href="/docs/04-articles/#settings"><code>author</code></a>.</li>
+<li><strong>Accepted values:</strong> a name, <code>{ name, email, url }</code> like an article’s <a href="/docs/04-articles/#settings"><code>author</code></a>, or <code>false</code>.</li>
 <li><strong>Default:</strong> the website’s <a href="#name"><code>name</code></a></li>
 </ul>
 <pre><code class="language-yaml">author:
   name: Jo Bloggs
   email: jo@example.com
   url: https://example.com
+types:
+  docs:
+    author: Docs team # docs articles without an author have this one
+  page:
+    author: false # pages without an author have none
 </code></pre>
+<p>An article chooses its own author, or <code>author: false</code> for none, whatever the defaults are.</p>
 <h3 id="metadata"><code>metadata</code></h3>
 <p>Custom settings articles can have besides the core ones (<code>type</code>, <code>status</code>, <code>date</code>, <code>title</code>, <code>template</code>, <code>author</code>, <code>excerpt</code>, <code>thumbnail</code>, <code>attachments</code> and <code>tags</code>), e.g. a featured image or a rating. Each is a <a href="https://json-schema.org/">JSON Schema</a> under the key articles store it with, plus an <code>$edahaField</code> saying how the editor shows it.</p>
 <ul>

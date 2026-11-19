@@ -85,7 +85,7 @@
 <p>Every template gets:</p>
 <ul>
 <li><code>site.name</code> and <code>site.description</code>: the website’s name and description.</li>
-<li><code>site.author</code>: the author of articles that don’t name one (<code>name</code>, <code>email</code> and <code>url</code>): the config file’s <code>author</code>, or the website’s name.</li>
+<li><code>site.author</code>: the author of articles that don’t name one (<code>name</code>, <code>email</code> and <code>url</code>): the config file’s <code>author</code>, the website’s name without one, or nothing when it is <code>false</code>.</li>
 <li><code>site.url</code>: the website’s absolute URL, e.g. <code>https://example.com</code>, for links that leave the website (e.g. in feeds).</li>
 <li><code>site.path</code>: the URL of the website’s home page, e.g. <code>/</code> (or <code>/docs/</code> with the <code>path</code> setting <code>docs</code>).</li>
 <li><code>site.types</code>: each article type’s settings (<code>labelSingle</code>, <code>labelPlural</code>, <code>path</code>, <code>generate</code>) and <code>url</code>.</li>
@@ -125,7 +125,7 @@
 </tr>
 <tr>
 <td><code>article.author</code></td>
-<td><code>name</code>, <code>email</code>, <code>url</code>, and <code>listUrl</code> (the author’s list).</td>
+<td><code>name</code>, <code>email</code>, <code>url</code>, and <code>listUrl</code> (the author’s list); nothing for articles without an author, so check it first: <code>{% if article.author %}</code>.</td>
 </tr>
 <tr>
 <td><code>article.tags</code></td>

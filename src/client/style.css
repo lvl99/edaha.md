@@ -1335,3 +1335,11 @@ edaha-metadata-field {
   margin: 0.75rem 0 0.25rem;
   font-size: var(--font-size-s);
 }
+
+/* "No author", above the author's fields */
+.no-author {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block: 0.25rem;
+}

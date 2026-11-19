@@ -31,7 +31,7 @@
       <h2 class="article-title"><a href="{{ article.url }}">{{ article.title }}</a></h2>
       <p class="article-meta">
         <time datetime="{{ article.date }}">{{ article.date | date }}</time>
-        by {{ article.author.name }}
+        {% if article.author %}by {{ article.author.name }}{% endif %}
       </p>
       <div class="article-excerpt">
         {{ article.excerptHtml | safe }}

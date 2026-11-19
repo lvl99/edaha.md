@@ -192,10 +192,14 @@ export interface ArticleFilters {
   tags: string[];
 }
 
-/** The website, as the editor needs it: its name, and the author of articles that don't name one */
+/**
+ * The website, as the editor needs it: its name, the author of articles that don't name one (undefined for none), and
+ * the types with their own default author (`false` for none)
+ */
 export interface SiteInfo {
   name: string;
-  author: EditorAuthor;
+  author?: EditorAuthor | undefined;
+  types: Record<string, EditorAuthor | false>;
 }
 
 /** An author as edited */
@@ -223,7 +227,8 @@ export interface EditorArticleData {
   title: string;
   /** The template to render the article with (undefined for the default, "single") */
   template?: string | undefined;
-  author?: EditorAuthor | undefined;
+  /** The article's author, `false` for none, or undefined for its type's or the website's default */
+  author?: EditorAuthor | false | undefined;
   excerpt?: string | undefined;
   thumbnail?: string | undefined;
   tags: string[];

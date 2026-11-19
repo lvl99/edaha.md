@@ -73,7 +73,8 @@ export interface ArticleConfig {
   type: string;
   status: ArticleStatus;
   date: string;
-  author?: AuthorConfig | undefined;
+  /** The article's author, or `false` for none (undefined uses its type's or the website's default) */
+  author?: AuthorConfig | false | undefined;
   title?: string | undefined;
   template?: string | undefined;
   excerpt?: string | undefined;
@@ -195,8 +196,10 @@ export const parseArticleConfig = (
     fail(source, `"date" must be an ISO 8601 timestamp`);
   const date = new Date(rawDate as string).toISOString();
 
-  let author: AuthorConfig | undefined;
-  if (typeof data.author === "string") author = { name: data.author.trim() };
+  let author: AuthorConfig | false | undefined;
+  if (data.author === false) author = false;
+  else if (typeof data.author === "string")
+    author = { name: data.author.trim() };
   else if (data.author !== undefined && data.author !== null) {
     const fields = asMap(data.author, source, `"author"`);
     author = {
@@ -315,21 +318,35 @@ export interface MetadataContext {
 }
 
 /**
- * Build an author's template data. Articles without an author have the default one (the config file's `author`, or
- * the website's name).
+ * An article's author: its own, or `false` for none; without one, its type's default (or `false` for none); without
+ * that, the website's default (the config file's `author`, or the website's name; undefined when it is `false`).
  *
- * @param fallback - the default author
+ * @example
+ * articleAuthor(undefined, { name: "Docs team" }, { name: "Matt" }); // { name: "Docs team" }
+ * articleAuthor(false, undefined, { name: "Matt" }); // undefined
+ */
+export const articleAuthor = (
+  own: AuthorConfig | false | undefined,
+  typeDefault: AuthorConfig | false | undefined,
+  siteDefault: AuthorConfig | undefined,
+): AuthorConfig | undefined => {
+  if (own !== undefined) return own || undefined;
+  if (typeDefault !== undefined) return typeDefault || undefined;
+  return siteDefault;
+};
+
+/**
+ * Build an author's template data.
+ *
  * @param typeUrl - the URL of the article type, which its author lists are under
  *
  * @example
- * authorData(undefined, { name: "LiveCanvas" }, "/news/"); // { name: "LiveCanvas", slug: "livecanvas", listUrl: "/news/authors/livecanvas/" }
+ * authorData({ name: "LiveCanvas" }, "/news/"); // { name: "LiveCanvas", slug: "livecanvas", listUrl: "/news/authors/livecanvas/" }
  */
 export const authorData = (
-  author: AuthorConfig | undefined,
-  fallback: AuthorConfig,
+  { name, email, url }: AuthorConfig,
   typeUrl: string,
 ): TemplateDataAuthor => {
-  const { name, email, url } = author ?? fallback;
   const slug = slugify(name);
   return {
     name,
@@ -437,6 +454,11 @@ export const loadArticle = async (
       `needs a "title" in its config or a "# Title" heading`,
     );
   const url = context.url;
+  const author = articleAuthor(
+    config.author,
+    context.site.types[type]?.author,
+    context.site.author,
+  );
 
   // Custom metadata: problems are reported, and values with errors are left out
   let meta: Record<string, unknown> = {};
@@ -482,7 +504,7 @@ export const loadArticle = async (
     template: config.template ?? "single",
     url,
     title,
-    author: authorData(config.author, context.site.author, context.typeUrl),
+    author: author && authorData(author, context.typeUrl),
     thumbnail: config.thumbnail
       ? (await resolveFile(config.thumbnail, url, context)).url
       : undefined,

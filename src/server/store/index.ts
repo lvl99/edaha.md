@@ -200,12 +200,15 @@ export const serializeArticle = (
   body: string,
   format: HeaderFormat = DEFAULT_HEADER_FORMAT,
 ): string => {
+  // No author is written as `false`; a name alone as just the name
   const author =
-    data.author && (data.author.email || data.author.url)
-      ? Object.fromEntries(
-          Object.entries(data.author).filter(([, value]) => value),
-        )
-      : data.author?.name;
+    data.author === false
+      ? false
+      : data.author && (data.author.email || data.author.url)
+        ? Object.fromEntries(
+            Object.entries(data.author).filter(([, value]) => value),
+          )
+        : data.author?.name;
   const config = Object.fromEntries(
     Object.entries({
       status: data.status,
@@ -321,13 +324,22 @@ export class ArticleStore {
   }
 
   /**
-   * The website's name, and the author of articles that don't name one (the config file's `author`, or the website).
+   * The website's name, the author of articles that don't name one (the config file's `author`, the website without
+   * one, or none for `false`), and the types with their own default author.
    */
   async site(): Promise<SiteInfo> {
     const config = await this.config();
     return {
       name: config.name,
-      author: config.author ?? { name: config.name },
+      author:
+        config.author === false
+          ? undefined
+          : (config.author ?? { name: config.name }),
+      types: Object.fromEntries(
+        Object.entries(config.types).flatMap(([type, { author }]) =>
+          author === undefined ? [] : [[type, author]],
+        ),
+      ),
     };
   }
 

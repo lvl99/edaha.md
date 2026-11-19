@@ -39,6 +39,8 @@ export interface ArticleTypeConfig {
   generate: GenerateConfig;
   /** The custom metadata fields the type uses: those listed, none for `false`, or all when undefined */
   metadata?: string[] | false | undefined;
+  /** The author of the type's articles that don't name one, or `false` for none. Default: the site's `author` */
+  author?: AuthorConfig | false | undefined;
 }
 
 /** The site's settings from the config file */
@@ -71,8 +73,8 @@ export interface EdahaConfig {
   metadata: MetadataDefinitions;
   /** Groups of settings in the editor, besides the built-in ones, by key. Default: none */
   metadataGroups: Record<string, MetadataGroupConfig>;
-  /** The author of articles that don't name one. Default: none (the website's name is used) */
-  author?: AuthorConfig | undefined;
+  /** The author of articles that don't name one (unless their type has its own), or `false` for none. Default: none (the website's name is used) */
+  author?: AuthorConfig | false | undefined;
 }
 
 /** Settings under `generate` */
@@ -91,6 +93,7 @@ const TYPE_KEYS = [
   "path",
   "generate",
   "metadata",
+  "author",
 ];
 
 /** The site's settings */
@@ -187,6 +190,7 @@ const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
     config[label] = text.trim();
   }
   config.path = parsePath(fields.path, `"types.${type}.path"`) ?? type;
+  config.author = parseAuthor(fields.author, `"types.${type}.author"`);
   config.metadata = parseTypeMetadata(
     fields.metadata,
     `"types.${type}.metadata"`,
@@ -214,30 +218,36 @@ const parseTypeConfig = (type: string, value: unknown): ArticleTypeConfig => {
 };
 
 /**
- * Read the default author: a name, or a map with a `name` and optionally an `email` and `url`, like an article's.
+ * Read a default author: a name, a map with a `name` and optionally an `email` and `url` (like an article's), or `false`
+ * for none.
+ *
+ * @param what - the setting, for errors, e.g. '"author"'
  *
  * @example
- * parseAuthor("Matt"); // { name: "Matt" }
+ * parseAuthor("Matt", '"author"'); // { name: "Matt" }
+ * parseAuthor(false, '"author"'); // false
  */
-const parseAuthor = (value: unknown): AuthorConfig | undefined => {
+const parseAuthor = (
+  value: unknown,
+  what: string,
+): AuthorConfig | false | undefined => {
   if (value === undefined || value === null) return undefined;
+  if (value === false) return false;
+  const nameNeeded = `${what} needs a name with letters or numbers, or false for no author`;
   if (typeof value === "string") {
-    if (!slugify(value)) throw new Error(AUTHOR_NAME);
+    if (!slugify(value)) throw new Error(nameNeeded);
     return { name: value.trim() };
   }
-  const fields = asMap(value, '"author"');
-  checkKeys(fields, ["name", "email", "url"], '"author"');
+  const fields = asMap(value, what);
+  checkKeys(fields, ["name", "email", "url"], what);
   const name = optionalString(fields, "name");
-  if (!name || !slugify(name)) throw new Error(AUTHOR_NAME);
+  if (!name || !slugify(name)) throw new Error(nameNeeded);
   return {
     name,
     email: optionalString(fields, "email"),
     url: optionalString(fields, "url"),
   };
 };
-
-/** Said when the default author has no usable name */
-const AUTHOR_NAME = '"author" needs a name with letters or numbers';
 
 /**
  * Read a required, non-empty string field from parsed YAML.
@@ -413,7 +423,7 @@ const validateConfig = (data: unknown): EdahaConfig => {
     embeds: parseEmbeds(fields),
     metadata,
     metadataGroups,
-    author: parseAuthor(fields.author),
+    author: parseAuthor(fields.author, '"author"'),
     types: typeConfigs,
   };
 };
