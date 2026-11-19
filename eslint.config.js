@@ -13,17 +13,23 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.strict,
   {
-    files: ["src/client/**/*.ts"],
+    files: ["packages/edaha-editor/src/client/**/*.ts"],
     ...lit.configs["flat/recommended"],
     languageOptions: { globals: globals.browser },
   },
   {
     // Scripts the website's pages load in the browser
-    files: ["site/static/**/*.js", "theme/static/**/*.js"],
+    files: ["site/static/**/*.js", "packages/*/theme/static/**/*.js"],
     languageOptions: { globals: globals.browser },
   },
   {
-    files: ["src/**/*.ts", "scripts/**/*.ts", "*.config.{js,ts}"],
+    files: [
+      "packages/*/src/**/*.ts",
+      "packages/*/scripts/**/*.ts",
+      "packages/*/*.config.ts",
+      "scripts/**/*.ts",
+      "*.config.{js,ts}",
+    ],
     languageOptions: { globals: globals.node },
   },
   {

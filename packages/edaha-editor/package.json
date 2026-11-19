@@ -1,0 +1,66 @@
+{
+  "name": "@lvl99dotcom/edaha-editor",
+  "version": "0.1.0",
+  "description": "Local WYSIWYG article editor for edaha.md sites.",
+  "keywords": [
+    "blog",
+    "static-site-generator",
+    "markdown",
+    "editor",
+    "wysiwyg"
+  ],
+  "author": "Matt Scheurich <matt@lvl99.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lvl99/edaha.md.git",
+    "directory": "packages/edaha-editor"
+  },
+  "homepage": "https://github.com/lvl99/edaha.md#readme",
+  "bugs": "https://github.com/lvl99/edaha.md/issues",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@lvl99dotcom/edaha": "workspace:^",
+    "hono": "^4.13.13",
+    "mime-types": "^3.0.2",
+    "turndown": "^7.2.4",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@material-symbols/svg-400": "0.48.1",
+    "@tiptap/core": "^3.32.0",
+    "@tiptap/extension-details": "3.32.0",
+    "@tiptap/extension-image": "^3.32.0",
+    "@tiptap/extension-table": "^3.32.0",
+    "@tiptap/pm": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
+    "lit": "^3.3.3"
+  }
+}

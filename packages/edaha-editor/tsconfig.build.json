@@ -1,0 +1,20 @@
+{
+  // Writes the published Node.js code and type definitions (dist/) for the editor's server. The editor's browser code
+  // is bundled by Vite instead (see vite.config.ts). edaha.md's core is read from its built types, so build it first
+  // (`pnpm build` in the workspace's folder builds the packages in order).
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": ["es2022", "dom"],
+    "types": ["node"],
+    "paths": {
+      "@lvl99dotcom/edaha": ["../edaha/dist/index.d.ts"],
+      "@lvl99dotcom/edaha/*": ["../edaha/dist/*/index.d.ts"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["src/**/tests", "src/client"]
+}
