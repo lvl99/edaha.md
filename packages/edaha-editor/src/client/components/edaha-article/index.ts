@@ -1082,9 +1082,9 @@ export class EdahaArticle extends LitElement {
         .embedTools=${this.embedTools}
       ></edaha-article-data-field>`;
     else if (this.mode === "preview")
-      // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. It
-      // isn't sandboxed (a sandboxed page can't load anything from 127.0.0.1): its server sends a Content Security
-      // Policy that forbids scripts, which is what keeps it from using the editor's API (`previewCsp`)
+      // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. Its
+      // server sandboxes it with its Content Security Policy (`previewCsp`), which keeps it, and the embeds' scripts in
+      // it, from using the editor's API
       body = html`<div class="preview-controls">
           <label for="preview-width">Width</label>
           <select
