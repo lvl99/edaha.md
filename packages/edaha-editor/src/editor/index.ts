@@ -22,8 +22,13 @@ export { EDITOR_PORT };
 /** The URL path the editor page's own files (scripts, styles) are served under, apart from the site's static files */
 export const EDITOR_BASE = "/_editor/";
 
-/** The editor page's built files (`dist/client`, bundled by Vite). The path is the same from `dist/editor`. */
-export const CLIENT_DIR = fileURLToPath(new URL("../client", import.meta.url));
+/**
+ * The editor page's built files (`dist/client`, bundled by Vite). The path is the same from `src/editor` (in the
+ * workspace) and from the published `dist/editor`, so the editor never serves the page's unbuilt source.
+ */
+export const CLIENT_DIR = fileURLToPath(
+  new URL("../../dist/client", import.meta.url),
+);
 
 /** Options for the article editor's server */
 export interface EditorServerOptions extends SiteConfigOptions {
@@ -120,7 +125,7 @@ const editorServerParts = async (
     const html = await clientFile(clientDir, "index.html");
     if (!html)
       return c.text(
-        "The editor page is missing; build edaha.md with `pnpm build`",
+        "The editor page is missing; build it with `pnpm build`",
         500,
       );
     return c.body(html, 200, {

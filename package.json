@@ -13,6 +13,7 @@
   },
   "scripts": {
     "build": "pnpm --filter @lvl99dotcom/edaha.md build && pnpm -r --filter \"!@lvl99dotcom/edaha.md\" build",
+    "editor": "edaha editor",
     "dev:editor": "vite --config packages/edaha-editor/vite.config.ts",
     "site:build": "edaha build",
     "site:serve": "node scripts/serve-site.ts",

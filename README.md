@@ -194,6 +194,7 @@ pnpm test:coverage  # unit tests with coverage
 pnpm typecheck
 pnpm lint
 pnpm format:check
+pnpm editor         # run the built editor (after `pnpm build`) for edaha.md's own website at http://127.0.0.1:5180; add `--dir ../my-site` for another site
 EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for the site whose config file is found from there (restarts when the API's code changes)
 pnpm site:build     # build edaha.md's own website (site/) into build/ (kept in git)
 pnpm site:serve     # serve build/ at http://127.0.0.1:5181 (PORT=... for another port)

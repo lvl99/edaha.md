@@ -38,7 +38,7 @@ const setup = async () => {
 describe("editorUrl and CLIENT_DIR", () => {
   it("should give the editor's local address, and the built page's folder", () => {
     expect(editorUrl(5180)).toBe("http://127.0.0.1:5180");
-    expect(CLIENT_DIR).toMatch(/[/\\]client$/);
+    expect(CLIENT_DIR).toMatch(/[/\\]dist[/\\]client$/);
   });
 });
 
@@ -81,7 +81,9 @@ describe("createEditorServer", () => {
     });
     const page = await app.request("/");
     expect(page.status).toBe(500);
-    expect(await page.text()).toContain("build edaha.md");
+    expect(await page.text()).toContain(
+      "The editor page is missing; build it with `pnpm build`",
+    );
   });
 
   it("should serve the API, the site's static files and the theme's, allowing changes only from its own address", async () => {
