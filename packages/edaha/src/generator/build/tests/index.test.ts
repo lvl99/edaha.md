@@ -755,11 +755,12 @@ describe("buildSite", () => {
     await writeArticle(
       space,
       "article/embeds",
-      `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\nIntro <!-- embed:media -->https://media.example.com/v/1<!-- /embed:media -->\n\n<!-- readmore -->\n\n<!-- embed:quote -->Hello<!-- /embed:quote -->\n\n<!-- embed:media -->https://media.example.com/v/2<!-- /embed:media -->\n`,
+      `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\nIntro <!-- embed:media -->https://media.example.com/v/1<!-- /embed:media -->\n\n<!-- readmore -->\n\n<!-- embed:quote -->Hello<!-- /embed:quote -->\n\n<!-- embed:quote -->Bad<!-- /embed:quote -->\n\nAfter the bad quote\n\n<!-- embed:media -->https://media.example.com/v/2<!-- /embed:media -->\n`,
     );
     const quote = {
       key: "quote",
       name: "Quote",
+      validate: (text: string) => text !== "Bad",
       build: { render: async (text: string) => `<q>${text}</q>` },
     };
     // A given plugin with the config file's key is left out
@@ -768,10 +769,11 @@ describe("buildSite", () => {
       key: "media",
       build: { render: async () => "<p>Not used</p>" },
     };
+    const logger = { warn: vi.fn() };
     const result = await buildSite({
       siteDir: space.siteDir,
       siteUrl: "https://example.com",
-      logger: { warn: vi.fn() },
+      logger,
       plugins: [quote, media],
     });
     const read = (file: string) =>
@@ -780,6 +782,12 @@ describe("buildSite", () => {
     expect(page).toContain('<iframe src="https://media.example.com/v/1">');
     expect(page).toContain('<iframe src="https://media.example.com/v/2">');
     expect(page).toContain("<q>Hello</q>");
+    // A block that isn't valid is left out, with a warning, and the rest of the article is built
+    expect(page).not.toContain("Bad");
+    expect(page).toContain("After the bad quote");
+    expect(logger.warn).toHaveBeenCalledWith(
+      "articles/article/embeds: Quote embed isn't valid (The content isn't a valid Quote); left out",
+    );
     expect(page).not.toContain("Not used");
     // Once per page, with every render on it, before </head> and </body>
     expect(page).toMatch(

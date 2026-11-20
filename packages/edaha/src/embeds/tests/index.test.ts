@@ -257,7 +257,7 @@ describe("EmbedResolver", () => {
     );
   });
 
-  it("should validate content before rendering it, showing content that isn't valid as it is written", async () => {
+  it("should validate content before rendering it, leaving out content that isn't valid", async () => {
     const render = vi.fn(async (content: string) => `<b>${content}</b>`);
     const checked = {
       key: "checked",
@@ -305,12 +305,13 @@ describe("EmbedResolver", () => {
       "Embed blocks need a key, e.g. <!-- embed:youtube -->...<!-- /embed:youtube -->",
     ]);
 
-    expect((await resolver.render("checked", "many", "news/a")).html).toBe(
-      '<pre class="embed-text">many</pre>',
-    );
+    // Left out of the website, without being rendered
+    expect(await resolver.render("checked", "many", "news/a")).toEqual({
+      html: "",
+    });
     expect(render).not.toHaveBeenCalled();
     expect(logger.warn).toHaveBeenCalledWith(
-      "news/a: Checked embed isn't valid (Too short; No ID); shown as it is",
+      "news/a: Checked embed isn't valid (Too short; No ID); left out",
     );
     expect((await resolver.render("checked", "valid", "news/a")).html).toBe(
       '<div class="embed embed-checked"><b>valid</b></div>',

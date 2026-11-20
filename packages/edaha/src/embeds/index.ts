@@ -337,10 +337,11 @@ export class EmbedResolver {
     }
     const errors = await validateContent(plugin, content);
     if (errors.length) {
+      // Left out, so the website doesn't show something broken; the rest of the page is still built
       logger.warn(
-        `${source}: ${plugin.name} embed isn't valid (${errors.join("; ")}); shown as it is`,
+        `${source}: ${plugin.name} embed isn't valid (${errors.join("; ")}); left out`,
       );
-      return fallback();
+      return { html: "" };
     }
     const renders: unknown[] = [];
     try {

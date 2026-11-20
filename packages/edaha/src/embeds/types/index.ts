@@ -79,8 +79,8 @@ export interface EmbedPlugin {
   /**
    * Optional; check a block's content before it is rendered, for the website and the editor. Return `true` when it
    * is valid. Throw an error saying what is wrong (or an `AggregateError` with one error for each problem),
-   * or return `false` for a general message. Content that isn't valid isn't rendered: it is shown as it is written,
-   * with a warning, and the editor's embed dialog shows the errors.
+   * or return `false` for a general message. A block whose content isn't valid is left out of the website, with a
+   * warning (the rest of its page is still built), and the editor shows the errors on it and in its embed dialog.
    */
   validate?:
     | ((content: string) => boolean | undefined | Promise<boolean | undefined>)
