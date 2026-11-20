@@ -6,6 +6,7 @@
   --colour-background: #ffffff;
   --colour-surface: #f4f4f6;
   --colour-border: #d8d8de;
+  --colour-table-outline: #c0c0c6;
   --colour-link: #3b9a04;
   --colour-link-hover: #2b6f04;
   --colour-focus: #3b9a04;
@@ -55,6 +56,7 @@
   --colour-background: #141416;
   --colour-surface: #1f1f23;
   --colour-border: #38383f;
+  --colour-table-outline: #8a8a92;
   --colour-link: #dc6d2c;
   --colour-link-hover: #fda26d;
   --colour-focus: #fda26d;
@@ -82,6 +84,7 @@
     --colour-background: #141416;
     --colour-surface: #1f1f23;
     --colour-border: #38383f;
+    --colour-table-outline: #8a8a92;
     --colour-link: #dc6d2c;
     --colour-link-hover: #fda26d;
     --colour-focus: #fda26d;
@@ -675,6 +678,25 @@ edaha-article .preview {
 
 .richtext-content img {
   max-width: 100%;
+}
+
+/* Tables: a dotted light-grey outline round the table and its cells, so they can be seen while editing */
+.richtext-content table {
+  border-collapse: collapse;
+  outline: 1px dotted var(--colour-table-outline);
+}
+
+.richtext-content th,
+.richtext-content td {
+  min-width: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px dotted var(--colour-table-outline);
+  vertical-align: top;
+}
+
+/* A cell's text is in paragraphs, without space around them */
+.richtext-content :is(th, td) > p {
+  margin: 0;
 }
 
 /* Editor-only blocks: outlined so they can be seen and clicked, and highlighted when selected */
