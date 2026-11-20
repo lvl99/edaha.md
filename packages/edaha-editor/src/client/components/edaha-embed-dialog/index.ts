@@ -1,37 +1,30 @@
 import { html, LitElement } from "lit";
 import type { EmbedInfo } from "../../../server/types/index.ts";
-import {
-  embedIcon,
-  type EmbedValidator,
-  type EmbedValue,
-} from "../../embeds/index.ts";
+import { embedIcon, type EmbedValidator } from "../../embeds/index.ts";
 import { icon } from "../../icons/index.ts";
 import { defineElement } from "../define/index.ts";
 
 /**
- * The embed dialog: asks for an embed block's kind (one of the site's embed plugins, with its description) and its
- * content (e.g. a video's URL, or a diagram's code). With a validator, the content is checked before it is saved, and
- * any problems are shown under it. Rendered in the light DOM.
+ * The embed dialog: asks for the content of an embed of one kind (e.g. a YouTube video's URL, or a diagram's code),
+ * showing what the kind embeds. Its kind can't be changed here: each kind has its own toolbar button. With a
+ * validator, the content is checked before it is saved, and any problems are shown under it. Rendered in the light
+ * DOM.
  *
  * @example
  * html`<edaha-embed-dialog></edaha-embed-dialog>`
- * const embed = await dialog.edit(embeds, { key: "youtube", content: "https://youtu.be/aju_UB5VIf8" });
+ * const content = await dialog.edit(youtube, "", true);
  */
 export class EdahaEmbedDialog extends LitElement {
   static override properties = {
-    embeds: { state: true },
-    key: { state: true },
+    embed: { state: true },
     content: { state: true },
     changing: { state: true },
     errors: { state: true },
     checking: { state: true },
-    kind: { state: true },
   };
 
-  /** The site's embed plugins */
-  declare embeds: readonly EmbedInfo[];
-  /** The chosen kind of embed */
-  declare key: string;
+  /** The kind of embed whose content is asked for */
+  declare embed: EmbedInfo | undefined;
   /** The embed's content */
   declare content: string;
   /** Whether an existing embed is being changed (rather than a new one added) */
@@ -40,18 +33,14 @@ export class EdahaEmbedDialog extends LitElement {
   declare errors: string[];
   /** Whether the content is being checked */
   declare checking: boolean;
-  /** The embed's kind, when it is known as the dialog opens (only its content is asked for then) */
-  declare kind: EmbedInfo | undefined;
 
   /** Resolves the open `edit` call */
-  private editing: ((value: EmbedValue | undefined) => void) | undefined;
+  private editing: ((content: string | undefined) => void) | undefined;
   /** Checks the content of the open `edit` call */
   private validator: EmbedValidator | undefined;
 
   constructor() {
     super();
-    this.embeds = [];
-    this.key = "";
     this.content = "";
     this.changing = false;
     this.errors = [];
@@ -67,50 +56,45 @@ export class EdahaEmbedDialog extends LitElement {
     return this.querySelector("dialog");
   }
 
+  /** The content's text box, once rendered */
+  private get textarea(): HTMLTextAreaElement | null {
+    return this.querySelector("#embed-dialog-content");
+  }
+
   /**
-   * Open the dialog to add an embed of a kind (`adding`, with empty content), or change an embed block. For a kind
-   * the site has a plugin for, only its content is asked for; otherwise (e.g. an old block without a key), its kind
-   * too. Resolves with the kind and content, or undefined if the dialog is closed without saving.
+   * Open the dialog to add an embed of a kind (`adding`), or change an embed block's content. Resolves with the
+   * content, or undefined if the dialog is closed without saving.
    *
    * @param validate - gives why an embed's content isn't valid (none when it is), checked before it is saved
    * @example
-   * const embed = await dialog.edit(embeds, { key: "youtube", content: "" }, true, ({ key, content }) => api.validateEmbed(key, content));
+   * const content = await dialog.edit(youtube, "", true, ({ key, content }) => api.validateEmbed(key, content));
    */
   async edit(
-    embeds: readonly EmbedInfo[],
-    value: EmbedValue,
+    embed: EmbedInfo,
+    content: string,
     adding: boolean,
     validate?: EmbedValidator,
-  ): Promise<EmbedValue | undefined> {
+  ): Promise<string | undefined> {
     this.finish(undefined);
-    this.embeds = embeds;
+    this.embed = embed;
+    this.content = content;
+    this.changing = !adding;
     this.validator = validate;
     this.errors = [];
-    this.kind = embeds.find((embed) => embed.key === value.key);
-    // Without a known kind, it starts as the only kind there is, if there is just one
-    this.key =
-      this.kind?.key ??
-      (embeds.length === 1 ? (embeds[0] as EmbedInfo).key : "");
-    this.content = value.content;
-    this.changing = !adding;
-    const result = new Promise<EmbedValue | undefined>(
+    const result = new Promise<string | undefined>(
       (resolve) => (this.editing = resolve),
     );
     await this.updateComplete;
     this.dialog?.showModal();
-    // Start where there is something to do: choosing a kind, or writing the content
-    (this.key
-      ? this.querySelector<HTMLTextAreaElement>("#embed-dialog-content")
-      : this.querySelector<HTMLInputElement>('[name="embed-kind"]')
-    )?.focus();
+    this.textarea?.focus();
     return result;
   }
 
   /** Give the result to the open `edit` call, if there is one */
-  private finish(value: EmbedValue | undefined): void {
+  private finish(content: string | undefined): void {
     const editing = this.editing;
     this.editing = undefined;
-    editing?.(value);
+    editing?.(content);
   }
 
   /** Close the dialog without saving */
@@ -118,15 +102,15 @@ export class EdahaEmbedDialog extends LitElement {
     this.dialog?.close();
   }
 
-  /** Save the embed, if it has a kind and content that are valid; otherwise show why not */
+  /** Save the content, if there is some and it is valid; otherwise show why not */
   private async save(event: Event): Promise<void> {
     event.preventDefault();
-    const value = { key: this.key, content: this.content.trim() };
-    if (!value.key || !value.content || this.checking) return;
+    const content = this.content.trim();
+    if (!this.embed || !content || this.checking) return;
     if (this.validator) {
       this.checking = true;
       try {
-        this.errors = await this.validator(value);
+        this.errors = await this.validator({ key: this.embed.key, content });
       } catch (error) {
         this.errors = [
           `The content couldn't be checked: ${(error as Error).message}`,
@@ -134,22 +118,19 @@ export class EdahaEmbedDialog extends LitElement {
       }
       this.checking = false;
       // Changed while it was checked: it is checked again when saved again
-      const changed =
-        value.key !== this.key || value.content !== this.content.trim();
+      const changed = content !== this.content.trim();
       if (changed) this.errors = [];
       if (changed || this.errors.length) {
-        this.querySelector<HTMLTextAreaElement>(
-          "#embed-dialog-content",
-        )?.focus();
+        this.textarea?.focus();
         return;
       }
     }
-    this.finish(value);
+    this.finish(content);
     this.close();
   }
 
   override render() {
-    const chosen = this.embeds.find((embed) => embed.key === this.key);
+    const { embed } = this;
     return html`<dialog
       class="article-browser embed-dialog"
       aria-labelledby="embed-dialog-title"
@@ -158,7 +139,7 @@ export class EdahaEmbedDialog extends LitElement {
       <form @submit=${this.save}>
         <div class="article-browser-header">
           <h2 id="embed-dialog-title">
-            ${this.changing ? "Change" : "Add"} ${this.kind?.name ?? "embed"}
+            ${this.changing ? "Change" : "Add"} ${embed?.name ?? "embed"}
           </h2>
           <button
             type="button"
@@ -170,48 +151,9 @@ export class EdahaEmbedDialog extends LitElement {
           </button>
         </div>
         <div class="embed-dialog-body">
-          ${
-            this.kind
-              ? html`<p class="embed-dialog-about">
-                  ${embedIcon(this.kind)}
-                  <span>${this.kind.description ?? ""}</span>
-                </p>`
-              : this.embeds.length
-                ? html`<fieldset class="embed-dialog-kinds">
-                    <legend>Kind of embed</legend>
-                    ${this.embeds.map(
-                      (embed) =>
-                        html`<label class="embed-dialog-kind">
-                          <input
-                            type="radio"
-                            name="embed-kind"
-                            required
-                            .value=${embed.key}
-                            .checked=${embed.key === this.key}
-                            @change=${() => {
-                              this.key = embed.key;
-                              this.errors = [];
-                            }}
-                          />
-                          ${embedIcon(embed)}
-                          <span>
-                            <strong>${embed.name}</strong>
-                            ${
-                              embed.description
-                                ? html`<span class="embed-dialog-description"
-                                    >${embed.description}</span
-                                  >`
-                                : ""
-                            }
-                          </span>
-                        </label>`,
-                    )}
-                  </fieldset>`
-                : html`<p class="error" role="alert">
-                    This site has no embed plugins. Add them under
-                    <code>plugins</code> in its config file.
-                  </p>`
-          }
+          <p class="embed-dialog-about">
+            ${embedIcon(embed)} <span>${embed?.description ?? ""}</span>
+          </p>
           <label for="embed-dialog-content">Content</label>
           <textarea
             id="embed-dialog-content"
@@ -244,18 +186,13 @@ export class EdahaEmbedDialog extends LitElement {
             }
           </div>
           <p id="embed-dialog-content-hint" class="embed-dialog-hint">
-            ${
-              chosen
-                ? `What the ${chosen.name} shows, e.g. a URL or code.`
-                : "Choose a kind of embed, then paste or write what it shows, e.g. a URL or code."
-            }
+            What the ${embed?.name ?? "embed"} shows, e.g. a URL or code.
           </p>
         </div>
         <div class="embed-dialog-actions">
           <button
             type="submit"
             class="btn"
-            ?disabled=${!this.embeds.length}
             aria-disabled=${this.checking ? "true" : "false"}
           >
             ${this.checking ? "Checking…" : this.changing ? "Save" : "Add"}

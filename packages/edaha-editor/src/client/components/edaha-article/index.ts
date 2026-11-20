@@ -612,13 +612,19 @@ export class EdahaArticle extends LitElement {
       const embeds = await this.api.embeds();
       this.embedTools = {
         embeds,
-        edit: (value, adding) =>
-          (this.querySelector("edaha-embed-dialog") as EdahaEmbedDialog).edit(
-            embeds,
-            value,
-            adding,
-            ({ key, content }) => this.api.validateEmbed(key, content),
-          ),
+        edit: async ({ key, content }, adding) => {
+          // Only embeds the site has a plugin for can be added or changed
+          const embed = embeds.find((info) => info.key === key);
+          const dialog = this.querySelector(
+            "edaha-embed-dialog",
+          ) as EdahaEmbedDialog;
+          const changed =
+            embed &&
+            (await dialog.edit(embed, content, adding, (value) =>
+              this.api.validateEmbed(value.key, value.content),
+            ));
+          return changed === undefined ? undefined : { key, content: changed };
+        },
         loadFrame: ({ key, content }) => this.api.embedFrame(key, content),
       };
     } catch {

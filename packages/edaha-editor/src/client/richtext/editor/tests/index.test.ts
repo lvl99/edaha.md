@@ -242,6 +242,9 @@ describe("createRichtextEditor", () => {
       '<svg id="yt"></svg>',
     );
     expect(label(old!)).toBe("Embed without a kind");
+    // Only embeds the site has a plugin for can be changed here
+    expect(blockButton(good!, "Edit").hidden).toBe(false);
+    expect(blockButton(old!, "Edit").hidden).toBe(true);
     expect(good!.querySelector(".embed-preview")!.textContent).toBe("Loading…");
     await flush();
     const frame = good!.querySelector("iframe") as HTMLIFrameElement;

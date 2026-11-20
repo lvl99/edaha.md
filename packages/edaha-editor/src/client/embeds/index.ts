@@ -20,8 +20,8 @@ export interface EmbedTools {
   embeds: readonly EmbedInfo[];
   /**
    * Ask for an embed's content in the embed dialog, checking it is valid: for a new embed of a kind (`adding`, with
-   * empty content), or a block to change. A block whose kind has no plugin asks for its kind too. Undefined if
-   * cancelled.
+   * empty content), or a block to change. Its kind stays the same. Undefined if cancelled, or if the site has no
+   * plugin for its kind.
    */
   edit(value: EmbedValue, adding: boolean): Promise<EmbedValue | undefined>;
   /** Render an embed block for its frame in the rich text body */

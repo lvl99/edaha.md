@@ -291,6 +291,7 @@ export const Embed = Node.create<EmbedOptions>({
           },
         },
       ]);
+      const edit = block.dom.querySelector("button") as HTMLButtonElement;
       const icon = document.createElement("span");
       icon.className = "icon embed-icon";
       icon.setAttribute("aria-hidden", "true");
@@ -310,6 +311,8 @@ export const Embed = Node.create<EmbedOptions>({
         const info = tools?.embeds.find((embed) => embed.key === value.key);
         block.title.textContent = embedName(tools?.embeds ?? [], value.key);
         icon.innerHTML = info?.icon ?? "";
+        // Only embeds the site has a plugin for can be changed here (others can be removed, or changed as Markdown)
+        edit.hidden = !info;
         forgetFrames(preview);
         preview.replaceChildren();
         const text = document.createElement("pre");

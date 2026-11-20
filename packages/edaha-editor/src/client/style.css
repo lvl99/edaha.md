@@ -795,7 +795,7 @@ edaha-article .preview {
   color: var(--colour-error);
 }
 
-/* The embed dialog: the kinds of embed to choose from, then the embed's content */
+/* The embed dialog: what the kind of embed embeds, then its content */
 .embed-dialog {
   width: min(40rem, calc(100vw - 2rem));
 }
@@ -814,41 +814,7 @@ edaha-article .preview {
   overflow-y: auto;
 }
 
-.embed-dialog-kinds {
-  display: grid;
-  gap: 0.25rem;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.embed-dialog-kinds legend {
-  margin-block-end: 0.25rem;
-  padding: 0;
-}
-
-/* Each kind is a large target (WCAG 2.5.8) */
-.embed-dialog-kind {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-  min-height: 2.75rem;
-  padding: 0.5rem;
-  border: 1px solid var(--colour-border);
-  border-radius: var(--border-radius);
-  cursor: pointer;
-}
-
-.embed-dialog-kind:has(input:checked) {
-  border-color: var(--colour-focus);
-}
-
-.embed-dialog-kind > span:last-child {
-  display: flex;
-  flex-direction: column;
-}
-
-.embed-dialog-description,
+.embed-dialog-about,
 .embed-dialog-hint {
   color: var(--colour-muted);
   font-size: var(--font-size-s);

@@ -421,11 +421,14 @@ describe("edaha-article", () => {
     // The dialog is outside the article's form, as it has its own
     const dialog = find<EdahaEmbedDialog>(element, "edaha-embed-dialog");
     expect(element.querySelector("form")!.contains(dialog)).toBe(false);
-    const edit = vi.spyOn(dialog, "edit").mockResolvedValue(undefined);
-    await tools.edit({ key: "youtube", content: "x" }, false);
+    const edit = vi.spyOn(dialog, "edit").mockResolvedValue("y");
+    expect(await tools.edit({ key: "youtube", content: "x" }, false)).toEqual({
+      key: "youtube",
+      content: "y",
+    });
     expect(edit).toHaveBeenCalledWith(
-      tools.embeds,
-      { key: "youtube", content: "x" },
+      tools.embeds[0],
+      "x",
       false,
       expect.any(Function),
     );
@@ -433,6 +436,15 @@ describe("edaha-article", () => {
     const validate = edit.mock.calls[0]![3]!;
     expect(await validate({ key: "youtube", content: "y" })).toEqual(["Bad"]);
     expect(api.validateEmbed).toHaveBeenCalledWith("youtube", "y");
+    // Cancelled, or a kind without a plugin (which has no dialog), gives nothing
+    edit.mockResolvedValueOnce(undefined);
+    expect(
+      await tools.edit({ key: "youtube", content: "x" }, false),
+    ).toBeUndefined();
+    expect(
+      await tools.edit({ key: "vimeo", content: "x" }, false),
+    ).toBeUndefined();
+    expect(edit).toHaveBeenCalledTimes(2);
     // The Markdown body gets them too
     await element.setMode("markdown");
     await settle(element);
