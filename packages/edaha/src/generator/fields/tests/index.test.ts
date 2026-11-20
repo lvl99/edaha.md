@@ -200,6 +200,15 @@ describe("resolveFields", () => {
     });
   });
 
+  it("should give values in the fields' order, then values without a field", () => {
+    expect(
+      Object.keys(
+        resolveFields(FIELDS, { other: 1, tracklist: true, layout: "large" })
+          .values,
+      ),
+    ).toEqual(["layout", "tracklist", "other"]);
+  });
+
   it("should apply conditions to groups and the fields in them", () => {
     const fields: MetadataDefinitions = {
       credit: {

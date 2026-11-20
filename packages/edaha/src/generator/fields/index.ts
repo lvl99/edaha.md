@@ -258,7 +258,8 @@ export interface ResolvedFields {
 /**
  * Apply fields' `defaultValue`, `showWhen` and `hideWhen` to values: shown fields without a value get their default,
  * and hidden fields' values (and those of fields in a hidden group) are left out. Conditions are checked again until
- * nothing changes, as hiding or filling in one value can show or hide another.
+ * nothing changes, as hiding or filling in one value can show or hide another. The values are in the fields' order,
+ * then any values without a field.
  *
  * @example
  * resolveFields(
@@ -306,5 +307,13 @@ export const resolveFields = (
     hidden = next;
     current = apply(hidden);
   }
-  return { values: current, hidden };
+  // In the fields' order, then any other values
+  const order = Object.keys(schemas);
+  const ordered = Object.fromEntries(
+    Object.entries(current).sort(
+      ([a], [b]) =>
+        (order.indexOf(a) + 1 || Infinity) - (order.indexOf(b) + 1 || Infinity),
+    ),
+  );
+  return { values: ordered, hidden };
 };
