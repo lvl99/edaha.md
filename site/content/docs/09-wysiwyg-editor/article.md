@@ -130,7 +130,7 @@ The editor reads and writes the same `article.md` files you would edit by hand. 
 
 To list and search articles quickly, the editor keeps an index of every article's settings in memory: it reads them all when it starts, updates an article's entry when it saves, moves or deletes it, and watches the articles folder for changes made outside it. The article files stay the only source of truth: no database or index file is written. Recently changed means when an article's `article.md` file last changed.
 
-Preview pages, the frames that show embeds in the body, and the files they load are sandboxed by their Content Security Policy: they run as a site of their own, so nothing in an article, and no embed's script, can use the editor's API. They can run their own scripts and styles, and load from the editor and the web addresses the site's embeds list in `sources`. Some embedded browsers (such as the browser pane in Claude's desktop app) block sandboxed pages from loading anything from `127.0.0.1`, so previews look unstyled and embed frames empty there; use a regular browser.
+Preview pages, the frames that show embeds in the body, and the files they load are shown from another address of the editor, `http://localhost:5180` (with the editor's port): a site of their own, where the editor's API answers nothing and refuses changes, so nothing in an article, and no embed's script, can use it. Their Content Security Policy also sandboxes them, so they can't send forms or move the editor page elsewhere, while embedded players (such as Bandcamp's) keep working. They can run their own scripts and styles, and load from their own address and the web addresses the site's embeds list in `sources`.
 
 ### Embeds in the editor
 

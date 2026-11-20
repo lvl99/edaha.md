@@ -128,7 +128,26 @@ export interface EditorAppOptions {
   fetch?: typeof fetch | undefined;
   /** Embed plugins added after the config file's `plugins` (a key in both uses the config file's). Default: none */
   plugins?: readonly EmbedPlugin[] | undefined;
+  /**
+   * Optional; the origin preview pages and embed frames are shown from, e.g. "http://localhost:5180": an address of
+   * the same server that isn't the editor's own, so they run in an origin (and site) of their own. The API answers
+   * nothing there.
+   */
+  previewOrigin?: string | undefined;
 }
+
+/**
+ * The origin preview pages and embed frames are shown from, for an editor at an address: `localhost` instead of
+ * `127.0.0.1`, which is the same server but another origin and site.
+ *
+ * @example
+ * previewOriginOf("http://127.0.0.1:5180"); // "http://localhost:5180"
+ */
+export const previewOriginOf = (editorOrigin: string): string => {
+  const url = new URL(editorOrigin);
+  url.hostname = "localhost";
+  return url.origin;
+};
 
 /** A logger that leaves out warnings, for renders whose problems the editor shows itself (or doesn't need) */
 const QUIET: Logger = { warn: () => undefined };
@@ -139,24 +158,26 @@ const SOURCE_DIRECTIVES: Record<keyof EmbedSources, string> = {
   script: "script-src 'self' 'unsafe-inline'",
   style: "style-src 'self' 'unsafe-inline'",
   font: "font-src 'self' data:",
-  // 'self' is replaced with the editor's address (see previewCsp)
+  // 'self' is replaced with the page's own address (see previewCsp)
   connect: "connect-src",
 };
 
 /**
- * The Content Security Policy of preview pages, embed frames and the files they load. They are sandboxed (`sandbox`):
- * they run in an origin of their own, so although they are served from the editor's address, nothing in them can use
- * the editor's API (its changes need the editor page's origin, and other origins can't read its answers). Inside,
- * they may run their own scripts and styles, and load from the editor's address (named, as `'self'` doesn't match it
- * from a sandboxed page) and the web addresses the embed plugins list in `sources`.
+ * The Content Security Policy of preview pages, embed frames and the files they load. They are shown from an origin
+ * of their own (`previewOrigin`), which the editor's API doesn't answer and whose changes it refuses, and are
+ * sandboxed (`sandbox`, keeping their own origin, so embedded players such as Bandcamp's keep theirs) so they can't
+ * send forms or navigate the editor page. Inside, they may run their own scripts and styles, and load from their own
+ * address and the web addresses the embed plugins list in `sources`. Only the editor's pages may show them in frames.
  *
- * @param self - the editor's address, e.g. "http://127.0.0.1:5180"
+ * @param self - the address they are served from, e.g. "http://localhost:5180"
+ * @param ancestors - the editor's own addresses, which may show them in frames
  * @example
- * previewCsp([youtube], "http://127.0.0.1:5180"); // "sandbox allow-scripts ...; default-src http://127.0.0.1:5180; ...; frame-src https://www.youtube-nocookie.com; ..."
+ * previewCsp([youtube], "http://localhost:5180", ["http://127.0.0.1:5180"]); // "sandbox allow-scripts allow-same-origin ...; default-src http://localhost:5180; ...; frame-src https://www.youtube-nocookie.com; ..."
  */
 export const previewCsp = (
   plugins: readonly EmbedPlugin[],
   self: string,
+  ancestors: readonly string[] = [],
 ): string => {
   const directives = EMBED_SOURCE_KINDS.map((kind) => {
     const origins = [
@@ -167,7 +188,7 @@ export const previewCsp = (
     return `${directive} ${origins.join(" ") || (directive.includes(" ") ? "" : "'none'")}`.trimEnd();
   });
   return [
-    "sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox",
+    "sandbox allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox",
     `default-src ${self}`,
     ...directives,
     `img-src ${self} data: https:`,
@@ -175,7 +196,7 @@ export const previewCsp = (
     "object-src 'none'",
     "base-uri 'none'",
     "form-action 'none'",
-    "frame-ancestors 'self'",
+    `frame-ancestors ${["'self'", ...ancestors].join(" ")}`,
   ].join("; ");
 };
 
@@ -258,6 +279,7 @@ export const createEditorApp = (
     allowedOrigins,
     fetch: fetchFn = (...args) => fetch(...args),
     plugins: givenPlugins = [],
+    previewOrigin,
   }: EditorAppOptions,
 ): Hono => {
   const app = new Hono();
@@ -273,9 +295,16 @@ export const createEditorApp = (
 
   /** The Content Security Policy of preview pages and embed frames, allowing the plugins' sources */
   const csp = async (url: string) =>
-    previewCsp(await plugins(), new URL(url).origin);
+    previewCsp(await plugins(), new URL(url).origin, allowedOrigins);
 
   app.use(async (c, next) => {
+    // The previews' own origin only shows previews, embed frames and their files: not the API
+    if (
+      previewOrigin &&
+      new URL(c.req.url).origin === previewOrigin &&
+      c.req.path.startsWith("/api/")
+    )
+      return c.json({ error: "Not found" }, 404);
     if (c.req.method !== "GET" && c.req.method !== "HEAD") {
       const origin = c.req.header("origin");
       if (!origin || !allowedOrigins.includes(origin))

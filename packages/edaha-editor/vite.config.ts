@@ -6,7 +6,7 @@ import { getRequestListener } from "@hono/node-server";
 import { defineConfig } from "vite";
 import { EDITOR_BASE, EDITOR_HOST, EDITOR_PORT } from "./src/editor/index.ts";
 import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
-import { createEditorApp } from "./src/server/app/index.ts";
+import { createEditorApp, previewOriginOf } from "./src/server/app/index.ts";
 import { ArticleStore } from "./src/server/store/index.ts";
 
 /** The folders of the API's code (with edaha.md's core), which `pnpm dev:editor` restarts for when they change */
@@ -38,8 +38,10 @@ export default defineConfig({
             "Set EDAHA_SITE_DIR to the folder with the site's config file, e.g. EDAHA_SITE_DIR=../my-site pnpm dev:editor",
           );
         const site = await loadSiteConfig({ siteDir: resolve(siteDir) });
+        const editorOrigin = `http://${EDITOR_HOST}:${EDITOR_PORT}`;
         const app = createEditorApp(new ArticleStore(site), {
-          allowedOrigins: [`http://${EDITOR_HOST}:${EDITOR_PORT}`],
+          allowedOrigins: [editorOrigin],
+          previewOrigin: previewOriginOf(editorOrigin),
         });
         const listener = getRequestListener(app.fetch);
         // The API's code is bundled into this config, so changes to it need a restart (the page reloads by itself)

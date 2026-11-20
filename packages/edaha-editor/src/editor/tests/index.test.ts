@@ -107,6 +107,18 @@ describe("createEditorServer", () => {
     expect((await remove(editorUrl(5555))).status).toBe(204);
   });
 
+  it("should only show previews, embed frames and their files at the previews' own address", async () => {
+    const { siteDir, clientDir } = await setup();
+    const app = await createEditorServer({ siteDir, clientDir, port: 5555 });
+    const preview = "http://localhost:5555";
+    expect((await app.request(`${preview}/`)).status).toBe(404);
+    expect((await app.request(`${preview}/_editor/main.js`)).status).toBe(404);
+    expect((await app.request(`${preview}/api/types`)).status).toBe(404);
+    expect((await app.request(`${preview}/base.css`)).status).toBe(200);
+    // The editor's own address shows the editor
+    expect((await app.request("http://127.0.0.1:5555/")).status).toBe(200);
+  });
+
   it("should allow changes from the default port's address when no port is given", async () => {
     const { siteDir, clientDir } = await setup();
     const app = await createEditorServer({ siteDir, clientDir });

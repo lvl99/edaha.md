@@ -199,7 +199,7 @@ const example = {
 
 ### Previews in the editor
 
-The editor shows each embed block in its rich text body in a small frame, and the **Preview** tab shows the whole page, with the embeds' scripts and styles. Both are sandboxed: they can't reach the editor, and they only load from the editor and the web addresses the site's embeds list in `sources`. An embed that loads from somewhere it doesn't list shows empty there; the website itself isn't affected.
+The editor shows each embed block in its rich text body in a small frame, and the **Preview** tab shows the whole page, with the embeds' scripts and styles. Both are shown from a separate, sandboxed address: they can't reach the editor, and they only load from their own address and the web addresses the site's embeds list in `sources`. An embed that loads from somewhere it doesn't list shows empty there; the website itself isn't affected.
 
 By default, the editor's frame shows the embed as the website does. An embed can show differently there with `editor`, whose functions each take the place of the website's:
 

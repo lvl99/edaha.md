@@ -250,7 +250,7 @@ describe("createRichtextEditor", () => {
     const frame = good!.querySelector("iframe") as HTMLIFrameElement;
     expect(frame.getAttribute("src")).toBe("/embed-frame/youtube/?theme=light");
     expect(frame.getAttribute("sandbox")).toBe(
-      "allow-scripts allow-popups allow-popups-to-escape-sandbox",
+      "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox",
     );
     expect(frame.title).toBe("YouTube video: preview");
     expect(loadFrame).toHaveBeenCalledWith({

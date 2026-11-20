@@ -15,6 +15,7 @@ import { Decoration, DecorationSet, type NodeView } from "@tiptap/pm/view";
 import { headingIds } from "@lvl99dotcom/edaha.md/generator/slug";
 import {
   embedName,
+  previewAddress,
   type EmbedTools,
   type EmbedValue,
 } from "../../embeds/index.ts";
@@ -358,12 +359,13 @@ export const Embed = Node.create<EmbedOptions>({
           const frame = document.createElement("iframe");
           frame.className = "embed-frame";
           frame.title = `${block.title.textContent}: preview`;
-          // In an origin of its own, it can run the embed's scripts but can't reach the editor
+          // From the previews' own origin, it can run the embed's scripts (and its players theirs) but can't reach the
+          // editor; the sandbox keeps it from sending forms or navigating the editor page
           frame.setAttribute(
             "sandbox",
-            "allow-scripts allow-popups allow-popups-to-escape-sandbox",
+            "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox",
           );
-          frame.src = `${result.url}?theme=${editorTheme()}`;
+          frame.src = previewAddress(`${result.url}?theme=${editorTheme()}`);
           preview.append(frame);
           if (frame.contentWindow) embedFrames.set(frame.contentWindow, frame);
         } catch (error) {

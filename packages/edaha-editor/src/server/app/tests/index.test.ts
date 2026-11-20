@@ -5,7 +5,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import type { EmbedPlugin } from "@lvl99dotcom/edaha.md/embeds";
-import { articleQuery, createEditorApp, fileQuery, previewCsp } from "..";
+import {
+  articleQuery,
+  createEditorApp,
+  fileQuery,
+  previewCsp,
+  previewOriginOf,
+} from "..";
 import { ArticleStore, EditorError } from "../../store";
 import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
 
@@ -347,7 +353,7 @@ describe("createEditorApp", () => {
     const page = await app.request(`${frame.url}?theme=dark`);
     expect(page.headers.get("content-type")).toMatch(/^text\/html/);
     expect(page.headers.get("content-security-policy")).toBe(
-      previewCsp([MEDIA], "http://localhost"),
+      previewCsp([MEDIA], "http://localhost", [ORIGIN]),
     );
     const html = await page.text();
     expect(html).toContain('<html lang="en" data-theme="dark"');
@@ -517,7 +523,7 @@ describe("createEditorApp", () => {
     const page = await app.request(url);
     expect(page.headers.get("content-type")).toMatch(/^text\/html/);
     expect(page.headers.get("content-security-policy")).toBe(
-      previewCsp([MEDIA], "http://localhost"),
+      previewCsp([MEDIA], "http://localhost", [ORIGIN]),
     );
     const html = await page.text();
     expect(html).toContain("Preview me");
@@ -544,7 +550,7 @@ describe("createEditorApp", () => {
     const css = await app.request("/site.css");
     expect(css.headers.get("content-type")).toMatch(/^text\/css/);
     expect(css.headers.get("content-security-policy")).toBe(
-      previewCsp([], "http://localhost"),
+      previewCsp([], "http://localhost", [ORIGIN]),
     );
     expect(await css.text()).toBe("body {}");
     expect((await app.request("/notes")).headers.get("content-type")).toBe(
@@ -554,12 +560,15 @@ describe("createEditorApp", () => {
     expect((await app.request("/preview/nope/")).status).toBe(404);
   });
 
-  it("should sandbox previews, allowing their own scripts and styles and the embeds' sources", () => {
-    const self = "http://127.0.0.1:5180";
-    const csp = previewCsp([MEDIA, { ...MEDIA, key: "b" }], self);
+  it("should sandbox previews in their own origin, allowing their own scripts and styles and the embeds' sources", () => {
+    const self = "http://localhost:5180";
+    const csp = previewCsp([MEDIA, { ...MEDIA, key: "b" }], self, [ORIGIN]);
+    // Their own origin, so embedded players (e.g. Bandcamp's) keep theirs
     expect(csp).toMatch(
-      /^sandbox allow-scripts allow-popups allow-popups-to-escape-sandbox; /,
+      /^sandbox allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox; /,
     );
+    // Only the editor's pages may show them in frames
+    expect(csp).toContain(`frame-ancestors 'self' ${ORIGIN}`);
     expect(csp).toContain(`default-src ${self};`);
     expect(csp).toContain(
       `script-src ${self} 'unsafe-inline' https://cdn.example.com;`,
@@ -576,6 +585,38 @@ describe("createEditorApp", () => {
     expect(none).toContain("frame-src 'none';");
     expect(none).toContain("connect-src 'none';");
     expect(none).toContain(`script-src ${self} 'unsafe-inline';`);
+    expect(none).toContain("frame-ancestors 'self'");
+  });
+
+  it("should answer nothing from the API at the previews' own origin", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "edaha-app-"));
+    await cp(FIXTURE, dir, { recursive: true });
+    const store = new ArticleStore(
+      await loadSiteConfig({ siteDir: dir }),
+      undefined,
+      { watch: false },
+    );
+    const app = createEditorApp(store, {
+      allowedOrigins: [ORIGIN],
+      previewOrigin: "http://localhost:5180",
+    });
+    expect(
+      (await app.request("http://localhost:5180/api/articles")).status,
+    ).toBe(404);
+    expect((await app.request(`${ORIGIN}/api/articles`)).status).toBe(200);
+    // Previews and their files are there
+    const created = await app.request(
+      `${ORIGIN}/api/preview`,
+      json("POST", { data: ARTICLE }),
+    );
+    const { url } = (await created.json()) as { url: string };
+    expect((await app.request(`http://localhost:5180${url}`)).status).toBe(200);
+  });
+
+  it("should give the previews' origin for an editor's address", () => {
+    expect(previewOriginOf("http://127.0.0.1:5180")).toBe(
+      "http://localhost:5180",
+    );
   });
 
   it("should require a file when uploading", async () => {

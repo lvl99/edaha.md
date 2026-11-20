@@ -30,7 +30,7 @@ import type {
 import { showToast } from "../edaha-toasts/index.ts";
 import "../edaha-embed-dialog/index.ts";
 import type { EdahaEmbedDialog } from "../edaha-embed-dialog/index.ts";
-import type { EmbedTools } from "../../embeds/index.ts";
+import { previewAddress, type EmbedTools } from "../../embeds/index.ts";
 import "../edaha-metadata-field/index.ts";
 import type { MetadataChange } from "../edaha-metadata-field/index.ts";
 import {
@@ -1090,9 +1090,9 @@ export class EdahaArticle extends LitElement {
         .embedTools=${this.embedTools}
       ></edaha-article-data-field>`;
     else if (this.mode === "preview")
-      // Served from the editor's own address, so the page loads its stylesheet, fonts and images like the website. Its
-      // server sandboxes it with its Content Security Policy (`previewCsp`), which keeps it, and the embeds' scripts in
-      // it, from using the editor's API
+      // Served by the editor's server, so the page loads its stylesheet, fonts and images like the website, but from
+      // the previews' own origin (`previewAddress`), which keeps it, and the embeds' scripts in it, from using the
+      // editor's API; its Content Security Policy sandboxes it too (`previewCsp`)
       body = html`<div class="preview-controls">
           <label for="preview-width">Width</label>
           <select
@@ -1116,7 +1116,7 @@ export class EdahaArticle extends LitElement {
           <iframe
             class="preview"
             title="Preview"
-            src=${this.previewUrl}
+            src=${previewAddress(this.previewUrl)}
             style=${styleMap({
               // Only the frame's width changes: the page isn't rendered again
               width: PREVIEW_WIDTHS.find(

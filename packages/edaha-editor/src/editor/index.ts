@@ -6,7 +6,7 @@ import { Hono } from "hono";
 import mime from "mime-types";
 import { EDITOR_PORT } from "@lvl99dotcom/edaha.md/cli";
 import type { EmbedPlugin } from "@lvl99dotcom/edaha.md/embeds";
-import { createEditorApp } from "../server/app/index.ts";
+import { createEditorApp, previewOriginOf } from "../server/app/index.ts";
 import { ArticleStore } from "../server/store/index.ts";
 import {
   loadSiteConfig,
@@ -114,13 +114,26 @@ const editorServerParts = async (
   );
   // Every article is read and checked as the editor starts
   await store.load();
+  const previewOrigin = previewOriginOf(editorUrl(port));
   const editorApp = createEditorApp(store, {
     allowedOrigins: [editorUrl(port)],
     fetch: options.fetch,
     plugins: options.plugins,
+    previewOrigin,
   });
 
   const app = new Hono();
+  // The previews' own origin doesn't show the editor page or its files
+  app.use("/", async (c, next) =>
+    new URL(c.req.url).origin === previewOrigin
+      ? c.json({ error: "Not found" }, 404)
+      : next(),
+  );
+  app.use(`${EDITOR_BASE}*`, async (c, next) =>
+    new URL(c.req.url).origin === previewOrigin
+      ? c.json({ error: "Not found" }, 404)
+      : next(),
+  );
   app.get("/", async (c) => {
     const html = await clientFile(clientDir, "index.html");
     if (!html)
