@@ -46,7 +46,7 @@ A block whose key has no plugin, or whose plugin fails, gives a warning and is s
 
 Embed blocks inside code blocks and inline code are left alone, so you can write about them.
 
-In the [WYSIWYG editor](/docs/09-wysiwyg-editor/), the **Embed** button asks for the kind of embed and its content, and shows the embed in the article's body.
+In the [WYSIWYG editor](/docs/09-wysiwyg-editor/), each embed has its own toolbar button, which asks for its content and shows the embed in the article's body.
 
 ## Adding embeds to your site
 
@@ -130,7 +130,7 @@ validate: (content) => {
 },
 ```
 
-Content that isn't valid isn't rendered: the build warns with the problems and shows the block as it is written. In the editor, the embed dialog checks the content when you add or save an embed, and lists the problems under it instead of saving it.
+A block whose content isn't valid is left out of the website: the build warns with the problems, and still builds the rest of the article. In the editor, the embed dialog checks the content when you add or save an embed, and lists the problems under it instead of saving it; a block that isn't valid (e.g. written by hand) lists them in the article's body.
 
 ### Scripts and stylesheets once per page
 
