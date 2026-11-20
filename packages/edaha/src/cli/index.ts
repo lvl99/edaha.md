@@ -97,7 +97,7 @@ export const loadEditor = async (
  * edaha.md's version, from its package.json.
  *
  * @example
- * version(); // "0.1.0"
+ * version(); // "0.2.0"
  */
 export const version = (): string =>
   (
