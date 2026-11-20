@@ -304,6 +304,10 @@ describe("EmbedResolver", () => {
     expect(await resolver.validate(undefined, "x")).toEqual([
       "Embed blocks need a key, e.g. <!-- embed:youtube -->...<!-- /embed:youtube -->",
     ]);
+    // An empty key, as the editor sends for old blocks, is the same
+    expect(await resolver.validate("", "x")).toEqual([
+      "Embed blocks need a key, e.g. <!-- embed:youtube -->...<!-- /embed:youtube -->",
+    ]);
 
     // Left out of the website, without being rendered
     expect(await resolver.render("checked", "many", "news/a")).toEqual({

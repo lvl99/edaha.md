@@ -312,7 +312,7 @@ export class EmbedResolver {
    * await embeds.validate("youtube", "https://example.com/"); // ["https://example.com/ is not a YouTube URL"]
    */
   async validate(key: string | undefined, content: string): Promise<string[]> {
-    const plugin = key === undefined ? undefined : this.plugins.get(key);
+    const plugin = key ? this.plugins.get(key) : undefined;
     return plugin
       ? validateContent(plugin, content)
       : [capitalise(missingPlugin(key))];
@@ -330,7 +330,7 @@ export class EmbedResolver {
         ? `<p class="embed-link"><a href="${escapeHtml(content)}">${escapeHtml(content)}</a></p>`
         : `<pre class="embed-text">${escapeHtml(content)}</pre>`,
     });
-    const plugin = key === undefined ? undefined : this.plugins.get(key);
+    const plugin = key ? this.plugins.get(key) : undefined;
     if (!plugin) {
       logger.warn(`${source}: ${missingPlugin(key)}; shown as it is`);
       return fallback();
@@ -367,7 +367,8 @@ export class EmbedResolver {
 
 /** Why a block's key has no plugin */
 const missingPlugin = (key: string | undefined) =>
-  key === undefined
+  // An empty key is an old block without one, as the editor sends it
+  !key
     ? "embed blocks need a key, e.g. <!-- embed:youtube -->...<!-- /embed:youtube -->"
     : `no embed plugin with the key "${key}"`;
 
