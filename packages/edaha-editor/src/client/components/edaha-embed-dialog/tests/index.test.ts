@@ -227,7 +227,7 @@ describe("edaha-embed-dialog", () => {
     expect(await result).toEqual(value("youtube", "b"));
   });
 
-  it("should show an embed's options above its content, with their defaults and conditions, saving every shown one", async () => {
+  it("should show an embed's options below its content, with their defaults and conditions, saving every shown one", async () => {
     const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
     const validate = vi.fn(async () => []);
     const result = element.edit(
@@ -241,11 +241,11 @@ describe("edaha-embed-dialog", () => {
       "Paste an album's or track's URL",
     );
     expect(find(element, "legend").textContent?.trim()).toBe("Options");
-    // Above the content
+    // Below the content
     expect(
       find(element, "edaha-metadata-field").compareDocumentPosition(
         content(element),
-      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ) & Node.DOCUMENT_POSITION_PRECEDING,
     ).toBeTruthy();
     const layout = find<HTMLSelectElement>(
       element,

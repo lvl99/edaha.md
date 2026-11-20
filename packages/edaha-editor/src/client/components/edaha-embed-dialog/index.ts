@@ -222,7 +222,6 @@ export class EdahaEmbedDialog extends LitElement {
           <p class="embed-dialog-about">
             ${embedIcon(embed)} <span>${embed?.description ?? ""}</span>
           </p>
-          ${this.renderOptionFields()}
           <label for="embed-dialog-content">Content</label>
           <p id="embed-dialog-content-hint" class="embed-dialog-hint">
             ${embed?.info ?? DEFAULT_EMBED_INFO}
@@ -257,6 +256,7 @@ export class EdahaEmbedDialog extends LitElement {
                 : ""
             }
           </div>
+          ${this.renderOptionFields()}
         </div>
         <div class="embed-dialog-actions">
           <button

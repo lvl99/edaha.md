@@ -64,7 +64,7 @@ https://artist.bandcamp.com/album/name
 <!-- /embed:bandcamp -->
 ```
 
-Options you leave out get their defaults. The editor's embed dialog shows each option as a field above the content, and saves every option that applies (defaults included), so the block keeps looking the same if a plugin's defaults change. Options that don't apply to the others' values (e.g. the tracklist for a slim player) are hidden in the dialog and left out.
+Options you leave out get their defaults. The editor's embed dialog shows each option as a field below the content, and saves every option that applies (defaults included), so the block keeps looking the same if a plugin's defaults change. Options that don't apply to the others' values (e.g. the tracklist for a slim player) are hidden in the dialog and left out.
 
 A block whose options aren't the embed's (an unknown name, or a value of the wrong kind) is left out of the website with a warning, like one whose content isn't valid.
 

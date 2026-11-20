@@ -860,6 +860,7 @@ edaha-article .preview {
 }
 
 .embed-dialog textarea {
+  min-height: 2rem;
   font-family: ui-monospace, monospace;
   resize: vertical;
 }
