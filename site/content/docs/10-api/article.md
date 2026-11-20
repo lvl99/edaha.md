@@ -57,9 +57,9 @@ output -. "if set" .-> publish["publishDir"]
 
 1. `loadSiteConfig` finds and reads the config file, checks its settings and loads its embed plugins. The site folder is the config file's folder.
 2. Every folder in the articles folder is an article type, with its settings from the config file (or the defaults, with a warning).
-3. Each article's `article.md` is read: its header settings are checked, its embed blocks are rendered by their plugins, and its Markdown becomes HTML. Drafts are checked but not built.
+3. Each article's `article.md` is read: its header settings are checked, its embed blocks are set aside for the pages that show them, and its Markdown becomes HTML. Drafts are checked but not built.
 4. Published articles are collected into lists: one for each type, and one for each tag and author within a type, as the types' `generate` settings say.
-5. Each article page, list page and RSS feed is rendered with its template, and written to `outputDir` with the articles' files and the static files. If `publishDir` is set, everything is then copied there.
+5. Each article page, list page and RSS feed is rendered with its template, then the embed blocks it shows are rendered by their plugins (sharing each embed's state on the page) and the HTML its embeds need is added. Pages are written to `outputDir` with the articles' files and the static files. If `publishDir` is set, everything is then copied there.
 
 Templates are found in the site's templates folder first, then in the default theme. A type's own template (e.g. `templates/news/single.njk`) comes before the `article` ones, and an article can name another with its `template` setting. Every page template extends a layout:
 
@@ -118,7 +118,7 @@ It takes `siteDir`, `configFile` and `logger`, like `buildSite`. The config help
 
 ### Embed plugins
 
-The embed API (`EmbedPlugin`, `EmbedResolver`, `embedBlock`, `isEmbedPlugin`, `loadPlugins` and `validationErrors`) is exported too. See [Embeds](/docs/07-embeds/#creating-your-own) for how to write a plugin.
+The embed API (`EmbedPlugin`, `EmbedResolver`, `EMBED_PAGE_PARTS`, `embedBlock`, `splitEmbed`, `cachedFetch`, `isEmbedPlugin`, `loadPlugins` and `validationErrors`) is exported too. `EmbedResolver` renders embeds page by page: `replaceBlocks` puts placeholders for a page's blocks in its Markdown, and `renderPage` renders them in the page's HTML, with the HTML its embeds need in place of `EMBED_PAGE_PARTS` (the template data for `{% embedHead %}` and `{% embedFoot %}`). The fields' `defaultValue`, `showWhen` and `hideWhen` are applied by `resolveFields`, from `@lvl99dotcom/edaha.md/generator/fields`. See [Embeds](/docs/07-embeds/#creating-your-own) for how to write a plugin.
 
 ### The command line
 

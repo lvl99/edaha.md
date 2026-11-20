@@ -139,7 +139,7 @@ plugins:
   - "@lvl99dotcom/edaha-plugin-mermaidjs"
 ```
 
-A block whose key has no plugin gives a warning and is shown as it is written. Plugins can add stylesheets and scripts once per page, through the `{% embedHead %}` and `{% embedFoot %}` template tags (the default theme has them).
+Some embeds have options, e.g. the Bandcamp player's layout, written in YAML at the start of the block (in a `<!--yaml ... -->` comment); the editor's embed dialog shows them as fields. A block whose key has no plugin gives a warning and is shown as it is written. Plugins can add stylesheets and scripts once per page, through the `{% embedHead %}` and `{% embedFoot %}` template tags (the default theme has them).
 
 > For more information about embeds such as how to create your own, see [Embeds](https://lvl99.github.io/edaha.md/docs/07-embeds/).
 

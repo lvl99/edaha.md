@@ -46,17 +46,37 @@ A block whose key has no plugin, or whose plugin fails, gives a warning and is s
 
 Embed blocks inside code blocks and inline code are left alone, so you can write about them.
 
-In the [WYSIWYG editor](/docs/09-wysiwyg-editor/), each embed has its own toolbar button, which asks for its content and shows the embed in the article's body.
+In the [WYSIWYG editor](/docs/09-wysiwyg-editor/), each embed has its own toolbar button, which asks for its content (and options) and shows the embed in the article's body.
+
+### Options
+
+Some embeds have options that change how they show, e.g. the Bandcamp player's layout and colours. A block's options go in YAML in a `<!--yaml ... -->` comment before its content, like an article's settings:
+
+```md
+<!-- embed:bandcamp -->
+<!--yaml
+layout: large
+tracklist: true
+linkcol: 051c2c
+-->
+
+https://artist.bandcamp.com/album/name
+<!-- /embed:bandcamp -->
+```
+
+Options you leave out get their defaults. The editor's embed dialog shows each option as a field above the content, and saves every option that applies (defaults included), so the block keeps looking the same if a plugin's defaults change. Options that don't apply to the others' values (e.g. the tracklist for a slim player) are hidden in the dialog and left out.
+
+A block whose options aren't the embed's (an unknown name, or a value of the wrong kind) is left out of the website with a warning, like one whose content isn't valid.
 
 ## Adding embeds to your site
 
 edaha.md has no embeds of its own. Install the plugins you want, then list their packages under `plugins` in your [config file](/docs/03-configuration/#plugins):
 
-| Plugin                                                                                                     | Key         | Content                                                                                              |
-| ---------------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------- |
-| [`@lvl99dotcom/edaha-plugin-youtube`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-youtube)     | `youtube`   | A YouTube video's URL. Always embedded from youtube-nocookie.com.                                    |
-| [`@lvl99dotcom/edaha-plugin-bandcamp`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-bandcamp)   | `bandcamp`  | A Bandcamp album or track page's URL. The page is read when building, so it needs internet access.   |
-| [`@lvl99dotcom/edaha-plugin-mermaidjs`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-mermaidjs) | `mermaidjs` | [Mermaid](https://mermaid.js.org) code. Pages with diagrams load Mermaid from jsDelivr to draw them. |
+| Plugin                                                                                                     | Key         | Content                                                                                                           |
+| ---------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
+| [`@lvl99dotcom/edaha-plugin-youtube`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-youtube)     | `youtube`   | A YouTube video's URL. Always embedded from youtube-nocookie.com.                                                 |
+| [`@lvl99dotcom/edaha-plugin-bandcamp`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-bandcamp)   | `bandcamp`  | A Bandcamp album or track page's URL. The page is read when building, so it needs internet access. Options below. |
+| [`@lvl99dotcom/edaha-plugin-mermaidjs`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-mermaidjs) | `mermaidjs` | [Mermaid](https://mermaid.js.org) code. Pages with diagrams load Mermaid from jsDelivr to draw them.              |
 
 ```sh
 npm add --save-dev @lvl99dotcom/edaha-plugin-youtube @lvl99dotcom/edaha-plugin-mermaidjs
@@ -71,6 +91,22 @@ plugins:
 
 Packages are found from the config file's folder, like an `import` there would be. Their default export is an embed plugin (or a list of them).
 
+### Bandcamp player options
+
+The Bandcamp player's options are those of Bandcamp's own embed codes:
+
+| Option        | Values                                 | Default  | Applies to           |
+| ------------- | -------------------------------------- | -------- | -------------------- |
+| `layout`      | `slim`, `artwork-only` or `large`      | `large`  | All                  |
+| `artwork`     | `none` to hide the artwork             | (shown)  | `slim` and `large`   |
+| `size`        | The artwork's size: `small` or `large` | `large`  | `large` with artwork |
+| `tracklist`   | `true` to show an album's tracklist    | `false`  | `large`              |
+| `transparent` | `true` for a transparent background    | `true`   | All                  |
+| `bgcol`       | The background colour, e.g. `ffffff`   | `ffffff` | All                  |
+| `linkcol`     | The links' colour, e.g. `0687f5`       | `0687f5` | All                  |
+
+Write colours with or without their `#`. Put colours made only of digits (e.g. `000000`) in quotes, so YAML reads them as text.
+
 ## Creating your own
 
 An embed is an **embed plugin**: an object with a key, a name and a `build.render` function that turns a block's content into HTML. The content is the text between its tags, so it can be anything: a URL, an ID, some code.
@@ -84,8 +120,18 @@ export const vimeo = {
   name: "Vimeo video",
   // Optional; shown in the editor's embed dialog
   description: "A Vimeo video player, from the video's URL.",
+  // Optional; shown under the content's label in the embed dialog
+  info: "Paste the video's URL, e.g. https://vimeo.com/123",
   // Optional; the web addresses its HTML loads from (see "Previews in the editor")
   sources: { frame: ["https://player.vimeo.com"] },
+  // Optional; options that change how a block shows (see "Defining options")
+  options: {
+    autoplay: {
+      title: "Play automatically",
+      type: "boolean",
+      $edahaField: { checkbox: true, defaultValue: false },
+    },
+  },
   // Optional; check the content before it is rendered (see "Checking content")
   validate: (content) => {
     if (!VIDEO_URL.test(content))
@@ -94,31 +140,58 @@ export const vimeo = {
   },
   build: {
     // The HTML for a block's content; throw if it can't be embedded
-    render: async (content) => {
+    render: async (content, { options }) => {
       const [, id] = VIDEO_URL.exec(content);
-      return `<iframe src="https://player.vimeo.com/video/${id}" title="Vimeo video" allowfullscreen></iframe>`;
+      return `<iframe src="https://player.vimeo.com/video/${id}?autoplay=${options.autoplay ? 1 : 0}" title="Vimeo video" allowfullscreen></iframe>`;
     },
   },
 };
 ```
 
-| Property                         | Description                                                                                                                                                                                                 |
-| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `key`                            | Which blocks it renders: `<!-- embed:<key> -->`. Lowercase kebab-case, e.g. `vimeo`. Also its wrapper's class: `embed-<key>`.                                                                               |
-| `name`                           | Its name, shown in the editor and in warnings, e.g. `Vimeo video`.                                                                                                                                          |
-| `description`                    | Optional; what it embeds, shown in the editor's embed dialog.                                                                                                                                               |
-| `sources`                        | Optional; the `https://` origins its HTML loads from, by kind: `frame`, `script`, `style`, `font` and `connect` (requests from its scripts). The editor's previews allow them.                              |
-| `validate(content)`              | Optional; checks a block's content before it is rendered. Return `true` when it is valid; throw an error saying what is wrong (or an `AggregateError` with one error for each problem). See below.          |
-| `build.render(content, context)` | Returns a promise of the HTML for a block. `context.fetch` fetches other data, e.g. an oEmbed response; `context.renders` collects what the page needs (see below). Throw if the content can't be embedded. |
-| `build.renderHead(context)`      | Optional; HTML for the `<head>` of each page that has this embed, once, e.g. a stylesheet.                                                                                                                  |
-| `build.renderFoot(context)`      | Optional; HTML for the end of the `<body>` of each page that has this embed, once, e.g. a script.                                                                                                           |
-| `editor`                         | Optional; how it shows in the editor's rich text body (see "Previews in the editor").                                                                                                                       |
+| Property                         | Description                                                                                                                                                                                                                                   |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key`                            | Which blocks it renders: `<!-- embed:<key> -->`. Lowercase kebab-case, e.g. `vimeo`. Also its wrapper's class: `embed-<key>`.                                                                                                                 |
+| `name`                           | Its name, shown in the editor and in warnings, e.g. `Vimeo video`.                                                                                                                                                                            |
+| `description`                    | Optional; what it embeds, shown in the editor's embed dialog.                                                                                                                                                                                 |
+| `info`                           | Optional; what to put in the content, shown under the content's label in the embed dialog. Without it, the dialog says "Provide the embed's content, e.g. a URL or code".                                                                     |
+| `sources`                        | Optional; the `https://` origins its HTML loads from, by kind: `frame`, `script`, `style`, `font` and `connect` (requests from its scripts). The editor's previews allow them.                                                                |
+| `options`                        | Optional; the options blocks can set, as fields like [custom metadata](/docs/03-configuration/#metadata). See below.                                                                                                                          |
+| `validate(content, options)`     | Optional; checks a block's content (and options) before it is rendered. Return `true` when it is valid; throw an error saying what is wrong (or an `AggregateError` with one error for each problem). See below.                              |
+| `build.render(content, context)` | Returns a promise of the HTML for a block. `context.options` has the block's options; `context.fetch` fetches other data, e.g. an oEmbed response; `context.state` is shared by the page (see below). Throw if the content can't be embedded. |
+| `build.renderHead(context)`      | Optional; HTML for the `<head>` of each page that has this embed, once, e.g. a stylesheet.                                                                                                                                                    |
+| `build.renderFoot(context)`      | Optional; HTML for the end of the `<body>` of each page that has this embed, once, e.g. a script.                                                                                                                                             |
+| `editor`                         | Optional; how it shows in the editor's rich text body (see "Previews in the editor").                                                                                                                                                         |
 
-Escape anything from the content that you put into the HTML. Each block's content is rendered once per build, however many articles use it.
+Escape anything from the content or options that you put into the HTML. Blocks are rendered with each page that shows them (an article's page, and list pages showing its excerpt), and each address `fetch` fetches is fetched once per build.
+
+### Defining options
+
+`options` lists the options a block can set, by the name they are saved under. Each is a JSON Schema with `$edahaField`, saying how the editor's embed dialog shows it, exactly like [custom metadata fields](/docs/03-configuration/#metadata), including:
+
+- `defaultValue`: the value used when a block doesn't set one.
+- `showWhen` and `hideWhen`: conditions on the other options for when the option applies. An option that doesn't apply is hidden in the dialog and left out of the options `render` gets. See [conditions](/docs/03-configuration/#default-values-and-conditions).
+
+```js
+options: {
+  layout: {
+    title: "Layout",
+    type: "string",
+    enum: ["slim", "large"],
+    $edahaField: { select: true, defaultValue: "large" },
+  },
+  tracklist: {
+    title: "Show tracklist",
+    type: "boolean",
+    $edahaField: { checkbox: true, defaultValue: false, hideWhen: ["layout", "=", "slim"] },
+  },
+},
+```
+
+`render` and `validate` get a block's options with their defaults filled in and options that don't apply left out, e.g. `{ layout: "large", tracklist: false }`. A block's options are checked against their schemas before `validate`, and one with options that aren't valid is left out of the website, with a warning.
 
 ### Checking content
 
-`validate` checks a block's content before it is rendered, for the website and in the editor. Return `true` when it is valid. Otherwise, throw an error saying what is wrong, so the author can fix it; for several problems, throw an `AggregateError` with one error for each. Returning `false` gives a general message instead. It can be `async`.
+`validate` checks a block's content (its second argument is the block's options) before it is rendered, for the website and in the editor. Return `true` when it is valid. Otherwise, throw an error saying what is wrong, so the author can fix it; for several problems, throw an `AggregateError` with one error for each. Returning `false` gives a general message instead. It can be `async`.
 
 ```js
 validate: (content) => {
@@ -130,13 +203,13 @@ validate: (content) => {
 },
 ```
 
-A block whose content isn't valid is left out of the website: the build warns with the problems, and still builds the rest of the article. In the editor, the embed dialog checks the content when you add or save an embed, and lists the problems under it instead of saving it; a block that isn't valid (e.g. written by hand) lists them in the article's body.
+A block whose content isn't valid is left out of the website: the build warns with the problems, and still builds the rest of the article. In the editor, the embed dialog checks the content and options when you add or save an embed, and lists the problems under them instead of saving it; a block that isn't valid (e.g. written by hand) lists them in the article's body.
 
 ### Scripts and stylesheets once per page
 
-An embed that needs a script, like a diagram library, adds it with `renderHead` or `renderFoot`. They are called after the page's content is rendered, only on pages that use the embed (an article's page, or a list page showing its excerpt), and only once however many blocks the page has.
+An embed that needs a script, like a diagram library, adds it with `renderHead` or `renderFoot`. They are called after the page's content is rendered, only on pages that show the embed (an article's page, or a list page showing its excerpt), and only once however many blocks the page has.
 
-Anything a block's `render` pushes to `context.renders` is given to `renderHead` and `renderFoot` as `context.renders`, in page order, e.g. the IDs of the diagrams to start:
+`context.state` is an object the embed keeps for one page: every block's `render` on the page, then `renderHead` and `renderFoot`, get the same one, so blocks can leave things there for them, e.g. the IDs of the diagrams to start. Each page starts with an empty one. `renderHead` and `renderFoot` also get `context.options`: a list of each block's options, in page order.
 
 ```js
 import { escapeHtml } from "@lvl99dotcom/edaha.md/generator/format";
@@ -146,14 +219,15 @@ const chart = {
   name: "Chart",
   sources: { script: ["https://cdn.example.com"] },
   build: {
-    render: async (content, { renders }) => {
-      const id = `chart-${renders.length + 1}`;
-      renders.push(id);
+    render: async (content, { state }) => {
+      state.ids ??= [];
+      const id = `chart-${state.ids.length + 1}`;
+      state.ids.push(id);
       return `<canvas id="${id}" data-chart="${escapeHtml(content)}"></canvas>`;
     },
-    renderFoot: async ({ renders }) => `
+    renderFoot: async ({ state }) => `
       <script src="https://cdn.example.com/chart.js"></script>
-      <script>${renders.map((id) => `drawChart("${id}");`).join("\n")}</script>`,
+      <script>${state.ids.map((id) => `drawChart("${id}");`).join("\n")}</script>`,
   },
 };
 ```

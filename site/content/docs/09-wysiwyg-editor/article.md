@@ -45,7 +45,7 @@ Searches and the article browser include changes made outside the editor straigh
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
    - **Image URL**, **Upload image**, **Choose file** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
-   - a button for each of the site's [embeds](/docs/07-embeds/), e.g. **YouTube video** or **MermaidJS diagram**: paste or write its content (e.g. a video's address). If the content isn't right for that kind of embed, the dialog says why before adding it. The body shows the embed as the website will; its **Edit** button (or its kind's toolbar button, while it is selected) changes it. An embed that isn't valid lists why in the body, and the website leaves it out. An embed's kind can't be changed: remove it and add another. One whose kind the site has no plugin for can only be removed, or changed in the **Markdown** tab;
+   - a button for each of the site's [embeds](/docs/07-embeds/), e.g. **YouTube video** or **MermaidJS diagram**: paste or write its content (e.g. a video's address), and set its options, if it has any (e.g. the Bandcamp player's layout), above the content. Options show their defaults, and options that don't apply to the others' values are hidden. If the content or options aren't right for that kind of embed, the dialog says why before adding it. The body shows the embed as the website will; its **Edit** button (or its kind's toolbar button, while it is selected) changes it. An embed that isn't valid lists why in the body, and the website leaves it out. An embed's kind can't be changed: remove it and add another. One whose kind the site has no plugin for can only be removed, or changed in the **Markdown** tab;
    - **Raw**: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;
    - **Read more**: where the article's summary in lists ends.
 4. Choose **Save**.
@@ -134,7 +134,7 @@ Preview pages, the frames that show embeds in the body, and the files they load 
 
 ### Embeds in the editor
 
-The site's [embed plugins](/docs/07-embeds/) (its config file's `plugins`) work in the editor too: each has a toolbar button with its icon, its dialog shows its description, the body shows each embed block in a frame, and the preview pages render them as the website will. An embed's `editor` settings can give it an icon and a different look in the body.
+The site's [embed plugins](/docs/07-embeds/) (its config file's `plugins`) work in the editor too: each has a toolbar button with its icon, its dialog shows its description, options and `info`, the body shows each embed block in a frame, and the preview pages render them as the website will. An embed's `editor` settings can give it an icon and a different look in the body.
 
 The editor reads the config file again each time, so you can add or change an embed and see the result without restarting it.
 
