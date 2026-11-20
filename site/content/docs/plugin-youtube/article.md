@@ -1,5 +1,5 @@
 <!--yaml
-status: draft
+status: published
 date: 2026-11-20T16:00:00.000Z
 -->
 
@@ -46,12 +46,12 @@ The YouTube player has no options.
 
 Any form of a YouTube video's URL works, from `youtube.com`, `www.youtube.com`, `m.youtube.com`, `youtu.be` or `youtube-nocookie.com`:
 
-| Form            | Example                                              |
-| --------------- | ---------------------------------------------------- |
-| Watch page      | `https://www.youtube.com/watch?v=aju_UB5VIf8`        |
-| Short link      | `https://youtu.be/aju_UB5VIf8`                       |
-| Short video     | `https://www.youtube.com/shorts/aju_UB5VIf8`         |
-| Live video      | `https://www.youtube.com/live/aju_UB5VIf8`           |
+| Form | Example |
+| --- | --- |
+| Watch page | `https://www.youtube.com/watch?v=aju_UB5VIf8` |
+| Short link | `https://youtu.be/aju_UB5VIf8` |
+| Short video | `https://www.youtube.com/shorts/aju_UB5VIf8` |
+| Live video | `https://www.youtube.com/live/aju_UB5VIf8` |
 | Embedded player | `https://www.youtube-nocookie.com/embed/aju_UB5VIf8` |
 
 Other parts of the URL, e.g. a start time (`&t=30s`) or a playlist, are left out.

@@ -1,5 +1,5 @@
 <!--yaml
-status: draft
+status: published
 date: 2026-11-20T12:00:42.848Z
 -->
 
@@ -20,7 +20,6 @@ transparent: true
 bgcol: ffffff
 linkcol: 0687f5
 -->
-
 https://672354.bandcamp.com/album/void-ep-1
 <!-- /embed:bandcamp -->
 
@@ -62,15 +61,15 @@ https://artist.bandcamp.com/album/name
 
 ### Options
 
-| Option        | Type    | Description                                     | Accepted values                   | Default  | Applies to           |
-| ------------- | ------- | ----------------------------------------------- | --------------------------------- | -------- | -------------------- |
-| `layout`      | String  | The layout style of the Bandcamp player         | `slim`, `artwork-only` or `large` | `large`  | All                  |
-| `artwork`     | String  | Hides the artwork (**Hide artwork** in editor)  | `none`                            | (shown)  | `slim` and `large`   |
-| `size`        | String  | The artwork's size                              | `small` or `large`                | `large`  | `large` with artwork |
-| `tracklist`   | Boolean | Shows an album's tracklist (tracks have none)   | `true` or `false`                 | `false`  | `large`              |
-| `transparent` | Boolean | Makes the player's background transparent       | `true` or `false`                 | `true`   | All                  |
-| `bgcol`       | String  | The player's background colour                  | A hex colour, e.g. `ffffff`       | `ffffff` | All                  |
-| `linkcol`     | String  | The colour of the player's links and highlights | A hex colour, e.g. `0687f5`       | `0687f5` | All                  |
+| Option | Type | Description | Accepted values | Default | Applies to |
+| --- | --- | --- | --- | --- | --- |
+| `layout` | String | The layout style of the Bandcamp player | `slim`, `artwork-only` or `large` | `large` | All |
+| `artwork` | String | Hides the artwork | `none` | (shown) | `slim` and `large` |
+| `size` | String | The artwork's size | `small` or `large` | `large` | `large` with artwork |
+| `tracklist` | Boolean | Shows an album's tracklist (tracks have none) | `true` or `false` | `false` | `large` |
+| `transparent` | Boolean | Makes the player's background transparent | `true` or `false` | `true` | All |
+| `bgcol` | String | The player's background colour | A hex colour, e.g. `ffffff` | `ffffff` | All |
+| `linkcol` | String | The colour of the player's links and highlights | A hex colour, e.g. `0687f5` | `0687f5` | All |
 
 Write colours with or without their `#`. Put colours made only of digits (e.g. `"000000"`) in quotes, so YAML reads them as text.
 
@@ -80,13 +79,13 @@ The editor saves every option that applies, defaults included, so a player keeps
 
 The player is sized like Bandcamp's own embed codes:
 
-| Layout                       | Width                            | Height                                       |
-| ---------------------------- | -------------------------------- | -------------------------------------------- |
-| `slim`                       | The page's width                 | 42px                                         |
-| `artwork-only`               | 350px                            | 350px                                        |
-| `large`, large artwork       | 350px                            | 470px for albums, 442px for tracks           |
-| `large`, small or no artwork | The page's width                 | 120px                                        |
-| `large`, with the tracklist  | 350px (400px with small artwork) | Grows by 33px for each of the album's tracks |
+| Layout | Width | Height |
+| --- | --- | --- |
+| `slim` | The page's width | 42px |
+| `artwork-only` | 350px | 350px |
+| `large`, large artwork | 350px | 470px for albums, 442px for tracks |
+| `large`, small or no artwork | The page's width | 120px |
+| `large`, with the tracklist | 350px (400px with small artwork) | Grows by 33px for each of the album's tracks |
 
 To make players fill the page's width, style them in your site's `static/site.css`:
 
