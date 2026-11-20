@@ -5,6 +5,7 @@ import type {
   MetadataProblem,
 } from "@lvl99dotcom/edaha.md/generator/metadata";
 import type { MetadataGroup } from "@lvl99dotcom/edaha.md/generator/metadataGroups";
+import type { EmbedOptionSchemas } from "@lvl99dotcom/edaha.md/embeds";
 
 export type { ArticleStatus } from "@lvl99dotcom/edaha.md/generator/types";
 export type {
@@ -266,8 +267,12 @@ export interface EmbedInfo {
   name: string;
   /** What it embeds, if it says */
   description?: string | undefined;
+  /** What its content is, shown under the content's label in the embed dialog, if it says */
+  info?: string | undefined;
   /** Its SVG icon (markup), if it has one */
   icon?: string | undefined;
+  /** Its options' fields (see EmbedPlugin.options), if it has options */
+  options?: EmbedOptionSchemas | undefined;
 }
 
 /** Why an embed block's content isn't valid for its plugin (none when it is) */

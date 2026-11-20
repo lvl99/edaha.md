@@ -28,6 +28,15 @@ const MEDIA = {
   key: "media",
   name: "Media",
   description: "A media player",
+  info: "Paste the media's URL",
+  options: {
+    size: {
+      title: "Size",
+      type: "string",
+      enum: ["small", "large"],
+      $edahaField: { select: true, defaultValue: "small" },
+    },
+  },
   sources: {
     frame: ["https://media.example.com"],
     script: ["https://cdn.example.com"],
@@ -41,7 +50,8 @@ const MEDIA = {
   },
   editor: {
     icon: "<svg></svg>",
-    render: async (content: string) => `<p>Editing ${content}</p>`,
+    render: async (content: string, { options }) =>
+      `<p>Editing ${content} (${options.size as string})</p>`,
   },
 } satisfies EmbedPlugin;
 
@@ -329,7 +339,9 @@ describe("createEditorApp", () => {
         key: "media",
         name: "Media",
         description: "A media player",
+        info: "Paste the media's URL",
         icon: "<svg></svg>",
+        options: MEDIA.options,
       },
     ]);
   });
@@ -358,7 +370,7 @@ describe("createEditorApp", () => {
     const html = await page.text();
     expect(html).toContain('<html lang="en" data-theme="dark"');
     expect(html).toContain(
-      '<div class="embed embed-media"><p>Editing https://media.example.com/v/1</p></div>',
+      '<div class="embed embed-media"><p>Editing https://media.example.com/v/1 (small)</p></div>',
     );
     expect(html).toContain(
       '<link rel="stylesheet" href="https://cdn.example.com/media.css">',
@@ -385,6 +397,21 @@ describe("createEditorApp", () => {
       '<pre class="embed-text">Hello</pre>',
     );
     expect((await app.request("/embed-frame/nope/")).status).toBe(404);
+
+    // With options, which another frame shows
+    const large = await app.request(
+      "/api/embed-frames",
+      json("POST", {
+        key: "media",
+        content: "https://media.example.com/v/1",
+        options: { size: "large" },
+      }),
+    );
+    const largeUrl = ((await large.json()) as { url: string }).url;
+    expect(largeUrl).not.toBe(frame.url);
+    expect(await (await app.request(largeUrl)).text()).toContain(
+      "<p>Editing https://media.example.com/v/1 (large)</p>",
+    );
   });
 
   it("should check embed blocks' content with their plugins", async () => {
@@ -396,12 +423,12 @@ describe("createEditorApp", () => {
       },
     };
     const { app } = await setup({ plugins: [checked] });
-    const check = async (key: string, content: string) =>
+    const check = async (key: string, content: string, options?: unknown) =>
       (
         await (
           await app.request(
             "/api/embed-validations",
-            json("POST", { key, content }),
+            json("POST", { key, content, options }),
           )
         ).json()
       ).errors as string[];
@@ -409,6 +436,22 @@ describe("createEditorApp", () => {
     expect(await check("media", "v/1")).toEqual(["Not a URL"]);
     expect(await check("nope", "x")).toEqual([
       'No embed plugin with the key "nope"',
+    ]);
+    // Options are checked too; options that aren't a map are none
+    expect(
+      await check("media", "https://media.example.com/v/1", { size: "huge" }),
+    ).toEqual(['Size must be one of "small", "large"']);
+    expect(
+      await check("media", "https://media.example.com/v/1", ["large"]),
+    ).toEqual([]);
+    expect(
+      (
+        await (
+          await app.request("/api/embed-validations", json("POST", {}))
+        ).json()
+      ).errors,
+    ).toEqual([
+      "Embed blocks need a key, e.g. <!-- embed:youtube -->...<!-- /embed:youtube -->",
     ]);
     // Content that isn't valid has no frame, and its errors are given apart from other problems
     const frame = await app.request(

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMBED_BLOCK, embedBlock, embedContent } from "..";
+import { EMBED_BLOCK, embedBlock, embedContent, splitEmbed } from "..";
 
 /** The key and content of every embed block in a text */
 const blocks = (text: string) =>
@@ -41,5 +41,55 @@ describe("embedBlock", () => {
     expect(embedBlock("mermaidjs", "graph TD;\n  A-->B;")).toBe(
       "<!-- embed:mermaidjs -->\ngraph TD;\n  A-->B;\n<!-- /embed:mermaidjs -->",
     );
+  });
+
+  it("should write options in YAML before the content", () => {
+    const block = embedBlock("bandcamp", "https://a.bandcamp.com/album/b", {
+      layout: "large",
+      tracklist: true,
+    });
+    expect(block).toBe(
+      "<!-- embed:bandcamp -->\n<!--yaml\nlayout: large\ntracklist: true\n-->\nhttps://a.bandcamp.com/album/b\n<!-- /embed:bandcamp -->",
+    );
+    // Read back as written
+    expect(splitEmbed(blocks(block)[0]?.[1] as string)).toEqual({
+      content: "https://a.bandcamp.com/album/b",
+      options: { layout: "large", tracklist: true },
+    });
+  });
+});
+
+describe("splitEmbed", () => {
+  it("should read a block's options in YAML or JSON, and its content", () => {
+    expect(splitEmbed("\nhttps://youtu.be/x\n")).toEqual({
+      content: "https://youtu.be/x",
+      options: {},
+    });
+    expect(splitEmbed('<!--json\n{ "a": 1 }\n-->x')).toEqual({
+      content: "x",
+      options: { a: 1 },
+    });
+    // Empty options are none
+    expect(splitEmbed("<!--yml\n-->\nx")).toEqual({
+      content: "x",
+      options: {},
+    });
+    expect(splitEmbed("<!--json\n\n-->\nx")).toEqual({
+      content: "x",
+      options: {},
+    });
+  });
+
+  it("should say why options can't be read", () => {
+    expect(splitEmbed("<!--json\n{ a\n-->\nx")).toMatchObject({
+      content: "x",
+      options: {},
+      optionsError: expect.stringContaining("The options can't be read:"),
+    });
+    expect(splitEmbed("<!--yaml\n- a\n-->\nx")).toEqual({
+      content: "x",
+      options: {},
+      optionsError: "The options must be a map of names to values",
+    });
   });
 });

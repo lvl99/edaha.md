@@ -10,10 +10,11 @@ import {
 } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { stringify } from "yaml";
-import type {
-  EmbedPlugin,
-  EmbedResolver,
-  EmbedUsage,
+import {
+  EMBED_PAGE_PARTS,
+  type EmbedOptionValues,
+  type EmbedPlugin,
+  type EmbedResolver,
 } from "@lvl99dotcom/edaha.md/embeds";
 import {
   DEFAULT_HEADER_FORMAT,
@@ -140,6 +141,8 @@ export interface EmbedFrameData {
   key: string;
   /** The block's content */
   content: string;
+  /** The block's options, as set in the embed dialog */
+  options: EmbedOptionValues;
 }
 
 /** An article's unsaved data, and where it's saved (if it is), for its preview page */
@@ -807,8 +810,6 @@ export class ArticleStore {
     );
     const name = `${data.type}/${data.slug || "new"}`;
     const markdown = createMarkdown();
-    /** The embeds the article's body uses, for the HTML its page needs once */
-    const usage: EmbedUsage = new Map();
     const metadata = await this.metadata();
     try {
       // Published, so always rendered
@@ -822,10 +823,8 @@ export class ArticleStore {
         url: baseUrl,
         typeUrl: (site.types[data.type] as TemplateDataArticleType).url,
         source: name,
-        replaceEmbeds: (md, part) =>
-          embeds.replaceBlocks(md, name, part === "body" ? usage : undefined),
-        renderMarkdown: (md, base) =>
-          embeds.restore(renderMarkdown(markdown, md, base)),
+        replaceEmbeds: async (md) => embeds.replaceBlocks(md, name),
+        renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
         metadata: {
           ...metadata.context(data.type),
           // The editor shows problems itself
@@ -833,10 +832,13 @@ export class ArticleStore {
         },
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
-      return templates.render(templates.resolve(data.type, "single"), {
-        ...articlePageData(site, article),
-        embeds: await embeds.pageParts([usage], name),
-      });
+      return await embeds.renderPage(
+        templates.render(templates.resolve(data.type, "single"), {
+          ...articlePageData(site, article),
+          embeds: EMBED_PAGE_PARTS,
+        }),
+        name,
+      );
     } catch (error) {
       throw new EditorError(400, (error as Error).message);
     }
@@ -889,11 +891,13 @@ export class ArticleStore {
    * frame's URL). Only the newest `MAX_EMBED_FRAMES` are kept.
    *
    * @example
-   * const id = store.rememberEmbedFrame({ key: "youtube", content: "https://youtu.be/aju_UB5VIf8" }); // shown at /embed-frame/<id>/
+   * const id = store.rememberEmbedFrame({ key: "youtube", content: "https://youtu.be/aju_UB5VIf8", options: {} }); // shown at /embed-frame/<id>/
    */
   rememberEmbedFrame(frame: EmbedFrameData): string {
     const id = createHash("sha256")
-      .update(`${frame.key}\0${frame.content}`)
+      .update(
+        `${frame.key}\0${JSON.stringify(frame.options)}\0${frame.content}`,
+      )
       .digest("hex")
       .slice(0, 32);
     this.embedFrames.delete(id);

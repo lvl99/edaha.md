@@ -17,9 +17,10 @@ import {
   sep,
 } from "node:path";
 import {
+  cachedFetch,
+  EMBED_PAGE_PARTS,
   EmbedResolver,
   type EmbedPlugin,
-  type EmbedUsage,
 } from "../../embeds/index.ts";
 import { loadArticle } from "../article/index.ts";
 import { MetadataValidator, typeMetadataKeys } from "../metadata/index.ts";
@@ -376,7 +377,8 @@ export const buildSite = async (
 
   const markdown = createMarkdown();
   const embeds = new EmbedResolver({
-    fetch: options.fetch ?? fetch,
+    // Pages that show the same embed don't fetch it again
+    fetch: cachedFetch(options.fetch ?? fetch),
     logger,
     plugins: withPlugins(config.plugins, options.plugins),
   });
@@ -402,11 +404,7 @@ export const buildSite = async (
     article: TemplateDataArticle;
     dir: string;
     folder: string;
-    /** The embeds its body uses */
-    usage: EmbedUsage;
   }[] = [];
-  /** The embeds each built article's excerpt uses, by its URL, for list pages */
-  const excerptUsage = new Map<string, EmbedUsage>();
   for (const type of typeFolders) {
     const typeConfig = site.types[type] as TemplateDataArticleType;
     const built = typeConfig.generate.article;
@@ -434,7 +432,6 @@ export const buildSite = async (
       }
       // An index article is its type's front page
       const folder = slug === "index" ? typeFolder : `${typeFolder}${slug}/`;
-      const usage = { body: new Map(), excerpt: new Map() };
       const article = await loadArticle(text, type, {
         site,
         dir,
@@ -442,12 +439,10 @@ export const buildSite = async (
         url: folderUrl(folder, site.baseUrl),
         typeUrl: typeConfig.url,
         source,
-        // Embeds aren't fetched for articles that won't be built
-        replaceEmbeds: built
-          ? (md, part) => embeds.replaceBlocks(md, source, usage[part])
-          : async (md) => md,
+        // Embeds are rendered with the pages that show them
+        replaceEmbeds: async (md) => embeds.replaceBlocks(md, source),
         renderMarkdown: (md, baseUrl) =>
-          embeds.restore(renderMarkdown(markdown, md, baseUrl, site.baseUrl)),
+          renderMarkdown(markdown, md, baseUrl, site.baseUrl),
         metadata: {
           validator,
           keys: typeMetadataKeys(config.metadata, typeConfigs[type]?.metadata),
@@ -455,10 +450,7 @@ export const buildSite = async (
           warn: (message) => logger.warn(message),
         },
       });
-      if (article && built) {
-        articles.push({ article, dir, folder, usage: usage.body });
-        excerptUsage.set(article.url, usage.excerpt);
-      }
+      if (article && built) articles.push({ article, dir, folder });
     }
   }
 
@@ -474,10 +466,12 @@ export const buildSite = async (
       (article) => article.status === "published" && article.slug !== "index",
     );
   const lists = collectLists(listed, site, withIndex);
-  /** The embeds used by the excerpts of a page's articles */
-  const articlesUsage = (shown: readonly TemplateDataArticle[]) =>
-    // Every article in a list is built, so its excerpt's embeds are known
-    shown.map((article) => excerptUsage.get(article.url) as EmbedUsage);
+  /** Render a page's template, then the embeds it shows (see EmbedResolver.renderPage) */
+  const renderPage = (template: string, data: TemplateData, url: string) =>
+    embeds.renderPage(
+      templates.render(template, { ...data, embeds: EMBED_PAGE_PARTS }),
+      url,
+    );
   const firstPages = new Map<string, TemplateDataList>();
   for (const list of lists) {
     const pages = paginate(list);
@@ -488,31 +482,30 @@ export const buildSite = async (
       for (const page of pages)
         await write(
           list.dir + pageFile(page.pagination.page.index),
-          templates.render(listTemplate, {
-            ...listPageData(site, page),
-            embeds: await embeds.pageParts(
-              articlesUsage(page.articles),
-              page.pagination.page.url,
-            ),
-          }),
+          await renderPage(
+            listTemplate,
+            listPageData(site, page),
+            page.pagination.page.url,
+          ),
         );
     }
     if (list.feed)
       await write(
         `${list.dir}feed.xml`,
-        templates.render(
+        await renderPage(
           "layouts/rssfeed.njk",
           // The feed has the newest articles that can be in feeds
           listPageData(site, {
             ...(pages[0] as TemplateDataList),
             articles: list.feedArticles.slice(0, PAGE_SIZE),
           }),
+          `${list.dir}feed.xml`,
         ),
       );
   }
 
   // Article pages with their assets; index articles also get their type's list
-  for (const { article, dir, folder, usage } of articles) {
+  for (const { article, dir, folder } of articles) {
     await cp(dir, join(outputDir, folder), {
       recursive: true,
       filter: (path) => path !== join(dir, "article.md"),
@@ -521,13 +514,11 @@ export const buildSite = async (
       article.slug === "index" ? firstPages.get(article.type) : undefined;
     await write(
       `${folder}index.html`,
-      templates.render(templates.resolve(article.type, article.template), {
-        ...articlePageData(site, article, list),
-        embeds: await embeds.pageParts(
-          [usage, ...articlesUsage(list?.articles ?? [])],
-          article.url,
-        ),
-      }),
+      await renderPage(
+        templates.resolve(article.type, article.template),
+        articlePageData(site, article, list),
+        article.url,
+      ),
     );
   }
 

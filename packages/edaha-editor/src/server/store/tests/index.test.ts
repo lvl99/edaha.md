@@ -979,12 +979,17 @@ describe("bodyBaseUrl", () => {
 describe("ArticleStore embed frames", () => {
   it("should remember embed blocks under IDs made from them, only the newest ones", async () => {
     const { store } = await copySite();
-    const id = store.rememberEmbedFrame({ key: "youtube", content: "a" });
+    const frame = { key: "youtube", content: "a", options: {} };
+    const id = store.rememberEmbedFrame(frame);
     expect(id).toMatch(/^[0-9a-f]{32}$/);
-    expect(store.rememberEmbedFrame({ key: "youtube", content: "a" })).toBe(id);
-    expect(store.embedFrame(id)).toEqual({ key: "youtube", content: "a" });
+    expect(store.rememberEmbedFrame({ ...frame })).toBe(id);
+    expect(store.embedFrame(id)).toEqual(frame);
+    // Other options are another block
+    expect(store.rememberEmbedFrame({ ...frame, options: { a: 1 } })).not.toBe(
+      id,
+    );
     for (let i = 0; i < MAX_EMBED_FRAMES; i++)
-      store.rememberEmbedFrame({ key: "youtube", content: `${i}` });
+      store.rememberEmbedFrame({ ...frame, content: `${i}` });
     expect(() => store.embedFrame(id)).toThrow("Embed not found");
     expect(await store.plugins()).toEqual([]);
   });

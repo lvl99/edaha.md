@@ -219,10 +219,11 @@ describe("buildSite", () => {
     ]);
     expect(logger.warn.mock.calls.map(([message]) => message)).toEqual([
       'articles/page: type "page" is not in edahaconfig.yml; using the default settings',
-      'articles/article/first: no embed plugin with the key "youtube"; shown as it is',
       "articles/article/no-article: no article.md; skipped",
       // The page type has its own templates folder, without a list template
       "Template page/list.njk not found; using article/list.njk",
+      // Embeds are rendered with the pages that show them, and warned about once
+      'articles/article/first: no embed plugin with the key "youtube"; shown as it is',
     ]);
 
     // The article page, its assets and the shared footer
@@ -739,12 +740,15 @@ describe("buildSite", () => {
     {
       key: "media",
       name: "Media",
+      options: {
+        size: { type: "string", $edahaField: { text: true, defaultValue: "small" } },
+      },
       build: {
-        render: async (content, { renders }) => {
-          renders.push(content);
-          return \`<iframe src="\${content}"></iframe>\`;
+        render: async (content, { state, options }) => {
+          state.renders = [...(state.renders ?? []), content];
+          return \`<iframe src="\${content}" class="\${options.size}"></iframe>\`;
         },
-        renderHead: async ({ renders }) => \`<meta name="media" content="\${renders.join(" ")}">\`,
+        renderHead: async ({ state, options }) => \`<meta name="media" content="\${state.renders.join(" ")}" data-sizes="\${options.map((o) => o.size).join(" ")}">\`,
         renderFoot: async () => '<script src="/media.js"></script>',
       },
     },
@@ -755,7 +759,7 @@ describe("buildSite", () => {
     await writeArticle(
       space,
       "article/embeds",
-      `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\nIntro <!-- embed:media -->https://media.example.com/v/1<!-- /embed:media -->\n\n<!-- readmore -->\n\n<!-- embed:quote -->Hello<!-- /embed:quote -->\n\n<!-- embed:quote -->Bad<!-- /embed:quote -->\n\nAfter the bad quote\n\n<!-- embed:media -->https://media.example.com/v/2<!-- /embed:media -->\n`,
+      `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\nIntro <!-- embed:media -->https://media.example.com/v/1<!-- /embed:media -->\n\n<!-- readmore -->\n\n<!-- embed:quote -->Hello<!-- /embed:quote -->\n\n<!-- embed:quote -->Bad<!-- /embed:quote -->\n\nAfter the bad quote\n\n<!-- embed:media -->\n<!--yaml\nsize: large\n-->\nhttps://media.example.com/v/2\n<!-- /embed:media -->\n`,
     );
     const quote = {
       key: "quote",
@@ -779,8 +783,13 @@ describe("buildSite", () => {
     const read = (file: string) =>
       readFile(join(result.outputDir, file), "utf8");
     const page = await read("news/embeds/index.html");
-    expect(page).toContain('<iframe src="https://media.example.com/v/1">');
-    expect(page).toContain('<iframe src="https://media.example.com/v/2">');
+    // With their options, and the defaults of those not set
+    expect(page).toContain(
+      '<iframe src="https://media.example.com/v/1" class="small">',
+    );
+    expect(page).toContain(
+      '<iframe src="https://media.example.com/v/2" class="large">',
+    );
     expect(page).toContain("<q>Hello</q>");
     // A block that isn't valid is left out, with a warning, and the rest of the article is built
     expect(page).not.toContain("Bad");
@@ -789,21 +798,26 @@ describe("buildSite", () => {
       "articles/article/embeds: Quote embed isn't valid (The content isn't a valid Quote); left out",
     );
     expect(page).not.toContain("Not used");
-    // Once per page, with every render on it, before </head> and </body>
+    // Once per page, with the page's state and every block's options, before </head> and </body>
     expect(page).toMatch(
-      /<meta name="media" content="https:\/\/media.example.com\/v\/1 https:\/\/media.example.com\/v\/2">\s*<\/head>/,
+      /<meta name="media" content="https:\/\/media.example.com\/v\/1 https:\/\/media.example.com\/v\/2" data-sizes="small large">\s*<\/head>/,
     );
     expect(page.match(/media\.js/g)).toHaveLength(1);
     expect(page).toMatch(/<script src="\/media.js"><\/script>\s*<\/body>/);
     // The list shows the excerpt, which has the first embed only
     const list = await read("news/index.html");
     expect(list).toContain(
-      '<meta name="media" content="https://media.example.com/v/1">',
+      '<meta name="media" content="https://media.example.com/v/1" data-sizes="small">',
     );
     expect(list).toContain('<script src="/media.js">');
     // Pages without embeds, and feeds, get nothing
     expect(await read("news/second/index.html")).not.toContain("media.js");
-    expect(await read("news/feed.xml")).not.toContain("media.js");
+    const feed = await read("news/feed.xml");
+    expect(feed).not.toContain("media.js");
+    // Feeds' descriptions have the excerpt's embeds, escaped
+    expect(feed).toContain(
+      "&lt;iframe src=&quot;https://media.example.com/v/1&quot; class=&quot;small&quot;&gt;",
+    );
   });
 
   it("should reject invalid type and article folder names", async () => {

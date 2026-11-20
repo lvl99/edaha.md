@@ -33,7 +33,7 @@ const ICON =
  * album or track URL, or the page has no player.
  *
  * @example
- * await bandcamp.build.render("https://artist.bandcamp.com/album/name", { fetch, renders: [] });
+ * await bandcamp.build.render("https://artist.bandcamp.com/album/name", { fetch, state: {}, options: {} });
  */
 export const bandcamp = {
   key: "bandcamp",

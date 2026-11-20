@@ -4,31 +4,44 @@ import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { createMarkdown, renderMarkdown } from "../../generator/markdown";
 import {
+  cachedFetch,
   checkEmbedPlugins,
+  EMBED_PAGE_PARTS,
   EmbedResolver,
   isEmbedPlugin,
   loadPlugins,
   validationErrors,
   type EmbedPlugin,
-  type EmbedUsage,
+  type EmbedTarget,
 } from "..";
 
 const fetch = vi.fn() as unknown as typeof globalThis.fetch;
 
-/** An embed that wraps its content, fails for "broken", and needs a script once per page */
+/**
+ * An embed that wraps its content, fails for "broken", counts its renders on the page in its state, and needs a script
+ * once per page, listing its blocks' sizes
+ */
 const example = {
   key: "example",
   name: "Example",
+  options: {
+    size: {
+      title: "Size",
+      type: "string",
+      enum: ["small", "large"],
+      $edahaField: { select: true, defaultValue: "small" },
+    },
+  },
   build: {
-    render: vi.fn(async (content: string, { renders }) => {
+    render: vi.fn(async (content: string, { state, options }) => {
       if (content === "broken") throw new Error("broken");
-      renders.push(content.length);
-      return `<figure>${content}</figure>`;
+      state.count = ((state.count as number | undefined) ?? 0) + 1;
+      return `<figure class="${options.size as string}">${content}</figure>`;
     }),
-    renderHead: async ({ renders }) =>
-      `<style>/* ${renders.join(",")} */</style>`,
-    renderFoot: async ({ renders }) =>
-      `<script>/* ${renders.join(",")} */</script>`,
+    renderHead: async ({ state, options }) =>
+      `<style>/* ${state.count as number}: ${options.map((o) => o.size as string).join(",")} */</style>`,
+    renderFoot: async ({ state }) =>
+      `<script>/* ${state.count as number} */</script>`,
   },
   editor: {
     render: async (content: string) => `<p>Editing ${content}</p>`,
@@ -56,6 +69,8 @@ describe("isEmbedPlugin and checkEmbedPlugins", () => {
       isEmbedPlugin({
         ...plain,
         description: "Plain text",
+        info: "Any text",
+        options: {},
         validate: () => true,
         sources: {
           frame: ["https://player.example.com"],
@@ -75,6 +90,9 @@ describe("isEmbedPlugin and checkEmbedPlugins", () => {
       { ...plain, key: "a b" },
       { ...plain, name: " " },
       { ...plain, description: 3 },
+      { ...plain, info: 3 },
+      { ...plain, options: [] },
+      { ...plain, options: null },
       { ...plain, validate: true },
       { ...plain, build: undefined },
       { ...plain, build: { render: "x" } },
@@ -97,6 +115,22 @@ describe("isEmbedPlugin and checkEmbedPlugins", () => {
     expect(() => checkEmbedPlugins([plain, { ...plain }])).toThrow(
       '"plugins" has more than one embed with the key "plain"',
     );
+  });
+
+  it("should check embeds' options are fields", () => {
+    expect(() =>
+      checkEmbedPlugins([{ ...plain, options: { size: { type: "string" } } }]),
+    ).toThrow(
+      '"Plain embed\'s options.size.$edahaField" must be a map of settings',
+    );
+    expect(() =>
+      checkEmbedPlugins([
+        {
+          ...plain,
+          options: { size: { type: "strin", $edahaField: { text: true } } },
+        },
+      ]),
+    ).toThrow("Plain embed's options aren't valid JSON Schemas:");
   });
 });
 
@@ -154,53 +188,108 @@ describe("loadPlugins", () => {
   });
 });
 
+/** Render one block as a page of its own */
+const renderBlock = (
+  resolver: EmbedResolver,
+  key: string | undefined,
+  text: string,
+  target?: EmbedTarget,
+) => resolver.renderPage(resolver.place(key, text, "news/a"), "news/a", target);
+
 describe("EmbedResolver", () => {
-  it("should wrap rendered embeds, render each block once, and give what it needs once per page", async () => {
+  it("should render a page's blocks in order, sharing each embed's state and giving what it needs once", async () => {
     const { resolver } = setup();
-    const first = await resolver.render("example", "hello", "a");
-    const second = await resolver.render("example", "hello", "b");
-    expect(first).toEqual({
-      html: '<div class="embed embed-example"><figure>hello</figure></div>',
-      usage: { key: "example", renders: [5] },
-    });
-    expect(second).toBe(first);
-    expect(example.build.render).toHaveBeenCalledTimes(1);
+    const page = [
+      EMBED_PAGE_PARTS.head,
+      resolver.place("example", "one", "news/a"),
+      resolver.place("plain", "two", "news/a"),
+      resolver.place("example", "<!--yaml\nsize: large\n-->\nthree", "news/b"),
+      EMBED_PAGE_PARTS.foot,
+    ].join("\n");
+    expect(await resolver.renderPage(page, "/news/")).toBe(
+      [
+        "<style>/* 2: small,large */</style>",
+        '<div class="embed embed-example"><figure class="small">one</figure></div>',
+        '<div class="embed embed-plain">two</div>',
+        '<div class="embed embed-example"><figure class="large">three</figure></div>',
+        "<script>/* 2 */</script>",
+      ].join("\n"),
+    );
+    // Another page starts again
+    expect(
+      await resolver.renderPage(
+        `${resolver.place("example", "four", "news/c")}${EMBED_PAGE_PARTS.foot}`,
+        "/news/c/",
+      ),
+    ).toBe(
+      '<div class="embed embed-example"><figure class="small">four</figure></div><script>/* 1 */</script>',
+    );
+    // A page without embeds' head or foot tags needs nothing more
+    expect(await resolver.renderPage("<p>Hi</p>", "/")).toBe("<p>Hi</p>");
+    expect(
+      await resolver.renderPage(
+        EMBED_PAGE_PARTS.head + EMBED_PAGE_PARTS.foot,
+        "/",
+      ),
+    ).toBe("");
+  });
+
+  it("should render escaped placeholders (e.g. in feeds) as escaped HTML, and leave others as they are", async () => {
+    const { resolver } = setup();
+    const placeholder = resolver.place("plain", "<b>hi</b>", "news/a");
+    expect(
+      await resolver.renderPage(
+        placeholder.replace("<", "&lt;").replace(">", "&gt;"),
+        "/feed.xml",
+      ),
+    ).toBe(
+      "&lt;div class=&quot;embed embed-plain&quot;&gt;&lt;b&gt;hi&lt;/b&gt;&lt;/div&gt;",
+    );
+    // Placeholders this resolver didn't make are left as they are
+    expect(await resolver.renderPage("<!--edaha-embed:99-->", "/")).toBe(
+      "<!--edaha-embed:99-->",
+    );
   });
 
   it("should render for the editor with the editor's renderers, falling back to the website's", async () => {
     const { resolver } = setup();
-    expect((await resolver.render("example", "hi", "a", "editor")).html).toBe(
+    expect(await renderBlock(resolver, "example", "hi", "editor")).toBe(
       '<div class="embed embed-example"><p>Editing hi</p></div>',
     );
-    expect((await resolver.render("plain", "hi", "a", "editor")).html).toBe(
+    expect(await renderBlock(resolver, "plain", "hi", "editor")).toBe(
       '<div class="embed embed-plain">hi</div>',
     );
     // The editor's head falls back to the website's
     expect(
-      await resolver.pageParts([new Map([["example", [1]]])], "a", "editor"),
-    ).toEqual({
-      head: "<style>/* 1 */</style>",
-      foot: "<script>/* 1 */</script>",
-    });
+      await resolver.renderPage(
+        resolver.place("example", "hi", "a") + EMBED_PAGE_PARTS.head,
+        "a",
+        "editor",
+      ),
+    ).toBe(
+      '<div class="embed embed-example"><p>Editing hi</p></div><style>/* undefined: small */</style>',
+    );
   });
 
   it("should warn and show blocks without a key or plugin, or that fail, as they are written", async () => {
     const { resolver, logger } = setup();
     expect(
-      await resolver.render(
-        undefined,
-        "https://example.com/?a=1&b=2",
+      await renderBlock(resolver, undefined, "https://example.com/?a=1&b=2"),
+    ).toBe(
+      '<p class="embed-link"><a href="https://example.com/?a=1&amp;b=2">https://example.com/?a=1&amp;b=2</a></p>',
+    );
+    expect(await renderBlock(resolver, "unknown", "<b>text</b>")).toBe(
+      '<pre class="embed-text">&lt;b&gt;text&lt;/b&gt;</pre>',
+    );
+    // Shown again (e.g. on a list page), it isn't warned about again
+    await renderBlock(resolver, "unknown", "<b>text</b>");
+    // A failed block adds nothing to the page
+    expect(
+      await resolver.renderPage(
+        resolver.place("example", "broken", "news/a") + EMBED_PAGE_PARTS.foot,
         "news/a",
       ),
-    ).toEqual({
-      html: '<p class="embed-link"><a href="https://example.com/?a=1&amp;b=2">https://example.com/?a=1&amp;b=2</a></p>',
-    });
-    expect(await resolver.render("unknown", "<b>text</b>", "news/a")).toEqual({
-      html: '<pre class="embed-text">&lt;b&gt;text&lt;/b&gt;</pre>',
-    });
-    expect((await resolver.render("example", "broken", "news/a")).html).toBe(
-      '<pre class="embed-text">broken</pre>',
-    );
+    ).toBe('<pre class="embed-text">broken</pre>');
     expect(logger.warn.mock.calls.map(([message]) => message)).toEqual([
       "news/a: embed blocks need a key, e.g. <!-- embed:youtube -->...<!-- /embed:youtube -->; shown as it is",
       'news/a: no embed plugin with the key "unknown"; shown as it is',
@@ -208,10 +297,9 @@ describe("EmbedResolver", () => {
     ]);
   });
 
-  it("should replace embed blocks outside code, recording the embeds used", async () => {
+  it("should replace embed blocks outside code with placeholders", async () => {
     const { resolver } = setup();
-    const usage: EmbedUsage = new Map();
-    const markdown = await resolver.replaceBlocks(
+    const markdown = resolver.replaceBlocks(
       [
         "Intro",
         "<!-- embed:example -->one<!-- /embed:example -->",
@@ -223,9 +311,8 @@ describe("EmbedResolver", () => {
         "`<!-- embed:example -->code<!-- /embed:example -->`",
       ].join("\n"),
       "news/a",
-      usage,
     );
-    // Each block is a placeholder, as its own block, until the rendered HTML is restored
+    // Each block is a placeholder, as its own block, until the page is rendered
     expect(markdown.split("\n").filter(Boolean)).toEqual([
       "Intro",
       "<!--edaha-embed:0-->",
@@ -234,35 +321,36 @@ describe("EmbedResolver", () => {
       "`<!-- embed:example -->code<!-- /embed:example -->`",
     ]);
     expect(markdown).toContain("\n\n<!--edaha-embed:0-->\n\n");
-    const html = resolver.restore(markdown);
+    const html = await resolver.renderPage(markdown, "/news/a/");
     expect(html).toContain(
-      '<div class="embed embed-example"><figure>one</figure></div>',
+      '<div class="embed embed-example"><figure class="small">one</figure></div>',
     );
     // Blank lines around the content are left out, but its indentation is kept
     expect(html).toContain(
-      '<div class="embed embed-example"><figure>  two\n  lines</figure></div>',
+      '<div class="embed embed-example"><figure class="small">  two\n  lines</figure></div>',
     );
     expect(html).toContain('<div class="embed embed-plain">three</div>');
-    // Placeholders this resolver didn't make are left as they are
-    expect(resolver.restore("<!--edaha-embed:99-->")).toBe(
-      "<!--edaha-embed:99-->",
-    );
-    expect([...usage]).toEqual([
-      ["example", [3, 13]],
-      ["plain", []],
-    ]);
-    // Without a usage map, it isn't recorded
-    expect(await resolver.replaceBlocks("No embeds", "news/b")).toBe(
-      "No embeds",
-    );
+    expect(resolver.replaceBlocks("No embeds", "news/b")).toBe("No embeds");
   });
 
-  it("should validate content before rendering it, leaving out content that isn't valid", async () => {
+  it("should validate content and options before rendering, leaving out blocks that aren't valid", async () => {
     const render = vi.fn(async (content: string) => `<b>${content}</b>`);
     const checked = {
       key: "checked",
       name: "Checked",
-      validate: async (content: string) => {
+      options: {
+        size: {
+          $edahaField: { title: "Size", number: true },
+          type: "number",
+          maximum: 10,
+        },
+        credit: {
+          type: "object",
+          properties: { name: { type: "string", $edahaField: { text: true } } },
+        },
+        colour: { type: "string", $edahaField: { color: true } },
+      },
+      validate: async (content: string, options) => {
         if (content === "none") return false;
         if (content === "many")
           throw new AggregateError(
@@ -270,6 +358,8 @@ describe("EmbedResolver", () => {
             "Problems",
           );
         if (content === "odd") throw "Odd";
+        if (content === "big" && options.size !== 1)
+          throw new Error("Big needs size 1");
         if (content.length < 3) throw new Error("Too short");
         return true;
       },
@@ -280,7 +370,7 @@ describe("EmbedResolver", () => {
       key: "unchecked",
       validate: () => undefined,
     };
-    const { resolver, logger } = setup([checked, unchecked]);
+    const { resolver, logger } = setup([checked, unchecked, plain]);
     expect(await resolver.validate("checked", "valid")).toEqual([]);
     expect(await resolver.validate("checked", "ab")).toEqual(["Too short"]);
     expect(await resolver.validate("checked", "many")).toEqual([
@@ -291,13 +381,35 @@ describe("EmbedResolver", () => {
       "The content isn't a valid Checked",
     ]);
     expect(await resolver.validate("checked", "odd")).toEqual(["Odd"]);
+    // validate gets the options
+    expect(await resolver.validate("checked", "big", { size: 1 })).toEqual([]);
+    expect(await resolver.validate("checked", "big")).toEqual([
+      "Big needs size 1",
+    ]);
+    // Options are checked against the embed's, in plain words, before its own validate
+    expect(
+      await resolver.validate("checked", "many", {
+        size: 20,
+        credit: { name: 3 },
+        colour: 1,
+        other: true,
+      }),
+    ).toEqual([
+      "\"other\" isn't one of the embed's options",
+      "Size must be at most 10",
+      "credit name must be text",
+      "colour must be text",
+    ]);
+    expect(await resolver.validate("plain", "x", { size: 1 })).toEqual([
+      "\"size\" isn't one of the embed's options",
+    ]);
     // An AggregateError without errors gives its own message
     expect(validationErrors(new AggregateError([], "All wrong"))).toEqual([
       "All wrong",
     ]);
     // Returning nothing is valid, and so is a plugin without validate
     expect(await resolver.validate("unchecked", "ab")).toEqual([]);
-    expect(await setup([plain]).resolver.validate("plain", "")).toEqual([]);
+    expect(await resolver.validate("plain", "")).toEqual([]);
     expect(await resolver.validate("nope", "x")).toEqual([
       'No embed plugin with the key "nope"',
     ]);
@@ -310,14 +422,20 @@ describe("EmbedResolver", () => {
     ]);
 
     // Left out of the website, without being rendered
-    expect(await resolver.render("checked", "many", "news/a")).toEqual({
-      html: "",
-    });
+    expect(await renderBlock(resolver, "checked", "many")).toBe("");
+    expect(
+      await renderBlock(resolver, "checked", "<!--yaml\nsize: x\n-->\nvalid"),
+    ).toBe("");
+    expect(
+      await renderBlock(resolver, "checked", "<!--yaml\n- 1\n-->\nvalid"),
+    ).toBe("");
     expect(render).not.toHaveBeenCalled();
-    expect(logger.warn).toHaveBeenCalledWith(
+    expect(logger.warn.mock.calls.map(([message]) => message)).toEqual([
       "news/a: Checked embed isn't valid (Too short; No ID); left out",
-    );
-    expect((await resolver.render("checked", "valid", "news/a")).html).toBe(
+      "news/a: Checked embed isn't valid (Size must be a number); left out",
+      "news/a: Checked embed isn't valid (The options must be a map of names to values); left out",
+    ]);
+    expect(await renderBlock(resolver, "checked", "valid")).toBe(
       '<div class="embed embed-checked"><b>valid</b></div>',
     );
   });
@@ -325,38 +443,20 @@ describe("EmbedResolver", () => {
   it("should keep embed HTML with blank lines whole through Markdown", async () => {
     const { resolver } = setup();
     const markdown = createMarkdown();
-    const html = resolver.restore(
+    const html = await resolver.renderPage(
       renderMarkdown(
         markdown,
-        await resolver.replaceBlocks(
+        resolver.replaceBlocks(
           "Intro\n\n<!-- embed:plain -->\n<pre>a\n\n  *b*</pre>\n<!-- /embed:plain -->\n\nEnd",
           "news/a",
         ),
         "/",
       ),
+      "/news/a/",
     );
     expect(html).toBe(
       '<p>Intro</p>\n<div class="embed embed-plain"><pre>a\n\n  *b*</pre></div>\n<p>End</p>\n',
     );
-  });
-
-  it("should give a page's head and foot HTML once for each embed it uses, in the plugins' order", async () => {
-    const { resolver } = setup();
-    const parts = await resolver.pageParts(
-      [
-        new Map([
-          ["plain", []],
-          ["example", [1]],
-        ]),
-        new Map([["example", [2, 3]]]),
-      ],
-      "/news/",
-    );
-    expect(parts).toEqual({
-      head: "<style>/* 1,2,3 */</style>",
-      foot: "<script>/* 1,2,3 */</script>",
-    });
-    expect(await resolver.pageParts([], "/")).toEqual({ head: "", foot: "" });
   });
 
   it("should leave out head and foot HTML that fails, with a warning", async () => {
@@ -371,10 +471,33 @@ describe("EmbedResolver", () => {
     } satisfies EmbedPlugin;
     const { resolver, logger } = setup([failing]);
     expect(
-      await resolver.pageParts([new Map([["plain", []]])], "/news/"),
-    ).toEqual({ head: "", foot: "" });
+      await resolver.renderPage(
+        resolver.place("plain", "x", "news/a") + EMBED_PAGE_PARTS.head,
+        "/news/",
+      ),
+    ).toBe('<div class="embed embed-plain">x</div>');
     expect(logger.warn).toHaveBeenCalledWith(
       "/news/: Plain embed's renderHead failed (offline); left out",
     );
+  });
+});
+
+describe("cachedFetch", () => {
+  it("should fetch each address once, giving each caller a copy, and try failed requests again", async () => {
+    const fetcher = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockImplementation(async () => new Response("body"));
+    const fetchOnce = cachedFetch(fetcher as typeof globalThis.fetch);
+    await expect(fetchOnce("https://a.com/")).rejects.toThrow("offline");
+    const first = await fetchOnce("https://a.com/");
+    const second = await fetchOnce(new URL("https://a.com/"));
+    expect(await first.text()).toBe("body");
+    expect(await second.text()).toBe("body");
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    // Requests with settings, or Request objects, aren't cached
+    await fetchOnce("https://a.com/", { method: "POST" });
+    await fetchOnce(new Request("https://a.com/"));
+    expect(fetcher).toHaveBeenCalledTimes(4);
   });
 });

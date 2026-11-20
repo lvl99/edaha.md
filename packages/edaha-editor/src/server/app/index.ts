@@ -1,8 +1,10 @@
 import { Hono } from "hono";
 import mime from "mime-types";
 import {
+  EMBED_PAGE_PARTS,
   EMBED_SOURCE_KINDS,
   EmbedResolver,
+  embedText,
   type EmbedPlugin,
   type EmbedSources,
 } from "@lvl99dotcom/edaha.md/embeds";
@@ -12,7 +14,12 @@ import {
   editorHtmlToMarkdown,
   markdownToEditorHtml,
 } from "../convert/index.ts";
-import { bodyBaseUrl, EditorError, type ArticleStore } from "../store/index.ts";
+import {
+  bodyBaseUrl,
+  EditorError,
+  type ArticleStore,
+  type EmbedFrameData,
+} from "../store/index.ts";
 import type {
   ArticleLocation,
   ArticleQuery,
@@ -147,6 +154,26 @@ export const previewOriginOf = (editorOrigin: string): string => {
   const url = new URL(editorOrigin);
   url.hostname = "localhost";
   return url.origin;
+};
+
+/**
+ * An embed block sent to the API: its key, content and options (none when they aren't a map).
+ *
+ * @example
+ * await embedRequest(request); // { key: "bandcamp", content: "https://...", options: { layout: "large" } }
+ */
+const embedRequest = async (request: Request): Promise<EmbedFrameData> => {
+  const { key, content, options } = (await request.json()) as Partial<
+    Record<keyof EmbedFrameData, unknown>
+  >;
+  return {
+    key: String(key ?? ""),
+    content: String(content ?? ""),
+    options:
+      options && typeof options === "object" && !Array.isArray(options)
+        ? (options as EmbedFrameData["options"])
+        : {},
+  };
 };
 
 /** A logger that leaves out warnings, for renders whose problems the editor shows itself (or doesn't need) */
@@ -387,43 +414,46 @@ export const createEditorApp = (
 
   app.get("/api/embeds", async (c) =>
     c.json<EmbedInfo[]>(
-      (await plugins()).map(({ key, name, description, editor }) => ({
-        key,
-        name,
-        description,
-        icon: editor?.icon,
-      })),
+      (await plugins()).map(
+        ({ key, name, description, info, options, editor }) => ({
+          key,
+          name,
+          description,
+          info,
+          icon: editor?.icon,
+          options,
+        }),
+      ),
     ),
   );
 
   app.post("/api/embed-validations", async (c) => {
-    const { key, content } = await c.req.json<{
-      key: string;
-      content: string;
-    }>();
+    const { key, content, options } = await embedRequest(c.req.raw);
     const embeds = await embedResolver(QUIET);
     return c.json<EmbedValidation>({
-      errors: await embeds.validate(key, content),
+      errors: await embeds.validate(key, content, options),
     });
   });
 
   app.post("/api/embed-frames", async (c) => {
-    const { key, content } = await c.req.json<{
-      key: string;
-      content: string;
-    }>();
+    const frame = await embedRequest(c.req.raw);
+    const { key, content, options } = frame;
     const warnings: string[] = [];
     const embeds = await embedResolver({
       warn: (message) => warnings.push(message),
     });
     // Content that isn't valid isn't on the website, so it has no frame
     const known = (await plugins()).some((plugin) => plugin.key === key);
-    const errors = known ? await embeds.validate(key, content) : [];
+    const errors = known ? await embeds.validate(key, content, options) : [];
     if (errors.length) return c.json<EmbedFrame>({ url: "", errors, warnings });
     // Rendered now to report problems, then again each time the frame is shown
-    await embeds.render(key, content, "Embed", "editor");
+    await embeds.renderPage(
+      embeds.place(key, embedText(content, options), "Embed"),
+      "Embed",
+      "editor",
+    );
     return c.json<EmbedFrame>({
-      url: `/embed-frame/${store.rememberEmbedFrame({ key, content })}/`,
+      url: `/embed-frame/${store.rememberEmbedFrame(frame)}/`,
       errors,
       warnings,
     });
@@ -431,24 +461,18 @@ export const createEditorApp = (
 
   // A remembered embed block, rendered for the editor now, so changes to its plugin show when it reloads
   app.get("/embed-frame/:id/", async (c) => {
-    const { key, content } = store.embedFrame(c.req.param("id"));
+    const { key, content, options } = store.embedFrame(c.req.param("id"));
     const theme = c.req.query("theme");
     const embeds = await embedResolver(QUIET);
-    const { html, usage } = await embeds.render(
-      key,
-      content,
-      "Embed",
-      "editor",
-    );
     return c.html(
-      embedFramePage(
-        html,
-        await embeds.pageParts(
-          usage ? [new Map([[usage.key, usage.renders]])] : [],
-          "Embed",
-          "editor",
+      await embeds.renderPage(
+        embedFramePage(
+          embeds.place(key, embedText(content, options), "Embed"),
+          EMBED_PAGE_PARTS,
+          theme === "light" || theme === "dark" ? theme : undefined,
         ),
-        theme === "light" || theme === "dark" ? theme : undefined,
+        "Embed",
+        "editor",
       ),
       200,
       {

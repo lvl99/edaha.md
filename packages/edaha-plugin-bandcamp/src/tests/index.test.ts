@@ -40,7 +40,7 @@ describe("bandcamp", () => {
       "https://example.com/album/name",
     ])
       await expect(
-        bandcamp.build.render(url, { fetch, renders: [] }),
+        bandcamp.build.render(url, { fetch, state: {}, options: {} }),
       ).rejects.toThrow("is not a Bandcamp album or track page");
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -48,7 +48,11 @@ describe("bandcamp", () => {
   it("should fetch the page to find the album ID", async () => {
     const fetch = fetchPage(ALBUM_PAGE);
     const url = "https://artist.bandcamp.com/album/name";
-    const html = await bandcamp.build.render(url, { fetch, renders: [] });
+    const html = await bandcamp.build.render(url, {
+      fetch,
+      state: {},
+      options: {},
+    });
     expect(fetch).toHaveBeenCalledWith(new URL(url));
     expect(html).toContain(
       'src="https://bandcamp.com/EmbeddedPlayer/album=1234567890/size=large/',
@@ -63,7 +67,8 @@ describe("bandcamp", () => {
         fetch: fetchPage(
           '<meta property="og:video" content="https://bandcamp.com/EmbeddedPlayer/track=42/">',
         ),
-        renders: [],
+        state: {},
+        options: {},
       },
     );
     expect(html).toContain("EmbeddedPlayer/track=42/");
@@ -73,12 +78,17 @@ describe("bandcamp", () => {
   it("should throw when the page can't be fetched or has no player", async () => {
     const url = "https://artist.bandcamp.com/album/name";
     await expect(
-      bandcamp.build.render(url, { fetch: fetchPage("", 404), renders: [] }),
+      bandcamp.build.render(url, {
+        fetch: fetchPage("", 404),
+        state: {},
+        options: {},
+      }),
     ).rejects.toThrow("failed with 404");
     await expect(
       bandcamp.build.render(url, {
         fetch: fetchPage("<html></html>"),
-        renders: [],
+        state: {},
+        options: {},
       }),
     ).rejects.toThrow("No Bandcamp player");
   });

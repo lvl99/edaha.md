@@ -127,8 +127,11 @@ export const fieldOptions = (field: EdahaField): Record<string, unknown> => {
  * Check a schema has editor fields: objects need properties, lists need items (or one field for the whole list), and
  * every value has an `$edahaField` with exactly one field kind. Objects' and lists' own `$edahaField` may set only their
  * group, labels and conditions. Default values and conditions are checked too (see checkFieldExtensions). Throws an Error naming the schema's path.
+ *
+ * @example
+ * checkFieldSchema({ type: "string", $edahaField: { text: true } }, "metadata.subtitle");
  */
-const checkFields = (schema: unknown, path: string): void => {
+export const checkFieldSchema = (schema: unknown, path: string): void => {
   const fields = asMap(schema, `"${path}"`);
   if (fields.$edahaField !== undefined)
     checkFieldExtensions(
@@ -142,7 +145,7 @@ const checkFields = (schema: unknown, path: string): void => {
       );
     const properties = asMap(fields.properties, `"${path}.properties"`);
     for (const [name, property] of Object.entries(properties))
-      checkFields(property, `${path}.properties.${name}`);
+      checkFieldSchema(property, `${path}.properties.${name}`);
     return;
   }
   // A list is edited item by item, unless one field edits it all (e.g. a select with `multiple`)
@@ -152,7 +155,7 @@ const checkFields = (schema: unknown, path: string): void => {
       throw new Error(
         `"${path}.items" must be one schema for every item, not a list (remove the "-" before it)`,
       );
-    checkFields(fields.items, `${path}.items`);
+    checkFieldSchema(fields.items, `${path}.items`);
     return;
   }
   const field = asMap(fields.$edahaField, `"${path}.$edahaField"`);
@@ -193,7 +196,7 @@ export const parseMetadata = (value: unknown): MetadataDefinitions => {
       throw new Error(
         `"metadata.${key}" must start with a letter or "_" and have only letters, digits, "_" and "-"`,
       );
-    checkFields(schema, `metadata.${key}`);
+    checkFieldSchema(schema, `metadata.${key}`);
     try {
       ajv.compile(schema as object);
     } catch (error) {
