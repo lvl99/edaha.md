@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Release v0.2.0 | edaha.md</title>
+    <meta name="description" content="edaha.md v0.2.0 has been published! Lots of new updates: Added The article editor is now its own package, @lvl99dotcom/edaha-editor , which edaha editor loads when it’s installed. Embeds are plugins,…" />
+
+
+  <link rel="stylesheet" href="/edaha.md/base.css" />
+  <link rel="stylesheet" href="/edaha.md/site.css" />
+  </head>
+  <body class="news ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/edaha.md/">Home</a></li>
+<li><a href="/edaha.md/news/">News</a></li>
+<li><a href="/edaha.md/news/release-0-2-0/" aria-current="page">Release v0.2.0</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">Release v0.2.0</h1>
+
+  <div class="article-body">
+      <p><strong>edaha.md</strong> v0.2.0 has been published! Lots of new updates:</p>
+<h2 id="added">Added</h2>
+<ul>
+<li>The article editor is now its own package, <a href="https://www.npmjs.org/package/@lvl99dotcom/edaha-editor">@lvl99dotcom/edaha-editor</a>, which <code>edaha editor</code> loads when it’s installed.</li>
+<li>Embeds are plugins, with packages for <a href="https://www.npmjs.org/package/@lvl99dotcom/edaha-plugin-youtube">YouTube</a>, <a href="https://www.npmjs.org/package/@lvl99dotcom/edaha-plugin-bandcamp">Bandcamp</a> and <a href="https://www.npmjs.org/package/@lvl99dotcom/edaha-plugin-mermaidjs">MermaidJS</a> listed under the config file’s plugins setting.</li>
+<li>Embed plugins can add HTML once per page through the <code>{% embedHead %}</code> and <code>{% embedFoot %}</code> template tags.</li>
+<li>Embed plugins can check a block’s content, and blocks that aren’t valid are left out of the page with a warning.</li>
+<li>Embeds can have options, saved as YAML in the block, such as the Bandcamp player’s layout, artwork, tracklist and colours.</li>
+<li>The config file can define custom metadata fields, with groups, default values and show/hide conditions, and templates get them as <code>article.meta</code>.</li>
+<li>Raw blocks and raw text are shown exactly as written.</li>
+<li>Config files can be YAML, JSON or JavaScript, found in the site folder or named with <code>--config</code>.</li>
+<li>The new <code>articlesDir</code>, <code>templatesDir</code> and <code>staticDir</code> settings choose where articles, templates and static files live.</li>
+<li>The <code>@theme/</code> template prefix always loads the default theme’s template.</li>
+<li>Templates get new type, isArticle and isList variables.</li>
+<li>The site and each article type can have a default author, and author: false means no author.</li>
+<li>Sites can live in a sub-folder of their domain, with every URL starting with <code>siteUrl</code>’s path.</li>
+<li>The editor has a welcome prompt, recent articles and search in the nav, and an article browser.</li>
+<li>The editor has a file browser for every article’s files.</li>
+<li>Existing files can be chosen wherever files are uploaded in the editor.</li>
+<li>The editor’s article form shows custom settings in groups, with their defaults and conditions.</li>
+<li>The editor has a button for each embed, opening a dialog that checks the content and options.</li>
+<li>The editor shows embeds in sandboxed frames.</li>
+<li>The editor has a floating toolbar above selected text, with bold, italic, underline, strikethrough, link and headings 1–3.</li>
+<li>The editor has a Markdown toolbar, a Preview width control, focus mode, light and dark themes, and a layout for narrow screens.</li>
+<li>edaha.md has its own <a href="https://lvl99.github.io/edaha.md">docs</a> website, including an article for each plugin.</li>
+</ul>
+<h2 id="changed">Changed</h2>
+<ul>
+<li><code>buildBlog</code> is now <code>buildSite</code>, <code>BlogConfig</code> is now <code>EdahaConfig</code>, and templates’ blog data is now part of site.</li>
+<li>The embeds setting and built-in renderers are replaced by the plugins setting and plugin packages.</li>
+<li><code>outputDir</code> now defaults to <code>build</code>.</li>
+<li>The editor’s elements are now named <code>edaha-</code> instead of <code>blog-</code>.</li>
+<li>Editor body headings can now be H1.</li>
+<li>Underlined text is now saved as <code>&lt;u&gt;</code>, and struck-through text as <code>~~</code>.</li>
+<li>Metadata problems are now described in plain words.</li>
+</ul>
+<h2 id="fixed">Fixed</h2>
+<ul>
+<li>Embeds whose HTML has blank lines are no longer cut off by Markdown.</li>
+<li>Embedded players such as Bandcamp’s now work in the editor.</li>
+<li><code>readmore</code> and embed blocks inside code are no longer acted on.</li>
+<li>The default theme’s pages have their own titles again.</li>
+<li><code>edaha editor</code> in the workspace no longer serves the editor page’s unbuilt source.</li>
+</ul>
+
+  </div>
+
+</article>
+        </main>
+
+<aside>
+  <dl>
+    <dt>Date</dt>
+    <dd><time datetime="2026-11-20T18:52:00.000Z">20 November 2026</time></dd>
+  </dl>
+</aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/edaha.md/">Home</a>
+    <a href="/edaha.md/about">About</a>
+<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/edaha.md/theme-switcher.js" defer></script>
+  </body>
+</html>
