@@ -123,7 +123,7 @@ describe("edaha-article-data-field", () => {
 
   it("should render rich text and report its HTML", async () => {
     const uploadImage = vi.fn();
-    const loadEmbedPreview = vi.fn();
+    const embedTools = { embeds: [], edit: vi.fn(), loadFrame: vi.fn() };
     const field = await mount<EdahaArticleDataField>(
       "edaha-article-data-field",
       {
@@ -131,7 +131,7 @@ describe("edaha-article-data-field", () => {
         type: "richtext",
         value: "<p>Hi</p>",
         uploadImage,
-        loadEmbedPreview,
+        embedTools,
       },
     );
     const { changes } = record(field);
@@ -139,7 +139,7 @@ describe("edaha-article-data-field", () => {
     document.body.addEventListener("richtext-change", outer);
     const richtext = find<EdahaRichtext>(field, "edaha-richtext");
     expect(richtext.uploadImage).toBe(uploadImage);
-    expect(richtext.loadEmbedPreview).toBe(loadEmbedPreview);
+    expect(richtext.embedTools).toBe(embedTools);
     richtext.value = "<p>Changed</p>";
     // Typing fires the browser's own input events, which aren't changes of the field
     find(richtext, ".ProseMirror").dispatchEvent(
@@ -172,8 +172,9 @@ describe("edaha-article-data-field", () => {
     expect(files).toEqual([file]);
   });
 
-  it("should give rich text and Markdown fields the file chooser", async () => {
+  it("should give rich text and Markdown fields the file chooser and embed tools", async () => {
     const chooseFile = vi.fn();
+    const embedTools = { embeds: [], edit: vi.fn(), loadFrame: vi.fn() };
     const richtext = await mount<EdahaArticleDataField>(
       "edaha-article-data-field",
       { name: "body", type: "richtext", chooseFile },
@@ -183,10 +184,13 @@ describe("edaha-article-data-field", () => {
     );
     const markdown = await mount<EdahaArticleDataField>(
       "edaha-article-data-field",
-      { name: "bodyMarkdown", type: "markdown", chooseFile },
+      { name: "bodyMarkdown", type: "markdown", chooseFile, embedTools },
     );
     expect(find<EdahaMarkdown>(markdown, "edaha-markdown").chooseFile).toBe(
       chooseFile,
+    );
+    expect(find<EdahaMarkdown>(markdown, "edaha-markdown").embedTools).toBe(
+      embedTools,
     );
   });
 

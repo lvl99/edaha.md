@@ -3,6 +3,11 @@ import { live } from "lit/directives/live.js";
 import { defineElement } from "../define/index.ts";
 import type { ImageUploader } from "../edaha-richtext/index.ts";
 import type { FileChooser } from "../edaha-file-browser/index.ts";
+import {
+  embedButton,
+  type EmbedTools,
+  type EmbedValue,
+} from "../../embeds/index.ts";
 import { toolbarButtonContent } from "../../icons/index.ts";
 import {
   addTableColumn,
@@ -13,7 +18,8 @@ import {
   removeTable,
   removeTableColumn,
   removeTableRow,
-  selectedEmbedUrl,
+  insertEmbed,
+  selectedEmbed,
   selectedLinkUrl,
   setEmbed,
   setLink,
@@ -55,6 +61,7 @@ export class EdahaMarkdown extends LitElement {
     textareaId: { attribute: false },
     uploadImage: { attribute: false },
     chooseFile: { attribute: false },
+    embedTools: { attribute: false },
   };
 
   /** The Markdown */
@@ -68,6 +75,9 @@ export class EdahaMarkdown extends LitElement {
 
   /** Lets the user choose an existing file, giving how to refer to it; without it, its button is disabled */
   declare chooseFile?: FileChooser | undefined;
+
+  /** The site's embeds and the embed dialog; without them, the embed button is disabled */
+  declare embedTools?: EmbedTools | undefined;
 
   /** Asks for a URL (replaceable for tests) */
   prompt: (message: string, value?: string) => string | null = (
@@ -126,19 +136,6 @@ export class EdahaMarkdown extends LitElement {
     { label: "Remove row", run: removeTableRow, enabled: inTable },
     { label: "Remove column", run: removeTableColumn, enabled: inTable },
     { label: "Remove table", run: removeTable, enabled: inTable },
-    {
-      label: "Embed",
-      run: (e) => {
-        const current = selectedEmbedUrl(e);
-        const url = this.prompt(
-          current === undefined
-            ? "Embed URL (e.g. a YouTube video)"
-            : "Embed URL (empty to remove)",
-          current,
-        );
-        return url === null ? undefined : setEmbed(e, url.trim());
-      },
-    },
     {
       label: "Raw",
       // Text shown exactly as it is written, with no formatting
@@ -210,6 +207,21 @@ export class EdahaMarkdown extends LitElement {
     }
   }
 
+  /**
+   * Ask for an embed's content in the embed dialog (where the selection was when asked): a new embed of a kind,
+   * inserted after the selection, or the selected embed block when it is of that kind.
+   */
+  private async editEmbed(selection: TextEdit, key: string) {
+    const selected = selectedEmbed(selection);
+    const adding = selected?.key !== key;
+    const value = await this.embedTools?.edit(
+      adding ? { key, content: "", options: {} } : (selected as EmbedValue),
+      adding,
+    );
+    if (!value) this.textarea?.focus();
+    else this.apply((adding ? insertEmbed : setEmbed)(selection, value));
+  }
+
   /** Let the user choose an existing file, and insert it where the selection was when asked */
   private async onChooseFile() {
     const selection = this.selection;
@@ -242,6 +254,13 @@ export class EdahaMarkdown extends LitElement {
             >
               ${toolbarButtonContent(action.label)}
             </button>`,
+        )}
+        ${this.embedTools?.embeds.map((embed) =>
+          embedButton(embed, {
+            pressed: selectedEmbed(selection)?.key === embed.key,
+            disabled: false,
+            onClick: () => void this.editEmbed(this.selection, embed.key),
+          }),
         )}
         <label
           class="toolbar-button toolbar-upload"

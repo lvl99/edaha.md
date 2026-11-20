@@ -1,5 +1,12 @@
 import TurndownService from "turndown";
-import { EMBED_BLOCK } from "@lvl99dotcom/edaha.md/embeds";
+import {
+  EMBED_BLOCK,
+  embedBlock,
+  embedContent,
+  embedOptionsOf,
+  splitEmbed,
+  type EmbedOptionValues,
+} from "@lvl99dotcom/edaha.md/embeds";
 import { READMORE } from "@lvl99dotcom/edaha.md/generator/article";
 import {
   escapeHtml,
@@ -25,8 +32,36 @@ export const filesUrl = (type: string, slug: string): string =>
   `/files/${type}/${slug}/`;
 
 /**
+ * An embed block as editor HTML: an empty `<div class="embed">` with its key (empty for an old block without one),
+ * content and options (as JSON, if it has any) in attributes. Line breaks in the content are written as `&#10;`, so
+ * the HTML is one line that Markdown keeps whole.
+ *
+ * @example
+ * embedHtml("mermaidjs", "graph TD;\n  A-->B;"); // '<div class="embed" data-embed="mermaidjs" data-content="graph TD;&#10;  A--&gt;B;"></div>'
+ * embedHtml("bandcamp", url, { layout: "large" }); // '<div class="embed" data-embed="bandcamp" data-content="..." data-options="{&quot;layout&quot;:&quot;large&quot;}"></div>'
+ */
+export const embedHtml = (
+  key: string,
+  content: string,
+  options: EmbedOptionValues = {},
+): string =>
+  `<div class="embed" data-embed="${escapeHtml(key)}" data-content="${escapeHtml(content).replace(/\r?\n/g, "&#10;")}"${Object.keys(options).length ? ` data-options="${escapeHtml(JSON.stringify(options))}"` : ""}></div>`;
+
+/**
+ * An embed block's editor HTML from what is between its tags: its options and content, or (when its options can't be
+ * read) all of it as its content, so nothing is lost.
+ */
+const embedBlockHtml = (key: string, text: string): string => {
+  const { content, options, optionsError } = splitEmbed(text);
+  return optionsError
+    ? embedHtml(key, embedContent(text))
+    : embedHtml(key, content, options);
+};
+
+/**
  * Convert article markdown to HTML for the editor: `<!-- readmore -->` becomes `<hr class="readmore">`,
- * embed blocks become `<div class="embed">URL</div>` (except in code), raw blocks become `<pre class="raw">` or
+ * embed blocks become `<div class="embed" data-embed="key" data-content="...">` (except in code; see embedHtml), raw
+ * blocks become `<pre class="raw">` or
  * `<span class="raw">` holding their content as it is, and relative URLs point at the editor's file URL.
  *
  * @example
@@ -50,15 +85,35 @@ export const markdownToEditorHtml = (source: string, baseUrl: string): string =>
         () => '\n\n<hr class="readmore">\n\n',
       ),
       EMBED_BLOCK,
-      ([, url]) =>
-        `\n\n<div class="embed">${escapeHtml((url as string).trim())}</div>\n\n`,
+      ([, key, text]) => `\n\n${embedBlockHtml(key ?? "", text as string)}\n\n`,
     ),
     baseUrl,
   );
 
+/** Whether a node is an embed block (see embedHtml) */
+const isEmbed = (node: Node): boolean =>
+  node.nodeName === "DIV" && (node as HTMLElement).classList.contains("embed");
+
+/** An embed block's Markdown, from its editor HTML (see embedHtml) */
+const embedMarkdown = (_: string, node: Node): string => {
+  const element = node as HTMLElement;
+  const key = element.getAttribute("data-embed") ?? "";
+  const content = embedContent(element.getAttribute("data-content") ?? "");
+  const options = embedOptionsOf(element.getAttribute("data-options"));
+  // An old block without a key is kept as it was, until a kind of embed is chosen for it
+  return `\n\n${key ? embedBlock(key, content, options) : `<!-- embed -->${content}<!-- /embed -->`}\n\n`;
+};
+
 /** HTML to markdown converter with rules for the readmore and embed blocks */
 const createTurndown = () => {
   const turndown = new TurndownService({
+    // Other empty blocks are left out, as Turndown does by default
+    blankReplacement: (content, node) =>
+      isEmbed(node)
+        ? embedMarkdown(content, node)
+        : (node as { isBlock?: boolean }).isBlock
+          ? "\n\n"
+          : "",
     headingStyle: "atx",
     codeBlockStyle: "fenced",
     bulletListMarker: "-",
@@ -81,13 +136,8 @@ const createTurndown = () => {
         ? `\n\n<!-- raw -->\n${String(node.textContent)}\n<!-- /raw -->\n\n`
         : `<!-- raw -->${String(node.textContent).replace(/\u00a0/g, " ")}<!-- /raw -->`,
   });
-  turndown.addRule("embed", {
-    filter: (node) =>
-      node.nodeName === "DIV" &&
-      (node as HTMLElement).classList.contains("embed"),
-    replacement: (_, node) =>
-      `\n\n<!-- embed -->${String(node.textContent).trim()}<!-- /embed -->\n\n`,
-  });
+  // Embed blocks are empty, which Turndown passes to `blankReplacement` rather than its rules
+  turndown.addRule("embed", { filter: isEmbed, replacement: embedMarkdown });
   // Small and big text, and collapsible details blocks, stay HTML. A details block's summary stays HTML (Markdown
   // isn't read inside an HTML line) and its content becomes Markdown, between blank lines so it is read as Markdown.
   turndown.addRule("smallBig", {
@@ -97,6 +147,15 @@ const createTurndown = () => {
       const tag = node.nodeName.toLowerCase();
       return `<${tag}>${content}</${tag}>`;
     },
+  });
+  // Underlined text stays HTML (Markdown has none), and struck-through text is GFM's ~~
+  turndown.addRule("underline", {
+    filter: "u",
+    replacement: (content) => `<u>${content}</u>`,
+  });
+  turndown.addRule("strikethrough", {
+    filter: ["s", "del"],
+    replacement: (content) => `~~${content}~~`,
   });
   turndown.addRule("summary", { filter: "summary", replacement: () => "" });
   turndown.addRule("details", {

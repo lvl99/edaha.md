@@ -78,7 +78,7 @@ export const collectLists = (
     if (existing) return existing;
     const created = {
       ...definition,
-      url: `/${definition.dir}`,
+      url: `${site.baseUrl}/${definition.dir}`,
       articles: [],
       feedArticles: [],
     };
@@ -93,7 +93,7 @@ export const collectLists = (
       name: config.labelPlural,
       slug: type,
       type,
-      dir: config.url.slice(1),
+      dir: config.url.slice(site.baseUrl.length + 1),
       // An index article takes the place of the list's pages
       pages: config.generate.list && !withIndex.has(type),
       feed: false,
@@ -112,7 +112,7 @@ export const collectLists = (
     };
     if (settings.list || settings.feed || withIndex.has(article.type))
       add(typeList(article.type));
-    const typeDir = config.url.slice(1);
+    const typeDir = config.url.slice(site.baseUrl.length + 1);
     if (settings.tag)
       for (const tag of article.tags)
         add(

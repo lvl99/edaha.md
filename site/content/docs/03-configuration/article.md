@@ -72,7 +72,7 @@ module.exports = {
 };
 ```
 
-A JavaScript config file exports a plain object. It is the only format that can hold [custom embeds](#embeds).
+A JavaScript config file exports a plain object. It is the only format that can give [embed plugins](#plugins) themselves, rather than their package names.
 
 ### Where it is found
 
@@ -106,7 +106,7 @@ The folder that holds the config file is the **site folder**. Every folder in th
 | [`siteUrl`](#siteurl) | No | The website's absolute URL, for links in RSS feeds. |
 | [`reservedPaths`](#reservedpaths) | No | Paths at the website's root that articles and article types can't use. |
 | [`types`](#types) | No | Settings for each article type: URL path, labels and what is built. |
-| [`embeds`](#embeds) | No | Custom embed renderers, tried before the built-in ones (JavaScript config only). |
+| [`plugins`](#plugins) | No | Embed plugins: their package names, or (JavaScript config only) the plugins themselves. |
 | [`metadata`](#metadata) | No | Custom settings for articles, with how the editor shows them. |
 | [`metadataGroups`](#metadatagroups) | No | Groups of settings in the editor, besides the built-in ones. |
 | [`author`](#author) | No | The author of articles that don't name one. |
@@ -210,6 +210,8 @@ publishDir: ../app/dist
 
 The website's absolute URL. RSS feeds need it, because their links must be absolute. The `SITE_URL` environment variable and the `--site-url` option of `edaha build` take its place when they are set.
 
+If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at `https://lvl99.github.io/edaha.md`, every URL in its pages starts with that path (`/edaha.md/`), which templates get as [`site.baseUrl`](/docs/05-templating/#template-data). The built files stay at the same places in the output folder, so publish its contents to that sub-folder.
+
 - **Accepted values:** an `http://` or `https://` URL.
 - **Default:** `http://localhost`, with a warning.
 
@@ -272,31 +274,31 @@ types:
 - Types can't be called `tags` or `authors`, and no two types can have the same path.
 - A type with `generate: false` builds nothing, but its articles are still checked for errors.
 
-### `embeds`
+### `plugins`
 
-Custom embed renderers, tried before the built-in YouTube and Bandcamp ones. As renderers are code, only a JavaScript config file can set them.
+The site's [embed plugins](/docs/07-embeds/), which render `<!-- embed:<key> -->` blocks. edaha.md has none of its own.
 
-- **Accepted values:** a list of objects with `name`, `match(url)`, `render(url, context)` and, optionally, `frameSources`.
+- **Accepted values:** a list of package names, found from the config file's folder (install them first). A JavaScript config file can also give the plugins themselves.
 - **Default:** none
+
+```yaml
+plugins:
+  - "@lvl99dotcom/edaha-plugin-youtube"
+  - "@lvl99dotcom/edaha-plugin-mermaidjs"
+```
 
 ```js
 // edaha.config.mjs
+import { vimeo } from "./embeds/vimeo.mjs";
+
 export default {
   name: "My Site",
   description: "News and notes.",
-  embeds: [
-    {
-      name: "Vimeo",
-      frameSources: ["https://player.vimeo.com"],
-      match: (url) => url.hostname === "vimeo.com",
-      render: async (url) =>
-        `<iframe src="https://player.vimeo.com/video${url.pathname}" title="Vimeo video"></iframe>`,
-    },
-  ],
+  plugins: ["@lvl99dotcom/edaha-plugin-youtube", vimeo],
 };
 ```
 
-See [Embeds](/docs/07-embeds/) for how to write one.
+No two plugins can have the same key. See [Embeds](/docs/07-embeds/) for the plugins there are, and how to write one.
 
 ### `author`
 
@@ -359,9 +361,11 @@ types:
 | `number`, `range` | A number input or slider, e.g. with `step`. |
 | `textarea` | A multi-line text box, e.g. with `rows`. |
 | `select` | A dropdown of `options` (each a `value` and `title`, or the schema's `enum`); `list: true` shows it as a list. |
-| `checkbox` | A checkbox, for `type: boolean`. |
+| `checkbox` | A checkbox, for `type: boolean` (`true` or `false`). With `{ value: ... }`, it saves that value when checked and nothing when not. |
 | `radio` | Radio buttons for `options` (each with an optional `description`), or the schema's `enum`. |
 | `file` | A file chooser that uploads into the article's folder (e.g. with `accept`). |
+
+A `color` field keeps a value written without its `#` (e.g. `0687f5`) that way.
 
 Options are the input's HTML attributes. JSON Schema's own keywords set them too: `minimum` and `maximum` become `min` and `max`, `minLength` and `maxLength` become `minlength` and `maxlength`, and `pattern` stays `pattern`; a field's own options win.
 
@@ -404,7 +408,45 @@ metadata:
       file: true
 ```
 
-Values are checked against their schemas with [ajv](https://ajv.js.org/), including formats like `uri` and `email`. Problems are described in plain words, e.g. "Rating must be at most 10" or "Credit name is required", and show above the field in the editor. The build and the editor stop with an error if a key is a core setting's name, a type lists a key that isn't defined, a value has no field kind or more than one, or a schema isn't valid.
+#### Default values and conditions
+
+`$edahaField` can also have:
+
+- `defaultValue`: the value a field has when it has none (text, a number, `true`, `false` or `null`). The editor shows it, and saves it with the article.
+- `showWhen`: show the field only when these conditions match.
+- `hideWhen`: hide the field when these conditions match.
+
+A hidden field's value is left out: the editor doesn't save it, and templates don't get it. A field with both shows when `showWhen` matches and `hideWhen` doesn't. Conditions can use the other fields' values (with their defaults), so fields can show and hide as the author changes them.
+
+A condition is a list of a value's path (in dot notation from the top of the settings, e.g. `credit.name` or `images.0`), an operator, and a value: `=`, `!=`, `>`, `>=`, `<` and `<=` compare with one value (a missing value equals `null`); `in` and `not-in` check a list of values. Group conditions with `and` (all must match) or `or` (any must match), and nest groups; a list of groups must all match.
+
+```yaml
+metadata:
+  layout:
+    type: string
+    enum: [slim, large]
+    $edahaField:
+      select: true
+      defaultValue: large
+  tracklist:
+    type: boolean
+    $edahaField:
+      checkbox: true
+      defaultValue: false
+      hideWhen: [layout, "=", slim]
+  coverNote:
+    type: string
+    $edahaField:
+      text: true
+      showWhen:
+        or:
+          - [layout, "=", large]
+          - [tracklist, "=", true]
+```
+
+[Embed options](/docs/07-embeds/#defining-options) use the same fields and conditions.
+
+Values are checked against their schemas with [ajv](https://ajv.js.org/), including formats like `uri` and `email`. Problems are described in plain words, e.g. "Rating must be at most 10" or "Credit name is required", and show above the field in the editor. The build and the editor stop with an error if a key is a core setting's name, a type lists a key that isn't defined, a value has no field kind or more than one, a default value or condition isn't valid, or a schema isn't valid.
 
 ### `metadataGroups`
 

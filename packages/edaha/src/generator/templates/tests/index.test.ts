@@ -2,7 +2,7 @@ import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { REQUIRED_TEMPLATES, Templates, absoluteUrls } from "..";
+import { REQUIRED_TEMPLATES, Templates, absoluteUrl, absoluteUrls } from "..";
 
 /** A templates folder containing the given files */
 const templatesDir = async (files: Record<string, string>) => {
@@ -18,6 +18,17 @@ const REQUIRED = Object.fromEntries(
   REQUIRED_TEMPLATES.map((file) => [file, file]),
 );
 
+describe("absoluteUrl", () => {
+  it("should add the website's origin to root-relative URLs, which already start with its base URL", () => {
+    expect(absoluteUrl("/news/", "https://example.com")).toBe(
+      "https://example.com/news/",
+    );
+    expect(
+      absoluteUrl("/edaha.md/news/", "https://lvl99.github.io/edaha.md"),
+    ).toBe("https://lvl99.github.io/edaha.md/news/");
+  });
+});
+
 describe("absoluteUrls", () => {
   it("should make root-relative href and src URLs absolute", () => {
     expect(
@@ -28,6 +39,12 @@ describe("absoluteUrls", () => {
     ).toBe(
       '<a href="https://example.com/news/">x</a><img src="https://example.com/a.png"><a href="https://x.com/">y</a><a href="//cdn.com/z">z</a>',
     );
+    expect(
+      absoluteUrls(
+        '<a href="/edaha.md/news/">x</a>',
+        "https://lvl99.github.io/edaha.md",
+      ),
+    ).toBe('<a href="https://lvl99.github.io/edaha.md/news/">x</a>');
   });
 });
 
@@ -40,6 +57,42 @@ describe("Templates", () => {
     expect(() => new Templates(dir, { warn: vi.fn() })).toThrow(
       "layouts/html.njk, layouts/rssfeed.njk, article/list.njk",
     );
+  });
+
+  it("should output the page's embed HTML with the embed tags, and nothing without it", async () => {
+    const dir = await templatesDir({
+      ...REQUIRED,
+      "test.njk":
+        "{% embedHead %}|{% embedFoot %}|{% embedRenderHead() %}|{% embedRenderFoot() %}",
+    });
+    const templates = new Templates(dir, { warn: vi.fn() });
+    const site = {
+      name: "Site",
+      description: "",
+      url: "https://example.com",
+      baseUrl: "",
+      path: "/",
+      types: {},
+    };
+    expect(
+      templates.render("test.njk", {
+        site,
+        type: "news",
+        isArticle: true,
+        isList: false,
+        embeds: { head: "<style></style>", foot: "<script></script>" },
+      }),
+    ).toBe(
+      "<style></style>|<script></script>|<style></style>|<script></script>",
+    );
+    expect(
+      templates.render("test.njk", {
+        site,
+        type: "news",
+        isArticle: true,
+        isList: false,
+      }),
+    ).toBe("|||");
   });
 
   it("should use a type's own template or fall back to article's with one warning", async () => {
@@ -100,6 +153,7 @@ describe("Templates", () => {
           name: "<News>",
           description: "<b>Bold</b>",
           url: "2026-10-19T09:54:00.000Z",
+          baseUrl: "",
           path: ' src="/a.png"',
           types: {},
         },

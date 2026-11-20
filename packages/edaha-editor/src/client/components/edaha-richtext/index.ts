@@ -1,8 +1,20 @@
 import type { Editor } from "@tiptap/core";
-import { html, LitElement, type PropertyValues } from "lit";
-import type { EmbedPreview } from "../../../server/types/index.ts";
+import {
+  html,
+  LitElement,
+  render as renderTemplate,
+  type PropertyValues,
+} from "lit";
+import {
+  embedButton,
+  type EmbedTools,
+  type EmbedValue,
+} from "../../embeds/index.ts";
 import { createRichtextEditor } from "../../richtext/editor/index.ts";
-import { EMBED_EDIT_EVENT } from "../../richtext/extensions/index.ts";
+import {
+  EMBED_EDIT_EVENT,
+  EMBED_REFRESH_EVENT,
+} from "../../richtext/extensions/index.ts";
 import { defineElement } from "../define/index.ts";
 import { toolbarButtonContent } from "../../icons/index.ts";
 import type { ChosenFile, FileChooser } from "../edaha-file-browser/index.ts";
@@ -20,6 +32,27 @@ interface ToolbarAction {
   enabled?: (editor: Editor) => boolean;
 }
 
+/** A toggle for a heading level, labelled e.g. "Heading 1" */
+const headingAction = (level: 1 | 2 | 3): ToolbarAction => ({
+  label: `Heading ${level}`,
+  run: (e) => e.chain().focus().toggleHeading({ level }).run(),
+  active: (e) => e.isActive("heading", { level }),
+});
+
+/** Render a toolbar button for an action, pressed when it is active, and disabled until the editor is ready */
+const actionButton = (action: ToolbarAction, editor: Editor | undefined) =>
+  html`<button
+    type="button"
+    class="toolbar-button"
+    data-action=${action.label}
+    title=${action.label}
+    ?disabled=${!editor || (action.enabled ? !action.enabled(editor) : false)}
+    aria-pressed=${editor && action.active ? String(action.active(editor)) : "false"}
+    @click=${() => editor && action.run(editor)}
+  >
+    ${toolbarButtonContent(action.label)}
+  </button>`;
+
 /** Whether the cursor is in a table */
 const inTable = (editor: Editor) => editor.isActive("table");
 
@@ -36,7 +69,7 @@ export class EdahaRichtext extends LitElement {
     value: { attribute: false },
     uploadImage: { attribute: false },
     chooseFile: { attribute: false },
-    loadEmbedPreview: { attribute: false },
+    embedTools: { attribute: false },
   };
 
   /** The content as HTML */
@@ -48,12 +81,17 @@ export class EdahaRichtext extends LitElement {
   /** Lets the user choose an existing file, giving the URL to show it at; without it, its button is disabled */
   declare chooseFile?: FileChooser | undefined;
 
-  /** Renders embed URLs for previews inside embed blocks */
-  declare loadEmbedPreview?:
-    ((url: string) => Promise<EmbedPreview>) | undefined;
+  /** The site's embeds, the embed dialog, and embed blocks' frames */
+  declare embedTools?: EmbedTools | undefined;
 
   /** The Tiptap editor, once rendered */
   editor?: Editor;
+
+  /**
+   * The toolbar that floats above selected text, with its format buttons. The editor shows it and moves it into the
+   * editable area's box while text is selected, so it is rendered here rather than in the component's template.
+   */
+  readonly formatMenu: HTMLElement;
 
   /** Asks for a URL (replaceable for tests) */
   prompt: (message: string, value?: string) => string | null = (
@@ -64,11 +102,55 @@ export class EdahaRichtext extends LitElement {
   constructor() {
     super();
     this.value = "";
+    this.formatMenu = document.createElement("div");
+    this.formatMenu.className = "editor-toolbar format-menu";
+    this.formatMenu.setAttribute("role", "toolbar");
+    this.formatMenu.setAttribute("aria-label", "Text format");
+    // Pressing a button keeps the text selected
+    this.formatMenu.addEventListener("mousedown", (event) =>
+      event.preventDefault(),
+    );
+    // Escape goes back to the text
+    this.formatMenu.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") this.editor?.commands.focus();
+    });
   }
 
   protected override createRenderRoot() {
     return this;
   }
+
+  /** The floating toolbar's buttons, for formatting selected text */
+  private readonly formatActions: ToolbarAction[] = [
+    {
+      label: "Bold",
+      run: (e) => e.chain().focus().toggleBold().run(),
+      active: (e) => e.isActive("bold"),
+    },
+    {
+      label: "Italic",
+      run: (e) => e.chain().focus().toggleItalic().run(),
+      active: (e) => e.isActive("italic"),
+    },
+    {
+      label: "Underline",
+      run: (e) => e.chain().focus().toggleUnderline().run(),
+      active: (e) => e.isActive("underline"),
+    },
+    {
+      label: "Strikethrough",
+      run: (e) => e.chain().focus().toggleStrike().run(),
+      active: (e) => e.isActive("strike"),
+    },
+    {
+      label: "Link",
+      run: (e) => this.editLink(e),
+      active: (e) => e.isActive("link"),
+    },
+    headingAction(1),
+    headingAction(2),
+    headingAction(3),
+  ];
 
   /** The toolbar's buttons */
   private readonly actions: ToolbarAction[] = [
@@ -173,11 +255,6 @@ export class EdahaRichtext extends LitElement {
       enabled: inTable,
     },
     {
-      label: "Embed",
-      run: (e) => this.editEmbed(e),
-      active: (e) => e.isActive("embed"),
-    },
-    {
       label: "Raw",
       // Text shown exactly as it is written, with no formatting
       run: (e) => e.chain().focus().toggleRaw().run(),
@@ -222,19 +299,22 @@ export class EdahaRichtext extends LitElement {
   }
 
   /**
-   * Insert an embed block (e.g. a YouTube video) by URL, or change the selected embed's URL (empty to remove it).
+   * Ask for an embed's content in the embed dialog: a new embed of a kind (from its toolbar button), inserted after the
+   * selected block, or the selected embed block (from its "Edit" button, or its kind's toolbar button).
+   *
+   * @param key - the kind of embed to add, from its toolbar button
    */
-  private editEmbed(editor: Editor) {
-    const selected = editor.isActive("embed");
-    const url = this.prompt(
-      selected
-        ? "Embed URL (empty to remove)"
-        : "Embed URL (e.g. a YouTube video)",
-      selected ? (editor.getAttributes("embed").url as string) : undefined,
-    );
-    if (url === null) return;
-    if (url.trim()) editor.chain().focus().setEmbed(url.trim()).run();
-    else if (selected) editor.chain().focus().deleteSelection().run();
+  private async editEmbed(editor: Editor, key?: string) {
+    const selected = editor.isActive("embed")
+      ? (editor.getAttributes("embed") as EmbedValue)
+      : undefined;
+    const adding = key !== undefined && selected?.key !== key;
+    const current = adding ? { key, content: "", options: {} } : selected;
+    if (!this.embedTools || !current) return;
+    const value = await this.embedTools.edit(current, adding);
+    if (!value) editor.commands.focus();
+    else if (adding) editor.chain().focus().insertEmbed(value).run();
+    else editor.chain().focus().setEmbed(value).run();
   }
 
   /**
@@ -288,21 +368,24 @@ export class EdahaRichtext extends LitElement {
         // Refresh the toolbar's pressed states
         this.requestUpdate();
       },
-      // Read the loader when previews load, so it can be set after the editor is created
-      (url) =>
-        this.loadEmbedPreview
-          ? this.loadEmbedPreview(url)
-          : Promise.reject(new Error("previews are not available")),
+      // Read when embed blocks are shown, so the tools can be set after the editor is created
+      () => this.embedTools,
+      this.formatMenu,
     );
-    // An embed block's "Edit" button selects it, then asks for its new URL here
+    // An embed block's "Edit" button selects it, then asks for its new kind and content here
     element.addEventListener(EMBED_EDIT_EVENT, () => {
-      if (this.editor) this.editEmbed(this.editor);
+      if (this.editor) void this.editEmbed(this.editor);
     });
     this.editor.on("selectionUpdate", () => this.requestUpdate());
     this.requestUpdate();
   }
 
   protected override updated(changed: PropertyValues<this>): void {
+    // The floating toolbar's buttons show what the selected text has
+    renderTemplate(
+      this.formatActions.map((action) => actionButton(action, this.editor)),
+      this.formatMenu,
+    );
     // Replace the content when a different value is set from outside (e.g. another article is loaded)
     if (
       changed.has("value") &&
@@ -310,6 +393,10 @@ export class EdahaRichtext extends LitElement {
       this.editor.getHTML() !== this.value
     )
       this.editor.commands.setContent(this.value, { emitUpdate: false });
+    // Embed blocks show their kind and frame once the embeds are known
+    if (changed.has("embedTools"))
+      for (const block of this.querySelectorAll(".embed-block"))
+        block.dispatchEvent(new Event(EMBED_REFRESH_EVENT));
   }
 
   override disconnectedCallback(): void {
@@ -326,19 +413,13 @@ export class EdahaRichtext extends LitElement {
         role="toolbar"
         aria-label="Formatting"
       >
-        ${this.actions.map(
-          (action) =>
-            html`<button
-              type="button"
-              class="toolbar-button"
-              data-action=${action.label}
-              title=${action.label}
-              ?disabled=${!editor || (action.enabled ? !action.enabled(editor) : false)}
-              aria-pressed=${editor && action.active ? String(action.active(editor)) : "false"}
-              @click=${() => editor && action.run(editor)}
-            >
-              ${toolbarButtonContent(action.label)}
-            </button>`,
+        ${this.actions.map((action) => actionButton(action, editor))}
+        ${this.embedTools?.embeds.map((embed) =>
+          embedButton(embed, {
+            pressed: !!editor?.isActive("embed", { key: embed.key }),
+            disabled: !editor,
+            onClick: () => editor && void this.editEmbed(editor, embed.key),
+          }),
         )}
         <label
           class="toolbar-button toolbar-upload"

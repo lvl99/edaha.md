@@ -1,4 +1,5 @@
-import { Editor } from "@tiptap/core";
+import { Editor, isTextSelection } from "@tiptap/core";
+import BubbleMenu from "@tiptap/extension-bubble-menu";
 import {
   Details,
   DetailsContent,
@@ -7,7 +8,7 @@ import {
 import Image from "@tiptap/extension-image";
 import { TableKit } from "@tiptap/extension-table";
 import StarterKit from "@tiptap/starter-kit";
-import type { EmbedPreview } from "../../../server/types/index.ts";
+import type { EmbedTools } from "../../embeds/index.ts";
 import {
   Big,
   Embed,
@@ -20,11 +21,32 @@ import {
 } from "../extensions/index.ts";
 
 /**
+ * Whether the floating format toolbar shows: while text is selected in the editor (or focus is in the toolbar), and
+ * not in code or raw text, which can't be formatted.
+ *
+ * @example
+ * showFormatMenu(editor, menu); // true while "Hello" is selected in a paragraph
+ */
+export const showFormatMenu = (editor: Editor, menu: HTMLElement): boolean => {
+  const { selection, doc } = editor.state;
+  return (
+    (editor.view.hasFocus() || menu.contains(document.activeElement)) &&
+    editor.isEditable &&
+    isTextSelection(selection) &&
+    doc.textBetween(selection.from, selection.to).length > 0 &&
+    !editor.isActive("codeBlock") &&
+    !editor.isActive("raw") &&
+    !editor.isActive("rawInline")
+  );
+};
+
+/**
  * Create a Tiptap editor for an article body, with images, links, tables, collapsible details blocks, small and big
  * text, heading IDs shown after headings, the readmore break and embed blocks.
  *
  * @param onUpdate - called with the new HTML whenever the content changes
- * @param loadEmbedPreview - renders embed URLs for previews inside embed blocks
+ * @param embedTools - the embed tools, for embed blocks' names and frames (read when a block is shown)
+ * @param formatMenu - a toolbar to float above selected text (see showFormatMenu), if any
  *
  * @example
  * const editor = createRichtextEditor(element, "<p>Hello</p>", (html) => console.log(html));
@@ -33,7 +55,8 @@ export const createRichtextEditor = (
   element: HTMLElement,
   content: string,
   onUpdate: (html: string) => void,
-  loadEmbedPreview?: (url: string) => Promise<EmbedPreview>,
+  embedTools: () => EmbedTools | undefined = () => undefined,
+  formatMenu?: HTMLElement,
 ): Editor =>
   new Editor({
     element,
@@ -41,7 +64,7 @@ export const createRichtextEditor = (
     extensions: [
       StarterKit.configure({
         link: { openOnClick: false, autolink: true },
-        heading: { levels: [2, 3, 4] },
+        heading: { levels: [1, 2, 3, 4] },
       }),
       Image,
       // Tables are saved as Markdown (GFM) tables
@@ -56,7 +79,15 @@ export const createRichtextEditor = (
       Readmore,
       Raw,
       RawInline,
-      Embed.configure({ loadPreview: loadEmbedPreview }),
+      Embed.configure({ tools: embedTools }),
+      ...(formatMenu
+        ? [
+            BubbleMenu.configure({
+              element: formatMenu,
+              shouldShow: ({ editor }) => showFormatMenu(editor, formatMenu),
+            }),
+          ]
+        : []),
     ],
     onUpdate: ({ editor }) => onUpdate(editor.getHTML()),
   });

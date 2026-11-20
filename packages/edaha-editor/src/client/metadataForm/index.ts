@@ -135,6 +135,50 @@ export const inputValue = (
   return kind === "number" || kind === "range" ? Number(input) : input;
 };
 
+/**
+ * The values a checkbox saves: its `value` option when checked and nothing when not (e.g. `{ checkbox: { value:
+ * "none" } }`), or true and false.
+ *
+ * @example
+ * checkboxValues({ $edahaField: { checkbox: { value: "none" } } }); // { checked: "none", unchecked: undefined }
+ * checkboxValues({ $edahaField: { checkbox: true } }); // { checked: true, unchecked: false }
+ */
+export const checkboxValues = (
+  schema: MetadataSchema,
+): { checked: unknown; unchecked: unknown } => {
+  const { value } = schema.$edahaField ? fieldOptions(schema.$edahaField) : {};
+  return value === undefined
+    ? { checked: true, unchecked: false }
+    : { checked: value, unchecked: undefined };
+};
+
+/** A colour written with or without its "#", e.g. "0687f5" or "#0687F5" */
+const COLOUR = /^#?([0-9a-f]{6})$/i;
+
+/**
+ * A colour field's value as its input shows it: with a "#" (e.g. "0687f5" as "#0687f5"), or empty when it isn't a
+ * colour.
+ *
+ * @example
+ * colourInputValue("0687F5"); // "#0687f5"
+ */
+export const colourInputValue = (value: unknown): string => {
+  const match = COLOUR.exec(String(value ?? ""));
+  return match ? `#${(match[1] as string).toLowerCase()}` : "";
+};
+
+/**
+ * A colour chosen in a colour field, written like the field's value (or default) was: without a "#" if it had none.
+ *
+ * @example
+ * colourValue("#051c2c", "ffffff"); // "051c2c"
+ * colourValue("#051c2c", undefined); // "#051c2c"
+ */
+export const colourValue = (input: string, current: unknown): string =>
+  typeof current === "string" && /^[0-9a-f]{6}$/i.test(current)
+    ? input.replace(/^#/, "")
+    : input;
+
 /** The problems with exactly the value at a path */
 export const problemsAt = (
   problems: MetadataProblem[],

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { isEmbedPlugin } from "@lvl99dotcom/edaha.md/embeds";
 import youtubeDefault, { extractYouTubeId, youtube } from "..";
-
-const context = { fetch: () => Promise.reject(new Error("no fetch")) };
 
 describe("extractYouTubeId", () => {
   it("should find the ID in every form of YouTube URL", () => {
@@ -30,24 +29,39 @@ describe("extractYouTubeId", () => {
 });
 
 describe("youtube", () => {
-  it("should match YouTube hosts only", () => {
+  it("should be an embed plugin with the youtube key, allowing youtube-nocookie.com frames", () => {
     expect(youtubeDefault).toBe(youtube);
-    expect(youtube.match(new URL("https://youtu.be/x"))).toBe(true);
-    expect(youtube.match(new URL("https://www.youtube.com/watch?v=x"))).toBe(
-      true,
-    );
-    expect(youtube.match(new URL("https://example.com/youtube"))).toBe(false);
+    expect(isEmbedPlugin(youtube)).toBe(true);
+    expect(youtube.key).toBe("youtube");
+    expect(youtube.sources.frame).toEqual(["https://www.youtube-nocookie.com"]);
+    expect(youtube.editor.icon).toMatch(/^<svg /);
   });
 
   it("should always embed from youtube-nocookie.com", async () => {
-    const html = await youtube.render(
-      new URL("https://www.youtube.com/watch?v=aju_UB5VIf8"),
-      context,
+    const html = await youtube.build.render(
+      "https://www.youtube.com/watch?v=aju_UB5VIf8",
     );
     expect(html).toContain(
       'src="https://www.youtube-nocookie.com/embed/aju_UB5VIf8"',
     );
     expect(html).toMatch(/^<iframe .*><\/iframe>$/);
     expect(html).not.toContain("www.youtube.com");
+  });
+
+  it("should only accept YouTube video URLs, saying what is wrong", async () => {
+    expect(youtube.validate("https://youtu.be/aju_UB5VIf8")).toBe(true);
+    expect(() => youtube.validate("not a url")).toThrow(
+      '"not a url" is not a URL; paste a YouTube video\'s URL',
+    );
+    expect(() =>
+      youtube.validate("https://example.com/watch?v=aju_UB5VIf8"),
+    ).toThrow("https://example.com/watch?v=aju_UB5VIf8 is not a YouTube URL");
+    expect(() => youtube.validate("https://www.youtube.com/@channel")).toThrow(
+      "No YouTube video ID",
+    );
+    // Rendering checks too, for code that renders without validating
+    await expect(youtube.build.render("not a url")).rejects.toThrow(
+      "is not a URL",
+    );
   });
 });

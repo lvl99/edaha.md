@@ -143,6 +143,42 @@ describe("parseMetadata", () => {
       parseMetadata({ a: { type: "strin", $edahaField: { text: true } } }),
     ).toThrow('"metadata.a" isn\'t a valid JSON Schema');
   });
+
+  it("should check fields' default values and conditions, in groups too", () => {
+    const conditional = {
+      layout: {
+        type: "string",
+        $edahaField: { select: true, defaultValue: "large" },
+      },
+      credit: {
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            $edahaField: { text: true, hideWhen: ["layout", "=", "slim"] },
+          },
+        },
+        $edahaField: { showWhen: { or: [["layout", "in", ["large"]]] } },
+      },
+    };
+    expect(parseMetadata(conditional)).toBe(conditional);
+    expect(() =>
+      parseMetadata({
+        a: { type: "string", $edahaField: { text: true, defaultValue: {} } },
+      }),
+    ).toThrow(
+      '"metadata.a.$edahaField".defaultValue must be text, a number, true, false or null',
+    );
+    expect(() =>
+      parseMetadata({
+        a: {
+          type: "object",
+          properties: {},
+          $edahaField: { showWhen: ["b", "~", 1] },
+        },
+      }),
+    ).toThrow('"metadata.a.$edahaField".showWhen must be a condition like');
+  });
 });
 
 describe("fieldKind and fieldOptions", () => {
@@ -217,6 +253,38 @@ describe("articleMetadata", () => {
         { path: "oops", message: "isn't a known setting", level: "warning" },
       ],
     });
+  });
+
+  it("should fill in default values and leave out hidden fields' values", () => {
+    const validator = new MetadataValidator({
+      layout: {
+        type: "string",
+        enum: ["slim", "large"],
+        $edahaField: { select: true, defaultValue: "slim" },
+      },
+      tracklist: {
+        type: "boolean",
+        $edahaField: { checkbox: true, hideWhen: ["layout", "=", "slim"] },
+      },
+    });
+    expect(
+      articleMetadata(
+        { tracklist: "yes" },
+        ["layout", "tracklist", "missing"],
+        validator,
+        "News",
+      ),
+    ).toEqual({ values: { layout: "slim" }, problems: [] });
+    expect(
+      articleMetadata(
+        { layout: "large", tracklist: "yes" },
+        ["layout", "tracklist"],
+        validator,
+        "News",
+      ).problems,
+    ).toEqual([
+      { path: "tracklist", message: "must be yes or no", level: "error" },
+    ]);
   });
 });
 

@@ -6,6 +6,7 @@
   --colour-background: #ffffff;
   --colour-surface: #f4f4f6;
   --colour-border: #d8d8de;
+  --colour-table-outline: #c0c0c6;
   --colour-link: #3b9a04;
   --colour-link-hover: #2b6f04;
   --colour-focus: #3b9a04;
@@ -55,6 +56,7 @@
   --colour-background: #141416;
   --colour-surface: #1f1f23;
   --colour-border: #38383f;
+  --colour-table-outline: #8a8a92;
   --colour-link: #dc6d2c;
   --colour-link-hover: #fda26d;
   --colour-focus: #fda26d;
@@ -82,6 +84,7 @@
     --colour-background: #141416;
     --colour-surface: #1f1f23;
     --colour-border: #38383f;
+    --colour-table-outline: #8a8a92;
     --colour-link: #dc6d2c;
     --colour-link-hover: #fda26d;
     --colour-focus: #fda26d;
@@ -511,6 +514,8 @@ edaha-article form {
 }
 
 .body-panel .richtext-content {
+  /* Holds the floating format toolbar, which scrolls with the text */
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
@@ -677,6 +682,25 @@ edaha-article .preview {
   max-width: 100%;
 }
 
+/* Tables: a dotted light-grey outline round the table and its cells, so they can be seen while editing */
+.richtext-content table {
+  border-collapse: collapse;
+  outline: 1px dotted var(--colour-table-outline);
+}
+
+.richtext-content th,
+.richtext-content td {
+  min-width: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px dotted var(--colour-table-outline);
+  vertical-align: top;
+}
+
+/* A cell's text is in paragraphs, without space around them */
+.richtext-content :is(th, td) > p {
+  margin: 0;
+}
+
 /* Editor-only blocks: outlined so they can be seen and clicked, and highlighted when selected */
 .richtext-content .readmore-block,
 .richtext-content .embed-block {
@@ -748,8 +772,103 @@ edaha-article .preview {
   content: "Content";
 }
 
-.richtext-content .embed-preview iframe {
-  max-width: 100%;
+/* An embed block's frame: as wide as the body, as tall as its content (it sends its height) */
+.richtext-content .embed-frame {
+  display: block;
+  width: 100%;
+  height: 10rem;
+  margin-block-start: 0.5rem;
+  border: 0;
+}
+
+.richtext-content .block-header .embed-icon {
+  flex: none;
+}
+
+.richtext-content .embed-icon svg,
+.embed-dialog .embed-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* An embed that can't be shown is shown as it is written */
+.richtext-content .embed-content {
+  margin: 0.5rem 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.richtext-content .embed-errors {
+  margin-block-start: 0.5rem;
+  color: var(--colour-error);
+}
+
+.richtext-content .embed-errors p,
+.richtext-content .embed-errors ul {
+  margin: 0;
+}
+
+/* Each kind of embed's toolbar button shows its icon at the toolbar's size */
+.toolbar-embed .embed-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.richtext-content .embed-warning {
+  margin: 0.5rem 0 0;
+  color: var(--colour-error);
+}
+
+/* The embed dialog: what the kind of embed embeds, its options, then its content */
+.embed-dialog {
+  width: min(40rem, calc(100vw - 2rem));
+}
+
+.embed-dialog form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.embed-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  overflow-y: auto;
+}
+
+.embed-dialog-about,
+.embed-dialog-hint {
+  color: var(--colour-muted);
+  font-size: var(--font-size-s);
+}
+
+.embed-dialog-hint {
+  margin: 0;
+}
+
+/* Why the content isn't valid, under it */
+.embed-dialog-errors ul {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  color: var(--colour-error);
+}
+
+.embed-dialog textarea[aria-invalid="true"] {
+  border-color: var(--colour-error);
+}
+
+.embed-dialog textarea {
+  min-height: 2rem;
+  font-family: ui-monospace, monospace;
+  resize: vertical;
+}
+
+.embed-dialog-actions {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem 1rem;
 }
 
 /* Heading IDs, shown after headings for copying into links */
@@ -802,6 +921,19 @@ edaha-article .preview {
 .toolbar-button[data-disabled] {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* The toolbar that floats above selected text in the rich text body (placed by the editor) */
+.format-menu {
+  z-index: 10;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.25rem;
+  background: var(--colour-background);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
 }
 
 /* The upload button is a label for its hidden file input, so it shows the input's focus */

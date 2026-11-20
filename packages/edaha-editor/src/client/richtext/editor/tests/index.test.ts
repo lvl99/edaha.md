@@ -2,34 +2,55 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Editor } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
-import type { EmbedPreview } from "../../../../server/types";
+import type { EmbedFrame } from "../../../../server/types";
+import type { EmbedTools, EmbedValue } from "../../../embeds";
 import {
   editorHtmlToMarkdown,
   markdownToEditorHtml,
 } from "../../../../server/convert";
-import { createRichtextEditor } from "..";
-import { EMBED_EDIT_EVENT, blockView } from "../../extensions";
+import { createRichtextEditor, showFormatMenu } from "..";
+import { EMBED_EDIT_EVENT, Embed, blockView } from "../../extensions";
 
 let editor: Editor | undefined;
 
+/** A YouTube embed block's editor HTML */
+const EMBED =
+  '<div class="embed" data-embed="youtube" data-content="https://youtu.be/x"></div>';
+
 /** A rich text editor with the given content */
-const create = (
-  content: string,
-  onUpdate = vi.fn(),
-  loadEmbedPreview?: (url: string) => Promise<EmbedPreview>,
-) => {
+const create = (content: string, onUpdate = vi.fn(), tools?: EmbedTools) => {
   const element = document.createElement("div");
   document.body.append(element);
-  editor = createRichtextEditor(element, content, onUpdate, loadEmbedPreview);
+  editor = createRichtextEditor(
+    element,
+    content,
+    onUpdate,
+    tools && (() => tools),
+  );
   return { editor, onUpdate, element };
 };
+
+/** An embed block's editor HTML */
+const embedHtml = (content = "https://youtu.be/x", key = "youtube") =>
+  `<div class="embed" data-embed="${key}" data-content="${content}"></div>`;
+
+/** Embed tools with a YouTube embed and the given frame loader */
+const embedTools = (
+  loadFrame: (value: EmbedValue) => Promise<EmbedFrame>,
+): EmbedTools => ({
+  embeds: [
+    { key: "youtube", name: "YouTube video", icon: '<svg id="yt"></svg>' },
+  ],
+  edit: vi.fn(),
+  loadFrame,
+});
 
 /** Wait for pending promises */
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 /** A block's label */
 const label = (block: Element | null) =>
-  block?.querySelector(".block-header span")?.textContent;
+  block?.querySelector(".block-header span:not(.icon)")?.textContent;
 
 /** A block's header button by its text */
 const blockButton = (block: Element | null, text: string) =>
@@ -44,15 +65,72 @@ afterEach(() => {
 
 describe("createRichtextEditor", () => {
   it("should keep readmore breaks, embeds, images and links", () => {
-    const html =
-      '<p>Intro <a href="https://example.com">link</a></p><hr class="readmore"><div class="embed">https://youtu.be/x</div><p><img src="/files/a.png" alt="A"></p><hr>';
+    const html = `<p>Intro <a href="https://example.com">link</a></p><hr class="readmore">${EMBED}<p><img src="/files/a.png" alt="A"></p><hr>`;
     const { editor } = create(html);
     const result = editor.getHTML();
     expect(result).toContain('<hr class="readmore" title="Read more">');
-    expect(result).toContain('<div class="embed">https://youtu.be/x</div>');
+    expect(result).toContain(`${EMBED}`);
     expect(result).toContain('<img src="/files/a.png" alt="A">');
     expect(result).toContain('href="https://example.com"');
     expect(result).toMatch(/<hr>$/);
+  });
+
+  it("should keep embeds' options, showing them with the content of an embed shown as it is written", () => {
+    const html =
+      '<div class="embed" data-embed="youtube" data-content="https://youtu.be/x" data-options="{&quot;size&quot;:1}"></div>';
+    const { editor } = create(html);
+    expect(editor.getHTML()).toBe(html);
+    editor.commands.setNodeSelection(0);
+    expect(editor.getAttributes("embed").options).toEqual({ size: 1 });
+    expect(editor.view.dom.querySelector(".embed-content")!.textContent).toBe(
+      "<!--yaml\nsize: 1\n-->\nhttps://youtu.be/x",
+    );
+  });
+
+  it("should allow headings from 1 to 4", () => {
+    const { editor } = create("<h1>A</h1><h4>B</h4><h5>C</h5>");
+    expect(editor.getHTML()).toBe("<h1>A</h1><h4>B</h4><p>C</p>");
+  });
+
+  it("should show the floating format toolbar only while text that can be formatted is selected", () => {
+    const element = document.createElement("div");
+    document.body.append(element);
+    const menu = document.createElement("div");
+    menu.append(document.createElement("button"));
+    editor = createRichtextEditor(
+      element,
+      '<p>Hello</p><pre><code>code</code></pre><pre class="raw">raw</pre>',
+      vi.fn(),
+      undefined,
+      menu,
+    );
+    expect(
+      editor.extensionManager.extensions.some((e) => e.name === "bubbleMenu"),
+    ).toBe(true);
+    const focused = vi.spyOn(editor.view, "hasFocus").mockReturnValue(true);
+    const shown = (from: number, to: number) => {
+      editor!.commands.setTextSelection({ from, to });
+      return showFormatMenu(editor!, menu);
+    };
+    expect(shown(1, 6)).toBe(true);
+    // Nothing selected
+    expect(shown(2, 2)).toBe(false);
+    // Code and raw text can't be formatted
+    expect(shown(8, 10)).toBe(false);
+    expect(shown(14, 16)).toBe(false);
+    // A selected block isn't text
+    editor.commands.setNodeSelection(0);
+    expect(showFormatMenu(editor, menu)).toBe(false);
+    // Without focus in the text or the toolbar, it hides
+    focused.mockReturnValue(false);
+    expect(shown(1, 6)).toBe(false);
+    document.body.append(menu);
+    menu.querySelector("button")!.focus();
+    expect(shown(1, 6)).toBe(true);
+    // Nor while the editor can't be changed
+    editor.setEditable(false);
+    expect(shown(1, 6)).toBe(false);
+    menu.remove();
   });
 
   it("should keep raw blocks and raw text as they are, without other formatting", () => {
@@ -115,14 +193,12 @@ describe("createRichtextEditor", () => {
     middle.destroy();
 
     // Before another block, a paragraph is added after the break
-    const embed = create(
-      '<p>One</p><div class="embed">https://youtu.be/x</div>',
-    ).editor;
+    const embed = create(`<p>One</p>${EMBED}`).editor;
     embed.commands.setTextSelection(4);
     embed.commands.setReadmore();
     embed.commands.insertContent("Two");
     expect(embed.getHTML()).toBe(
-      '<p>One</p><hr class="readmore" title="Read more"><p>Two</p><div class="embed">https://youtu.be/x</div><p></p>',
+      `<p>One</p><hr class="readmore" title="Read more"><p>Two</p>${EMBED}<p></p>`,
     );
     // (Tiptap keeps an empty paragraph at the end of the document)
   });
@@ -134,9 +210,7 @@ describe("createRichtextEditor", () => {
   });
 
   it("should show the blocks as labelled, selectable boxes", () => {
-    const { editor } = create(
-      '<hr class="readmore"><div class="embed">https://youtu.be/x</div>',
-    );
+    const { editor } = create(`<hr class="readmore">${EMBED}`);
     const readmore = editor.view.dom.querySelector(
       ".readmore-block",
     ) as HTMLElement;
@@ -146,19 +220,21 @@ describe("createRichtextEditor", () => {
     expect(
       [...readmore.querySelectorAll("button")].map((b) => b.textContent),
     ).toEqual(["Remove"]);
-    expect(label(embed)).toBe("Embed: https://youtu.be/x");
+    // Without the embed tools, the embed's kind isn't known and its content is shown as it is
+    expect(label(embed)).toBe('Unknown embed "youtube"');
     expect(
       [...embed.querySelectorAll("button")].map((b) => b.textContent),
     ).toEqual(["Edit", "Remove"]);
-    // Without a preview loader, there is no preview
-    expect(embed.querySelector(".embed-preview")!.textContent).toBe("");
+    expect(embed.querySelector(".embed-content")!.textContent).toBe(
+      "https://youtu.be/x",
+    );
     editor.commands.setNodeSelection(1);
     expect(editor.isActive("embed")).toBe(true);
   });
 
   it("should remove blocks with their Remove buttons", () => {
     const { editor } = create(
-      '<p>One</p><hr class="readmore"><div class="embed">https://youtu.be/x</div><p>Two</p>',
+      `<p>One</p><hr class="readmore">${EMBED}<p>Two</p>`,
     );
     blockButton(
       editor.view.dom.querySelector(".embed-block"),
@@ -175,9 +251,7 @@ describe("createRichtextEditor", () => {
   });
 
   it("should select an embed and fire an edit event from its Edit button", () => {
-    const { editor, element } = create(
-      '<p>One</p><div class="embed">https://youtu.be/x</div>',
-    );
+    const { editor, element } = create(`<p>One</p>${EMBED}`);
     const onEdit = vi.fn();
     element.addEventListener(EMBED_EDIT_EVENT, onEdit);
     blockButton(editor.view.dom.querySelector(".embed-block"), "Edit").click();
@@ -209,31 +283,123 @@ describe("createRichtextEditor", () => {
     expect(editor.getHTML()).toContain("readmore");
   });
 
-  it("should preview embeds, with any warnings", async () => {
-    const loadPreview = vi.fn(async (url: string) => ({
-      html: `<iframe src="${url}" loading="lazy"></iframe>`,
-      warnings: url.includes("bad") ? ["First", "Second"] : [],
+  it("should show embeds by their kind, in sandboxed frames sized to their content", async () => {
+    const loadFrame = vi.fn(async ({ key, content }: EmbedValue) => ({
+      url: `/embed-frame/${key}/`,
+      errors: [],
+      warnings: content.includes("bad") ? ["First", "Second"] : [],
     }));
     const { editor } = create(
-      '<div class="embed">https://youtu.be/x</div><div class="embed">https://bad.example</div>',
+      `${EMBED}${embedHtml("https://bad.example")}${embedHtml("text", "")}`,
       vi.fn(),
-      loadPreview,
+      embedTools(loadFrame),
     );
-    const [good, bad] = editor.view.dom.querySelectorAll(".embed-preview");
-    expect(good!.textContent).toBe("Loading preview…");
+    const [good, bad, old] = editor.view.dom.querySelectorAll(".embed-block");
+    expect(label(good!)).toBe("YouTube video");
+    expect(good!.querySelector(".embed-icon")!.innerHTML).toBe(
+      '<svg id="yt"></svg>',
+    );
+    expect(label(old!)).toBe("Embed without a kind");
+    // Only embeds the site has a plugin for can be changed here
+    expect(blockButton(good!, "Edit").hidden).toBe(false);
+    expect(blockButton(old!, "Edit").hidden).toBe(true);
+    expect(good!.querySelector(".embed-preview")!.textContent).toBe("Loading…");
     await flush();
-    // Lazy loading is turned off, as it never starts inside the editor
-    expect(good!.innerHTML).toBe('<iframe src="https://youtu.be/x"></iframe>');
+    const frame = good!.querySelector("iframe") as HTMLIFrameElement;
+    expect(frame.getAttribute("src")).toBe("/embed-frame/youtube/?theme=light");
+    expect(frame.getAttribute("sandbox")).toBe(
+      "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox",
+    );
+    expect(frame.title).toBe("YouTube video: preview");
+    expect(loadFrame).toHaveBeenCalledWith({
+      key: "youtube",
+      content: "https://youtu.be/x",
+      options: {},
+    });
+    // An embed with problems shows them, and its content as it is written
     expect(
       [...bad!.querySelectorAll(".embed-warning")].map((p) => p.textContent),
-    ).toEqual(["Second", "First"]);
+    ).toEqual(["First", "Second"]);
+    expect(bad!.querySelector(".embed-content")!.textContent).toBe(
+      "https://bad.example",
+    );
+    expect(bad!.querySelector("iframe")).toBeNull();
+
+    // A frame's height message sizes it, within limits; other messages are ignored
+    const send = (data: unknown, source = frame.contentWindow) =>
+      window.dispatchEvent(new MessageEvent("message", { data, source }));
+    send({ edahaEmbedHeight: 300 });
+    expect(frame.style.height).toBe("300px");
+    send({ edahaEmbedHeight: 99999 });
+    expect(frame.style.height).toBe("2000px");
+    send({ edahaEmbedHeight: 1 });
+    expect(frame.style.height).toBe("40px");
+    send({ edahaEmbedHeight: "500" });
+    send(null);
+    send({ edahaEmbedHeight: 500 }, window);
+    expect(frame.style.height).toBe("40px");
+    // Removed blocks' frames are no longer sized
+    editor.commands.setContent("<p>Gone</p>");
+    send({ edahaEmbedHeight: 300 });
+    expect(frame.style.height).toBe("40px");
   });
 
-  it("should show why a preview failed", async () => {
+  it("should list why an embed isn't valid, and show its content as it is written", async () => {
     const { editor } = create(
-      '<div class="embed">https://youtu.be/x</div>',
+      EMBED,
       vi.fn(),
-      () => Promise.reject(new Error("offline")),
+      embedTools(async () => ({
+        url: "",
+        errors: ["Not a URL", "No video ID"],
+        warnings: [],
+      })),
+    );
+    await flush();
+    const block = editor.view.dom.querySelector(".embed-block")!;
+    expect(block.querySelector(".embed-errors p")!.textContent).toBe(
+      "This embed isn't valid, so the website leaves it out:",
+    );
+    expect(
+      [...block.querySelectorAll(".embed-errors li")].map(
+        (li) => li.textContent,
+      ),
+    ).toEqual(["Not a URL", "No video ID"]);
+    expect(block.querySelector(".embed-content")!.textContent).toBe(
+      "https://youtu.be/x",
+    );
+    expect(block.querySelector("iframe")).toBeNull();
+  });
+
+  it("should show frames in the editor's theme", async () => {
+    const tools = embedTools(async () => ({
+      url: "/f/",
+      errors: [],
+      warnings: [],
+    }));
+    const frameSrc = async () => {
+      const { editor } = create(EMBED, vi.fn(), tools);
+      await flush();
+      const src = editor.view.dom.querySelector("iframe")!.getAttribute("src");
+      editor.destroy();
+      return src;
+    };
+    document.documentElement.dataset.theme = "dark";
+    expect(await frameSrc()).toBe("/f/?theme=dark");
+    document.documentElement.dataset.theme = "light";
+    expect(await frameSrc()).toBe("/f/?theme=light");
+    delete document.documentElement.dataset.theme;
+    // jsdom has no matchMedia: the visitor's setting is light without it
+    expect(await frameSrc()).toBe("/f/?theme=light");
+    window.matchMedia = () => ({ matches: true }) as MediaQueryList;
+    expect(await frameSrc()).toBe("/f/?theme=dark");
+    delete (window as Partial<Window>).matchMedia;
+  });
+
+  it("should show why a frame failed", async () => {
+    const { editor } = create(
+      EMBED,
+      vi.fn(),
+      embedTools(() => Promise.reject(new Error("offline"))),
     );
     await flush();
     expect(editor.view.dom.querySelector(".embed-preview")!.textContent).toBe(
@@ -241,72 +407,57 @@ describe("createRichtextEditor", () => {
     );
   });
 
-  it("should change the selected embed's URL in place and preview the new URL only", async () => {
-    const answers: Record<string, (preview: EmbedPreview) => void> = {};
+  it("should change the selected embed in place and show the new one only", async () => {
+    const answers: Record<string, (frame: EmbedFrame) => void> = {};
     const reject: Record<string, (error: Error) => void> = {};
-    const loadPreview = vi.fn(
-      (url: string) =>
-        new Promise<EmbedPreview>((resolve, fail) => {
-          answers[url] = resolve;
-          reject[url] = fail;
+    const loadFrame = vi.fn(
+      ({ content }: EmbedValue) =>
+        new Promise<EmbedFrame>((resolve, fail) => {
+          answers[content] = resolve;
+          reject[content] = fail;
         }),
     );
-    const { editor } = create(
-      '<div class="embed">https://youtu.be/x</div>',
-      vi.fn(),
-      loadPreview,
-    );
+    const { editor } = create(EMBED, vi.fn(), embedTools(loadFrame));
     const view = editor.view.dom.querySelector(".embed-block");
     editor.commands.setNodeSelection(0);
-    editor.commands.setEmbed("https://youtu.be/y");
-    expect(editor.getHTML()).toBe(
-      '<div class="embed">https://youtu.be/y</div><p></p>',
-    );
-    // The same box shows the new URL
+    editor.commands.setEmbed({
+      key: "youtube",
+      content: "https://youtu.be/y",
+      options: {},
+    });
+    expect(editor.getHTML()).toBe(`${embedHtml("https://youtu.be/y")}<p></p>`);
+    // The same box shows the new embed
     expect(editor.view.dom.querySelector(".embed-block")).toBe(view);
-    expect(label(view)).toBe("Embed: https://youtu.be/y");
-    // The same URL again doesn't reload the preview
-    editor.commands.setEmbed("https://youtu.be/y");
-    expect(loadPreview).toHaveBeenCalledTimes(2);
+    // The same embed again doesn't reload its frame
+    editor.commands.setEmbed({
+      key: "youtube",
+      content: "https://youtu.be/y",
+      options: {},
+    });
+    expect(loadFrame).toHaveBeenCalledTimes(2);
 
-    // Previews for the old URL are ignored, even if they arrive last
-    answers["https://youtu.be/y"]!({ html: "<p>new</p>", warnings: [] });
+    // Frames for the old embed are ignored, even if they arrive last
+    answers["https://youtu.be/y"]!({ url: "/new/", errors: [], warnings: [] });
     await flush();
-    answers["https://youtu.be/x"]!({ html: "<p>old</p>", warnings: [] });
+    answers["https://youtu.be/x"]!({ url: "/old/", errors: [], warnings: [] });
     await flush();
-    expect(view!.querySelector(".embed-preview")!.innerHTML).toBe("<p>new</p>");
+    expect(view!.querySelector("iframe")!.getAttribute("src")).toBe(
+      "/new/?theme=light",
+    );
 
-    // ...and so are failures for an old URL
-    editor.commands.setEmbed("https://youtu.be/z");
+    // ...and so are failures for an old embed
+    editor.commands.setEmbed({
+      key: "youtube",
+      content: "https://youtu.be/z",
+      options: {},
+    });
     reject["https://youtu.be/y"]?.(new Error("late"));
     await flush();
-    expect(view!.querySelector(".embed-preview")!.textContent).toBe(
-      "Loading preview…",
-    );
-  });
-
-  it("should ignore a failed preview for a URL that has since changed", async () => {
-    let fail: (error: Error) => void = () => undefined;
-    const loadPreview = vi
-      .fn()
-      .mockImplementationOnce(() => new Promise((_, reject) => (fail = reject)))
-      .mockImplementation(() => new Promise(() => undefined));
-    const { editor } = create(
-      '<div class="embed">https://youtu.be/x</div>',
-      vi.fn(),
-      loadPreview,
-    );
-    editor.commands.setNodeSelection(0);
-    editor.commands.setEmbed("https://youtu.be/y");
-    fail(new Error("late"));
-    await flush();
-    expect(editor.view.dom.querySelector(".embed-preview")!.textContent).toBe(
-      "Loading preview…",
-    );
+    expect(view!.querySelector(".embed-preview")!.textContent).toBe("Loading…");
   });
 
   it("should not reuse an embed's box for another kind of block", () => {
-    const { editor } = create('<div class="embed">https://youtu.be/x</div>');
+    const { editor } = create(`${EMBED}`);
     const createView = editor.extensionManager.nodeViews.embed!;
     const embed = editor.state.doc.firstChild!;
     const view = createView(embed, editor.view, () => 0, [], {} as never);
@@ -400,11 +551,53 @@ describe("createRichtextEditor", () => {
     );
   });
 
-  it("should insert embeds by URL", () => {
-    const { editor } = create("<p>One</p>");
-    editor.commands.setEmbed("https://youtu.be/aju_UB5VIf8");
+  it("should have no embed tools unless they are given", () => {
+    expect(Embed.options.tools()).toBeUndefined();
+  });
+
+  it("should read embed blocks without a kind or content", () => {
+    const { editor } = create('<div class="embed"></div>');
     expect(editor.getHTML()).toContain(
-      '<div class="embed">https://youtu.be/aju_UB5VIf8</div>',
+      '<div class="embed" data-embed="" data-content=""></div>',
+    );
+  });
+
+  it("should ignore a failed frame for an embed that has since changed, and frames of removed blocks", async () => {
+    let fail: (error: Error) => void = () => undefined;
+    let answer: (frame: EmbedFrame) => void = () => undefined;
+    const loadFrame = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise((_, reject) => (fail = reject)))
+      .mockImplementationOnce(
+        () => new Promise<EmbedFrame>((resolve) => (answer = resolve)),
+      );
+    const { editor } = create(EMBED, vi.fn(), embedTools(loadFrame));
+    editor.commands.setNodeSelection(0);
+    editor.commands.setEmbed({
+      key: "youtube",
+      content: "https://youtu.be/y",
+      options: {},
+    });
+    fail(new Error("late"));
+    await flush();
+    const preview = editor.view.dom.querySelector(".embed-preview")!;
+    expect(preview.textContent).toBe("Loading…");
+    // A frame that arrives after its block was removed isn't sized
+    preview.closest(".embed-block")!.remove();
+    answer({ url: "/f/", errors: [], warnings: [] });
+    await flush();
+    expect(preview.querySelector("iframe")!.contentWindow).toBeNull();
+  });
+
+  it("should insert an embed when none is selected", () => {
+    const { editor } = create("<p>One</p>");
+    editor.commands.setEmbed({
+      key: "mermaidjs",
+      content: "graph TD;\nA-->B;",
+      options: {},
+    });
+    expect(editor.getHTML()).toContain(
+      '<div class="embed" data-embed="mermaidjs" data-content="graph TD;\nA--&gt;B;"></div>',
     );
   });
 });

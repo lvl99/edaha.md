@@ -13,7 +13,9 @@ import type {
   ArticleTypeLabels,
   EditorArticle,
   EditorArticleData,
-  EmbedPreview,
+  EmbedFrame,
+  EmbedInfo,
+  EmbedValidation,
   RecentArticles,
   UploadResult,
 } from "../../server/types/index.ts";
@@ -191,9 +193,33 @@ export class EditorApi {
     return this.request(`/api/articles/${type}/${slug}`, { method: "DELETE" });
   }
 
-  /** Render an embed URL as the website would */
-  embedPreview(url: string): Promise<EmbedPreview> {
-    return this.request(`/api/embed?url=${encodeURIComponent(url)}`);
+  /** The site's embed plugins */
+  embeds(): Promise<EmbedInfo[]> {
+    return this.request("/api/embeds");
+  }
+
+  /** Why an embed block's content or options aren't valid for its plugin (none when they are) */
+  async validateEmbed(
+    key: string,
+    content: string,
+    options: Record<string, unknown> = {},
+  ): Promise<string[]> {
+    return (
+      await this.send<EmbedValidation>("POST", "/api/embed-validations", {
+        key,
+        content,
+        options,
+      })
+    ).errors;
+  }
+
+  /** Render an embed block for its frame in the rich text body */
+  embedFrame(
+    key: string,
+    content: string,
+    options: Record<string, unknown> = {},
+  ): Promise<EmbedFrame> {
+    return this.send("POST", "/api/embed-frames", { key, content, options });
   }
 
   /** Convert an article body from editor HTML to Markdown (relative URLs are relative to its saved location) */

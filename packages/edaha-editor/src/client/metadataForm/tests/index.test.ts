@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  checkboxValues,
+  colourInputValue,
+  colourValue,
   editorKind,
   fieldChoices,
   fieldDescription,
@@ -144,5 +147,30 @@ describe("problemsAt", () => {
       { path: "a/b", message: "y", level: "error" as const },
     ];
     expect(problemsAt(problems, "a")).toEqual([problems[0]]);
+  });
+});
+
+describe("checkboxValues", () => {
+  it("should save its value when checked and nothing when not, or true and false", () => {
+    expect(
+      checkboxValues({ $edahaField: { checkbox: { value: "none" } } }),
+    ).toEqual({ checked: "none", unchecked: undefined });
+    expect(checkboxValues({ $edahaField: { checkbox: true } })).toEqual({
+      checked: true,
+      unchecked: false,
+    });
+    expect(checkboxValues({})).toEqual({ checked: true, unchecked: false });
+  });
+});
+
+describe("colourInputValue and colourValue", () => {
+  it("should show colours with a #, and write them as the value was", () => {
+    expect(colourInputValue("0687F5")).toBe("#0687f5");
+    expect(colourInputValue("#ffffff")).toBe("#ffffff");
+    expect(colourInputValue("red")).toBe("");
+    expect(colourInputValue(undefined)).toBe("");
+    expect(colourValue("#051c2c", "ffffff")).toBe("051c2c");
+    expect(colourValue("#051c2c", "#ffffff")).toBe("#051c2c");
+    expect(colourValue("#051c2c", undefined)).toBe("#051c2c");
   });
 });

@@ -18,6 +18,7 @@ const site: TemplateDataSite = {
   name: "Test News",
   description: "Test articles.",
   url: "https://example.com",
+  baseUrl: "",
   path: "/",
   types: {},
   author: { name: "Test News" },

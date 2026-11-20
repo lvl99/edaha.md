@@ -2,6 +2,7 @@ import { readFile, stat } from "node:fs/promises";
 import { basename, dirname, extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse } from "yaml";
+import { loadPlugins } from "../../embeds/index.ts";
 import { parseConfig, type EdahaConfig } from "../config/index.ts";
 import type { Logger } from "../types/index.ts";
 
@@ -130,6 +131,7 @@ export const readConfigFile = async (file: string): Promise<unknown> => {
 
 /**
  * Find (or use the given) config file, read it and validate its settings. The site folder is the config file's folder.
+ * Embed plugin packages named in `plugins` are loaded from it.
  *
  * @example
  * const { siteDir, config } = await loadSiteConfig({ siteDir: "my-site" });
@@ -140,9 +142,22 @@ export const loadSiteConfig = async (
   const configFile = options.configFile
     ? resolve(options.configFile)
     : await findConfigFile(options.siteDir ?? ".", options.logger);
+  const siteDir = dirname(configFile);
+  const data = await readConfigFile(configFile);
+  if (data && typeof data === "object" && "plugins" in data)
+    try {
+      (data as { plugins: unknown }).plugins = await loadPlugins(
+        data.plugins,
+        siteDir,
+      );
+    } catch (error) {
+      throw new Error(`${basename(configFile)}: ${(error as Error).message}`, {
+        cause: error,
+      });
+    }
   return {
     configFile,
-    siteDir: dirname(configFile),
-    config: parseConfig(await readConfigFile(configFile), basename(configFile)),
+    siteDir,
+    config: parseConfig(data, basename(configFile)),
   };
 };

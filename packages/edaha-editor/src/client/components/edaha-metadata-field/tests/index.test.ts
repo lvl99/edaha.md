@@ -141,6 +141,37 @@ describe("edaha-metadata-field", () => {
     expect(changes).toEqual([{ path: "featured", value: false }]);
   });
 
+  it("should save a checkbox's value when it is checked, and nothing when it isn't", async () => {
+    const { element, changes } = await setup(
+      "artwork",
+      { type: "string", $edahaField: { checkbox: { value: "none" } } },
+      "none",
+    );
+    const box = find<HTMLInputElement>(element, "input");
+    expect(box.checked).toBe(true);
+    box.checked = false;
+    box.dispatchEvent(new Event("change"));
+    box.checked = true;
+    box.dispatchEvent(new Event("change"));
+    expect(changes).toEqual([
+      { path: "artwork", value: undefined },
+      { path: "artwork", value: "none" },
+    ]);
+  });
+
+  it("should show colours, written as their value was", async () => {
+    const { element, changes } = await setup(
+      "linkcol",
+      { type: "string", $edahaField: { color: true } },
+      "0687F5",
+    );
+    const field = find<HTMLInputElement>(element, "input");
+    expect(field.type).toBe("color");
+    expect(field.value).toBe("#0687f5");
+    input(field, "#051c2c");
+    expect(changes).toEqual([{ path: "linkcol", value: "051c2c" }]);
+  });
+
   it("should show selects as dropdowns or lists, choosing one or several", async () => {
     const choices = { enum: ["a", "b"], type: "string" };
     const { element, changes } = await setup(
@@ -384,6 +415,21 @@ describe("edaha-metadata-field", () => {
       properties: { name: { $edahaField: { text: true } } },
     });
     expect(find<HTMLInputElement>(empty, "input").value).toBe("");
+    // Fields hidden by their conditions aren't shown
+    const { element: hiding } = await setup(
+      "credit",
+      {
+        type: "object",
+        properties: {
+          name: { $edahaField: { text: true } },
+          email: { $edahaField: { email: true } },
+        },
+      },
+      { name: "A", email: "a@b.c" },
+      { hiddenFields: new Set(["credit.email"]) },
+    );
+    expect(hiding.querySelectorAll("input")).toHaveLength(1);
+    expect(find<HTMLInputElement>(hiding, "input").value).toBe("A");
     expect(find(empty, "fieldset").hasAttribute("aria-describedby")).toBe(
       false,
     );

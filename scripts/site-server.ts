@@ -30,6 +30,11 @@ export interface SiteServerOptions {
   port: number;
   /** Reload open pages when `reload()` is called */
   liveReload?: boolean;
+  /**
+   * The URL path the website lives under, as its pages link to it (`site.baseUrl`, e.g. "/edaha.md"), or "" for the
+   * server's root. Other paths are not found, and "/" redirects to it.
+   */
+  baseUrl?: string;
 }
 
 /** A running site server */
@@ -81,6 +86,7 @@ export const startSiteServer = ({
   root,
   port: defaultPort,
   liveReload = false,
+  baseUrl = "",
 }: SiteServerOptions): Promise<SiteServer> => {
   const listeners = new Set<ServerResponse>();
   const server = createServer((request, response) => {
@@ -95,7 +101,14 @@ export const startSiteServer = ({
       request.on("close", () => listeners.delete(response));
       return;
     }
-    findFile(root(), pathname)
+    if (baseUrl && pathname === "/") {
+      response.writeHead(302, { Location: `${baseUrl}/` });
+      response.end();
+      return;
+    }
+    if (baseUrl && pathname !== baseUrl && !pathname.startsWith(`${baseUrl}/`))
+      return sendText(response, 404, `Not found: ${pathname}`);
+    findFile(root(), pathname.slice(baseUrl.length) || "/")
       .then(async (file) => {
         if (!file) return sendText(response, 404, `Not found: ${pathname}`);
         const type =

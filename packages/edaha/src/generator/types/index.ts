@@ -1,6 +1,7 @@
 // Data given to the Nunjucks templates (see the Templating docs).
 // All URLs are root-relative paths on the website (e.g. "/news/article/hello/"), except `site.url` and
 // absolute URLs given in an article's config.
+import type { EmbedPageParts } from "../../embeds/types/index.ts";
 import type { ArticleTypeConfig, GenerateConfig } from "../config/index.ts";
 
 /** Website data */
@@ -11,7 +12,13 @@ export interface TemplateDataSite {
   description: string;
   /** The website's absolute URL, without a trailing slash, e.g. "https://example.com" */
   url: string;
-  /** The URL of the site's home: "/", or its `path` setting's folder, e.g. "/docs/" */
+  /**
+   * The URL path the website lives under: `url`'s path without a trailing slash, e.g. "/edaha.md", or "" at a domain's
+   * root. Every URL in the template data already starts with it; use it for the site's static files, e.g.
+   * `{{ site.baseUrl }}/base.css`.
+   */
+  baseUrl: string;
+  /** The URL of the site's home: "/", or its `path` setting's folder, e.g. "/docs/" (after `baseUrl`) */
   path: string;
   /** Article type settings (configured types, plus any other types articles use) */
   types: Record<string, TemplateDataArticleType>;
@@ -180,6 +187,11 @@ export interface TemplateData {
   list?: TemplateDataList;
   /** Article data, only provided when rendering single templates */
   article?: TemplateDataArticle;
+  /**
+   * HTML the page's embeds need once, output by the `{% embedHead %}` and `{% embedFoot %}` tags. Not provided for
+   * feeds.
+   */
+  embeds?: EmbedPageParts | undefined;
 }
 
 /** Where build warnings go */

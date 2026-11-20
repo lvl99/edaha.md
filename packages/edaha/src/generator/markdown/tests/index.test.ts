@@ -17,6 +17,19 @@ describe("renderMarkdown", () => {
     expect(html).toContain('src="/news/article/hello/img/a.png"');
   });
 
+  it("should put root-relative links and images under the website's base URL", () => {
+    const html = renderMarkdown(
+      markdown,
+      "[root](/about) [cdn](//cdn.com/a) [file](guide.pdf) ![pic](/logo.png)",
+      "/edaha.md/news/hello/",
+      "/edaha.md",
+    );
+    expect(html).toContain('href="/edaha.md/about"');
+    expect(html).toContain('href="//cdn.com/a"');
+    expect(html).toContain('href="/edaha.md/news/hello/guide.pdf"');
+    expect(html).toContain('src="/edaha.md/logo.png"');
+  });
+
   it("should give headings IDs from their text, without formatting or HTML", () => {
     const html = renderMarkdown(
       createMarkdown(),

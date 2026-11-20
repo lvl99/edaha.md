@@ -1,4 +1,4 @@
-// edaha.md's public API: build a site from Markdown articles, run the `edaha` command, and add embed renderers. The
+// edaha.md's public API: build a site from Markdown articles, run the `edaha` command, and write embed plugins. The
 // article editor is in its own package, @lvl99dotcom/edaha-editor.
 export {
   buildSite,
@@ -23,12 +23,21 @@ export {
 export { REQUIRED_TEMPLATES } from "./generator/templates/index.ts";
 export type * from "./generator/types/index.ts";
 export {
-  EMBED_RENDERERS,
+  EMBED_BLOCK,
+  EmbedResolver,
+  embedBlock,
+  isEmbedPlugin,
+  loadPlugins,
+  validationErrors,
+  type EmbedBuildRenderers,
   type EmbedContext,
-  type EmbedRenderer,
+  type EmbedEditorRenderers,
+  type EmbedPageContext,
+  type EmbedPageParts,
+  type EmbedPlugin,
+  type EmbedRenderContext,
+  type EmbedSources,
 } from "./embeds/index.ts";
-export { youtube } from "./embeds/youtube/index.ts";
-export { bandcamp } from "./embeds/bandcamp/index.ts";
 export {
   EDITOR_PACKAGE,
   EDITOR_PORT,

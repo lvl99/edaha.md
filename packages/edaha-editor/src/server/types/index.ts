@@ -5,6 +5,7 @@ import type {
   MetadataProblem,
 } from "@lvl99dotcom/edaha.md/generator/metadata";
 import type { MetadataGroup } from "@lvl99dotcom/edaha.md/generator/metadataGroups";
+import type { EmbedOptionSchemas } from "@lvl99dotcom/edaha.md/embeds";
 
 export type { ArticleStatus } from "@lvl99dotcom/edaha.md/generator/types";
 export type {
@@ -258,11 +259,34 @@ export interface UploadResult {
   url: string;
 }
 
-/** A rendered embed for the editor's preview */
-export interface EmbedPreview {
-  /** The embed HTML as the website shows it (or a plain link if it can't be embedded) */
-  html: string;
-  /** Why the URL couldn't be embedded, if it couldn't */
+/** An embed plugin, for the editor's lists of embeds */
+export interface EmbedInfo {
+  /** Its key, e.g. "youtube" for `<!-- embed:youtube -->` */
+  key: string;
+  /** Its name, e.g. "YouTube video" */
+  name: string;
+  /** What it embeds, if it says */
+  description?: string | undefined;
+  /** What its content is, shown under the content's label in the embed dialog, if it says */
+  info?: string | undefined;
+  /** Its SVG icon (markup), if it has one */
+  icon?: string | undefined;
+  /** Its options' fields (see EmbedPlugin.options), if it has options */
+  options?: EmbedOptionSchemas | undefined;
+}
+
+/** Why an embed block's content isn't valid for its plugin (none when it is) */
+export interface EmbedValidation {
+  errors: string[];
+}
+
+/** An embed block's frame in the editor's body */
+export interface EmbedFrame {
+  /** The frame page's URL, e.g. "/embed-frame/<id>/", or "" when the content isn't valid */
+  url: string;
+  /** Why the content isn't valid for its plugin, if it isn't (the website leaves the block out) */
+  errors: string[];
+  /** Why the block couldn't be embedded otherwise, e.g. its plugin is missing (it then shows as it is written) */
   warnings: string[];
 }
 

@@ -45,10 +45,12 @@ Searches and the article browser include changes made outside the editor straigh
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
    - **Image URL**, **Upload image**, **Choose file** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
-   - **Embed**: a YouTube video, Bandcamp player or other [embed](/docs/07-embeds/), from its address;
+   - a button for each of the site's [embeds](/docs/07-embeds/), e.g. **YouTube video** or **MermaidJS diagram**: paste or write its content (e.g. a video's address), and set its options, if it has any (e.g. the Bandcamp player's layout), below the content. Options show their defaults, and options that don't apply to the others' values are hidden. If the content or options aren't right for that kind of embed, the dialog says why before adding it. The body shows the embed as the website will; its **Edit** button (or its kind's toolbar button, while it is selected) changes it. An embed that isn't valid lists why in the body, and the website leaves it out. An embed's kind can't be changed: remove it and add another. One whose kind the site has no plugin for can only be removed, or changed in the **Markdown** tab;
    - **Raw**: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;
    - **Read more**: where the article's summary in lists ends.
 4. Choose **Save**.
+
+Selecting text also shows a small toolbar just above it, with **Bold**, **Italic**, **Underline**, **Strikethrough**, **Link**, **Heading 1**, **Heading 2** and **Heading 3**. It doesn't show for code or raw text, which can't be formatted. From the keyboard, press Tab to move from the selected text into it, and Escape to go back to the text. Underlined text is saved as HTML (`<u>`), as Markdown has none, and struck-through text as `~~text~~`. The article's title is its page's main heading, so use **Heading 1** in the body sparingly.
 
 **Upload image** saves the image into the article's folder, so it needs the article to be saved first.
 
@@ -130,31 +132,13 @@ The editor reads and writes the same `article.md` files you would edit by hand. 
 
 To list and search articles quickly, the editor keeps an index of every article's settings in memory: it reads them all when it starts, updates an article's entry when it saves, moves or deletes it, and watches the articles folder for changes made outside it. The article files stay the only source of truth: no database or index file is written. Recently changed means when an article's `article.md` file last changed.
 
-Preview pages are sent with a Content Security Policy that forbids scripts, requests and forms, so nothing in an article can use the editor's API. Frames are only allowed from the origins that embeds list in `frameSources`.
+Preview pages, the frames that show embeds in the body, and the files they load are shown from another address of the editor, `http://localhost:5180` (with the editor's port): a site of their own, where the editor's API answers nothing and refuses changes, so nothing in an article, and no embed's script, can use it. Their Content Security Policy also sandboxes them, so they can't send forms or move the editor page elsewhere, while embedded players (such as Bandcamp's) keep working. They can run their own scripts and styles, and load from their own address and the web addresses the site's embeds list in `sources`.
 
-### Extending the editor with custom embeds
+### Embeds in the editor
 
-Embeds you add to a JavaScript config file's `embeds` setting work in the editor too: the **Embed** button previews them, and the preview pages render them as the website will.
+The site's [embed plugins](/docs/07-embeds/) (its config file's `plugins`) work in the editor too: each has a toolbar button with its icon, its dialog shows its description, options and `info`, the body shows each embed block in a frame, and the preview pages render them as the website will. An embed's `editor` settings can give it an icon and a different look in the body.
 
-```js
-// edaha.config.mjs
-export default {
-  name: "My Site",
-  description: "News and notes.",
-  embeds: [
-    {
-      name: "Vimeo",
-      // Let the preview pages show its iframes
-      frameSources: ["https://player.vimeo.com"],
-      match: (url) => url.hostname === "vimeo.com",
-      render: async (url) =>
-        `<iframe src="https://player.vimeo.com/video${url.pathname}" title="Vimeo video"></iframe>`,
-    },
-  ],
-};
-```
-
-The editor reads the config file again for each preview, so you can change an embed and see the result without restarting it. See [Embeds](/docs/07-embeds/) for how to write one.
+The editor reads the config file again each time, so you can add or change an embed and see the result without restarting it.
 
 ### Starting it from code
 
@@ -164,8 +148,8 @@ import { startEditor } from "@lvl99dotcom/edaha-editor";
 const editor = await startEditor({
   siteDir: "my-site",
   port: 5180,
-  // Embeds tried after the config file's (default: the built-in ones)
-  embedRenderers: [],
+  // Embed plugins added after the config file's (default: none)
+  plugins: [],
 });
 console.log(`Open ${editor.url}`);
 ```

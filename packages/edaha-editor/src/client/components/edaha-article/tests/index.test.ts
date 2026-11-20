@@ -23,6 +23,7 @@ import type { EdahaArticleDataField } from "../../edaha-article-data-field";
 import type { EdahaArticleDataGroup } from "../../edaha-article-data-group";
 import type { EdahaMarkdown } from "../../edaha-markdown";
 import type { EdahaRichtext } from "../../edaha-richtext";
+import type { EdahaEmbedDialog } from "../../edaha-embed-dialog";
 import type { ToastMessage } from "../../edaha-toasts";
 import {
   button,
@@ -77,6 +78,13 @@ const fakeApi = () =>
     preview: vi.fn(
       async (data: EditorArticleData) => `/preview/${data.title}/`,
     ),
+    embeds: vi.fn(async () => [{ key: "youtube", name: "YouTube video" }]),
+    embedFrame: vi.fn(async () => ({
+      url: "/embed-frame/x/",
+      errors: [],
+      warnings: [],
+    })),
+    validateEmbed: vi.fn(async () => ["Bad"]),
   }) as unknown as EditorApi &
     Record<
       | "create"
@@ -86,7 +94,10 @@ const fakeApi = () =>
       | "templates"
       | "toMarkdown"
       | "toHtml"
-      | "preview",
+      | "preview"
+      | "embeds"
+      | "embedFrame"
+      | "validateEmbed",
       ReturnType<typeof vi.fn>
     >;
 
@@ -395,18 +406,66 @@ describe("edaha-article", () => {
     );
   });
 
-  it("should preview embeds in the body through the API", async () => {
+  it("should give the body the site's embeds, the embed dialog and embed frames from the API", async () => {
     const { element, api } = await setup();
-    const preview = { html: "<p>embed</p>", warnings: [] };
-    (api as unknown as { embedPreview: unknown }).embedPreview = vi.fn(
-      async () => preview,
+    await settle(element);
+    const tools = find<EdahaRichtext>(element, "edaha-richtext").embedTools!;
+    expect(api.embeds).toHaveBeenCalledOnce();
+    expect(tools.embeds).toEqual([{ key: "youtube", name: "YouTube video" }]);
+    const block = { key: "youtube", content: "x", options: { size: 1 } };
+    expect(await tools.loadFrame(block)).toEqual({
+      url: "/embed-frame/x/",
+      errors: [],
+      warnings: [],
+    });
+    expect(api.embedFrame).toHaveBeenCalledWith("youtube", "x", { size: 1 });
+    // The dialog is outside the article's form, as it has its own
+    const dialog = find<EdahaEmbedDialog>(element, "edaha-embed-dialog");
+    expect(element.querySelector("form")!.contains(dialog)).toBe(false);
+    const changed = { ...block, content: "y" };
+    const edit = vi.spyOn(dialog, "edit").mockResolvedValue(changed);
+    expect(await tools.edit(block, false)).toBe(changed);
+    expect(edit).toHaveBeenCalledWith(
+      tools.embeds[0],
+      block,
+      false,
+      expect.any(Function),
     );
-    const loadEmbedPreview = find<EdahaRichtext>(
-      element,
-      "edaha-richtext",
-    ).loadEmbedPreview!;
-    expect(await loadEmbedPreview("https://youtu.be/x")).toBe(preview);
-    expect(api.embedPreview).toHaveBeenCalledWith("https://youtu.be/x");
+    // The dialog checks content and options with the API
+    const validate = edit.mock.calls[0]![3]!;
+    expect(await validate(changed)).toEqual(["Bad"]);
+    expect(api.validateEmbed).toHaveBeenCalledWith("youtube", "y", {
+      size: 1,
+    });
+    // Cancelled, or a kind without a plugin (which has no dialog), gives nothing
+    edit.mockResolvedValueOnce(undefined);
+    expect(
+      await tools.edit({ key: "youtube", content: "x", options: {} }, false),
+    ).toBeUndefined();
+    expect(
+      await tools.edit({ key: "vimeo", content: "x", options: {} }, false),
+    ).toBeUndefined();
+    expect(edit).toHaveBeenCalledTimes(2);
+    // The Markdown body gets them too
+    await element.setMode("markdown");
+    await settle(element);
+    expect(find<EdahaMarkdown>(element, "edaha-markdown").embedTools).toBe(
+      tools,
+    );
+  });
+
+  it("should leave the body without embed tools when the embeds can't be loaded", async () => {
+    const api = fakeApi();
+    api.embeds.mockRejectedValue(new Error("offline"));
+    const element = await mount<EdahaArticle>("edaha-article", {
+      api,
+      article: ARTICLE,
+      typeOptions: [],
+    });
+    await settle(element);
+    expect(
+      find<EdahaRichtext>(element, "edaha-richtext").embedTools,
+    ).toBeUndefined();
   });
 
   it("should not upload before the article is saved", async () => {
@@ -1290,6 +1349,65 @@ describe("edaha-article custom settings", () => {
       "\"rating\" isn't used by this article's type; it is kept unless you remove it.",
       '"oops" isn\'t a known setting; it is kept unless you remove it.',
     ]);
+  });
+
+  it("should show fields' defaults, hide fields by their conditions, and save every shown value", async () => {
+    const definitions = {
+      layout: {
+        type: "string",
+        enum: ["slim", "large"],
+        $edahaField: { select: true, defaultValue: "large" },
+      },
+      tracklist: {
+        type: "boolean",
+        $edahaField: {
+          checkbox: true,
+          defaultValue: false,
+          hideWhen: ["layout", "=", "slim"],
+        },
+      },
+    } as const;
+    const result = await setup({
+      ...ARTICLE,
+      meta: { tracklist: true, oops: 1 },
+      problems: [],
+    });
+    const { element, api } = result;
+    element.metadata = {
+      definitions,
+      types: {},
+      groups: metadataLayout(definitions as never, {}),
+    } as never;
+    await settle(element);
+    // The default shows, without changing the article
+    expect(find<HTMLSelectElement>(element, "#meta-layout").value).toBe(
+      "large",
+    );
+    expect(find<HTMLInputElement>(element, "#meta-tracklist").checked).toBe(
+      true,
+    );
+    expect(element.dirty).toBe(false);
+    // Choosing "slim" hides the tracklist, keeping its value until it is saved
+    input(find<HTMLSelectElement>(element, "#meta-layout"), "slim", "change");
+    await settle(element);
+    expect(element.querySelector("#meta-tracklist")).toBeNull();
+    expect(element.data.meta).toEqual({
+      tracklist: true,
+      oops: 1,
+      layout: "slim",
+    });
+    input(find<HTMLSelectElement>(element, "#meta-layout"), "large", "change");
+    await settle(element);
+    expect(find<HTMLInputElement>(element, "#meta-tracklist").checked).toBe(
+      true,
+    );
+    input(find<HTMLSelectElement>(element, "#meta-layout"), "slim", "change");
+    await settle(element);
+    await element.save();
+    expect(api.save.mock.calls[0]![1].meta).toEqual({
+      oops: 1,
+      layout: "slim",
+    });
   });
 
   it("should remove other settings with their Remove buttons, once saved", async () => {

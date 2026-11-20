@@ -14,12 +14,14 @@ import folderOpen from "@material-symbols/svg-400/outlined/folder_open.svg?raw";
 import fullscreen from "@material-symbols/svg-400/outlined/fullscreen.svg?raw";
 import fullscreenExit from "@material-symbols/svg-400/outlined/fullscreen_exit.svg?raw";
 import formatBold from "@material-symbols/svg-400/outlined/format_bold.svg?raw";
+import formatH1 from "@material-symbols/svg-400/outlined/format_h1.svg?raw";
 import formatH2 from "@material-symbols/svg-400/outlined/format_h2.svg?raw";
 import formatH3 from "@material-symbols/svg-400/outlined/format_h3.svg?raw";
 import formatItalic from "@material-symbols/svg-400/outlined/format_italic.svg?raw";
 import formatListBulleted from "@material-symbols/svg-400/outlined/format_list_bulleted.svg?raw";
 import formatListNumbered from "@material-symbols/svg-400/outlined/format_list_numbered.svg?raw";
 import formatQuote from "@material-symbols/svg-400/outlined/format_quote.svg?raw";
+import formatUnderlined from "@material-symbols/svg-400/outlined/format_underlined.svg?raw";
 import image from "@material-symbols/svg-400/outlined/image.svg?raw";
 import link from "@material-symbols/svg-400/outlined/link.svg?raw";
 import manageSearch from "@material-symbols/svg-400/outlined/manage_search.svg?raw";
@@ -28,6 +30,7 @@ import playlistRemove from "@material-symbols/svg-400/outlined/playlist_remove.s
 import rawOn from "@material-symbols/svg-400/outlined/raw_on.svg?raw";
 import readMore from "@material-symbols/svg-400/outlined/read_more.svg?raw";
 import smartDisplay from "@material-symbols/svg-400/outlined/smart_display.svg?raw";
+import strikethroughS from "@material-symbols/svg-400/outlined/strikethrough_s.svg?raw";
 import table from "@material-symbols/svg-400/outlined/table.svg?raw";
 import textDecrease from "@material-symbols/svg-400/outlined/text_decrease.svg?raw";
 import textIncrease from "@material-symbols/svg-400/outlined/text_increase.svg?raw";
@@ -48,12 +51,14 @@ export const ICONS = {
   delete_sweep: deleteSweep,
   expand_circle_down: expandCircleDown,
   format_bold: formatBold,
+  format_h1: formatH1,
   format_h2: formatH2,
   format_h3: formatH3,
   format_italic: formatItalic,
   format_list_bulleted: formatListBulleted,
   format_list_numbered: formatListNumbered,
   format_quote: formatQuote,
+  format_underlined: formatUnderlined,
   fullscreen,
   fullscreen_exit: fullscreenExit,
   image,
@@ -64,6 +69,7 @@ export const ICONS = {
   raw_on: rawOn,
   read_more: readMore,
   smart_display: smartDisplay,
+  strikethrough_s: strikethroughS,
   table,
   text_decrease: textDecrease,
   text_increase: textIncrease,
@@ -79,11 +85,16 @@ export type IconName = keyof typeof ICONS;
 export const TOOLBAR_ICONS: Record<string, IconName> = {
   Bold: "format_bold",
   Italic: "format_italic",
+  Underline: "format_underlined",
+  Strikethrough: "strikethrough_s",
   Small: "text_decrease",
   Big: "text_increase",
   Link: "link",
   Heading: "format_h2",
   Subheading: "format_h3",
+  "Heading 1": "format_h1",
+  "Heading 2": "format_h2",
+  "Heading 3": "format_h3",
   "Bullet list": "format_list_bulleted",
   "Numbered list": "format_list_numbered",
   Quote: "format_quote",

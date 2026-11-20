@@ -1,8 +1,8 @@
 {% extends '@theme/layouts/html.njk' %}
 
 {% block headImports %}
-  <link rel="stylesheet" href="{{ site.path }}base.css" />
-  <link rel="stylesheet" href="{{ site.path }}site.css" />
+  <link rel="stylesheet" href="{{ site.baseUrl }}/base.css" />
+  <link rel="stylesheet" href="{{ site.baseUrl }}/site.css" />
 {% endblock %}
 
 {% block header %}
@@ -57,5 +57,5 @@
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     } catch {}
   </script>
-  <script src="{{ site.path }}theme-switcher.js" defer></script>
+  <script src="{{ site.baseUrl }}/theme-switcher.js" defer></script>
 {% endblock %}

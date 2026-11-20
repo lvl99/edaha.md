@@ -26,10 +26,13 @@ yarn add @lvl99dotcom/edaha-editor -D
 pnpm add @lvl99dotcom/edaha-editor -D
 ```
 
-| Package                     | What it has                                              |
-| --------------------------- | -------------------------------------------------------- |
-| `@lvl99dotcom/edaha.md`     | The `edaha` command, the build, embeds and default theme |
-| `@lvl99dotcom/edaha-editor` | The local WYSIWYG article editor (`edaha editor`)        |
+| Package                               | What it has                                                    |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `@lvl99dotcom/edaha.md`               | The `edaha` command, the build, embed blocks and default theme |
+| `@lvl99dotcom/edaha-editor`           | The local WYSIWYG article editor (`edaha editor`)              |
+| `@lvl99dotcom/edaha-plugin-youtube`   | Embeds YouTube videos                                          |
+| `@lvl99dotcom/edaha-plugin-bandcamp`  | Embeds Bandcamp albums and tracks                              |
+| `@lvl99dotcom/edaha-plugin-mermaidjs` | Draws Mermaid diagrams                                         |
 
 ## Quick start
 
@@ -76,7 +79,7 @@ edaha editor   # Run the local article editor (only reachable from this computer
 | `-h`, `--help`          |         | Show help                                                                            |
 | `-v`, `--version`       |         | Show the version                                                                     |
 
-> For more information, see [Build & deploy](https://lvl99.github.io/edaha.md/site/content/docs/08-build-and-deploy/article.md) and [WYSIWYG Editor](https://lvl99.github.io/edaha.md/site/content/docs/09-wysiwyg-editor/article.md).
+> For more information, see [Build & deploy](https://lvl99.github.io/edaha.md/docs/08-build-and-deploy/) and [WYSIWYG Editor](https://lvl99.github.io/edaha.md/docs/09-wysiwyg-editor/).
 
 ## Config file
 
@@ -99,7 +102,7 @@ export default {
 };
 ```
 
-> For more information, see [Configuration](https://lvl99.github.io/edaha.md/site/content/docs/03-configuration/article.md).
+> For more information, see [Configuration](https://lvl99.github.io/edaha.md/docs/03-configuration/).
 
 ## Articles
 
@@ -107,26 +110,38 @@ Each article is a folder `<articlesDir>/<type>/<slug>/` (e.g. `articles/news/hel
 
 Articles can contain metadata. The metadata is located in the article's header within an HTML comment block that has its data format: YAML (`<!--yaml` or `<!--yml`) or JSON (`<!--json`). It is never written into the built files.
 
-> For more information on articles and also how to configure metadata, see [Articles](https://lvl99.github.io/edaha.md/site/content/docs/04-articles/article.md).
+> For more information on articles and also how to configure metadata, see [Articles](https://lvl99.github.io/edaha.md/docs/04-articles/).
 
 ## Embeds
 
-Embeds allow you to customise how certain content is rendered in the templates.
+Embeds turn text in an article into richer content, such as a video player or a diagram. Write the content between `<!-- embed:<key> -->` and `<!-- /embed:<key> -->`, where the key names the kind of embed:
 
-Embeds are generally specific pieces of text that you search for to then render differently. One example is a URL to a YouTube video could be used to embed the YouTube player.
+```md
+<!-- embed:youtube -->https://www.youtube.com/watch?v=aju_UB5VIf8<!-- /embed:youtube -->
 
-To enable embeds, wrap your content with `<!-- embed -->` and `<!-- /embed -->` HTML comment tags.
+<!-- embed:mermaidjs -->
 
-Currently supported embeds out of the box:
+graph TD;
+A-->B;
+<!-- /embed:mermaidjs -->
+```
 
-- **YouTube**: wrap YouTube URLs to embed a YouTube player. Embeds always use youtube-nocookie.com.
-- **Bandcamp**: wrap album and track URLs to embed a Bandcamp player. Embeds fetch the page at build time, so the build needs internet access.
+Each kind of embed is a plugin. Install the ones you want and list them under `plugins` in the config file:
 
-An unrecognised URL gives a warning and is rendered as a link.
+```sh
+npm add @lvl99dotcom/edaha-plugin-youtube @lvl99dotcom/edaha-plugin-mermaidjs --save-dev
+```
 
-To add your own renderers, list them under `embeds` in a JavaScript config file. They are tried before the built-in ones, by `edaha build` and by the editor and its previews.
+```yaml
+# edahaconfig.yml
+plugins:
+  - "@lvl99dotcom/edaha-plugin-youtube"
+  - "@lvl99dotcom/edaha-plugin-mermaidjs"
+```
 
-> For more information about embeds such as how to create your own, see [Embeds](https://lvl99.github.io/edaha.md/site/content/docs/07-embeds/article.md).
+Some embeds have options, e.g. the Bandcamp player's layout, written in YAML at the start of the block (in a `<!--yaml ... -->` comment); the editor's embed dialog shows them as fields. A block whose key has no plugin gives a warning and is shown as it is written. Plugins can add stylesheets and scripts once per page, through the `{% embedHead %}` and `{% embedFoot %}` template tags (the default theme has them).
+
+> For more information about embeds such as how to create your own, see [Embeds](https://lvl99.github.io/edaha.md/docs/07-embeds/).
 
 ## Lists
 
@@ -138,9 +153,9 @@ edaha.md will collate articles by various properties into paginated lists. Typic
 
 Lists will also have RSS feeds generated.
 
-When defining article types in the [config](https://lvl99.github.io/edaha.md/site/content/docs/03-configuration/) file, you can specify what lists are built.
+When defining article types in the [config](https://lvl99.github.io/edaha.md/docs/03-configuration/) file, you can specify what lists are built.
 
-> For more information about lists, see [Lists](https://lvl99.github.io/edaha.md/site/content/docs/06-lists/).
+> For more information about lists, see [Lists](https://lvl99.github.io/edaha.md/docs/06-lists/).
 
 ## Templates and the default theme
 
@@ -154,7 +169,7 @@ Within Nunjucks templates, names starting with `@theme/` always load the theme's
 
 A site's own static files folder (`static/`, or `staticDir`) is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
 
-> For more information, see [Templating](https://lvl99.github.io/edaha.md/site/content/docs/05-templating/).
+> For more information, see [Templating](https://lvl99.github.io/edaha.md/docs/05-templating/).
 
 ## Editor
 
@@ -162,7 +177,7 @@ A site's own static files folder (`static/`, or `staticDir`) is copied to the we
 
 edaha.md was designed to be file-system first, with an editor as a convenience for non-technical users or ones who prefer a GUI.
 
-> For more information about the editor, see [WYSIWYG Editor](https://lvl99.github.io/edaha.md/site/content/docs/09-wysiwyg-editor/).
+> For more information about the editor, see [WYSIWYG Editor](https://lvl99.github.io/edaha.md/docs/09-wysiwyg-editor/).
 
 ## API
 
@@ -196,16 +211,17 @@ pnpm lint
 pnpm format:check
 pnpm editor         # run the built editor (after `pnpm build`) for edaha.md's own website at http://127.0.0.1:5180; add `--dir ../my-site` for another site
 EDAHA_SITE_DIR=../my-site pnpm dev:editor  # work on the editor page with Vite, for the site whose config file is found from there (restarts when the API's code changes)
-pnpm site:build     # build edaha.md's own website (site/) into build/ (kept in git)
-pnpm site:serve     # serve build/ at http://127.0.0.1:5181 (PORT=... for another port)
+pnpm site:build     # build edaha.md's own website (site/) into build/
+pnpm site:serve     # serve build/ at http://127.0.0.1:5181/edaha.md/, as GitHub Pages does (PORT=... for another port)
 pnpm site:dev       # build and serve site/ at http://127.0.0.1:8449, rebuilding and reloading pages on changes
+pnpm site:publish   # build site/ and publish it to the gh-pages branch (GitHub Pages); --dry-run to see what would be published
 ```
 
 ### Project layout
 
 - `packages/edaha/` (`@lvl99dotcom/edaha.md`):
   - `src/generator/`: finds and reads the config file and articles, renders templates and builds the site (`buildSite`).
-  - `src/embeds/`: embed renderers.
+  - `src/embeds/`: embed blocks, plugins and the embed resolver.
   - `src/cli/`: the `edaha` command. `edaha editor` loads `@lvl99dotcom/edaha-editor` when it is installed.
   - `src/theme/`: the path to `theme/`.
   - `src/shared/tests/fixtures/`: a fixture site, also used by the editor's tests.
@@ -215,11 +231,12 @@ pnpm site:dev       # build and serve site/ at http://127.0.0.1:8449, rebuilding
   - `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`.
   - `src/editor/`: the editor's web server (`startEditor`).
   - `src/shared/tests/`: test helpers.
+- `packages/edaha-plugin-youtube/`, `packages/edaha-plugin-bandcamp/`, `packages/edaha-plugin-mermaidjs/`: embed plugins.
 - `scripts/`: the `site:*` scripts for edaha.md's own website.
 - `site/`: edaha.md's own website and docs.
 
 Source imports name their files with `.ts` extensions (e.g. `../slug/index.ts`), so scripts run directly with Node.js type stripping. The build rewrites them to `.js`.
 
-The editor imports the core's modules by their folder, e.g. `@lvl99dotcom/edaha.md/generator/article`. In the workspace, packages' `exports` point at their `src/` TypeScript files, so nothing needs building first; `publishConfig` points them at `dist/` for npm. `pnpm build` builds `@lvl99dotcom/edaha.md` first, as the other packages' types are built from its `dist/`.
+The editor and the plugins import the core's modules by their folder, e.g. `@lvl99dotcom/edaha.md/generator/article`. In the workspace, packages' `exports` point at their `src/` TypeScript files, so nothing needs building first; `publishConfig` points them at `dist/` for npm. `pnpm build` builds `@lvl99dotcom/edaha.md` first, as the other packages' types are built from its `dist/`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) to contribute.

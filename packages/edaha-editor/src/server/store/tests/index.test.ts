@@ -17,6 +17,7 @@ import {
   ArticleStore,
   bodyBaseUrl,
   EditorError,
+  MAX_EMBED_FRAMES,
   MAX_PREVIEWS,
   checkLocation,
   safeFileName,
@@ -590,7 +591,7 @@ describe("ArticleStore", () => {
             new EmbedResolver({
               fetch: (async () => new Response("")) as unknown as typeof fetch,
               logger: { warn: () => undefined },
-              renderers: [],
+              plugins: [],
             }),
           ),
         ),
@@ -744,7 +745,7 @@ describe("ArticleStore", () => {
     );
     expect(article.bodyHtml).toContain('<hr class="readmore">');
     expect(article.bodyHtml).toContain(
-      '<div class="embed">https://youtu.be/aju_UB5VIf8</div>',
+      '<div class="embed" data-embed="youtube" data-content="https://youtu.be/aju_UB5VIf8"></div>',
     );
     expect(article.bodyHtml).not.toContain("<h1>");
     expect((await store.read("article", "hidden")).title).toBe(
@@ -975,6 +976,47 @@ describe("bodyBaseUrl", () => {
   });
 });
 
+describe("ArticleStore embed frames", () => {
+  it("should remember embed blocks under IDs made from them, only the newest ones", async () => {
+    const { store } = await copySite();
+    const frame = { key: "youtube", content: "a", options: {} };
+    const id = store.rememberEmbedFrame(frame);
+    expect(id).toMatch(/^[0-9a-f]{32}$/);
+    expect(store.rememberEmbedFrame({ ...frame })).toBe(id);
+    expect(store.embedFrame(id)).toEqual(frame);
+    // Other options are another block
+    expect(store.rememberEmbedFrame({ ...frame, options: { a: 1 } })).not.toBe(
+      id,
+    );
+    for (let i = 0; i < MAX_EMBED_FRAMES; i++)
+      store.rememberEmbedFrame({ ...frame, content: `${i}` });
+    expect(() => store.embedFrame(id)).toThrow("Embed not found");
+    expect(await store.plugins()).toEqual([]);
+  });
+
+  it("should load the config file's embed plugin packages each time it is read", async () => {
+    const { dir, store } = await copySite();
+    const pkg = join(dir, "node_modules", "edaha-plugin-quote");
+    await mkdir(pkg, { recursive: true });
+    await writeFile(
+      join(pkg, "package.json"),
+      '{ "name": "edaha-plugin-quote", "type": "module", "exports": "./index.js" }',
+    );
+    await writeFile(
+      join(pkg, "index.js"),
+      'export default { key: "quote", name: "Quote", build: { render: async (text) => text } };',
+    );
+    const config = join(dir, "edahaconfig.yml");
+    await writeFile(
+      config,
+      `${await readFile(config, "utf8")}plugins:\n  - edaha-plugin-quote\n`,
+    );
+    expect((await store.plugins()).map((plugin) => plugin.key)).toEqual([
+      "quote",
+    ]);
+  });
+});
+
 describe("ArticleStore.preview", () => {
   /** A site with templates, and a resolver whose embeds are links */
   const previewSite = async () => {
@@ -982,7 +1024,7 @@ describe("ArticleStore.preview", () => {
     const embeds = new EmbedResolver({
       fetch: (async () => new Response("")) as unknown as typeof fetch,
       logger: { warn: () => undefined },
-      renderers: [],
+      plugins: [],
     });
     return { dir, store, embeds };
   };
@@ -996,7 +1038,7 @@ describe("ArticleStore.preview", () => {
         status: "draft",
         thumbnail: "thumb.png",
         bodyHtml:
-          '<h2>Section one</h2><p><img src="/files/article/first/thumb.png" alt="T"></p><div class="embed">https://example.com/x</div>',
+          '<h2>Section one</h2><p><img src="/files/article/first/thumb.png" alt="T"></p><div class="embed" data-embed="link" data-content="https://example.com/x"></div><hr class="readmore"><p>More</p>',
       }),
       { type: "article", slug: "first" },
       embeds,
@@ -1039,7 +1081,7 @@ describe("ArticleStore previews", () => {
     const embeds = new EmbedResolver({
       fetch: (async () => new Response("")) as unknown as typeof fetch,
       logger: { warn: () => undefined },
-      renderers: [],
+      plugins: [],
     });
     return { dir, store, embeds };
   };

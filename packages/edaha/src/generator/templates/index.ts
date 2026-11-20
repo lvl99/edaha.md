@@ -37,13 +37,75 @@ export const themeLoader = (dir: string): nunjucks.ILoader => {
 };
 
 /**
- * Make root-relative `href` and `src` URLs in HTML absolute, e.g. for RSS feeds read outside the website.
+ * Make a root-relative URL absolute on the website's domain, e.g. for RSS feeds read outside the website. Template
+ * data URLs already start with the website's base URL, so only its origin is added.
+ *
+ * @example
+ * absoluteUrl("/news/", "https://example.com"); // "https://example.com/news/"
+ * absoluteUrl("/edaha.md/news/", "https://lvl99.github.io/edaha.md"); // "https://lvl99.github.io/edaha.md/news/"
+ */
+export const absoluteUrl = (url: string, siteUrl: string): string =>
+  new URL(url, siteUrl).href;
+
+/**
+ * Make root-relative `href` and `src` URLs in HTML absolute (see absoluteUrl), e.g. for RSS feeds read outside the
+ * website.
  *
  * @example
  * absoluteUrls('<a href="/news/">', "https://example.com"); // '<a href="https://example.com/news/">'
  */
 export const absoluteUrls = (html: string, siteUrl: string): string =>
-  html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${siteUrl}/`);
+  html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${new URL(siteUrl).origin}/`);
+
+/** Template tags that output the page's embed HTML (`TemplateData.embeds`), by where it goes */
+export const EMBED_TAGS = {
+  embedHead: "head",
+  embedFoot: "foot",
+  // The names the brief's first draft used
+  embedRenderHead: "head",
+  embedRenderFoot: "foot",
+} as const;
+
+/** The Nunjucks parser and node classes an extension's `parse` gets (not in @types/nunjucks) */
+interface NunjucksParser {
+  nextToken(): { value: string; lineno: number; colno: number };
+  parseSignature(tolerant: boolean, noParens: boolean): unknown;
+  advanceAfterBlockEnd(name: string): void;
+}
+interface NunjucksNodes {
+  NodeList: new (lineno: number, colno: number) => unknown;
+  CallExtension: new (
+    extension: object,
+    method: string,
+    args: unknown,
+    contentArgs: unknown[],
+  ) => unknown;
+}
+
+/**
+ * The `{% embedHead %}` and `{% embedFoot %}` tags (also `{% embedRenderHead() %}` and `{% embedRenderFoot() %}`): output
+ * the HTML that the page's embeds need once in its `<head>`, or before `</body>`. They output nothing on pages without
+ * embeds.
+ */
+class EmbedTags implements nunjucks.Extension {
+  tags = Object.keys(EMBED_TAGS);
+
+  /** Read the tag (with or without empty brackets) */
+  parse(parser: NunjucksParser, nodes: NunjucksNodes) {
+    const token = parser.nextToken();
+    // Brackets are optional, and the tags take no arguments
+    const args =
+      parser.parseSignature(true, false) ??
+      new nodes.NodeList(token.lineno, token.colno);
+    parser.advanceAfterBlockEnd(token.value);
+    return new nodes.CallExtension(this, token.value, args, []);
+  }
+}
+for (const [tag, part] of Object.entries(EMBED_TAGS))
+  Object.defineProperty(EmbedTags.prototype, tag, {
+    value: (context: { ctx: Partial<TemplateData> }) =>
+      new nunjucks.runtime.SafeString(context.ctx.embeds?.[part] ?? ""),
+  });
 
 /**
  * Loads and renders the site's Nunjucks templates from one or more folders. A file in an earlier folder overrides the
@@ -86,7 +148,9 @@ export class Templates {
     );
     this.env.addFilter("date", formatDate);
     this.env.addFilter("rfc822", formatRfc822);
+    this.env.addFilter("absoluteUrl", absoluteUrl);
     this.env.addFilter("absoluteUrls", absoluteUrls);
+    this.env.addExtension("embeds", new EmbedTags());
   }
 
   /**

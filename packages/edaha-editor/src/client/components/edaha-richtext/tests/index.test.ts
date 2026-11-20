@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "..";
 import type { EdahaRichtext } from "..";
+import type { EmbedTools, EmbedValue } from "../../../embeds";
 import {
   button,
   chooseFile,
@@ -22,6 +23,24 @@ const setup = async (
   element.prompt = vi.fn(() => (answers.length ? answers.shift()! : null));
   return element;
 };
+
+/** A YouTube embed block's editor HTML */
+const EMBED =
+  '<div class="embed" data-embed="youtube" data-content="https://youtu.be/x"></div>';
+
+/** Embed tools whose dialog gives the given answers in turn */
+const embedTools = (answers: (EmbedValue | undefined)[]): EmbedTools => ({
+  embeds: [
+    { key: "youtube", name: "YouTube video", icon: '<svg id="yt"></svg>' },
+    { key: "mermaidjs", name: "MermaidJS diagram" },
+  ],
+  edit: vi.fn(async () => answers.shift()),
+  loadFrame: vi.fn(async () => ({
+    url: "/embed-frame/x/",
+    errors: [],
+    warnings: [],
+  })),
+});
 
 /** Select all text in the editor */
 const selectAll = (element: EdahaRichtext) =>
@@ -72,6 +91,63 @@ describe("edaha-richtext", () => {
     }
   });
 
+  it("should format selected text from the floating toolbar, which keeps the selection", async () => {
+    const element = await setup("<p>Hello world</p>", ["https://x.com"]);
+    const menu = element.formatMenu;
+    expect(menu.getAttribute("role")).toBe("toolbar");
+    expect(menu.getAttribute("aria-label")).toBe("Text format");
+    const format = (label: string) =>
+      menu.querySelector<HTMLButtonElement>(`[data-action="${label}"]`)!;
+    expect([...menu.querySelectorAll("button")].map((b) => b.title)).toEqual([
+      "Bold",
+      "Italic",
+      "Underline",
+      "Strikethrough",
+      "Link",
+      "Heading 1",
+      "Heading 2",
+      "Heading 3",
+    ]);
+    element.editor!.commands.setTextSelection({ from: 1, to: 6 });
+    for (const label of [
+      "Bold",
+      "Italic",
+      "Underline",
+      "Strikethrough",
+      "Link",
+    ])
+      format(label).click();
+    await element.updateComplete;
+    expect(element.value).toBe(
+      '<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://x.com"><strong><em><s><u>Hello</u></s></em></strong></a> world</p>',
+    );
+    expect(format("Underline").getAttribute("aria-pressed")).toBe("true");
+    expect(format("Strikethrough").getAttribute("aria-pressed")).toBe("true");
+    for (const level of [1, 2, 3]) {
+      format(`Heading ${level}`).click();
+      await element.updateComplete;
+      expect(element.value).toMatch(new RegExp(`^<h${level}>`));
+      expect(format(`Heading ${level}`).getAttribute("aria-pressed")).toBe(
+        "true",
+      );
+    }
+    // Pressing a button doesn't move focus out of the text
+    const press = new MouseEvent("mousedown", {
+      bubbles: true,
+      cancelable: true,
+    });
+    format("Bold").dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+    // Escape goes back to the text
+    const focus = vi.fn();
+    vi.spyOn(element.editor!, "commands", "get").mockReturnValue({
+      focus,
+    } as never);
+    menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    menu.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+    expect(focus).toHaveBeenCalledOnce();
+  });
+
   it("should unwrap a details block from the toolbar", async () => {
     const element = await setup(
       "<details><summary>More</summary><p>Hidden</p></details>",
@@ -112,20 +188,45 @@ describe("edaha-richtext", () => {
     expect(element.value).toContain('href="https://other.com"');
   });
 
-  it("should insert images and embeds by URL", async () => {
+  it("should insert images by URL", async () => {
     const element = await setup("<p>Hi</p>", [
       null,
       " https://example.com/a.png ",
-      "",
-      "https://youtu.be/x",
     ]);
     button(element, "Image URL").click();
     button(element, "Image URL").click();
-    button(element, "Embed").click();
-    button(element, "Embed").click();
     expect(element.value).toContain('<img src="https://example.com/a.png">');
     expect(element.value.match(/<img/g)).toHaveLength(1);
-    expect(element.value.match(/class="embed"/g)).toHaveLength(1);
+  });
+
+  it("should have a button for each of the site's embeds, once they are known, that adds one from the embed dialog", async () => {
+    const element = await setup("<p>Hi</p>");
+    expect(element.querySelector(".toolbar-embed")).toBeNull();
+    const tools = embedTools([
+      undefined,
+      { key: "youtube", content: "https://youtu.be/x", options: {} },
+    ]);
+    element.embedTools = tools;
+    await element.updateComplete;
+    const youtube = button(element, "YouTube video");
+    expect(youtube.title).toBe("YouTube video");
+    expect(youtube.dataset.embed).toBe("youtube");
+    expect(youtube.querySelector(".embed-icon svg")!.id).toBe("yt");
+    // A kind without an icon gets the general one
+    expect(
+      button(element, "MermaidJS diagram").querySelector(".icon svg"),
+    ).not.toBeNull();
+    // Cancelled
+    youtube.click();
+    await settle(element);
+    expect(tools.edit).toHaveBeenLastCalledWith(
+      { key: "youtube", content: "", options: {} },
+      true,
+    );
+    expect(element.value).not.toContain("embed");
+    button(element, "YouTube video").click();
+    await settle(element);
+    expect(element.value).toContain(EMBED);
   });
 
   it("should remove a selected readmore break from the toolbar", async () => {
@@ -139,73 +240,93 @@ describe("edaha-richtext", () => {
     expect(element.value).toBe("<p>One</p><p>Two</p>");
   });
 
-  it("should change or remove a selected embed from the toolbar", async () => {
-    const element = await setup(
-      '<p>One</p><div class="embed">https://youtu.be/x</div>',
-      [null, " https://youtu.be/y ", ""],
-    );
+  it("should change a selected embed with its kind's button, and add another kind after it", async () => {
+    const element = await setup(`<p>One</p>${EMBED}`);
+    element.embedTools = embedTools([
+      { key: "youtube", content: "https://youtu.be/y", options: {} },
+      { key: "mermaidjs", content: "graph TD;", options: {} },
+    ]);
+    await element.updateComplete;
     element.editor!.commands.setNodeSelection(5);
     await element.updateComplete;
-    expect(button(element, "Embed").getAttribute("aria-pressed")).toBe("true");
-    // Cancelled
-    button(element, "Embed").click();
-    expect(element.prompt).toHaveBeenLastCalledWith(
-      "Embed URL (empty to remove)",
-      "https://youtu.be/x",
+    expect(button(element, "YouTube video").getAttribute("aria-pressed")).toBe(
+      "true",
     );
-    expect(element.editor!.getHTML()).toContain("https://youtu.be/x");
-    // Changed
-    button(element, "Embed").click();
-    expect(element.value).toContain(
-      '<div class="embed">https://youtu.be/y</div>',
+    expect(
+      button(element, "MermaidJS diagram").getAttribute("aria-pressed"),
+    ).toBe("false");
+    button(element, "YouTube video").click();
+    await settle(element);
+    expect(element.embedTools!.edit).toHaveBeenCalledWith(
+      { key: "youtube", content: "https://youtu.be/x", options: {} },
+      false,
     );
-    // Removed
+    const changed =
+      '<div class="embed" data-embed="youtube" data-content="https://youtu.be/y"></div>';
+    expect(element.value).toContain(changed);
+    // The YouTube block is still selected: a diagram goes after it, keeping it
     element.editor!.commands.setNodeSelection(5);
-    button(element, "Embed").click();
-    expect(element.value).not.toContain("embed");
+    button(element, "MermaidJS diagram").click();
+    await settle(element);
+    expect(element.embedTools!.edit).toHaveBeenLastCalledWith(
+      { key: "mermaidjs", content: "", options: {} },
+      true,
+    );
+    expect(element.value).toContain(
+      `${changed}<div class="embed" data-embed="mermaidjs" data-content="graph TD;"></div>`,
+    );
   });
 
-  it("should ask for an embed's new URL when its Edit button is pressed", async () => {
-    const element = await setup(
-      '<p>One</p><div class="embed">https://youtu.be/x</div>',
-      ["https://youtu.be/y"],
-    );
+  it("should open the embed dialog when an embed's Edit button is pressed", async () => {
+    const element = await setup(`<p>One</p>${EMBED}`);
+    element.embedTools = embedTools([
+      { key: "youtube", content: "https://youtu.be/y", options: {} },
+    ]);
+    await settle(element);
     const edit = [...element.querySelectorAll(".embed-block button")].find(
       (b) => b.textContent === "Edit",
     ) as HTMLButtonElement;
     edit.click();
-    expect(element.prompt).toHaveBeenCalledWith(
-      "Embed URL (empty to remove)",
+    await settle(element);
+    expect(element.embedTools!.edit).toHaveBeenCalledWith(
+      { key: "youtube", content: "https://youtu.be/x", options: {} },
+      false,
+    );
+    expect(element.value).toContain('data-content="https://youtu.be/y"');
+  });
+
+  it("should show embed blocks by their kind once the embed tools are set", async () => {
+    const element = await setup(EMBED);
+    await settle(element);
+    expect(find(element, ".embed-content").textContent).toBe(
       "https://youtu.be/x",
     );
-    expect(element.value).toContain(
-      '<div class="embed">https://youtu.be/y</div>',
+    element.embedTools = embedTools([]);
+    await settle(element);
+    expect(element.embedTools.loadFrame).toHaveBeenCalledWith({
+      key: "youtube",
+      content: "https://youtu.be/x",
+      options: {},
+    });
+    expect(find(element, ".block-header span:not(.icon)").textContent).toBe(
+      "YouTube video",
     );
+    expect(find(element, "iframe").getAttribute("src")).toBe(
+      "/embed-frame/x/?theme=light",
+    );
+    // Unchanged content isn't replaced
+    expect(element.value).toBe(EMBED);
   });
 
-  it("should preview embeds with its loader, set before or after the editor is created", async () => {
-    const element = await setup('<div class="embed">https://youtu.be/x</div>');
-    await settle(element);
-    expect(find(element, ".embed-preview").textContent).toBe(
-      "No preview: previews are not available",
-    );
-    element.loadEmbedPreview = vi.fn(async () => ({
-      html: "<p>preview</p>",
-      warnings: [],
-    }));
-    element.editor!.commands.setNodeSelection(0);
-    element.editor!.commands.setEmbed("https://youtu.be/y");
-    await settle(element);
-    expect(element.loadEmbedPreview).toHaveBeenCalledWith("https://youtu.be/y");
-    expect(find(element, ".embed-preview").innerHTML).toBe("<p>preview</p>");
-  });
-
-  it("should ignore embed edit events once the editor is gone", async () => {
+  it("should do nothing for embeds without the embed tools, or once the editor is gone", async () => {
     const element = await setup();
+    find(element, ".richtext-content").dispatchEvent(new Event("embed-edit"));
+    expect(element.value).toBe("<p>Hello world</p>");
     const content = find(element, ".richtext-content");
+    element.embedTools = embedTools([]);
     element.remove();
     content.dispatchEvent(new Event("embed-edit"));
-    expect(element.prompt).not.toHaveBeenCalled();
+    expect(element.embedTools.edit).not.toHaveBeenCalled();
   });
 
   it("should insert and edit tables", async () => {

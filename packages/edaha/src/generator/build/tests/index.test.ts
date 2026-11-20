@@ -114,6 +114,7 @@ describe("siteData", () => {
       name: "Site",
       description: "Updates",
       url: "https://e.com",
+      baseUrl: "",
       path: "/docs/",
       // Without an author setting, articles' default author is the website
       author: { name: "Site" },
@@ -122,6 +123,16 @@ describe("siteData", () => {
     expect(siteData({ ...config, path: "" }, {}, "https://e.com").path).toBe(
       "/",
     );
+    // A website in a sub-folder: every URL starts with its base URL
+    const sub = siteData(
+      config,
+      { news: defaultTypeConfig("news") },
+      "https://lvl99.github.io/edaha.md/",
+    );
+    expect(sub.url).toBe("https://lvl99.github.io/edaha.md");
+    expect(sub.baseUrl).toBe("/edaha.md");
+    expect(sub.path).toBe("/edaha.md/docs/");
+    expect(sub.types.news?.url).toBe("/edaha.md/docs/news/");
     expect(
       siteData({ ...config, author: { name: "Matt" } }, {}, "https://e.com")
         .author,
@@ -211,6 +222,8 @@ describe("buildSite", () => {
       "articles/article/no-article: no article.md; skipped",
       // The page type has its own templates folder, without a list template
       "Template page/list.njk not found; using article/list.njk",
+      // Embeds are rendered with the pages that show them, and warned about once
+      'articles/article/first: no embed plugin with the key "youtube"; shown as it is',
     ]);
 
     // The article page, its assets and the shared footer
@@ -220,8 +233,9 @@ describe("buildSite", () => {
     expect(first).toMatch(
       /<meta name="description" content="Intro with a link/,
     );
+    // The site has no embed plugins, so its YouTube embed is a link
     expect(first).toContain(
-      'src="https://www.youtube-nocookie.com/embed/aju_UB5VIf8"',
+      '<p class="embed-link"><a href="https://youtu.be/aju_UB5VIf8">',
     );
     expect(first).toContain('<img src="/news/first/thumb.png" alt="an image">');
     expect(first).toContain('<a href="/news/first/guide.pdf">');
@@ -595,6 +609,35 @@ describe("buildSite", () => {
     );
   });
 
+  it("should put every URL under siteUrl's path, keeping files where they are", async () => {
+    const space = await workspace();
+    const { result, read } = await build(
+      space,
+      "https://lvl99.github.io/edaha.md",
+    );
+    // Files are written at the same paths as for a website at a domain's root
+    expect(result.files).toContain("news/first/index.html");
+    expect(result.files).toContain("news/feed.xml");
+    const page = await read("news/first/index.html");
+    expect(page).toContain('href="/edaha.md/base.css"');
+    expect(page).toContain('src="/edaha.md/news/first/thumb.png"');
+    expect(page).toContain('href="/edaha.md/news/tags/news/"');
+    expect(page).toContain('href="/edaha.md/news/first/guide.pdf"');
+    const list = await read("news/index.html");
+    expect(list).toContain('href="/edaha.md/news/first/"');
+    const feed = await read("news/feed.xml");
+    expect(feed).toContain(
+      "<link>https://lvl99.github.io/edaha.md/news/</link>",
+    );
+    expect(feed).toContain(
+      "<link>https://lvl99.github.io/edaha.md/news/first/</link>",
+    );
+    expect(feed).toContain(
+      // Excerpts are escaped in the feed
+      "src=&quot;https://lvl99.github.io/edaha.md/news/first/thumb.png&quot;",
+    );
+  });
+
   it("should build nothing when there are no articles", async () => {
     const root = await mkdtemp(join(tmpdir(), "edaha-empty-"));
     const siteDir = join(root, "my-site");
@@ -683,7 +726,7 @@ describe("buildSite", () => {
     );
   });
 
-  it("should render embeds with the config file's renderers, then the given or built-in ones", async () => {
+  it("should render embeds with the config file's plugins, then the given ones, adding what pages need once", async () => {
     const space = await workspace();
     const settings = parse(
       await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8"),
@@ -693,11 +736,21 @@ describe("buildSite", () => {
       join(space.siteDir, "edaha.config.mjs"),
       `export default {
   ...${JSON.stringify(settings)},
-  embeds: [
+  plugins: [
     {
-      name: "Example",
-      match: (url) => url.hostname === "media.example.com",
-      render: async (url) => \`<iframe src="\${url.href}"></iframe>\`,
+      key: "media",
+      name: "Media",
+      options: {
+        size: { type: "string", $edahaField: { text: true, defaultValue: "small" } },
+      },
+      build: {
+        render: async (content, { state, options }) => {
+          state.renders = [...(state.renders ?? []), content];
+          return \`<iframe src="\${content}" class="\${options.size}"></iframe>\`;
+        },
+        renderHead: async ({ state, options }) => \`<meta name="media" content="\${state.renders.join(" ")}" data-sizes="\${options.map((o) => o.size).join(" ")}">\`,
+        renderFoot: async () => '<script src="/media.js"></script>',
+      },
     },
   ],
 };
@@ -706,26 +759,65 @@ describe("buildSite", () => {
     await writeArticle(
       space,
       "article/embeds",
-      `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\n<!-- embed -->https://media.example.com/v/1<!-- /embed -->\n\n<!-- embed -->https://youtu.be/aju_UB5VIf8<!-- /embed -->\n`,
+      `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\nIntro <!-- embed:media -->https://media.example.com/v/1<!-- /embed:media -->\n\n<!-- readmore -->\n\n<!-- embed:quote -->Hello<!-- /embed:quote -->\n\n<!-- embed:quote -->Bad<!-- /embed:quote -->\n\nAfter the bad quote\n\n<!-- embed:media -->\n<!--yaml\nsize: large\n-->\nhttps://media.example.com/v/2\n<!-- /embed:media -->\n`,
     );
-    const { read } = await build(space, "https://example.com");
-    const html = await read("news/embeds/index.html");
-    expect(html).toContain('<iframe src="https://media.example.com/v/1">');
-    expect(html).toContain("youtube-nocookie.com/embed/aju_UB5VIf8");
-
-    // Given renderers take the built-in ones' place, after the config file's
+    const quote = {
+      key: "quote",
+      name: "Quote",
+      validate: (text: string) => text !== "Bad",
+      build: { render: async (text: string) => `<q>${text}</q>` },
+    };
+    // A given plugin with the config file's key is left out
+    const media = {
+      ...quote,
+      key: "media",
+      build: { render: async () => "<p>Not used</p>" },
+    };
+    const logger = { warn: vi.fn() };
     const result = await buildSite({
       siteDir: space.siteDir,
       siteUrl: "https://example.com",
-      logger: { warn: vi.fn() },
-      embedRenderers: [],
+      logger,
+      plugins: [quote, media],
     });
-    const only = await readFile(
-      join(result.outputDir, "news/embeds/index.html"),
-      "utf8",
+    const read = (file: string) =>
+      readFile(join(result.outputDir, file), "utf8");
+    const page = await read("news/embeds/index.html");
+    // With their options, and the defaults of those not set
+    expect(page).toContain(
+      '<iframe src="https://media.example.com/v/1" class="small">',
     );
-    expect(only).toContain('<iframe src="https://media.example.com/v/1">');
-    expect(only).not.toContain("youtube-nocookie.com");
+    expect(page).toContain(
+      '<iframe src="https://media.example.com/v/2" class="large">',
+    );
+    expect(page).toContain("<q>Hello</q>");
+    // A block that isn't valid is left out, with a warning, and the rest of the article is built
+    expect(page).not.toContain("Bad");
+    expect(page).toContain("After the bad quote");
+    expect(logger.warn).toHaveBeenCalledWith(
+      "articles/article/embeds: Quote embed isn't valid (The content isn't a valid Quote); left out",
+    );
+    expect(page).not.toContain("Not used");
+    // Once per page, with the page's state and every block's options, before </head> and </body>
+    expect(page).toMatch(
+      /<meta name="media" content="https:\/\/media.example.com\/v\/1 https:\/\/media.example.com\/v\/2" data-sizes="small large">\s*<\/head>/,
+    );
+    expect(page.match(/media\.js/g)).toHaveLength(1);
+    expect(page).toMatch(/<script src="\/media.js"><\/script>\s*<\/body>/);
+    // The list shows the excerpt, which has the first embed only
+    const list = await read("news/index.html");
+    expect(list).toContain(
+      '<meta name="media" content="https://media.example.com/v/1" data-sizes="small">',
+    );
+    expect(list).toContain('<script src="/media.js">');
+    // Pages without embeds, and feeds, get nothing
+    expect(await read("news/second/index.html")).not.toContain("media.js");
+    const feed = await read("news/feed.xml");
+    expect(feed).not.toContain("media.js");
+    // Feeds' descriptions have the excerpt's embeds, escaped
+    expect(feed).toContain(
+      "&lt;iframe src=&quot;https://media.example.com/v/1&quot; class=&quot;small&quot;&gt;",
+    );
   });
 
   it("should reject invalid type and article folder names", async () => {

@@ -6,6 +6,9 @@ import type {
   MetadataSchema,
 } from "@lvl99dotcom/edaha.md/generator/metadata";
 import {
+  checkboxValues,
+  colourInputValue,
+  colourValue,
   editorKind,
   fieldChoices,
   fieldDescription,
@@ -52,6 +55,7 @@ export class EdahaMetadataField extends LitElement {
     schema: { attribute: false },
     value: { attribute: false },
     problems: { attribute: false },
+    hiddenFields: { attribute: false },
     required: { type: Boolean },
     uploadFile: { attribute: false },
     chooseFile: { attribute: false },
@@ -66,6 +70,8 @@ export class EdahaMetadataField extends LitElement {
   declare value: unknown;
   /** Problems with the article's metadata (those for this value, and inside it, show) */
   declare problems: MetadataProblem[];
+  /** The paths (in dot notation, e.g. "credit.name") of fields hidden by their conditions, which aren't shown */
+  declare hiddenFields: ReadonlySet<string>;
   declare required: boolean;
   /** Uploads files for file fields; without it they can't be chosen */
   declare uploadFile?: FileUploader | undefined;
@@ -79,6 +85,7 @@ export class EdahaMetadataField extends LitElement {
     this.path = "";
     this.schema = {};
     this.problems = [];
+    this.hiddenFields = new Set();
     this.required = false;
   }
 
@@ -159,6 +166,7 @@ export class EdahaMetadataField extends LitElement {
       .schema=${schema}
       .value=${value}
       .problems=${this.problems}
+      .hiddenFields=${this.hiddenFields}
       ?required=${options.required ?? false}
       .uploadFile=${this.uploadFile}
       .chooseFile=${this.chooseFile}
@@ -178,11 +186,16 @@ export class EdahaMetadataField extends LitElement {
       ${Object.entries(
         // Maps always have properties (see parseMetadata)
         this.schema.properties as Record<string, MetadataSchema>,
-      ).map(([name, schema]) =>
-        this.renderChild(`${this.path}/${name}`, schema, value[name], {
-          required: this.schema.required?.includes(name) ?? false,
-        }),
-      )}
+      )
+        .filter(
+          ([name]) =>
+            !this.hiddenFields.has(`${this.path}/${name}`.replaceAll("/", ".")),
+        )
+        .map(([name, schema]) =>
+          this.renderChild(`${this.path}/${name}`, schema, value[name], {
+            required: this.schema.required?.includes(name) ?? false,
+          }),
+        )}
     </fieldset>`;
   }
 
@@ -368,15 +381,33 @@ export class EdahaMetadataField extends LitElement {
     const describedBy = this.describedBy(id) || nothing;
     if (kind === "select") return this.renderSelect(id, kind);
     if (kind === "file") return this.renderFile(id);
-    if (kind === "checkbox")
+    if (kind === "checkbox") {
+      const { checked, unchecked } = checkboxValues(this.schema);
       return html`<input
         type="checkbox"
         id=${id}
-        .checked=${live(this.value === true)}
+        .checked=${live(this.value === checked)}
         aria-invalid=${invalid}
         aria-describedby=${describedBy}
         @change=${(event: Event) =>
-          this.change(this.path, (event.target as HTMLInputElement).checked)}
+          this.change(
+            this.path,
+            (event.target as HTMLInputElement).checked ? checked : unchecked,
+          )}
+      />`;
+    }
+    if (kind === "color")
+      return html`<input
+        type="color"
+        id=${id}
+        aria-invalid=${invalid}
+        aria-describedby=${describedBy}
+        .value=${live(colourInputValue(this.value))}
+        @input=${(event: Event) =>
+          this.change(
+            this.path,
+            colourValue((event.target as HTMLInputElement).value, this.value),
+          )}
       />`;
     const attributes = inputAttributes(this.schema);
     const onInput = (event: Event) =>

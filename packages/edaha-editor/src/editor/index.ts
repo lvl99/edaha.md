@@ -5,8 +5,8 @@ import { serve, type ServerType } from "@hono/node-server";
 import { Hono } from "hono";
 import mime from "mime-types";
 import { EDITOR_PORT } from "@lvl99dotcom/edaha.md/cli";
-import type { EmbedRenderer } from "@lvl99dotcom/edaha.md/embeds";
-import { createEditorApp } from "../server/app/index.ts";
+import type { EmbedPlugin } from "@lvl99dotcom/edaha.md/embeds";
+import { createEditorApp, previewOriginOf } from "../server/app/index.ts";
 import { ArticleStore } from "../server/store/index.ts";
 import {
   loadSiteConfig,
@@ -38,10 +38,10 @@ export interface EditorServerOptions extends SiteConfigOptions {
   port?: number;
   /** The editor page's built files. Default: CLIENT_DIR */
   clientDir?: string;
-  /** Fetches extra data for embed previews (defaults to the global fetch) */
+  /** Fetches extra data for embeds (defaults to the global fetch) */
   fetch?: typeof fetch;
-  /** Embed renderers tried after the config file's `embeds` (defaults to the built-in ones, EMBED_RENDERERS) */
-  embedRenderers?: readonly EmbedRenderer[];
+  /** Embed plugins added after the config file's `plugins` (a key in both uses the config file's). Default: none */
+  plugins?: readonly EmbedPlugin[];
 }
 
 /** A running editor server */
@@ -114,13 +114,26 @@ const editorServerParts = async (
   );
   // Every article is read and checked as the editor starts
   await store.load();
+  const previewOrigin = previewOriginOf(editorUrl(port));
   const editorApp = createEditorApp(store, {
     allowedOrigins: [editorUrl(port)],
     fetch: options.fetch,
-    embedRenderers: options.embedRenderers,
+    plugins: options.plugins,
+    previewOrigin,
   });
 
   const app = new Hono();
+  // The previews' own origin doesn't show the editor page or its files
+  app.use("/", async (c, next) =>
+    new URL(c.req.url).origin === previewOrigin
+      ? c.json({ error: "Not found" }, 404)
+      : next(),
+  );
+  app.use(`${EDITOR_BASE}*`, async (c, next) =>
+    new URL(c.req.url).origin === previewOrigin
+      ? c.json({ error: "Not found" }, 404)
+      : next(),
+  );
   app.get("/", async (c) => {
     const html = await clientFile(clientDir, "index.html");
     if (!html)

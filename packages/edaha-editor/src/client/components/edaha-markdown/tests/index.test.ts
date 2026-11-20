@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "..";
 import type { EdahaMarkdown } from "..";
+import type { EmbedValue } from "../../../embeds";
 import {
   button,
   chooseFile,
@@ -81,7 +82,6 @@ describe("edaha-markdown", () => {
       "Remove row",
       "Remove column",
       "Remove table",
-      "Embed",
       "Raw",
       "Read more",
       "Choose file",
@@ -130,7 +130,7 @@ describe("edaha-markdown", () => {
     expect(element.value).toBe("Hello world");
   });
 
-  it("should add, change and remove links, images and embeds by URL", async () => {
+  it("should add, change and remove links and images by URL", async () => {
     const element = await setup(
       "Hello world",
       [6, 11],
@@ -154,24 +154,63 @@ describe("edaha-markdown", () => {
     expect(image.value).toBe("Hi ![](cat.png)");
     await press(image, "Image URL");
     expect(image.value).toBe("Hi ![](cat.png)");
+  });
 
-    const embed = await setup("", [0, 0], ["https://youtu.be/abc", "", null]);
-    await press(embed, "Embed");
-    expect(embed.prompt).toHaveBeenLastCalledWith(
-      "Embed URL (e.g. a YouTube video)",
+  it("should have a button for each of the site's embeds, once they are known, that adds or changes one with the embed dialog", async () => {
+    const element = await setup("Intro", [5, 5]);
+    expect(element.querySelector(".toolbar-embed")).toBeNull();
+    const answers: (EmbedValue | undefined)[] = [
+      { key: "youtube", content: "https://youtu.be/abc", options: {} },
       undefined,
+      { key: "youtube", content: "https://youtu.be/def", options: {} },
+      { key: "mermaidjs", content: "graph TD;\n  A-->B;", options: {} },
+    ];
+    element.embedTools = {
+      embeds: [
+        { key: "youtube", name: "YouTube video" },
+        { key: "mermaidjs", name: "MermaidJS diagram" },
+      ],
+      edit: vi.fn(async () => answers.shift()),
+      loadFrame: vi.fn(),
+    };
+    await element.updateComplete;
+    await press(element, "YouTube video");
+    await settle(element);
+    expect(element.embedTools.edit).toHaveBeenLastCalledWith(
+      { key: "youtube", content: "", options: {} },
+      true,
     );
-    const code = "<!-- embed -->https://youtu.be/abc<!-- /embed -->";
-    expect(embed.value).toBe(code);
-    textarea(embed).setSelectionRange(0, code.length);
-    await press(embed, "Embed");
-    expect(embed.prompt).toHaveBeenLastCalledWith(
-      "Embed URL (empty to remove)",
-      "https://youtu.be/abc",
+    const code = (id: string) =>
+      `<!-- embed:youtube -->https://youtu.be/${id}<!-- /embed:youtube -->`;
+    expect(element.value).toBe(`Intro\n\n${code("abc")}`);
+    // A selected block of the button's kind is changed; cancelling changes nothing
+    textarea(element).setSelectionRange(7, element.value.length);
+    await element.updateComplete;
+    expect(button(element, "YouTube video").getAttribute("aria-pressed")).toBe(
+      "true",
     );
-    expect(embed.value).toBe("");
-    await press(embed, "Embed");
-    expect(embed.value).toBe("");
+    await press(element, "YouTube video");
+    await settle(element);
+    expect(element.embedTools.edit).toHaveBeenLastCalledWith(
+      { key: "youtube", content: "https://youtu.be/abc", options: {} },
+      false,
+    );
+    expect(element.value).toBe(`Intro\n\n${code("abc")}`);
+    textarea(element).setSelectionRange(7, element.value.length);
+    await press(element, "YouTube video");
+    await settle(element);
+    expect(element.value).toBe(`Intro\n\n${code("def")}`);
+    // Another kind's button adds one after the selected block
+    textarea(element).setSelectionRange(7, element.value.length);
+    await press(element, "MermaidJS diagram");
+    await settle(element);
+    expect(element.embedTools.edit).toHaveBeenLastCalledWith(
+      { key: "mermaidjs", content: "", options: {} },
+      true,
+    );
+    expect(element.value).toBe(
+      `Intro\n\n${code("def")}\n\n<!-- embed:mermaidjs -->\ngraph TD;\n  A-->B;\n<!-- /embed:mermaidjs -->`,
+    );
   });
 
   it("should insert tables and edit them only while the cursor is in one", async () => {

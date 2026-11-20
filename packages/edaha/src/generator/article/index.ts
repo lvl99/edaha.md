@@ -298,8 +298,8 @@ export interface ArticleContext {
   typeUrl: string;
   /** Where the article is, for errors and warnings */
   source: string;
-  /** Replace embed blocks in markdown with HTML */
-  replaceEmbeds(markdown: string): Promise<string>;
+  /** Replace embed blocks in markdown with HTML, for the article's body or its excerpt */
+  replaceEmbeds(markdown: string, part: "body" | "excerpt"): Promise<string>;
   /** Render markdown to HTML, resolving relative URLs against a folder URL */
   renderMarkdown(markdown: string, baseUrl: string): string;
   /** The article's custom metadata fields, to validate its values and give them to templates. Default: none */
@@ -477,7 +477,7 @@ export const loadArticle = async (
 
   const body = parts.body;
   const bodyHtml = context.renderMarkdown(
-    await context.replaceEmbeds(body),
+    await context.replaceEmbeds(body, "body"),
     url,
   );
   const bodyText = stripHtml(bodyHtml);
@@ -491,7 +491,7 @@ export const loadArticle = async (
   } else {
     excerpt = excerptSource;
     excerptHtml = context.renderMarkdown(
-      await context.replaceEmbeds(excerptSource),
+      await context.replaceEmbeds(excerptSource, "excerpt"),
       url,
     );
   }

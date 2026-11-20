@@ -13,12 +13,63 @@ describe("markdownToEditorHtml", () => {
   it("should turn shortcodes into editor blocks and resolve relative URLs", () => {
     expect(
       markdownToEditorHtml(
-        'Intro "quoted" ![pic](a.png) <!-- readmore -->Rest\n\n<!-- embed --> https://youtu.be/x?a=1&b=2 <!-- /embed -->',
+        'Intro "quoted" ![pic](a.png) <!-- readmore -->Rest\n\n<!-- embed:youtube --> https://youtu.be/x?a=1&b=2 <!-- /embed:youtube -->\n\n<!-- embed:mermaidjs -->\ngraph TD;\n\n  A-->B;\n<!-- /embed:mermaidjs -->\n\n<!-- embed -->old<!-- /embed -->',
         BASE,
       ),
     ).toBe(
-      '<p>Intro &quot;quoted&quot; <img src="/files/article/hello/a.png" alt="pic"></p>\n<hr class="readmore">\n<p>Rest</p>\n<div class="embed">https://youtu.be/x?a=1&amp;b=2</div>\n',
+      '<p>Intro &quot;quoted&quot; <img src="/files/article/hello/a.png" alt="pic"></p>\n<hr class="readmore">\n<p>Rest</p>\n<div class="embed" data-embed="youtube" data-content=" https://youtu.be/x?a=1&amp;b=2"></div>\n<div class="embed" data-embed="mermaidjs" data-content="graph TD;&#10;&#10;  A--&gt;B;"></div>\n<div class="embed" data-embed="" data-content="old"></div>\n',
     );
+  });
+});
+
+describe("underlined and struck-through text", () => {
+  it("should keep underlined text as HTML and struck-through text as ~~, both ways", () => {
+    const markdown = "<u>under</u> and ~~struck~~";
+    const html = markdownToEditorHtml(markdown, BASE);
+    expect(html).toBe("<p><u>under</u> and <s>struck</s></p>\n");
+    expect(editorHtmlToMarkdown(html, BASE)).toBe(markdown);
+    expect(editorHtmlToMarkdown("<p><del>gone</del></p>", BASE)).toBe(
+      "~~gone~~",
+    );
+  });
+});
+
+describe("embed blocks with options", () => {
+  it("should keep embed blocks' options through the editor, as JSON in the editor's HTML", () => {
+    const markdown =
+      "<!-- embed:bandcamp -->\n<!--yaml\nlayout: large\nlinkcol: 051c2c\n-->\nhttps://a.bandcamp.com/album/b\n<!-- /embed:bandcamp -->";
+    const html = markdownToEditorHtml(markdown, BASE);
+    expect(html).toBe(
+      '<div class="embed" data-embed="bandcamp" data-content="https://a.bandcamp.com/album/b" data-options="{&quot;layout&quot;:&quot;large&quot;,&quot;linkcol&quot;:&quot;051c2c&quot;}"></div>\n',
+    );
+    expect(editorHtmlToMarkdown(html, BASE)).toBe(markdown);
+    // Options that can't be read are kept as part of the content, so nothing is lost
+    expect(
+      markdownToEditorHtml(
+        "<!-- embed:bandcamp --><!--yaml\n- a\n-->\nb<!-- /embed:bandcamp -->",
+        BASE,
+      ),
+    ).toBe(
+      '<div class="embed" data-embed="bandcamp" data-content="&lt;!--yaml&#10;- a&#10;--&gt;&#10;b"></div>\n',
+    );
+    // Options that aren't JSON in the editor's HTML are none
+    expect(
+      editorHtmlToMarkdown(
+        '<div class="embed" data-embed="youtube" data-content="x" data-options="{"></div>',
+        BASE,
+      ),
+    ).toBe("<!-- embed:youtube -->x<!-- /embed:youtube -->");
+  });
+});
+
+describe("embed blocks without settings", () => {
+  it("should keep embed blocks without a key or content as old, empty blocks, and leave out other empty elements", () => {
+    expect(
+      editorHtmlToMarkdown(
+        '<p>a<span></span>b</p><div class="embed"></div>',
+        BASE,
+      ),
+    ).toBe("ab\n\n<!-- embed --><!-- /embed -->");
   });
 });
 
@@ -39,13 +90,13 @@ describe("raw blocks in the editor", () => {
 describe("markdownToEditorHtml in code", () => {
   it("should leave shortcodes in code as they are", () => {
     const html = markdownToEditorHtml(
-      "`<!-- readmore -->`\n\n```md\n<!-- embed -->https://youtu.be/x<!-- /embed -->\n```",
+      "`<!-- readmore -->`\n\n```md\n<!-- embed:youtube -->https://youtu.be/x<!-- /embed:youtube -->\n```",
       BASE,
     );
     expect(html).not.toContain('class="readmore"');
     expect(html).not.toContain('class="embed"');
     expect(html).toContain("&lt;!-- readmore --&gt;");
-    expect(html).toContain("&lt;!-- embed --&gt;https://youtu.be/x");
+    expect(html).toContain("&lt;!-- embed:youtube --&gt;https://youtu.be/x");
   });
 });
 
@@ -53,11 +104,11 @@ describe("editorHtmlToMarkdown", () => {
   it("should turn editor blocks back into shortcodes and file URLs into relative ones", () => {
     expect(
       editorHtmlToMarkdown(
-        '<p>Intro <img src="/files/article/hello/a.png" alt="pic"> <a href="https://example.com">link</a></p><hr class="readmore"><div class="embed"> https://youtu.be/x </div><hr><h2>Sub</h2><p><em>em</em> <strong>strong</strong></p>',
+        '<p>Intro <img src="/files/article/hello/a.png" alt="pic"> <a href="https://example.com">link</a></p><hr class="readmore"><div class="embed" data-embed="youtube" data-content=" https://youtu.be/x "></div><div class="embed" data-embed="mermaidjs" data-content="graph TD;\n\n  A--&gt;B;\n"></div><div class="embed" data-embed="" data-content="old"></div><p></p><hr><h2>Sub</h2><p><em>em</em> <strong>strong</strong></p>',
         BASE,
       ),
     ).toBe(
-      "Intro ![pic](a.png) [link](https://example.com)\n\n<!-- readmore -->\n\n<!-- embed -->https://youtu.be/x<!-- /embed -->\n\n---\n\n## Sub\n\n*em* **strong**",
+      "Intro ![pic](a.png) [link](https://example.com)\n\n<!-- readmore -->\n\n<!-- embed:youtube --> https://youtu.be/x<!-- /embed:youtube -->\n\n<!-- embed:mermaidjs -->\ngraph TD;\n\n  A-->B;\n<!-- /embed:mermaidjs -->\n\n<!-- embed -->old<!-- /embed -->\n\n---\n\n## Sub\n\n*em* **strong**",
     );
   });
 
@@ -106,7 +157,7 @@ describe("editorHtmlToMarkdown", () => {
 
   it("should round-trip article markdown", () => {
     const markdown =
-      "Intro with a [link](https://example.com) and ![image](thumb.png).\n\n<!-- readmore -->\n\nThe rest.\n\n## Sub\n\n- one\n- two\n\n<!-- embed -->https://youtu.be/aju_UB5VIf8<!-- /embed -->\n\n> quote\n\n```\ncode\n```\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\nSome <small>small</small> and <big>big</big> text\n\n<details>\n<summary>More</summary>\n\nHidden\n\n- a\n- b\n\n</details>";
+      "Intro with a [link](https://example.com) and ![image](thumb.png).\n\n<!-- readmore -->\n\nThe rest.\n\n## Sub\n\n- one\n- two\n\n<!-- embed:youtube -->https://youtu.be/aju_UB5VIf8<!-- /embed:youtube -->\n\n<!-- embed:mermaidjs -->\ngraph TD;\n\n  A-->B;\n<!-- /embed:mermaidjs -->\n\n> quote\n\n```\ncode\n```\n\n| A | B |\n| --- | --- |\n| 1 | 2 |\n\nSome <small>small</small> and <big>big</big> text\n\n<details>\n<summary>More</summary>\n\nHidden\n\n- a\n- b\n\n</details>";
     expect(
       editorHtmlToMarkdown(markdownToEditorHtml(markdown, BASE), BASE),
     ).toBe(markdown);
