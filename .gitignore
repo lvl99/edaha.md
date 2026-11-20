@@ -10,3 +10,4 @@ coverage/
 collaboration/
 .claude/
 .vscode/
+/build/
