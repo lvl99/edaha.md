@@ -1,5 +1,6 @@
 import { Ajv, type ErrorObject, type ValidateFunction } from "ajv";
 import { fullFormats } from "ajv-formats/dist/formats.js";
+import { checkFieldExtensions, resolveFields } from "../fields/index.ts";
 import { isRelativeUrl } from "../format/index.ts";
 
 /** The kinds of field the editor can show for a metadata value (the key under `$edahaField` that configures it) */
@@ -125,10 +126,15 @@ export const fieldOptions = (field: EdahaField): Record<string, unknown> => {
 /**
  * Check a schema has editor fields: objects need properties, lists need items (or one field for the whole list), and
  * every value has an `$edahaField` with exactly one field kind. Objects' and lists' own `$edahaField` may set only their
- * group and labels. Throws an Error naming the schema's path.
+ * group, labels and conditions. Default values and conditions are checked too (see checkFieldExtensions). Throws an Error naming the schema's path.
  */
 const checkFields = (schema: unknown, path: string): void => {
   const fields = asMap(schema, `"${path}"`);
+  if (fields.$edahaField !== undefined)
+    checkFieldExtensions(
+      asMap(fields.$edahaField, `"${path}.$edahaField"`),
+      `"${path}.$edahaField"`,
+    );
   if (fields.type === "object") {
     if (Array.isArray(fields.properties))
       throw new Error(
@@ -366,8 +372,9 @@ export interface ArticleMetadata {
 }
 
 /**
- * Read an article's custom metadata from its settings: validate the values of the fields its type uses, and warn about
- * values of fields its type doesn't use and settings that aren't core or defined.
+ * Read an article's custom metadata from its settings: fill in default values and leave out hidden fields' values (see
+ * resolveFields), validate the values of the fields its type uses, and warn about values of fields its type doesn't use
+ * and settings that aren't core or defined.
  *
  * @param typeLabel - the type's plural label, for warnings, e.g. "News"
  *
@@ -381,14 +388,13 @@ export const articleMetadata = (
   validator: MetadataValidator,
   typeLabel: string,
 ): ArticleMetadata => {
-  const values: Record<string, unknown> = {};
+  const given: Record<string, unknown> = {};
+  /** Settings that aren't used */
   const problems: MetadataProblem[] = [];
   for (const [key, value] of Object.entries(settings)) {
     if (CORE_FIELDS.includes(key)) continue;
-    if (keys.includes(key)) {
-      values[key] = value;
-      problems.push(...validator.validate(key, value));
-    } else
+    if (keys.includes(key)) given[key] = value;
+    else
       problems.push({
         path: key,
         message:
@@ -398,7 +404,17 @@ export const articleMetadata = (
         level: "warning",
       });
   }
-  return { values, problems };
+  const schemas = Object.fromEntries(
+    keys.flatMap((key) => {
+      const schema = validator.definitions[key];
+      return schema ? [[key, schema]] : [];
+    }),
+  );
+  const { values } = resolveFields(schemas, given);
+  const errors = Object.entries(values).flatMap(([key, value]) =>
+    validator.validate(key, value),
+  );
+  return { values, problems: [...errors, ...problems] };
 };
 
 /**
