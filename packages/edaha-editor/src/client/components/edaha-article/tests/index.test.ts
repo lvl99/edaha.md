@@ -412,37 +412,38 @@ describe("edaha-article", () => {
     const tools = find<EdahaRichtext>(element, "edaha-richtext").embedTools!;
     expect(api.embeds).toHaveBeenCalledOnce();
     expect(tools.embeds).toEqual([{ key: "youtube", name: "YouTube video" }]);
-    expect(await tools.loadFrame({ key: "youtube", content: "x" })).toEqual({
+    const block = { key: "youtube", content: "x", options: { size: 1 } };
+    expect(await tools.loadFrame(block)).toEqual({
       url: "/embed-frame/x/",
       errors: [],
       warnings: [],
     });
-    expect(api.embedFrame).toHaveBeenCalledWith("youtube", "x");
+    expect(api.embedFrame).toHaveBeenCalledWith("youtube", "x", { size: 1 });
     // The dialog is outside the article's form, as it has its own
     const dialog = find<EdahaEmbedDialog>(element, "edaha-embed-dialog");
     expect(element.querySelector("form")!.contains(dialog)).toBe(false);
-    const edit = vi.spyOn(dialog, "edit").mockResolvedValue("y");
-    expect(await tools.edit({ key: "youtube", content: "x" }, false)).toEqual({
-      key: "youtube",
-      content: "y",
-    });
+    const changed = { ...block, content: "y" };
+    const edit = vi.spyOn(dialog, "edit").mockResolvedValue(changed);
+    expect(await tools.edit(block, false)).toBe(changed);
     expect(edit).toHaveBeenCalledWith(
       tools.embeds[0],
-      "x",
+      block,
       false,
       expect.any(Function),
     );
-    // The dialog checks content with the API
+    // The dialog checks content and options with the API
     const validate = edit.mock.calls[0]![3]!;
-    expect(await validate({ key: "youtube", content: "y" })).toEqual(["Bad"]);
-    expect(api.validateEmbed).toHaveBeenCalledWith("youtube", "y");
+    expect(await validate(changed)).toEqual(["Bad"]);
+    expect(api.validateEmbed).toHaveBeenCalledWith("youtube", "y", {
+      size: 1,
+    });
     // Cancelled, or a kind without a plugin (which has no dialog), gives nothing
     edit.mockResolvedValueOnce(undefined);
     expect(
-      await tools.edit({ key: "youtube", content: "x" }, false),
+      await tools.edit({ key: "youtube", content: "x", options: {} }, false),
     ).toBeUndefined();
     expect(
-      await tools.edit({ key: "vimeo", content: "x" }, false),
+      await tools.edit({ key: "vimeo", content: "x", options: {} }, false),
     ).toBeUndefined();
     expect(edit).toHaveBeenCalledTimes(2);
     // The Markdown body gets them too

@@ -22,6 +22,34 @@ describe("markdownToEditorHtml", () => {
   });
 });
 
+describe("embed blocks with options", () => {
+  it("should keep embed blocks' options through the editor, as JSON in the editor's HTML", () => {
+    const markdown =
+      "<!-- embed:bandcamp -->\n<!--yaml\nlayout: large\nlinkcol: 051c2c\n-->\nhttps://a.bandcamp.com/album/b\n<!-- /embed:bandcamp -->";
+    const html = markdownToEditorHtml(markdown, BASE);
+    expect(html).toBe(
+      '<div class="embed" data-embed="bandcamp" data-content="https://a.bandcamp.com/album/b" data-options="{&quot;layout&quot;:&quot;large&quot;,&quot;linkcol&quot;:&quot;051c2c&quot;}"></div>\n',
+    );
+    expect(editorHtmlToMarkdown(html, BASE)).toBe(markdown);
+    // Options that can't be read are kept as part of the content, so nothing is lost
+    expect(
+      markdownToEditorHtml(
+        "<!-- embed:bandcamp --><!--yaml\n- a\n-->\nb<!-- /embed:bandcamp -->",
+        BASE,
+      ),
+    ).toBe(
+      '<div class="embed" data-embed="bandcamp" data-content="&lt;!--yaml&#10;- a&#10;--&gt;&#10;b"></div>\n',
+    );
+    // Options that aren't JSON in the editor's HTML are none
+    expect(
+      editorHtmlToMarkdown(
+        '<div class="embed" data-embed="youtube" data-content="x" data-options="{"></div>',
+        BASE,
+      ),
+    ).toBe("<!-- embed:youtube -->x<!-- /embed:youtube -->");
+  });
+});
+
 describe("embed blocks without settings", () => {
   it("should keep embed blocks without a key or content as old, empty blocks, and leave out other empty elements", () => {
     expect(

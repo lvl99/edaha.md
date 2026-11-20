@@ -33,6 +33,37 @@ const YOUTUBE: EmbedInfo = {
 
 const MERMAID: EmbedInfo = { key: "mermaidjs", name: "MermaidJS diagram" };
 
+/** An embed with options: a layout, and a tracklist hidden for the slim layout */
+const BANDCAMP: EmbedInfo = {
+  key: "bandcamp",
+  name: "Bandcamp player",
+  info: "Paste an album's or track's URL",
+  options: {
+    layout: {
+      title: "Layout",
+      type: "string",
+      enum: ["slim", "large"],
+      $edahaField: { select: true, defaultValue: "large" },
+    },
+    tracklist: {
+      title: "Show tracklist",
+      type: "boolean",
+      $edahaField: {
+        checkbox: true,
+        defaultValue: false,
+        hideWhen: ["layout", "=", "slim"],
+      },
+    },
+  },
+};
+
+/** An embed's value */
+const value = (
+  key: string,
+  content = "",
+  options: Record<string, unknown> = {},
+) => ({ key, content, options });
+
 /** The dialog's content text box */
 const content = (element: HTMLElement) =>
   find<HTMLTextAreaElement>(element, "#embed-dialog-content");
@@ -50,7 +81,7 @@ const submit = (element: HTMLElement) =>
 describe("edaha-embed-dialog", () => {
   it("should add an embed of a kind, asking only for its content", async () => {
     const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
-    const result = element.edit(YOUTUBE, "", true);
+    const result = element.edit(YOUTUBE, value("youtube"), true);
     await settle(element);
     const dialog = find<HTMLDialogElement>(element, "dialog");
     expect(dialog.open).toBe(true);
@@ -63,22 +94,28 @@ describe("edaha-embed-dialog", () => {
     expect(find(element, ".embed-dialog-about .embed-icon svg").id).toBe("yt");
     expect(element.querySelector("input, select, fieldset")).toBeNull();
     expect(document.activeElement).toBe(content(element));
+    // Without info, the hint is general; without options, there are no option fields
     expect(find(element, ".embed-dialog-hint").textContent?.trim()).toBe(
-      "What the YouTube video shows, e.g. a URL or code.",
+      "Provide the embed's content, e.g. a URL or code",
     );
+    expect(element.querySelector("edaha-metadata-field")).toBeNull();
     // Without content, it isn't added
     input(content(element), "   ");
     submit(element);
     expect(dialog.open).toBe(true);
     input(content(element), "  https://youtu.be/x \n");
     submit(element);
-    expect(await result).toBe("https://youtu.be/x");
+    expect(await result).toEqual(value("youtube", "https://youtu.be/x"));
     expect(dialog.open).toBe(false);
   });
 
   it("should change an embed block's content", async () => {
     const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
-    const result = element.edit(MERMAID, "graph TD;", false);
+    const result = element.edit(
+      MERMAID,
+      value("mermaidjs", "graph TD;"),
+      false,
+    );
     await settle(element);
     expect(title(element)).toBe("Change MermaidJS diagram");
     // Without a description or icon, the line is empty
@@ -87,7 +124,7 @@ describe("edaha-embed-dialog", () => {
     expect(button(element, "Save")).toBeTruthy();
     input(content(element), "graph LR;");
     submit(element);
-    expect(await result).toBe("graph LR;");
+    expect(await result).toEqual(value("mermaidjs", "graph LR;"));
   });
 
   it("should give nothing when closed or cancelled, or opened again", async () => {
@@ -95,16 +132,16 @@ describe("edaha-embed-dialog", () => {
     // Before it is opened, it names no kind
     expect(title(element)).toBe("Add embed");
     submit(element);
-    const closed = element.edit(YOUTUBE, "", true);
+    const closed = element.edit(YOUTUBE, value("youtube"), true);
     await settle(element);
     button(element, "Close").click();
     expect(await closed).toBeUndefined();
-    const cancelled = element.edit(YOUTUBE, "", true);
+    const cancelled = element.edit(YOUTUBE, value("youtube"), true);
     await settle(element);
     button(element, "Cancel").click();
     expect(await cancelled).toBeUndefined();
-    const replaced = element.edit(YOUTUBE, "", true);
-    void element.edit(YOUTUBE, "", true);
+    const replaced = element.edit(YOUTUBE, value("youtube"), true);
+    void element.edit(YOUTUBE, value("youtube"), true);
     expect(await replaced).toBeUndefined();
   });
 
@@ -114,12 +151,17 @@ describe("edaha-embed-dialog", () => {
     const validate = vi.fn(
       () => new Promise<string[]>((resolve) => (answer = resolve)),
     );
-    const result = element.edit(YOUTUBE, "bad", false, validate);
+    const result = element.edit(
+      YOUTUBE,
+      value("youtube", "bad"),
+      false,
+      validate,
+    );
     await settle(element);
     const dialog = find<HTMLDialogElement>(element, "dialog");
     submit(element);
     await element.updateComplete;
-    expect(validate).toHaveBeenCalledWith({ key: "youtube", content: "bad" });
+    expect(validate).toHaveBeenCalledWith(value("youtube", "bad"));
     expect(button(element, "Checking…").getAttribute("aria-disabled")).toBe(
       "true",
     );
@@ -149,7 +191,7 @@ describe("edaha-embed-dialog", () => {
     expect(content(element).getAttribute("aria-invalid")).toBe("false");
     submit(element);
     answer([]);
-    expect(await result).toBe("https://youtu.be/x");
+    expect(await result).toEqual(value("youtube", "https://youtu.be/x"));
   });
 
   it("should check again when the content changes while it is checked, or say when it can't be checked", async () => {
@@ -162,7 +204,12 @@ describe("edaha-embed-dialog", () => {
       )
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValue([]);
-    const result = element.edit(YOUTUBE, "a", false, validate);
+    const result = element.edit(
+      YOUTUBE,
+      value("youtube", "a"),
+      false,
+      validate,
+    );
     await settle(element);
     submit(element);
     // The content changes while it is checked
@@ -177,6 +224,95 @@ describe("edaha-embed-dialog", () => {
       "The content couldn't be checked: offline",
     );
     submit(element);
-    expect(await result).toBe("b");
+    expect(await result).toEqual(value("youtube", "b"));
+  });
+
+  it("should show an embed's options above its content, with their defaults and conditions, saving every shown one", async () => {
+    const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
+    const validate = vi.fn(async () => []);
+    const result = element.edit(
+      BANDCAMP,
+      value("bandcamp", "https://a.bandcamp.com/album/b", { tracklist: true }),
+      false,
+      validate,
+    );
+    await settle(element);
+    expect(find(element, ".embed-dialog-hint").textContent?.trim()).toBe(
+      "Paste an album's or track's URL",
+    );
+    expect(find(element, "legend").textContent?.trim()).toBe("Options");
+    // Above the content
+    expect(
+      find(element, "edaha-metadata-field").compareDocumentPosition(
+        content(element),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const layout = find<HTMLSelectElement>(
+      element,
+      "#meta-embed-options-layout",
+    );
+    expect(layout.value).toBe("large");
+    const tracklist = () =>
+      element.querySelector<HTMLInputElement>("#meta-embed-options-tracklist");
+    expect(tracklist()?.checked).toBe(true);
+    // The slim layout hides the tracklist; changes don't reach the article's settings
+    const changes = vi.fn();
+    document.body.addEventListener("metadata-change", changes);
+    input(layout, "slim", "change");
+    layout.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    await settle(element);
+    expect(tracklist()).toBeNull();
+    expect(changes).not.toHaveBeenCalled();
+    submit(element);
+    await settle(element);
+    const saved = value("bandcamp", "https://a.bandcamp.com/album/b", {
+      layout: "slim",
+    });
+    expect(validate).toHaveBeenCalledWith(saved);
+    expect(await result).toEqual(saved);
+  });
+
+  it("should check options again when they change while they are checked, and clear errors when they change", async () => {
+    const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
+    let answer: (errors: string[]) => void = () => undefined;
+    const validate = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise<string[]>((resolve) => (answer = resolve)),
+      )
+      .mockResolvedValueOnce(["Bad layout"])
+      .mockResolvedValue([]);
+    const result = element.edit(
+      BANDCAMP,
+      value("bandcamp", "x"),
+      true,
+      validate,
+    );
+    await settle(element);
+    submit(element);
+    input(
+      find<HTMLSelectElement>(element, "#meta-embed-options-layout"),
+      "slim",
+      "change",
+    );
+    answer(["Old problem"]);
+    await settle(element);
+    expect(element.querySelector("#embed-dialog-errors li")).toBeNull();
+    submit(element);
+    await settle(element);
+    expect(find(element, "#embed-dialog-errors li").textContent).toBe(
+      "Bad layout",
+    );
+    input(
+      find<HTMLSelectElement>(element, "#meta-embed-options-layout"),
+      "large",
+      "change",
+    );
+    await settle(element);
+    expect(element.querySelector("#embed-dialog-errors li")).toBeNull();
+    submit(element);
+    expect(await result).toEqual(
+      value("bandcamp", "x", { layout: "large", tracklist: false }),
+    );
   });
 });

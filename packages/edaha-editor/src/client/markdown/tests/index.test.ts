@@ -198,16 +198,21 @@ describe("embeds and read more", () => {
       setEmbed(marked("Intro‸"), {
         key: "youtube",
         content: "https://youtu.be/abc",
+        options: {},
       }).value,
     ).toBe(`Intro\n\n${embed}`);
     const selected = marked(`«${embed}»`);
     expect(selectedEmbed(selected)).toEqual({
       key: "youtube",
       content: "https://youtu.be/abc",
+      options: {},
     });
     expect(
-      setEmbed(selected, { key: "mermaidjs", content: "graph TD;\n  A-->B;" })
-        .value,
+      setEmbed(selected, {
+        key: "mermaidjs",
+        content: "graph TD;\n  A-->B;",
+        options: {},
+      }).value,
     ).toBe(
       "<!-- embed:mermaidjs -->\ngraph TD;\n  A-->B;\n<!-- /embed:mermaidjs -->",
     );
@@ -220,15 +225,16 @@ describe("embeds and read more", () => {
           "«<!-- embed:mermaidjs -->\ngraph TD;\n<!-- /embed:mermaidjs -->»",
         ),
       ),
-    ).toEqual({ key: "mermaidjs", content: "graph TD;" });
+    ).toEqual({ key: "mermaidjs", content: "graph TD;", options: {} });
     expect(
       selectedEmbed(
         marked("«<!-- embed -->https://youtu.be/abc<!-- /embed -->»"),
       ),
-    ).toEqual({ key: "", content: "https://youtu.be/abc" });
+    ).toEqual({ key: "", content: "https://youtu.be/abc", options: {} });
     expect(selectedEmbed(marked(`Intro «${embed}»`))).toEqual({
       key: "youtube",
       content: "https://youtu.be/abc",
+      options: {},
     });
     expect(selectedEmbed(marked(`«Intro ${embed}»`))).toBeUndefined();
   });

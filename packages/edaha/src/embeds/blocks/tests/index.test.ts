@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { EMBED_BLOCK, embedBlock, embedContent, splitEmbed } from "..";
+import {
+  EMBED_BLOCK,
+  embedBlock,
+  embedContent,
+  embedOptionsOf,
+  embedText,
+  splitEmbed,
+} from "..";
 
 /** The key and content of every embed block in a text */
 const blocks = (text: string) =>
@@ -56,6 +63,16 @@ describe("embedBlock", () => {
       content: "https://a.bandcamp.com/album/b",
       options: { layout: "large", tracklist: true },
     });
+  });
+});
+
+describe("embedText and embedOptionsOf", () => {
+  it("should write what is between a block's tags, and read options from JSON", () => {
+    expect(embedText("x")).toBe("x");
+    expect(embedText("x", { a: 1 })).toBe("<!--yaml\na: 1\n-->\nx");
+    expect(embedOptionsOf('{"a":1}')).toEqual({ a: 1 });
+    for (const json of [null, "", "{", "[1]", "null", "3"])
+      expect(embedOptionsOf(json)).toEqual({});
   });
 });
 

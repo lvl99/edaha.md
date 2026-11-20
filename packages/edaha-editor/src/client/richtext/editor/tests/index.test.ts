@@ -75,6 +75,18 @@ describe("createRichtextEditor", () => {
     expect(result).toMatch(/<hr>$/);
   });
 
+  it("should keep embeds' options, showing them with the content of an embed shown as it is written", () => {
+    const html =
+      '<div class="embed" data-embed="youtube" data-content="https://youtu.be/x" data-options="{&quot;size&quot;:1}"></div>';
+    const { editor } = create(html);
+    expect(editor.getHTML()).toBe(html);
+    editor.commands.setNodeSelection(0);
+    expect(editor.getAttributes("embed").options).toEqual({ size: 1 });
+    expect(editor.view.dom.querySelector(".embed-content")!.textContent).toBe(
+      "<!--yaml\nsize: 1\n-->\nhttps://youtu.be/x",
+    );
+  });
+
   it("should keep raw blocks and raw text as they are, without other formatting", () => {
     const html =
       '<p>A <span class="raw">*a*\u00a0\u00a0b</span> c</p><pre class="raw">x\n\n  &lt;!-- readmore --&gt;</pre><pre><code>code</code></pre>';
@@ -256,6 +268,7 @@ describe("createRichtextEditor", () => {
     expect(loadFrame).toHaveBeenCalledWith({
       key: "youtube",
       content: "https://youtu.be/x",
+      options: {},
     });
     // An embed with problems shows them, and its content as it is written
     expect(
@@ -361,12 +374,20 @@ describe("createRichtextEditor", () => {
     const { editor } = create(EMBED, vi.fn(), embedTools(loadFrame));
     const view = editor.view.dom.querySelector(".embed-block");
     editor.commands.setNodeSelection(0);
-    editor.commands.setEmbed({ key: "youtube", content: "https://youtu.be/y" });
+    editor.commands.setEmbed({
+      key: "youtube",
+      content: "https://youtu.be/y",
+      options: {},
+    });
     expect(editor.getHTML()).toBe(`${embedHtml("https://youtu.be/y")}<p></p>`);
     // The same box shows the new embed
     expect(editor.view.dom.querySelector(".embed-block")).toBe(view);
     // The same embed again doesn't reload its frame
-    editor.commands.setEmbed({ key: "youtube", content: "https://youtu.be/y" });
+    editor.commands.setEmbed({
+      key: "youtube",
+      content: "https://youtu.be/y",
+      options: {},
+    });
     expect(loadFrame).toHaveBeenCalledTimes(2);
 
     // Frames for the old embed are ignored, even if they arrive last
@@ -379,7 +400,11 @@ describe("createRichtextEditor", () => {
     );
 
     // ...and so are failures for an old embed
-    editor.commands.setEmbed({ key: "youtube", content: "https://youtu.be/z" });
+    editor.commands.setEmbed({
+      key: "youtube",
+      content: "https://youtu.be/z",
+      options: {},
+    });
     reject["https://youtu.be/y"]?.(new Error("late"));
     await flush();
     expect(view!.querySelector(".embed-preview")!.textContent).toBe("Loading…");
@@ -502,7 +527,11 @@ describe("createRichtextEditor", () => {
       );
     const { editor } = create(EMBED, vi.fn(), embedTools(loadFrame));
     editor.commands.setNodeSelection(0);
-    editor.commands.setEmbed({ key: "youtube", content: "https://youtu.be/y" });
+    editor.commands.setEmbed({
+      key: "youtube",
+      content: "https://youtu.be/y",
+      options: {},
+    });
     fail(new Error("late"));
     await flush();
     const preview = editor.view.dom.querySelector(".embed-preview")!;
@@ -519,6 +548,7 @@ describe("createRichtextEditor", () => {
     editor.commands.setEmbed({
       key: "mermaidjs",
       content: "graph TD;\nA-->B;",
+      options: {},
     });
     expect(editor.getHTML()).toContain(
       '<div class="embed" data-embed="mermaidjs" data-content="graph TD;\nA--&gt;B;"></div>',

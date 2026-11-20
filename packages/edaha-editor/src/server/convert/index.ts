@@ -3,6 +3,9 @@ import {
   EMBED_BLOCK,
   embedBlock,
   embedContent,
+  embedOptionsOf,
+  splitEmbed,
+  type EmbedOptionValues,
 } from "@lvl99dotcom/edaha.md/embeds";
 import { READMORE } from "@lvl99dotcom/edaha.md/generator/article";
 import {
@@ -29,15 +32,31 @@ export const filesUrl = (type: string, slug: string): string =>
   `/files/${type}/${slug}/`;
 
 /**
- * An embed block as editor HTML: an empty `<div class="embed">` with its key (empty for an old block without one) and
- * content in attributes. Line breaks in the content are written as `&#10;`, so the HTML is one line that Markdown
- * keeps whole.
+ * An embed block as editor HTML: an empty `<div class="embed">` with its key (empty for an old block without one),
+ * content and options (as JSON, if it has any) in attributes. Line breaks in the content are written as `&#10;`, so
+ * the HTML is one line that Markdown keeps whole.
  *
  * @example
  * embedHtml("mermaidjs", "graph TD;\n  A-->B;"); // '<div class="embed" data-embed="mermaidjs" data-content="graph TD;&#10;  A--&gt;B;"></div>'
+ * embedHtml("bandcamp", url, { layout: "large" }); // '<div class="embed" data-embed="bandcamp" data-content="..." data-options="{&quot;layout&quot;:&quot;large&quot;}"></div>'
  */
-export const embedHtml = (key: string, content: string): string =>
-  `<div class="embed" data-embed="${escapeHtml(key)}" data-content="${escapeHtml(content).replace(/\r?\n/g, "&#10;")}"></div>`;
+export const embedHtml = (
+  key: string,
+  content: string,
+  options: EmbedOptionValues = {},
+): string =>
+  `<div class="embed" data-embed="${escapeHtml(key)}" data-content="${escapeHtml(content).replace(/\r?\n/g, "&#10;")}"${Object.keys(options).length ? ` data-options="${escapeHtml(JSON.stringify(options))}"` : ""}></div>`;
+
+/**
+ * An embed block's editor HTML from what is between its tags: its options and content, or (when its options can't be
+ * read) all of it as its content, so nothing is lost.
+ */
+const embedBlockHtml = (key: string, text: string): string => {
+  const { content, options, optionsError } = splitEmbed(text);
+  return optionsError
+    ? embedHtml(key, embedContent(text))
+    : embedHtml(key, content, options);
+};
 
 /**
  * Convert article markdown to HTML for the editor: `<!-- readmore -->` becomes `<hr class="readmore">`,
@@ -66,8 +85,7 @@ export const markdownToEditorHtml = (source: string, baseUrl: string): string =>
         () => '\n\n<hr class="readmore">\n\n',
       ),
       EMBED_BLOCK,
-      ([, key, content]) =>
-        `\n\n${embedHtml(key ?? "", embedContent(content as string))}\n\n`,
+      ([, key, text]) => `\n\n${embedBlockHtml(key ?? "", text as string)}\n\n`,
     ),
     baseUrl,
   );
@@ -81,8 +99,9 @@ const embedMarkdown = (_: string, node: Node): string => {
   const element = node as HTMLElement;
   const key = element.getAttribute("data-embed") ?? "";
   const content = embedContent(element.getAttribute("data-content") ?? "");
+  const options = embedOptionsOf(element.getAttribute("data-options"));
   // An old block without a key is kept as it was, until a kind of embed is chosen for it
-  return `\n\n${key ? embedBlock(key, content) : `<!-- embed -->${content}<!-- /embed -->`}\n\n`;
+  return `\n\n${key ? embedBlock(key, content, options) : `<!-- embed -->${content}<!-- /embed -->`}\n\n`;
 };
 
 /** HTML to markdown converter with rules for the readmore and embed blocks */

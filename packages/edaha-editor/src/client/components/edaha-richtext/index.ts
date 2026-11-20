@@ -233,7 +233,7 @@ export class EdahaRichtext extends LitElement {
       ? (editor.getAttributes("embed") as EmbedValue)
       : undefined;
     const adding = key !== undefined && selected?.key !== key;
-    const current = adding ? { key, content: "" } : selected;
+    const current = adding ? { key, content: "", options: {} } : selected;
     if (!this.embedTools || !current) return;
     const value = await this.embedTools.edit(current, adding);
     if (!value) editor.commands.focus();

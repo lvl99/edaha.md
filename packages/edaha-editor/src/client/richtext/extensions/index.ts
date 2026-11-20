@@ -13,6 +13,7 @@ import {
 } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type NodeView } from "@tiptap/pm/view";
 import { headingIds } from "@lvl99dotcom/edaha.md/generator/slug";
+import { embedOptionsOf, embedText } from "@lvl99dotcom/edaha.md/embeds/blocks";
 import {
   embedName,
   previewAddress,
@@ -262,6 +263,7 @@ export const Embed = Node.create<EmbedOptions>({
   addAttributes: () => ({
     key: { default: "" },
     content: { default: "" },
+    options: { default: {} },
   }),
   parseHTML: () => [
     {
@@ -269,6 +271,7 @@ export const Embed = Node.create<EmbedOptions>({
       getAttrs: (element) => ({
         key: element.getAttribute("data-embed") ?? "",
         content: element.getAttribute("data-content") ?? "",
+        options: embedOptionsOf(element.getAttribute("data-options")),
       }),
     },
   ],
@@ -278,6 +281,10 @@ export const Embed = Node.create<EmbedOptions>({
       class: "embed",
       "data-embed": node.attrs.key as string,
       "data-content": node.attrs.content as string,
+      // Left out without options
+      "data-options": Object.keys(node.attrs.options as object).length
+        ? JSON.stringify(node.attrs.options)
+        : null,
     },
   ],
   addNodeView() {
@@ -305,7 +312,7 @@ export const Embed = Node.create<EmbedOptions>({
       let current = props.node.attrs as EmbedValue;
       /** Show an embed's kind and load its frame */
       const show = async (value: EmbedValue) => {
-        const id = `${value.key}\0${value.content}`;
+        const id = `${value.key}\0${JSON.stringify(value.options)}\0${value.content}`;
         if (id === shown) return;
         shown = id;
         const tools = this.options.tools();
@@ -318,7 +325,7 @@ export const Embed = Node.create<EmbedOptions>({
         preview.replaceChildren();
         const text = document.createElement("pre");
         text.className = "embed-content";
-        text.textContent = value.content;
+        text.textContent = embedText(value.content, value.options);
         if (!tools) {
           preview.append(text);
           return;

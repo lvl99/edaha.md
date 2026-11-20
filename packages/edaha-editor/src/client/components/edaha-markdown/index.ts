@@ -215,7 +215,7 @@ export class EdahaMarkdown extends LitElement {
     const selected = selectedEmbed(selection);
     const adding = selected?.key !== key;
     const value = await this.embedTools?.edit(
-      adding ? { key, content: "" } : (selected as EmbedValue),
+      adding ? { key, content: "", options: {} } : (selected as EmbedValue),
       adding,
     );
     if (!value) this.textarea?.focus();

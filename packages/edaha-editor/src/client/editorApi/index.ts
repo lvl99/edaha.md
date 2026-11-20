@@ -198,19 +198,28 @@ export class EditorApi {
     return this.request("/api/embeds");
   }
 
-  /** Why an embed block's content isn't valid for its plugin (none when it is) */
-  async validateEmbed(key: string, content: string): Promise<string[]> {
+  /** Why an embed block's content or options aren't valid for its plugin (none when they are) */
+  async validateEmbed(
+    key: string,
+    content: string,
+    options: Record<string, unknown> = {},
+  ): Promise<string[]> {
     return (
       await this.send<EmbedValidation>("POST", "/api/embed-validations", {
         key,
         content,
+        options,
       })
     ).errors;
   }
 
   /** Render an embed block for its frame in the rich text body */
-  embedFrame(key: string, content: string): Promise<EmbedFrame> {
-    return this.send("POST", "/api/embed-frames", { key, content });
+  embedFrame(
+    key: string,
+    content: string,
+    options: Record<string, unknown> = {},
+  ): Promise<EmbedFrame> {
+    return this.send("POST", "/api/embed-frames", { key, content, options });
   }
 
   /** Convert an article body from editor HTML to Markdown (relative URLs are relative to its saved location) */

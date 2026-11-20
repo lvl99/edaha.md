@@ -31,6 +31,7 @@ export {
   EMBED_BLOCK,
   embedBlock,
   embedContent,
+  embedOptionsOf,
   embedText,
   splitEmbed,
 } from "./blocks/index.ts";

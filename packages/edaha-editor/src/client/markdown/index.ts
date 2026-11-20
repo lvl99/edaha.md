@@ -6,7 +6,7 @@
 import {
   EMBED_BLOCK,
   embedBlock,
-  embedContent,
+  splitEmbed,
 } from "@lvl99dotcom/edaha.md/embeds/blocks";
 import type { EmbedValue } from "../embeds/index.ts";
 
@@ -292,11 +292,11 @@ export const insertFile = (
 };
 
 /**
- * The selected embed block's kind and content, if a whole embed block is selected (an old block without a key has an
- * empty kind).
+ * The selected embed block's kind, content and options, if a whole embed block is selected (an old block without a
+ * key has an empty kind).
  *
  * @example
- * selectedEmbed(edit); // { key: "youtube", content: "https://youtu.be/abc" }
+ * selectedEmbed(edit); // { key: "youtube", content: "https://youtu.be/abc", options: {} }
  */
 export const selectedEmbed = ({
   value,
@@ -304,19 +304,19 @@ export const selectedEmbed = ({
   end,
 }: TextEdit): EmbedValue | undefined => {
   const match = EMBED.exec(value.slice(start, end));
-  return match
-    ? { key: match[1] ?? "", content: embedContent(match[2] as string) }
-    : undefined;
+  if (!match) return undefined;
+  const { content, options } = splitEmbed(match[2] as string);
+  return { key: match[1] ?? "", content, options };
 };
 
 /**
  * Insert an embed block (on its own line), or replace the selected one.
  *
  * @example
- * setEmbed({ value: "", start: 0, end: 0 }, { key: "youtube", content: "https://youtu.be/abc" }); // "<!-- embed:youtube -->https://youtu.be/abc<!-- /embed:youtube -->"
+ * setEmbed({ value: "", start: 0, end: 0 }, { key: "youtube", content: "https://youtu.be/abc", options: {} }); // "<!-- embed:youtube -->https://youtu.be/abc<!-- /embed:youtube -->"
  */
 export const setEmbed = (edit: TextEdit, embed: EmbedValue): TextEdit => {
-  const block = embedBlock(embed.key, embed.content);
+  const block = embedBlock(embed.key, embed.content, embed.options);
   return selectedEmbed(edit)
     ? replace(edit.value, edit.start, edit.end, block)
     : insertBlock(edit, block);
@@ -326,12 +326,12 @@ export const setEmbed = (edit: TextEdit, embed: EmbedValue): TextEdit => {
  * Insert an embed block on its own line after the selection (keeping what is selected, e.g. another embed block).
  *
  * @example
- * insertEmbed({ value: "Intro", start: 0, end: 5 }, { key: "youtube", content: "https://youtu.be/abc" }); // "Intro\n\n<!-- embed:youtube -->..."
+ * insertEmbed({ value: "Intro", start: 0, end: 5 }, { key: "youtube", content: "https://youtu.be/abc", options: {} }); // "Intro\n\n<!-- embed:youtube -->..."
  */
 export const insertEmbed = (edit: TextEdit, embed: EmbedValue): TextEdit =>
   insertBlock(
     { ...edit, start: edit.end },
-    embedBlock(embed.key, embed.content),
+    embedBlock(embed.key, embed.content, embed.options),
   );
 
 /**

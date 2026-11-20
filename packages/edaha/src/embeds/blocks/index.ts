@@ -76,6 +76,24 @@ export const splitEmbed = (text: string): EmbedBlockParts => {
 };
 
 /**
+ * An embed block's options from JSON (e.g. an editor's `data-options` attribute), or none when it isn't a map.
+ *
+ * @example
+ * embedOptionsOf('{"layout":"large"}'); // { layout: "large" }
+ * embedOptionsOf(null); // {}
+ */
+export const embedOptionsOf = (json: string | null): EmbedOptionValues => {
+  try {
+    const options = JSON.parse(json ?? "") as unknown;
+    return options && typeof options === "object" && !Array.isArray(options)
+      ? (options as EmbedOptionValues)
+      : {};
+  } catch {
+    return {};
+  }
+};
+
+/**
  * Write an embed block: on one line for single-line content (e.g. a URL) without options, otherwise with its tags on
  * their own lines, and its options (if any) in YAML before the content.
  *

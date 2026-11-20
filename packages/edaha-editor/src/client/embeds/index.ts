@@ -1,17 +1,20 @@
 import { html, type TemplateResult } from "lit";
 import { icon } from "../icons/index.ts";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import type { EmbedOptionValues } from "@lvl99dotcom/edaha.md/embeds/blocks";
 import type { EmbedFrame, EmbedInfo } from "../../server/types/index.ts";
 
-/** An embed block's kind (its plugin's key) and content */
+/** An embed block's kind (its plugin's key), content and options */
 export interface EmbedValue {
   /** The embed plugin's key, e.g. "youtube" (empty for an old block without one) */
   key: string;
   /** The block's content, e.g. a URL or a diagram's code */
   content: string;
+  /** The block's options, as set in the embed dialog (see EmbedPlugin.options) */
+  options: EmbedOptionValues;
 }
 
-/** Gives why an embed's content isn't valid for its kind (none when it is) */
+/** Gives why an embed's content or options aren't valid for its kind (none when they are) */
 export type EmbedValidator = (value: EmbedValue) => Promise<string[]>;
 
 /** What the rich text and Markdown editors need for embed blocks */
@@ -19,8 +22,8 @@ export interface EmbedTools {
   /** The site's embed plugins */
   embeds: readonly EmbedInfo[];
   /**
-   * Ask for an embed's content in the embed dialog, checking it is valid: for a new embed of a kind (`adding`, with
-   * empty content), or a block to change. Its kind stays the same. Undefined if cancelled, or if the site has no
+   * Ask for an embed's content and options in the embed dialog, checking they are valid: for a new embed of a kind
+   * (`adding`, with empty content and no options), or a block to change. Its kind stays the same. Undefined if cancelled, or if the site has no
    * plugin for its kind.
    */
   edit(value: EmbedValue, adding: boolean): Promise<EmbedValue | undefined>;

@@ -147,7 +147,7 @@ describe("edaha-richtext", () => {
     expect(element.querySelector(".toolbar-embed")).toBeNull();
     const tools = embedTools([
       undefined,
-      { key: "youtube", content: "https://youtu.be/x" },
+      { key: "youtube", content: "https://youtu.be/x", options: {} },
     ]);
     element.embedTools = tools;
     await element.updateComplete;
@@ -163,7 +163,7 @@ describe("edaha-richtext", () => {
     youtube.click();
     await settle(element);
     expect(tools.edit).toHaveBeenLastCalledWith(
-      { key: "youtube", content: "" },
+      { key: "youtube", content: "", options: {} },
       true,
     );
     expect(element.value).not.toContain("embed");
@@ -186,8 +186,8 @@ describe("edaha-richtext", () => {
   it("should change a selected embed with its kind's button, and add another kind after it", async () => {
     const element = await setup(`<p>One</p>${EMBED}`);
     element.embedTools = embedTools([
-      { key: "youtube", content: "https://youtu.be/y" },
-      { key: "mermaidjs", content: "graph TD;" },
+      { key: "youtube", content: "https://youtu.be/y", options: {} },
+      { key: "mermaidjs", content: "graph TD;", options: {} },
     ]);
     await element.updateComplete;
     element.editor!.commands.setNodeSelection(5);
@@ -201,7 +201,7 @@ describe("edaha-richtext", () => {
     button(element, "YouTube video").click();
     await settle(element);
     expect(element.embedTools!.edit).toHaveBeenCalledWith(
-      { key: "youtube", content: "https://youtu.be/x" },
+      { key: "youtube", content: "https://youtu.be/x", options: {} },
       false,
     );
     const changed =
@@ -212,7 +212,7 @@ describe("edaha-richtext", () => {
     button(element, "MermaidJS diagram").click();
     await settle(element);
     expect(element.embedTools!.edit).toHaveBeenLastCalledWith(
-      { key: "mermaidjs", content: "" },
+      { key: "mermaidjs", content: "", options: {} },
       true,
     );
     expect(element.value).toContain(
@@ -223,7 +223,7 @@ describe("edaha-richtext", () => {
   it("should open the embed dialog when an embed's Edit button is pressed", async () => {
     const element = await setup(`<p>One</p>${EMBED}`);
     element.embedTools = embedTools([
-      { key: "youtube", content: "https://youtu.be/y" },
+      { key: "youtube", content: "https://youtu.be/y", options: {} },
     ]);
     await settle(element);
     const edit = [...element.querySelectorAll(".embed-block button")].find(
@@ -232,7 +232,7 @@ describe("edaha-richtext", () => {
     edit.click();
     await settle(element);
     expect(element.embedTools!.edit).toHaveBeenCalledWith(
-      { key: "youtube", content: "https://youtu.be/x" },
+      { key: "youtube", content: "https://youtu.be/x", options: {} },
       false,
     );
     expect(element.value).toContain('data-content="https://youtu.be/y"');
@@ -249,6 +249,7 @@ describe("edaha-richtext", () => {
     expect(element.embedTools.loadFrame).toHaveBeenCalledWith({
       key: "youtube",
       content: "https://youtu.be/x",
+      options: {},
     });
     expect(find(element, ".block-header span:not(.icon)").textContent).toBe(
       "YouTube video",

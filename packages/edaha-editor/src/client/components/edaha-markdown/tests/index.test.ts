@@ -160,10 +160,10 @@ describe("edaha-markdown", () => {
     const element = await setup("Intro", [5, 5]);
     expect(element.querySelector(".toolbar-embed")).toBeNull();
     const answers: (EmbedValue | undefined)[] = [
-      { key: "youtube", content: "https://youtu.be/abc" },
+      { key: "youtube", content: "https://youtu.be/abc", options: {} },
       undefined,
-      { key: "youtube", content: "https://youtu.be/def" },
-      { key: "mermaidjs", content: "graph TD;\n  A-->B;" },
+      { key: "youtube", content: "https://youtu.be/def", options: {} },
+      { key: "mermaidjs", content: "graph TD;\n  A-->B;", options: {} },
     ];
     element.embedTools = {
       embeds: [
@@ -177,7 +177,7 @@ describe("edaha-markdown", () => {
     await press(element, "YouTube video");
     await settle(element);
     expect(element.embedTools.edit).toHaveBeenLastCalledWith(
-      { key: "youtube", content: "" },
+      { key: "youtube", content: "", options: {} },
       true,
     );
     const code = (id: string) =>
@@ -192,7 +192,7 @@ describe("edaha-markdown", () => {
     await press(element, "YouTube video");
     await settle(element);
     expect(element.embedTools.edit).toHaveBeenLastCalledWith(
-      { key: "youtube", content: "https://youtu.be/abc" },
+      { key: "youtube", content: "https://youtu.be/abc", options: {} },
       false,
     );
     expect(element.value).toBe(`Intro\n\n${code("abc")}`);
@@ -205,7 +205,7 @@ describe("edaha-markdown", () => {
     await press(element, "MermaidJS diagram");
     await settle(element);
     expect(element.embedTools.edit).toHaveBeenLastCalledWith(
-      { key: "mermaidjs", content: "" },
+      { key: "mermaidjs", content: "", options: {} },
       true,
     );
     expect(element.value).toBe(

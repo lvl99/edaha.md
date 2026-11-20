@@ -795,7 +795,7 @@ edaha-article .preview {
   color: var(--colour-error);
 }
 
-/* The embed dialog: what the kind of embed embeds, then its content */
+/* The embed dialog: what the kind of embed embeds, its options, then its content */
 .embed-dialog {
   width: min(40rem, calc(100vw - 2rem));
 }
