@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Configuration | edaha.md</title>
+    <meta name="description" content="A config file tells edaha.md about your website, where its files are, and what to build for each type of article." />
+
+
+  <link rel="stylesheet" href="/edaha.md/base.css" />
+  <link rel="stylesheet" href="/edaha.md/site.css" />
+  </head>
+  <body class="docs ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/edaha.md/">Home</a></li>
+<li><a href="/edaha.md/docs/">Documentation</a></li>
+<li><a href="/edaha.md/docs/03-configuration/" aria-current="page">Configuration</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">Configuration</h1>
+
+  <div class="article-body">
+      <p>A config file tells edaha.md about your website, where its files are, and what to build for each type of article.</p>
+<p>You can use it to structure, build and edit your site in a way that fits you and your project. Only the website’s <code>name</code> and <code>description</code> are required; everything else has a default.</p>
+<p>A typical project looks like this:</p>
+<pre><code>&lt;project&gt;/
+  package.json
+  edahaconfig.yml       # The config file
+  articles/             # Articles, in a folder per article type
+    news/
+      example-article/  # An article: the folder name is its slug
+        article.md
+  templates/            # Optional; your own templates (templatesDir)
+  static/               # Optional; your own static files (staticDir)
+  build/                # The generated website
+</code></pre>
+<h2 id="the-config-file">The config file</h2>
+<h3 id="file-names-and-formats">File names and formats</h3>
+<p>The config file can be written in YAML, JSON or JavaScript. edaha.md looks for these names, in this order:</p>
+<ol>
+<li><code>.edahaconfigrc</code></li>
+<li><code>.edahaconfig</code></li>
+<li><code>edahaconfigrc</code></li>
+<li><code>edahaconfig</code></li>
+<li><code>edaha.config</code></li>
+</ol>
+<p>Each name can end in <code>.yml</code>, <code>.yaml</code>, <code>.json</code>, <code>.js</code>, <code>.cjs</code> or <code>.mjs</code> (tried in that order). If a folder has more than one config file, the first one is used and you get a warning.</p>
+<p>The same settings in each format:</p>
+<pre><code class="language-yaml"># edahaconfig.yml
+name: My Site
+description: News and notes.
+</code></pre>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;My Site&quot;,
+  &quot;description&quot;: &quot;News and notes.&quot;
+}
+</code></pre>
+<pre><code class="language-js">// edaha.config.mjs (or .js in a package with &quot;type&quot;: &quot;module&quot;)
+export default {
+  name: &quot;My Site&quot;,
+  description: &quot;News and notes.&quot;,
+};
+</code></pre>
+<pre><code class="language-js">// edaha.config.cjs (or .js in a CommonJS package)
+module.exports = {
+  name: &quot;My Site&quot;,
+  description: &quot;News and notes.&quot;,
+};
+</code></pre>
+<p>A JavaScript config file exports a plain object. It is the only format that can give <a href="#plugins">embed plugins</a> themselves, rather than their package names.</p>
+<h3 id="where-it-is-found">Where it is found</h3>
+<p><code>edaha build</code> and <code>edaha editor</code> look for the config file:</p>
+<ol>
+<li>in the folder given with <code>--dir</code> (default: the folder you run the command in);</li>
+<li>then in the folder of the nearest <code>package.json</code>, looking up from there.</li>
+</ol>
+<p>You can also name the file yourself with <code>-c</code> or <code>--config</code>:</p>
+<pre><code class="language-sh">edaha build --config config/edaha.config.json
+</code></pre>
+<p>If no config file is found, the command stops with an error that lists the names it looked for.</p>
+<p>The folder that holds the config file is the <strong>site folder</strong>. Every folder in the config file (<code>articlesDir</code>, <code>templatesDir</code>, <code>staticDir</code>, <code>outputDir</code>, <code>publishDir</code>) is relative to it.</p>
+<h2 id="settings">Settings</h2>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="#name"><code>name</code></a></td>
+<td>Yes</td>
+<td>The website’s name.</td>
+</tr>
+<tr>
+<td><a href="#description"><code>description</code></a></td>
+<td>Yes</td>
+<td>The website’s description.</td>
+</tr>
+<tr>
+<td><a href="#path"><code>path</code></a></td>
+<td>No</td>
+<td>A URL path that every article type’s URLs start with.</td>
+</tr>
+<tr>
+<td><a href="#articlesdir"><code>articlesDir</code></a></td>
+<td>No</td>
+<td>The folder that holds the articles.</td>
+</tr>
+<tr>
+<td><a href="#templatesdir"><code>templatesDir</code></a></td>
+<td>No</td>
+<td>The folder that holds your own templates.</td>
+</tr>
+<tr>
+<td><a href="#staticdir"><code>staticDir</code></a></td>
+<td>No</td>
+<td>The folder that holds your own static files.</td>
+</tr>
+<tr>
+<td><a href="#outputdir"><code>outputDir</code></a></td>
+<td>No</td>
+<td>The folder the website is built into.</td>
+</tr>
+<tr>
+<td><a href="#publishdir"><code>publishDir</code></a></td>
+<td>No</td>
+<td>A folder outside the site folder that the built website is copied into.</td>
+</tr>
+<tr>
+<td><a href="#siteurl"><code>siteUrl</code></a></td>
+<td>No</td>
+<td>The website’s absolute URL, for links in RSS feeds.</td>
+</tr>
+<tr>
+<td><a href="#reservedpaths"><code>reservedPaths</code></a></td>
+<td>No</td>
+<td>Paths at the website’s root that articles and article types can’t use.</td>
+</tr>
+<tr>
+<td><a href="#types"><code>types</code></a></td>
+<td>No</td>
+<td>Settings for each article type: URL path, labels and what is built.</td>
+</tr>
+<tr>
+<td><a href="#plugins"><code>plugins</code></a></td>
+<td>No</td>
+<td>Embed plugins: their package names, or (JavaScript config only) the plugins themselves.</td>
+</tr>
+<tr>
+<td><a href="#metadata"><code>metadata</code></a></td>
+<td>No</td>
+<td>Custom settings for articles, with how the editor shows them.</td>
+</tr>
+<tr>
+<td><a href="#metadatagroups"><code>metadataGroups</code></a></td>
+<td>No</td>
+<td>Groups of settings in the editor, besides the built-in ones.</td>
+</tr>
+<tr>
+<td><a href="#author"><code>author</code></a></td>
+<td>No</td>
+<td>The author of articles that don’t name one.</td>
+</tr>
+</tbody>
+</table>
+<p>Unknown settings stop the build, so a typo doesn’t go unnoticed.</p>
+<h3 id="name"><code>name</code></h3>
+<p>The website’s name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don’t name one, unless <a href="#author"><code>author</code></a> is set.</p>
+<pre><code class="language-yaml">name: My Site
+</code></pre>
+<h3 id="description"><code>description</code></h3>
+<p>The website’s description, used in the pages’ <code>&lt;meta name=&quot;description&quot;&gt;</code> when a page has nothing more specific, and in RSS feeds.</p>
+<pre><code class="language-yaml">description: News and notes.
+</code></pre>
+<h3 id="path"><code>path</code></h3>
+<p>A URL path that every article type’s URLs start with. Use it when the website lives in a sub-folder of another website.</p>
+<ul>
+<li><strong>Accepted values:</strong> lowercase kebab-case, e.g. <code>blog</code>, or <code>&quot;&quot;</code> for the website’s root.</li>
+<li><strong>Default:</strong> <code>&quot;&quot;</code></li>
+</ul>
+<pre><code class="language-yaml">path: blog # news articles are at /blog/news/&lt;slug&gt;/
+</code></pre>
+<h3 id="articlesdir"><code>articlesDir</code></h3>
+<p>The folder that holds the articles, relative to the site folder. Each folder inside it is an <a href="#types">article type</a>.</p>
+<ul>
+<li><strong>Accepted values:</strong> a folder inside the site folder. It can’t be the site folder itself, and must be apart from the templates and static files folders.</li>
+<li><strong>Default:</strong> <code>articles</code></li>
+</ul>
+<pre><code class="language-yaml">articlesDir: content
+</code></pre>
+<h3 id="templatesdir"><code>templatesDir</code></h3>
+<p>The folder that holds your own <a href="/edaha.md/docs/05-templating/">templates</a>, relative to the site folder. Templates in it are used over the default theme’s, one file at a time.</p>
+<ul>
+<li><strong>Accepted values:</strong> a folder inside the site folder, apart from the articles and static files folders.</li>
+<li><strong>Default:</strong> <code>templates</code></li>
+</ul>
+<pre><code class="language-yaml">templatesDir: site/templates
+</code></pre>
+<h3 id="staticdir"><code>staticDir</code></h3>
+<p>The folder that holds your own static files: stylesheets, fonts, images and anything else copied to the website’s root as it is. Its files are used over the default theme’s, e.g. a <code>site.css</code> replaces the theme’s stylesheet.</p>
+<ul>
+<li><strong>Accepted values:</strong> a folder inside the site folder, apart from the articles and templates folders.</li>
+<li><strong>Default:</strong> <code>static</code></li>
+</ul>
+<pre><code class="language-yaml">staticDir: site/static
+</code></pre>
+<p>A whole site can live in one folder of a bigger project, with the config file at the project’s root:</p>
+<pre><code class="language-yaml">articlesDir: site/content
+templatesDir: site/templates
+staticDir: site/static
+outputDir: site/build
+</code></pre>
+<h3 id="outputdir"><code>outputDir</code></h3>
+<p>The folder the website is built into, relative to the site folder. It is <strong>emptied on every build</strong>, so keep nothing else in it.</p>
+<ul>
+<li><strong>Accepted values:</strong> a folder inside the site folder, apart from the articles, templates and static files folders.</li>
+<li><strong>Default:</strong> <code>build</code></li>
+</ul>
+<pre><code class="language-yaml">outputDir: build
+</code></pre>
+<h3 id="publishdir"><code>publishDir</code></h3>
+<p>A folder that the built website is copied into after every build, e.g. the build folder of another app that serves the website.</p>
+<ul>
+<li><strong>Accepted values:</strong> any folder outside the site folder, relative to it.</li>
+<li><strong>Default:</strong> none</li>
+</ul>
+<p>Before copying, the files that the previous build published there are removed. The build stops if one of its files is already there, so it never overwrites another app’s files.</p>
+<pre><code class="language-yaml">publishDir: ../app/dist
+</code></pre>
+<h3 id="siteurl"><code>siteUrl</code></h3>
+<p>The website’s absolute URL. RSS feeds need it, because their links must be absolute. The <code>SITE_URL</code> environment variable and the <code>--site-url</code> option of <code>edaha build</code> take its place when they are set.</p>
+<p>If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at <code>https://lvl99.github.io/edaha.md</code>, every URL in its pages starts with that path (<code>/edaha.md/</code>), which templates get as <a href="/edaha.md/docs/05-templating/#template-data"><code>site.baseUrl</code></a>. The built files stay at the same places in the output folder, so publish its contents to that sub-folder.</p>
+<ul>
+<li><strong>Accepted values:</strong> an <code>http://</code> or <code>https://</code> URL.</li>
+<li><strong>Default:</strong> <code>http://localhost</code>, with a warning.</li>
+</ul>
+<pre><code class="language-yaml">siteUrl: https://example.com
+</code></pre>
+<h3 id="reservedpaths"><code>reservedPaths</code></h3>
+<p>Paths at the website’s root that articles and article types can’t use, e.g. the routes of another app that shares the website. They only matter when <code>path</code> is <code>&quot;&quot;</code>.</p>
+<ul>
+<li><strong>Accepted values:</strong> a list of lowercase paths (letters, numbers, <code>.</code>, <code>_</code> and <code>-</code>).</li>
+<li><strong>Default:</strong> none</li>
+</ul>
+<pre><code class="language-yaml">reservedPaths: [app, api, jwks.json]
+</code></pre>
+<h3 id="types"><code>types</code></h3>
+<p>Settings for each article type, by its folder name. Each type can set:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>path</code></td>
+<td>The type’s URL path: lowercase kebab-case, or <code>&quot;&quot;</code> for the website root.</td>
+<td>The type’s name</td>
+</tr>
+<tr>
+<td><code>labelSingle</code></td>
+<td>The label for one article, e.g. “Article”.</td>
+<td>The name, capitalised</td>
+</tr>
+<tr>
+<td><code>labelPlural</code></td>
+<td>The label for several articles, e.g. “Articles”.</td>
+<td><code>labelSingle</code> followed by “s”</td>
+</tr>
+<tr>
+<td><code>generate</code></td>
+<td>What is built for the type (see below), or <code>false</code> to build nothing.</td>
+<td>Everything</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td>The <a href="#metadata">custom settings</a> the type uses, or <code>false</code> for none.</td>
+<td>All of them</td>
+</tr>
+<tr>
+<td><code>author</code></td>
+<td>The author of the type’s articles that don’t name one, or <code>false</code> for none (<a href="#author">see <code>author</code></a>).</td>
+<td>The site’s <code>author</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>generate</code> has these settings, all <code>true</code> by default:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Builds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>article</code></td>
+<td>The type’s article pages. Without them, nothing else is built either.</td>
+</tr>
+<tr>
+<td><code>list</code></td>
+<td>The type’s <a href="/edaha.md/docs/06-lists/">list pages</a>.</td>
+</tr>
+<tr>
+<td><code>feed</code></td>
+<td>The type’s RSS feed, and its articles in the tag and author feeds.</td>
+</tr>
+<tr>
+<td><code>author</code></td>
+<td>The type’s author lists.</td>
+</tr>
+<tr>
+<td><code>tag</code></td>
+<td>The type’s tag lists.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-yaml">types:
+  news:
+    labelSingle: News
+    labelPlural: News
+  page:
+    labelSingle: Page
+    labelPlural: Pages
+    # The website's own pages, at its root: page/index is &quot;/&quot;, page/about is &quot;/about/&quot;
+    path: &quot;&quot;
+    generate:
+      list: false
+      feed: false
+      author: false
+      tag: false
+</code></pre>
+<ul>
+<li>A type folder that isn’t in <code>types</code> uses the defaults, with a warning.</li>
+<li>Types can’t be called <code>tags</code> or <code>authors</code>, and no two types can have the same path.</li>
+<li>A type with <code>generate: false</code> builds nothing, but its articles are still checked for errors.</li>
+</ul>
+<h3 id="plugins"><code>plugins</code></h3>
+<p>The site’s <a href="/edaha.md/docs/07-embeds/">embed plugins</a>, which render <code>&lt;!-- embed:&lt;key&gt; --&gt;</code> blocks. edaha.md has none of its own.</p>
+<ul>
+<li><strong>Accepted values:</strong> a list of package names, found from the config file’s folder (install them first). A JavaScript config file can also give the plugins themselves.</li>
+<li><strong>Default:</strong> none</li>
+</ul>
+<pre><code class="language-yaml">plugins:
+  - &quot;@lvl99dotcom/edaha-plugin-youtube&quot;
+  - &quot;@lvl99dotcom/edaha-plugin-mermaidjs&quot;
+</code></pre>
+<pre><code class="language-js">// edaha.config.mjs
+import { vimeo } from &quot;./embeds/vimeo.mjs&quot;;
+
+export default {
+  name: &quot;My Site&quot;,
+  description: &quot;News and notes.&quot;,
+  plugins: [&quot;@lvl99dotcom/edaha-plugin-youtube&quot;, vimeo],
+};
+</code></pre>
+<p>No two plugins can have the same key. See <a href="/edaha.md/docs/07-embeds/">Embeds</a> for the plugins there are, and how to write one.</p>
+<h3 id="author"><code>author</code></h3>
+<p>The author of articles that don’t name one (unless their type has its own <code>author</code>): their author lists and feeds use it, and the editor shows it in the author fields. <code>false</code> means no author: those articles have none, and aren’t in any author’s list.</p>
+<ul>
+<li><strong>Accepted values:</strong> a name, <code>{ name, email, url }</code> like an article’s <a href="/edaha.md/docs/04-articles/#settings"><code>author</code></a>, or <code>false</code>.</li>
+<li><strong>Default:</strong> the website’s <a href="#name"><code>name</code></a></li>
+</ul>
+<pre><code class="language-yaml">author:
+  name: Jo Bloggs
+  email: jo@example.com
+  url: https://example.com
+types:
+  docs:
+    author: Docs team # docs articles without an author have this one
+  page:
+    author: false # pages without an author have none
+</code></pre>
+<p>An article chooses its own author, or <code>author: false</code> for none, whatever the defaults are.</p>
+<h3 id="metadata"><code>metadata</code></h3>
+<p>Custom settings articles can have besides the core ones (<code>type</code>, <code>status</code>, <code>date</code>, <code>title</code>, <code>template</code>, <code>author</code>, <code>excerpt</code>, <code>thumbnail</code>, <code>attachments</code> and <code>tags</code>), e.g. a featured image or a rating. Each is a <a href="https://json-schema.org/">JSON Schema</a> under the key articles store it with, plus an <code>$edahaField</code> saying how the editor shows it.</p>
+<ul>
+<li><strong>Accepted values:</strong> a map of keys (a letter or <code>_</code>, then letters, digits, <code>_</code> and <code>-</code>; not a core setting’s name) to JSON Schemas.</li>
+<li><strong>Default:</strong> none</li>
+</ul>
+<pre><code class="language-yaml">metadata:
+  featured:
+    title: Featured image # the label, and in messages (default: the key)
+    description: A large image at the top of the article
+    type: string
+    $edahaField:
+      info: JPG, PNG, GIF or WebP
+      file:
+        accept: image/jpg, image/png, image/gif, image/webp
+  rating:
+    type: number
+    minimum: 0
+    maximum: 10
+    $edahaField:
+      number:
+        step: 1
+types:
+  news:
+    metadata: [featured] # news articles use only &quot;featured&quot;
+  docs:
+    metadata: false # docs use none
+  # Types without a metadata setting use them all
+</code></pre>
+<p><code>$edahaField</code> has an optional <code>title</code>, <code>description</code> and <code>info</code> (shown under the label), and exactly one field kind, set to <code>true</code> or to its options:</p>
+<table>
+<thead>
+<tr>
+<th>Field kind</th>
+<th>Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>text</code>, <code>email</code>, <code>url</code>, <code>tel</code>, <code>color</code>, <code>date</code>, <code>time</code>, <code>datetime-local</code></td>
+<td>An input of that type.</td>
+</tr>
+<tr>
+<td><code>number</code>, <code>range</code></td>
+<td>A number input or slider, e.g. with <code>step</code>.</td>
+</tr>
+<tr>
+<td><code>textarea</code></td>
+<td>A multi-line text box, e.g. with <code>rows</code>.</td>
+</tr>
+<tr>
+<td><code>select</code></td>
+<td>A dropdown of <code>options</code> (each a <code>value</code> and <code>title</code>, or the schema’s <code>enum</code>); <code>list: true</code> shows it as a list.</td>
+</tr>
+<tr>
+<td><code>checkbox</code></td>
+<td>A checkbox, for <code>type: boolean</code> (<code>true</code> or <code>false</code>). With <code>{ value: ... }</code>, it saves that value when checked and nothing when not.</td>
+</tr>
+<tr>
+<td><code>radio</code></td>
+<td>Radio buttons for <code>options</code> (each with an optional <code>description</code>), or the schema’s <code>enum</code>.</td>
+</tr>
+<tr>
+<td><code>file</code></td>
+<td>A file chooser that uploads into the article’s folder (e.g. with <code>accept</code>).</td>
+</tr>
+</tbody>
+</table>
+<p>A <code>color</code> field keeps a value written without its <code>#</code> (e.g. <code>0687f5</code>) that way.</p>
+<p>Options are the input’s HTML attributes. JSON Schema’s own keywords set them too: <code>minimum</code> and <code>maximum</code> become <code>min</code> and <code>max</code>, <code>minLength</code> and <code>maxLength</code> become <code>minlength</code> and <code>maxlength</code>, and <code>pattern</code> stays <code>pattern</code>; a field’s own options win.</p>
+<p>A <code>type: object</code> setting is a group of fields, one per property (each with its own <code>$edahaField</code>; <code>required</code> marks them). A <code>type: array</code> setting is a list with Add and Delete buttons, its <code>items</code> having the <code>$edahaField</code> (<code>maxItems</code> limits it). Or give the array itself an <code>$edahaField</code>, e.g. a <code>select</code> with <code>multiple: true</code>, to choose several at once.</p>
+<pre><code class="language-yaml">metadata:
+  credit:
+    title: Credit
+    type: object
+    properties:
+      name:
+        type: string
+        $edahaField: { text: true }
+      email:
+        type: string
+        format: email
+        $edahaField: { email: true }
+    required: [name]
+  images:
+    title: Images
+    type: array
+    items:
+      type: string
+      $edahaField:
+        file: { accept: image/* }
+    maxItems: 5
+</code></pre>
+<p>Each custom setting appears in a group of the editor’s settings: <code>$edahaField.group</code> names the group (see <a href="#metadatagroups"><code>metadataGroups</code></a>), or is <code>{ key, after }</code> to come after a given setting in it. Without one, it’s in the <strong>Custom</strong> group. A map’s or list’s <code>$edahaField</code> may set only its group.</p>
+<pre><code class="language-yaml">metadata:
+  featured:
+    type: string
+    $edahaField:
+      group:
+        key: files
+        after: thumbnail # right after the thumbnail
+      file: true
+</code></pre>
+<h4 id="default-values-and-conditions">Default values and conditions</h4>
+<p><code>$edahaField</code> can also have:</p>
+<ul>
+<li><code>defaultValue</code>: the value a field has when it has none (text, a number, <code>true</code>, <code>false</code> or <code>null</code>). The editor shows it, and saves it with the article.</li>
+<li><code>showWhen</code>: show the field only when these conditions match.</li>
+<li><code>hideWhen</code>: hide the field when these conditions match.</li>
+</ul>
+<p>A hidden field’s value is left out: the editor doesn’t save it, and templates don’t get it. A field with both shows when <code>showWhen</code> matches and <code>hideWhen</code> doesn’t. Conditions can use the other fields’ values (with their defaults), so fields can show and hide as the author changes them.</p>
+<p>A condition is a list of a value’s path (in dot notation from the top of the settings, e.g. <code>credit.name</code> or <code>images.0</code>), an operator, and a value: <code>=</code>, <code>!=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code> and <code>&lt;=</code> compare with one value (a missing value equals <code>null</code>); <code>in</code> and <code>not-in</code> check a list of values. Group conditions with <code>and</code> (all must match) or <code>or</code> (any must match), and nest groups; a list of groups must all match.</p>
+<pre><code class="language-yaml">metadata:
+  layout:
+    type: string
+    enum: [slim, large]
+    $edahaField:
+      select: true
+      defaultValue: large
+  tracklist:
+    type: boolean
+    $edahaField:
+      checkbox: true
+      defaultValue: false
+      hideWhen: [layout, &quot;=&quot;, slim]
+  coverNote:
+    type: string
+    $edahaField:
+      text: true
+      showWhen:
+        or:
+          - [layout, &quot;=&quot;, large]
+          - [tracklist, &quot;=&quot;, true]
+</code></pre>
+<p><a href="/edaha.md/docs/07-embeds/#defining-options">Embed options</a> use the same fields and conditions.</p>
+<p>Values are checked against their schemas with <a href="https://ajv.js.org/">ajv</a>, including formats like <code>uri</code> and <code>email</code>. Problems are described in plain words, e.g. “Rating must be at most 10” or “Credit name is required”, and show above the field in the editor. The build and the editor stop with an error if a key is a core setting’s name, a type lists a key that isn’t defined, a value has no field kind or more than one, a default value or condition isn’t valid, or a schema isn’t valid.</p>
+<h3 id="metadatagroups"><code>metadataGroups</code></h3>
+<p>The editor shows articles’ settings in groups that open and close. These are built in, in this order:</p>
+<table>
+<thead>
+<tr>
+<th>Group</th>
+<th>Settings</th>
+<th>Starts</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>info</code></td>
+<td>Type, status, slug, publication date and author.</td>
+<td>Open</td>
+</tr>
+<tr>
+<td><code>categorise</code></td>
+<td>Tags.</td>
+<td>Closed</td>
+</tr>
+<tr>
+<td><code>customise</code></td>
+<td>Excerpt and template.</td>
+<td>Open</td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td>Thumbnail, attachments, and the files in the article’s folder (<code>uploaded</code>).</td>
+<td>Open</td>
+</tr>
+<tr>
+<td><code>custom</code></td>
+<td>Custom settings without a group.</td>
+<td>Closed</td>
+</tr>
+</tbody>
+</table>
+<p><code>metadataGroups</code> adds groups of your own, for <a href="#metadata">custom settings</a> to be in.</p>
+<ul>
+<li><strong>Accepted values:</strong> a map of keys (a letter, then letters, digits, <code>_</code> and <code>-</code>; not a built-in group’s key) to a group’s settings:
+<ul>
+<li><code>title</code> (required): the group’s heading.</li>
+<li><code>description</code>: shown above its settings.</li>
+<li><code>after</code>: the group it comes after. Without it, groups go at the end.</li>
+<li><code>openedByDefault</code>: whether it starts open (<code>true</code>) or closed (<code>false</code>, the default).</li>
+</ul>
+</li>
+<li><strong>Default:</strong> none</li>
+</ul>
+<pre><code class="language-yaml">metadataGroups:
+  seo:
+    title: Search engines
+    description: How the article appears in search results.
+    after: info
+    openedByDefault: true
+metadata:
+  keywords:
+    type: string
+    $edahaField:
+      group: seo
+      text: true
+</code></pre>
+<p>A setting in a group that doesn’t exist, or coming after a setting or group that isn’t there, stops the build and the editor with an error.</p>
+<h2 id="commands">Commands</h2>
+<h3 id="edaha-build"><code>edaha build</code></h3>
+<p>Builds the website into <code>outputDir</code>, and copies it into <code>publishDir</code> if that is set. See <a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-c</code>, <code>--config &lt;file&gt;</code></td>
+<td>The config file. Default: the first one found (see <a href="#where-it-is-found">Where it is found</a>).</td>
+</tr>
+<tr>
+<td><code>--dir &lt;folder&gt;</code></td>
+<td>The folder to look for a config file in. Default: the current folder.</td>
+</tr>
+<tr>
+<td><code>--site-url &lt;url&gt;</code></td>
+<td>The website’s absolute URL, for feeds. Default: <code>SITE_URL</code>, then <code>siteUrl</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="edaha-editor"><code>edaha editor</code></h3>
+<p>Runs the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a> on your computer.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-c</code>, <code>--config &lt;file&gt;</code></td>
+<td>The config file, as for <code>edaha build</code>.</td>
+</tr>
+<tr>
+<td><code>--dir &lt;folder&gt;</code></td>
+<td>The folder to look for a config file in, as for <code>edaha build</code>.</td>
+</tr>
+<tr>
+<td><code>--port &lt;number&gt;</code></td>
+<td>The port the editor listens on. Default: <code>5180</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>Both commands also take <code>-h</code> / <code>--help</code> and <code>-v</code> / <code>--version</code>.</p>
+
+  </div>
+
+</article>
+        </main>
+
+  <aside>
+<ol>
+  <li><a href="/docs/01-introduction">Introduction</a></li>
+  <li><a href="/docs/02-quick-start">Quick start</a></li>
+  <li><a href="/docs/03-configuration">Configuration</a></li>
+  <li><a href="/docs/04-articles">Articles</a></li>
+  <li><a href="/docs/05-templating">Templating</a></li>
+  <li><a href="/docs/06-lists">Lists</a></li>
+  <li><a href="/docs/07-embeds">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor">WYSIWYG editor</a></li>
+</ol>
+  </aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/edaha.md/">Home</a>
+    <a href="/edaha.md/about">About</a>
+<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/edaha.md/theme-switcher.js" defer></script>
+  </body>
+</html>

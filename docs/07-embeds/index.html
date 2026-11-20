@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Embeds | edaha.md</title>
+    <meta name="description" content="Embeds turn text in an article into richer content, such as a video, a music player or a diagram. They are like shortcodes in WordPress, or an HTML &lt;iframe&gt; you don’t have to write yourself. Each kind of embed is a plugin you add to your site." />
+
+
+  <link rel="stylesheet" href="/edaha.md/base.css" />
+  <link rel="stylesheet" href="/edaha.md/site.css" />
+  </head>
+  <body class="docs ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/edaha.md/">Home</a></li>
+<li><a href="/edaha.md/docs/">Documentation</a></li>
+<li><a href="/edaha.md/docs/07-embeds/" aria-current="page">Embeds</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">Embeds</h1>
+
+  <div class="article-body">
+      <p>Embeds turn text in an article into richer content, such as a video, a music player or a diagram. They are like shortcodes in WordPress, or an HTML <code>&lt;iframe&gt;</code> you don’t have to write yourself. Each kind of embed is a plugin you add to your site.</p>
+<h2 id="using-embeds">Using embeds</h2>
+<p>Put the embed’s content between <code>&lt;!-- embed:&lt;key&gt; --&gt;</code> and <code>&lt;!-- /embed:&lt;key&gt; --&gt;</code>, where <code>&lt;key&gt;</code> names the kind of embed. For a URL, write it on one line:</p>
+<pre><code class="language-md">Here is the launch video:
+
+&lt;!-- embed:youtube --&gt;https://www.youtube.com/watch?v=aju_UB5VIf8&lt;!-- /embed:youtube --&gt;
+</code></pre>
+<p>Content over several lines goes between the tags on their own lines:</p>
+<pre><code class="language-md">&lt;!-- embed:mermaidjs --&gt;
+
+graph TD;
+A--&gt;B;
+A--&gt;C;
+&lt;!-- /embed:mermaidjs --&gt;
+</code></pre>
+<p>When the site is built, the block is replaced with the embed’s HTML. The closing tag can leave out the key (<code>&lt;!-- /embed --&gt;</code>). Blank lines around the content are left out, but the first line’s indentation is kept.</p>
+<p>That second block draws this diagram on this website:</p>
+<div class="embed embed-mermaidjs"><pre class="mermaid">graph TD;
+A--&gt;B;
+A--&gt;C;</pre></div>
+<p>A block whose key has no plugin, or whose plugin fails, gives a warning and is shown as it is written instead (a URL as a link), so the build carries on. So does an old block without a key (<code>&lt;!-- embed --&gt;...&lt;!-- /embed --&gt;</code>): add the key to embed it again.</p>
+<p>Embed blocks inside code blocks and inline code are left alone, so you can write about them.</p>
+<p>In the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a>, each embed has its own toolbar button, which asks for its content (and options) and shows the embed in the article’s body.</p>
+<h3 id="options">Options</h3>
+<p>Some embeds have options that change how they show, e.g. the Bandcamp player’s layout and colours. A block’s options go in YAML in a <code>&lt;!--yaml ... --&gt;</code> comment before its content, like an article’s settings:</p>
+<pre><code class="language-md">&lt;!-- embed:bandcamp --&gt;
+&lt;!--yaml
+layout: large
+tracklist: true
+linkcol: 051c2c
+--&gt;
+
+https://artist.bandcamp.com/album/name
+&lt;!-- /embed:bandcamp --&gt;
+</code></pre>
+<p>Options you leave out get their defaults. The editor’s embed dialog shows each option as a field below the content, and saves every option that applies (defaults included), so the block keeps looking the same if a plugin’s defaults change. Options that don’t apply to the others’ values (e.g. the tracklist for a slim player) are hidden in the dialog and left out.</p>
+<p>A block whose options aren’t the embed’s (an unknown name, or a value of the wrong kind) is left out of the website with a warning, like one whose content isn’t valid.</p>
+<h2 id="adding-embeds-to-your-site">Adding embeds to your site</h2>
+<p>edaha.md has no embeds of its own. Install the plugins you want, then list their packages under <code>plugins</code> in your <a href="/edaha.md/docs/03-configuration/#plugins">config file</a>:</p>
+<table>
+<thead>
+<tr>
+<th>Plugin</th>
+<th>Key</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-youtube"><code>@lvl99dotcom/edaha-plugin-youtube</code></a></td>
+<td><code>youtube</code></td>
+<td>A YouTube video’s URL. Always embedded from youtube-nocookie.com.</td>
+</tr>
+<tr>
+<td><a href="https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-bandcamp"><code>@lvl99dotcom/edaha-plugin-bandcamp</code></a></td>
+<td><code>bandcamp</code></td>
+<td>A Bandcamp album or track page’s URL. The page is read when building, so it needs internet access. Options below.</td>
+</tr>
+<tr>
+<td><a href="https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-mermaidjs"><code>@lvl99dotcom/edaha-plugin-mermaidjs</code></a></td>
+<td><code>mermaidjs</code></td>
+<td><a href="https://mermaid.js.org">Mermaid</a> code. Pages with diagrams load Mermaid from jsDelivr to draw them.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-sh">npm add --save-dev @lvl99dotcom/edaha-plugin-youtube @lvl99dotcom/edaha-plugin-mermaidjs
+</code></pre>
+<pre><code class="language-yaml"># edahaconfig.yml
+plugins:
+  - &quot;@lvl99dotcom/edaha-plugin-youtube&quot;
+  - &quot;@lvl99dotcom/edaha-plugin-mermaidjs&quot;
+</code></pre>
+<p>Packages are found from the config file’s folder, like an <code>import</code> there would be. Their default export is an embed plugin (or a list of them).</p>
+<h3 id="bandcamp-player-options">Bandcamp player options</h3>
+<p>The Bandcamp player’s options are those of Bandcamp’s own embed codes:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Values</th>
+<th>Default</th>
+<th>Applies to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>layout</code></td>
+<td><code>slim</code>, <code>artwork-only</code> or <code>large</code></td>
+<td><code>large</code></td>
+<td>All</td>
+</tr>
+<tr>
+<td><code>artwork</code></td>
+<td><code>none</code> to hide the artwork</td>
+<td>(shown)</td>
+<td><code>slim</code> and <code>large</code></td>
+</tr>
+<tr>
+<td><code>size</code></td>
+<td>The artwork’s size: <code>small</code> or <code>large</code></td>
+<td><code>large</code></td>
+<td><code>large</code> with artwork</td>
+</tr>
+<tr>
+<td><code>tracklist</code></td>
+<td><code>true</code> to show an album’s tracklist</td>
+<td><code>false</code></td>
+<td><code>large</code></td>
+</tr>
+<tr>
+<td><code>transparent</code></td>
+<td><code>true</code> for a transparent background</td>
+<td><code>true</code></td>
+<td>All</td>
+</tr>
+<tr>
+<td><code>bgcol</code></td>
+<td>The background colour, e.g. <code>ffffff</code></td>
+<td><code>ffffff</code></td>
+<td>All</td>
+</tr>
+<tr>
+<td><code>linkcol</code></td>
+<td>The links’ colour, e.g. <code>0687f5</code></td>
+<td><code>0687f5</code></td>
+<td>All</td>
+</tr>
+</tbody>
+</table>
+<p>Write colours with or without their <code>#</code>. Put colours made only of digits (e.g. <code>000000</code>) in quotes, so YAML reads them as text.</p>
+<h2 id="creating-your-own">Creating your own</h2>
+<p>An embed is an <strong>embed plugin</strong>: an object with a key, a name and a <code>build.render</code> function that turns a block’s content into HTML. The content is the text between its tags, so it can be anything: a URL, an ID, some code.</p>
+<pre><code class="language-js">const VIDEO_URL = /^https:\/\/vimeo\.com\/(\d+)$/;
+
+/** @type {import(&quot;@lvl99dotcom/edaha.md&quot;).EmbedPlugin} */
+export const vimeo = {
+  key: &quot;vimeo&quot;,
+  name: &quot;Vimeo video&quot;,
+  // Optional; shown in the editor's embed dialog
+  description: &quot;A Vimeo video player, from the video's URL.&quot;,
+  // Optional; shown under the content's label in the embed dialog
+  info: &quot;Paste the video's URL, e.g. https://vimeo.com/123&quot;,
+  // Optional; the web addresses its HTML loads from (see &quot;Previews in the editor&quot;)
+  sources: { frame: [&quot;https://player.vimeo.com&quot;] },
+  // Optional; options that change how a block shows (see &quot;Defining options&quot;)
+  options: {
+    autoplay: {
+      title: &quot;Play automatically&quot;,
+      type: &quot;boolean&quot;,
+      $edahaField: { checkbox: true, defaultValue: false },
+    },
+  },
+  // Optional; check the content before it is rendered (see &quot;Checking content&quot;)
+  validate: (content) =&gt; {
+    if (!VIDEO_URL.test(content))
+      throw new Error(`${content} is not a Vimeo video URL`);
+    return true;
+  },
+  build: {
+    // The HTML for a block's content; throw if it can't be embedded
+    render: async (content, { options }) =&gt; {
+      const [, id] = VIDEO_URL.exec(content);
+      return `&lt;iframe src=&quot;https://player.vimeo.com/video/${id}?autoplay=${options.autoplay ? 1 : 0}&quot; title=&quot;Vimeo video&quot; allowfullscreen&gt;&lt;/iframe&gt;`;
+    },
+  },
+};
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>key</code></td>
+<td>Which blocks it renders: <code>&lt;!-- embed:&lt;key&gt; --&gt;</code>. Lowercase kebab-case, e.g. <code>vimeo</code>. Also its wrapper’s class: <code>embed-&lt;key&gt;</code>.</td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td>Its name, shown in the editor and in warnings, e.g. <code>Vimeo video</code>.</td>
+</tr>
+<tr>
+<td><code>description</code></td>
+<td>Optional; what it embeds, shown in the editor’s embed dialog.</td>
+</tr>
+<tr>
+<td><code>info</code></td>
+<td>Optional; what to put in the content, shown under the content’s label in the embed dialog. Without it, the dialog says “Provide the embed’s content, e.g. a URL or code”.</td>
+</tr>
+<tr>
+<td><code>sources</code></td>
+<td>Optional; the <code>https://</code> origins its HTML loads from, by kind: <code>frame</code>, <code>script</code>, <code>style</code>, <code>font</code> and <code>connect</code> (requests from its scripts). The editor’s previews allow them.</td>
+</tr>
+<tr>
+<td><code>options</code></td>
+<td>Optional; the options blocks can set, as fields like <a href="/edaha.md/docs/03-configuration/#metadata">custom metadata</a>. See below.</td>
+</tr>
+<tr>
+<td><code>validate(content, options)</code></td>
+<td>Optional; checks a block’s content (and options) before it is rendered. Return <code>true</code> when it is valid; throw an error saying what is wrong (or an <code>AggregateError</code> with one error for each problem). See below.</td>
+</tr>
+<tr>
+<td><code>build.render(content, context)</code></td>
+<td>Returns a promise of the HTML for a block. <code>context.options</code> has the block’s options; <code>context.fetch</code> fetches other data, e.g. an oEmbed response; <code>context.state</code> is shared by the page (see below). Throw if the content can’t be embedded.</td>
+</tr>
+<tr>
+<td><code>build.renderHead(context)</code></td>
+<td>Optional; HTML for the <code>&lt;head&gt;</code> of each page that has this embed, once, e.g. a stylesheet.</td>
+</tr>
+<tr>
+<td><code>build.renderFoot(context)</code></td>
+<td>Optional; HTML for the end of the <code>&lt;body&gt;</code> of each page that has this embed, once, e.g. a script.</td>
+</tr>
+<tr>
+<td><code>editor</code></td>
+<td>Optional; how it shows in the editor’s rich text body (see “Previews in the editor”).</td>
+</tr>
+</tbody>
+</table>
+<p>Escape anything from the content or options that you put into the HTML. Blocks are rendered with each page that shows them (an article’s page, and list pages showing its excerpt), and each address <code>fetch</code> fetches is fetched once per build.</p>
+<h3 id="defining-options">Defining options</h3>
+<p><code>options</code> lists the options a block can set, by the name they are saved under. Each is a JSON Schema with <code>$edahaField</code>, saying how the editor’s embed dialog shows it, exactly like <a href="/edaha.md/docs/03-configuration/#metadata">custom metadata fields</a>, including:</p>
+<ul>
+<li><code>defaultValue</code>: the value used when a block doesn’t set one.</li>
+<li><code>showWhen</code> and <code>hideWhen</code>: conditions on the other options for when the option applies. An option that doesn’t apply is hidden in the dialog and left out of the options <code>render</code> gets. See <a href="/edaha.md/docs/03-configuration/#default-values-and-conditions">conditions</a>.</li>
+</ul>
+<pre><code class="language-js">options: {
+  layout: {
+    title: &quot;Layout&quot;,
+    type: &quot;string&quot;,
+    enum: [&quot;slim&quot;, &quot;large&quot;],
+    $edahaField: { select: true, defaultValue: &quot;large&quot; },
+  },
+  tracklist: {
+    title: &quot;Show tracklist&quot;,
+    type: &quot;boolean&quot;,
+    $edahaField: { checkbox: true, defaultValue: false, hideWhen: [&quot;layout&quot;, &quot;=&quot;, &quot;slim&quot;] },
+  },
+},
+</code></pre>
+<p><code>render</code> and <code>validate</code> get a block’s options with their defaults filled in and options that don’t apply left out, e.g. <code>{ layout: &quot;large&quot;, tracklist: false }</code>. A block’s options are checked against their schemas before <code>validate</code>, and one with options that aren’t valid is left out of the website, with a warning.</p>
+<h3 id="checking-content">Checking content</h3>
+<p><code>validate</code> checks a block’s content (its second argument is the block’s options) before it is rendered, for the website and in the editor. Return <code>true</code> when it is valid. Otherwise, throw an error saying what is wrong, so the author can fix it; for several problems, throw an <code>AggregateError</code> with one error for each. Returning <code>false</code> gives a general message instead. It can be <code>async</code>.</p>
+<pre><code class="language-js">validate: (content) =&gt; {
+  const problems = [];
+  if (!content.startsWith(&quot;https://&quot;)) problems.push(new Error(&quot;Use an https:// URL&quot;));
+  if (content.length &gt; 200) problems.push(new Error(&quot;The URL is too long&quot;));
+  if (problems.length) throw new AggregateError(problems, &quot;The URL isn't valid&quot;);
+  return true;
+},
+</code></pre>
+<p>A block whose content isn’t valid is left out of the website: the build warns with the problems, and still builds the rest of the article. In the editor, the embed dialog checks the content and options when you add or save an embed, and lists the problems under them instead of saving it; a block that isn’t valid (e.g. written by hand) lists them in the article’s body.</p>
+<h3 id="scripts-and-stylesheets-once-per-page">Scripts and stylesheets once per page</h3>
+<p>An embed that needs a script, like a diagram library, adds it with <code>renderHead</code> or <code>renderFoot</code>. They are called after the page’s content is rendered, only on pages that show the embed (an article’s page, or a list page showing its excerpt), and only once however many blocks the page has.</p>
+<p><code>context.state</code> is an object the embed keeps for one page: every block’s <code>render</code> on the page, then <code>renderHead</code> and <code>renderFoot</code>, get the same one, so blocks can leave things there for them, e.g. the IDs of the diagrams to start. Each page starts with an empty one. <code>renderHead</code> and <code>renderFoot</code> also get <code>context.options</code>: a list of each block’s options, in page order.</p>
+<pre><code class="language-js">import { escapeHtml } from &quot;@lvl99dotcom/edaha.md/generator/format&quot;;
+
+const chart = {
+  key: &quot;chart&quot;,
+  name: &quot;Chart&quot;,
+  sources: { script: [&quot;https://cdn.example.com&quot;] },
+  build: {
+    render: async (content, { state }) =&gt; {
+      state.ids ??= [];
+      const id = `chart-${state.ids.length + 1}`;
+      state.ids.push(id);
+      return `&lt;canvas id=&quot;${id}&quot; data-chart=&quot;${escapeHtml(content)}&quot;&gt;&lt;/canvas&gt;`;
+    },
+    renderFoot: async ({ state }) =&gt; `
+      &lt;script src=&quot;https://cdn.example.com/chart.js&quot;&gt;&lt;/script&gt;
+      &lt;script&gt;${state.ids.map((id) =&gt; `drawChart(&quot;${id}&quot;);`).join(&quot;\n&quot;)}&lt;/script&gt;`,
+  },
+};
+</code></pre>
+<p>Your layout template needs <code>{% embedHead %}</code> before <code>&lt;/head&gt;</code> and <code>{% embedFoot %}</code> before <code>&lt;/body&gt;</code> for these to show; the default theme’s <code>layouts/html.njk</code> has both. See <a href="/edaha.md/docs/05-templating/#embed-tags">Templating</a>.</p>
+<h3 id="adding-it-to-your-site">Adding it to your site</h3>
+<p>Publish it as a package and list its name under <code>plugins</code>, or give the plugin itself in a JavaScript config file:</p>
+<pre><code class="language-js">// edaha.config.mjs
+import { vimeo } from &quot;./embeds/vimeo.mjs&quot;;
+
+export default {
+  name: &quot;My Site&quot;,
+  description: &quot;News and notes.&quot;,
+  plugins: [&quot;@lvl99dotcom/edaha-plugin-youtube&quot;, vimeo],
+};
+</code></pre>
+<h3 id="using-data-from-elsewhere">Using data from elsewhere</h3>
+<p><code>render</code> gets a <code>fetch</code> function to fetch other data. For example, an embed for any page that has an oEmbed endpoint:</p>
+<pre><code class="language-js">const example = {
+  key: &quot;example&quot;,
+  name: &quot;Example media&quot;,
+  sources: { frame: [&quot;https://media.example.com&quot;] },
+  build: {
+    render: async (content, { fetch }) =&gt; {
+      const response = await fetch(
+        `https://media.example.com/oembed?url=${encodeURIComponent(content)}`,
+      );
+      if (!response.ok) throw new Error(`oEmbed answered ${response.status}`);
+      const { html } = await response.json();
+      return html;
+    },
+  },
+};
+</code></pre>
+<h3 id="previews-in-the-editor">Previews in the editor</h3>
+<p>The editor shows each embed block in its rich text body in a small frame, and the <strong>Preview</strong> tab shows the whole page, with the embeds’ scripts and styles. Both are shown from a separate, sandboxed address: they can’t reach the editor, and they only load from their own address and the web addresses the site’s embeds list in <code>sources</code>. An embed that loads from somewhere it doesn’t list shows empty there; the website itself isn’t affected.</p>
+<p>By default, the editor’s frame shows the embed as the website does. An embed can show differently there with <code>editor</code>, whose functions each take the place of the website’s:</p>
+<pre><code class="language-js">const chart = {
+  // ...
+  editor: {
+    // An SVG icon for the editor's lists and blocks
+    icon: '&lt;svg viewBox=&quot;0 0 24 24&quot;&gt;&lt;path d=&quot;M3 3h2v18H3z&quot;/&gt;&lt;/svg&gt;',
+    // A lighter look while editing
+    render: async (content) =&gt; `&lt;pre&gt;${escapeHtml(content)}&lt;/pre&gt;`,
+    renderHead: async () =&gt; &quot;&quot;,
+    renderFoot: async () =&gt; &quot;&quot;,
+  },
+};
+</code></pre>
+<h3 id="from-code">From code</h3>
+<p>If you build with code rather than the <code>edaha</code> command, <code>buildSite</code> and <code>startEditor</code> also take <code>plugins</code>: plugins added after the config file’s (one with the same key as the config file’s is left out).</p>
+<pre><code class="language-ts">import { buildSite } from &quot;@lvl99dotcom/edaha.md&quot;;
+import youtube from &quot;@lvl99dotcom/edaha-plugin-youtube&quot;;
+
+await buildSite({ siteDir: &quot;my-site&quot;, plugins: [youtube, vimeo] });
+</code></pre>
+<h2 id="styling-embeds">Styling embeds</h2>
+<p>Embeds are wrapped in <code>&lt;div class=&quot;embed embed-&lt;key&gt;&quot;&gt;</code>, e.g. <code>embed-youtube</code> or <code>embed-vimeo</code>. Blocks shown as they are written are <code>&lt;p class=&quot;embed-link&quot;&gt;</code> (a URL) or <code>&lt;pre class=&quot;embed-text&quot;&gt;</code>. Style them in your site’s <code>static/site.css</code>, e.g. to make videos fill the page’s width:</p>
+<pre><code class="language-css">.embed iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+</code></pre>
+<p>See <a href="/edaha.md/docs/05-templating/">Templating</a> for how your static files override the theme’s.</p>
+
+  </div>
+
+</article>
+        </main>
+
+  <aside>
+<ol>
+  <li><a href="/docs/01-introduction">Introduction</a></li>
+  <li><a href="/docs/02-quick-start">Quick start</a></li>
+  <li><a href="/docs/03-configuration">Configuration</a></li>
+  <li><a href="/docs/04-articles">Articles</a></li>
+  <li><a href="/docs/05-templating">Templating</a></li>
+  <li><a href="/docs/06-lists">Lists</a></li>
+  <li><a href="/docs/07-embeds">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor">WYSIWYG editor</a></li>
+</ol>
+  </aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/edaha.md/">Home</a>
+    <a href="/edaha.md/about">About</a>
+<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/edaha.md/theme-switcher.js" defer></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12.3.0/dist/mermaid.esm.min.mjs";
+  const theme = document.documentElement.dataset.theme;
+  const dark = theme ? theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" });
+  await mermaid.run({ querySelector: ".embed-mermaidjs .mermaid" });
+</script>  </body>
+</html>

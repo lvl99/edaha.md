@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bandcamp Embed | edaha.md</title>
+    <meta name="description" content="The Bandcamp embed plugin allows you to insert Bandcamp players via URL." />
+
+
+  <link rel="stylesheet" href="/edaha.md/base.css" />
+  <link rel="stylesheet" href="/edaha.md/site.css" />
+  </head>
+  <body class="docs ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/edaha.md/">Home</a></li>
+<li><a href="/edaha.md/docs/">Documentation</a></li>
+<li><a href="/edaha.md/docs/plugin-bandcamp/" aria-current="page">Bandcamp Embed</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">Bandcamp Embed</h1>
+
+  <div class="article-body">
+      <p>The <a href="https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-bandcamp">Bandcamp embed plugin</a> allows you to insert Bandcamp players via URL.</p>
+<h2 id="demo">Demo</h2>
+<div class="embed embed-bandcamp"><iframe width="350" height="470" src="https://bandcamp.com/EmbeddedPlayer/album=1497334602/size=large/bgcol=ffffff/linkcol=0687f5/tracklist=false/transparent=true/" title="Bandcamp player" loading="lazy" seamless></iframe></div>
+<h2 id="installation">Installation</h2>
+<p>Add the package to your project:</p>
+<pre><code class="language-sh">npm install --save-dev @lvl99dotcom/edaha-plugin-bandcamp
+yarn add --dev @lvl99dotcom/edaha-plugin-bandcamp
+pnpm add --save-dev @lvl99dotcom/edaha-plugin-bandcamp
+</code></pre>
+<p>Add the plugin’s package name to your <a href="/edaha.md/docs/03-configuration/#plugins">configuration file</a>:</p>
+<pre><code class="language-yaml">plugins:
+  - &quot;@lvl99dotcom/edaha-plugin-bandcamp&quot;
+</code></pre>
+<h2 id="how-to-use">How to use</h2>
+<p>When using the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG or Markdown editor</a>, press the <strong>Bandcamp player</strong> button in the toolbar to add a player.</p>
+<p>You will then be prompted for the URL of an album’s or track’s page on Bandcamp, e.g. <code>https://artist.bandcamp.com/album/name</code>, and the options below. Options that don’t apply to the layout you choose are hidden. To change a player, select it in the body and press its <strong>Edit</strong> button.</p>
+<p>You can also write the player in an article’s Markdown yourself, with its options (all optional) in YAML before the URL:</p>
+<pre><code class="language-md">&lt;!-- embed:bandcamp --&gt;
+&lt;!--yaml
+layout: slim
+linkcol: 051c2c
+--&gt;
+
+https://artist.bandcamp.com/album/name
+&lt;!-- /embed:bandcamp --&gt;
+</code></pre>
+<h3 id="options">Options</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Description</th>
+<th>Accepted values</th>
+<th>Default</th>
+<th>Applies to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>layout</code></td>
+<td>String</td>
+<td>The layout style of the Bandcamp player</td>
+<td><code>slim</code>, <code>artwork-only</code> or <code>large</code></td>
+<td><code>large</code></td>
+<td>All</td>
+</tr>
+<tr>
+<td><code>artwork</code></td>
+<td>String</td>
+<td>Hides the artwork</td>
+<td><code>none</code></td>
+<td>(shown)</td>
+<td><code>slim</code> and <code>large</code></td>
+</tr>
+<tr>
+<td><code>size</code></td>
+<td>String</td>
+<td>The artwork’s size</td>
+<td><code>small</code> or <code>large</code></td>
+<td><code>large</code></td>
+<td><code>large</code> with artwork</td>
+</tr>
+<tr>
+<td><code>tracklist</code></td>
+<td>Boolean</td>
+<td>Shows an album’s tracklist (tracks have none)</td>
+<td><code>true</code> or <code>false</code></td>
+<td><code>false</code></td>
+<td><code>large</code></td>
+</tr>
+<tr>
+<td><code>transparent</code></td>
+<td>Boolean</td>
+<td>Makes the player’s background transparent</td>
+<td><code>true</code> or <code>false</code></td>
+<td><code>true</code></td>
+<td>All</td>
+</tr>
+<tr>
+<td><code>bgcol</code></td>
+<td>String</td>
+<td>The player’s background colour</td>
+<td>A hex colour, e.g. <code>ffffff</code></td>
+<td><code>ffffff</code></td>
+<td>All</td>
+</tr>
+<tr>
+<td><code>linkcol</code></td>
+<td>String</td>
+<td>The colour of the player’s links and highlights</td>
+<td>A hex colour, e.g. <code>0687f5</code></td>
+<td><code>0687f5</code></td>
+<td>All</td>
+</tr>
+</tbody>
+</table>
+<p>Write colours with or without their <code>#</code>. Put colours made only of digits (e.g. <code>&quot;000000&quot;</code>) in quotes, so YAML reads them as text.</p>
+<p>The editor saves every option that applies, defaults included, so a player keeps looking the same if the plugin’s defaults change.</p>
+<h3 id="layouts">Layouts</h3>
+<p>The player is sized like Bandcamp’s own embed codes:</p>
+<table>
+<thead>
+<tr>
+<th>Layout</th>
+<th>Width</th>
+<th>Height</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>slim</code></td>
+<td>The page’s width</td>
+<td>42px</td>
+</tr>
+<tr>
+<td><code>artwork-only</code></td>
+<td>350px</td>
+<td>350px</td>
+</tr>
+<tr>
+<td><code>large</code>, large artwork</td>
+<td>350px</td>
+<td>470px for albums, 442px for tracks</td>
+</tr>
+<tr>
+<td><code>large</code>, small or no artwork</td>
+<td>The page’s width</td>
+<td>120px</td>
+</tr>
+<tr>
+<td><code>large</code>, with the tracklist</td>
+<td>350px (400px with small artwork)</td>
+<td>Grows by 33px for each of the album’s tracks</td>
+</tr>
+</tbody>
+</table>
+<p>To make players fill the page’s width, style them in your site’s <code>static/site.css</code>:</p>
+<pre><code class="language-css">.embed-bandcamp iframe {
+  width: 100%;
+  border: 0;
+}
+</code></pre>
+<h2 id="how-it-works">How it works</h2>
+<p>Bandcamp’s page URLs don’t contain the album’s or track’s ID, which the player needs. So when the site is built, the plugin reads the page to find the ID (and the number of tracks, for the tracklist’s height): <strong>the build needs internet access</strong>. Each page is read once per build, however many times it is embedded.</p>
+<p>A URL that isn’t a Bandcamp album or track page, or a page with no player, gives a warning, and the player is left out of the website; the rest of the article is still built. The editor’s embed dialog checks the URL before adding the player.</p>
+<p>The player is an <code>&lt;iframe&gt;</code> from <code>https://bandcamp.com</code>, wrapped in <code>&lt;div class=&quot;embed embed-bandcamp&quot;&gt;</code>. See <a href="/edaha.md/docs/07-embeds/">Embeds</a> for more about embeds.</p>
+
+  </div>
+
+</article>
+        </main>
+
+  <aside>
+<ol>
+  <li><a href="/docs/01-introduction">Introduction</a></li>
+  <li><a href="/docs/02-quick-start">Quick start</a></li>
+  <li><a href="/docs/03-configuration">Configuration</a></li>
+  <li><a href="/docs/04-articles">Articles</a></li>
+  <li><a href="/docs/05-templating">Templating</a></li>
+  <li><a href="/docs/06-lists">Lists</a></li>
+  <li><a href="/docs/07-embeds">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor">WYSIWYG editor</a></li>
+</ol>
+  </aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/edaha.md/">Home</a>
+    <a href="/edaha.md/about">About</a>
+<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/edaha.md/theme-switcher.js" defer></script>
+  </body>
+</html>

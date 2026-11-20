@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>YouTube Embed | edaha.md</title>
+    <meta name="description" content="The YouTube embed plugin allows you to insert YouTube video players via URL." />
+
+
+  <link rel="stylesheet" href="/edaha.md/base.css" />
+  <link rel="stylesheet" href="/edaha.md/site.css" />
+  </head>
+  <body class="docs ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/edaha.md/">Home</a></li>
+<li><a href="/edaha.md/docs/">Documentation</a></li>
+<li><a href="/edaha.md/docs/plugin-youtube/" aria-current="page">YouTube Embed</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">YouTube Embed</h1>
+
+  <div class="article-body">
+      <p>The <a href="https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-youtube">YouTube embed plugin</a> allows you to insert YouTube video players via URL.</p>
+<h2 id="demo">Demo</h2>
+<div class="embed embed-youtube"><iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/aju_UB5VIf8" title="YouTube video player" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+<h2 id="installation">Installation</h2>
+<p>Add the package to your project:</p>
+<pre><code class="language-sh">npm install --save-dev @lvl99dotcom/edaha-plugin-youtube
+yarn add --dev @lvl99dotcom/edaha-plugin-youtube
+pnpm add --save-dev @lvl99dotcom/edaha-plugin-youtube
+</code></pre>
+<p>Add the plugin’s package name to your <a href="/edaha.md/docs/03-configuration/#plugins">configuration file</a>:</p>
+<pre><code class="language-yaml">plugins:
+  - &quot;@lvl99dotcom/edaha-plugin-youtube&quot;
+</code></pre>
+<h2 id="how-to-use">How to use</h2>
+<p>When using the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG or Markdown editor</a>, press the <strong>YouTube video</strong> button in the toolbar to add a video, then paste the video’s URL. To change a video, select it in the body and press its <strong>Edit</strong> button.</p>
+<p>You can also write the video in an article’s Markdown yourself:</p>
+<pre><code class="language-md">&lt;!-- embed:youtube --&gt;https://www.youtube.com/watch?v=aju_UB5VIf8&lt;!-- /embed:youtube --&gt;
+</code></pre>
+<p>The YouTube player has no options.</p>
+<h3 id="accepted-urls">Accepted URLs</h3>
+<p>Any form of a YouTube video’s URL works, from <code>youtube.com</code>, <code>www.youtube.com</code>, <code>m.youtube.com</code>, <code>youtu.be</code> or <code>youtube-nocookie.com</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Watch page</td>
+<td><code>https://www.youtube.com/watch?v=aju_UB5VIf8</code></td>
+</tr>
+<tr>
+<td>Short link</td>
+<td><code>https://youtu.be/aju_UB5VIf8</code></td>
+</tr>
+<tr>
+<td>Short video</td>
+<td><code>https://www.youtube.com/shorts/aju_UB5VIf8</code></td>
+</tr>
+<tr>
+<td>Live video</td>
+<td><code>https://www.youtube.com/live/aju_UB5VIf8</code></td>
+</tr>
+<tr>
+<td>Embedded player</td>
+<td><code>https://www.youtube-nocookie.com/embed/aju_UB5VIf8</code></td>
+</tr>
+</tbody>
+</table>
+<p>Other parts of the URL, e.g. a start time (<code>&amp;t=30s</code>) or a playlist, are left out.</p>
+<h2 id="how-it-works">How it works</h2>
+<p>Whatever form of URL is given, the video is always embedded from <code>https://www.youtube-nocookie.com</code>, YouTube’s privacy-enhanced mode: YouTube says it doesn’t keep information about a page’s visitors unless they play the video.</p>
+<p>The player is a 560×315px <code>&lt;iframe&gt;</code>, wrapped in <code>&lt;div class=&quot;embed embed-youtube&quot;&gt;</code>. To make videos fill the page’s width, style them in your site’s <code>static/site.css</code>:</p>
+<pre><code class="language-css">.embed-youtube iframe {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+</code></pre>
+<p>A URL that isn’t a YouTube video’s gives a warning, and the video is left out of the website; the rest of the article is still built. The editor’s embed dialog checks the URL before adding the video. Building doesn’t need internet access.</p>
+<p>See <a href="/edaha.md/docs/07-embeds/">Embeds</a> for more about embeds.</p>
+
+  </div>
+
+</article>
+        </main>
+
+  <aside>
+<ol>
+  <li><a href="/docs/01-introduction">Introduction</a></li>
+  <li><a href="/docs/02-quick-start">Quick start</a></li>
+  <li><a href="/docs/03-configuration">Configuration</a></li>
+  <li><a href="/docs/04-articles">Articles</a></li>
+  <li><a href="/docs/05-templating">Templating</a></li>
+  <li><a href="/docs/06-lists">Lists</a></li>
+  <li><a href="/docs/07-embeds">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor">WYSIWYG editor</a></li>
+</ol>
+  </aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/edaha.md/">Home</a>
+    <a href="/edaha.md/about">About</a>
+<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/edaha.md/theme-switcher.js" defer></script>
+  </body>
+</html>

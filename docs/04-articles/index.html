@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Articles | edaha.md</title>
+    <meta name="description" content="An article is a Markdown file with a short header of settings, in its own folder with its images and attachments." />
+
+
+  <link rel="stylesheet" href="/edaha.md/base.css" />
+  <link rel="stylesheet" href="/edaha.md/site.css" />
+  </head>
+  <body class="docs ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/edaha.md/">Home</a></li>
+<li><a href="/edaha.md/docs/">Documentation</a></li>
+<li><a href="/edaha.md/docs/04-articles/" aria-current="page">Articles</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">Articles</h1>
+
+  <div class="article-body">
+      <p>An article is a Markdown file with a short header of settings, in its own folder with its images and attachments.</p>
+<p>Markdown is a simple text format: headings, lists, links and images are written with a few characters, so articles are easy to read and edit in any text editor. If you would rather not edit Markdown, the built-in <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a> gives you a rich text interface for the same files.</p>
+<h2 id="where-articles-go">Where articles go</h2>
+<p>Each article is a folder <code>&lt;articlesDir&gt;/&lt;type&gt;/&lt;slug&gt;/</code> with an <code>article.md</code> file:</p>
+<pre><code>articles/
+  news/                 # The article type
+    hello-world/        # The article's slug, used in its URL: /news/hello-world/
+      article.md        # The article's settings and text
+      photo.jpg         # Files the article uses
+      guide.pdf
+</code></pre>
+<ul>
+<li><strong>Folder names</strong> are lowercase kebab-case, e.g. <code>hello-world</code>.</li>
+<li><strong>Slugs</strong> can’t be <code>tags</code>, <code>authors</code> or a number, as list pages use those URLs.</li>
+<li><strong>An article named <code>index</code></strong> is built at its type’s own URL in place of its list, e.g. <code>page/index</code> becomes the website’s home page when the <code>page</code> type’s path is <code>&quot;&quot;</code>. See <a href="/edaha.md/docs/06-lists/">Lists</a>.</li>
+</ul>
+<h2 id="structure-of-an-article">Structure of an article</h2>
+<p>An <code>article.md</code> has two parts: a header of settings, and the article’s Markdown.</p>
+<pre><code class="language-md">&lt;!--yaml
+date: 2026-11-16T09:00:00Z
+author: Jo Bloggs
+tags: [News, Release notes]
+thumbnail: photo.jpg
+--&gt;
+
+# Hello world
+
+The first paragraph. &lt;!-- readmore --&gt;
+
+The rest of the article, with an image: ![A photo](photo.jpg)
+</code></pre>
+<h3 id="article-metadata">Article metadata</h3>
+<p>Article metadata is contained within an HTML comment at the very top of the file. Its first word says what format the settings are written in:</p>
+<ul>
+<li><code>&lt;!--yaml</code> or <code>&lt;!--yml</code>: YAML (the default, used by the editor for new articles);</li>
+<li><code>&lt;!--json</code>: JSON.</li>
+</ul>
+<pre><code class="language-md">&lt;!--json
+{
+  &quot;date&quot;: &quot;2026-11-16T09:00:00Z&quot;,
+  &quot;tags&quot;: [&quot;News&quot;]
+}
+--&gt;
+</code></pre>
+<p>The header is never written into the built pages.</p>
+<h3 id="settings">Settings</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>date</code></td>
+<td><strong>Required.</strong> The publication date, as an ISO 8601 timestamp, e.g. <code>2026-11-16T09:00:00Z</code> or <code>2026-11-16T10:00:00+01:00</code>.</td>
+<td></td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>published</code> (in lists and feeds), <code>unlisted</code> (its own page only) or <code>draft</code> (not built).</td>
+<td><code>published</code></td>
+</tr>
+<tr>
+<td><code>title</code></td>
+<td>The title, if the article doesn’t start with a <code># Title</code> heading.</td>
+<td>The first <code># Title</code> heading</td>
+</tr>
+<tr>
+<td><code>author</code></td>
+<td>The author’s name, <code>{ name, email, url }</code>, or <code>false</code> for no author.</td>
+<td>The type’s or the config’s <a href="/edaha.md/docs/03-configuration/#author"><code>author</code></a>, or the website’s name</td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td>A list of tag names, e.g. <code>[News, Release notes]</code>.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>excerpt</code></td>
+<td>The excerpt shown in lists and feeds, in Markdown.</td>
+<td>See <a href="#excerpts">Excerpts</a></td>
+</tr>
+<tr>
+<td><code>thumbnail</code></td>
+<td>An image for lists: a file in the article’s folder, or an absolute URL.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>attachments</code></td>
+<td>A list of files to download: <code>{ url, name, thumbnail, mimeType }</code>, where only <code>url</code> is required.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>template</code></td>
+<td>The template to render the article with, e.g. <code>home</code>. See <a href="/edaha.md/docs/05-templating/">Templating</a>.</td>
+<td><code>single</code></td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>The article’s type. It must match its type folder.</td>
+<td>The type folder</td>
+</tr>
+</tbody>
+</table>
+<p>Articles can also have the custom settings defined in the config file’s <a href="/edaha.md/docs/03-configuration/#metadata"><code>metadata</code></a>, for the types that use them. Their values are checked: an invalid value is a warning when building (and is left out of templates), and the editor won’t save it. Settings nobody defined, and custom settings the article’s type doesn’t use, are kept as they are with a warning.</p>
+<p>An author with more details:</p>
+<pre><code class="language-yaml">author:
+  name: Jo Bloggs
+  email: jo@example.com # shown in RSS feeds
+  url: https://jo.example.com # linked from the article page
+</code></pre>
+<p>Attachments get their file size and type when they are files in the article’s folder:</p>
+<pre><code class="language-yaml">attachments:
+  - url: guide.pdf
+    name: Getting started guide
+    thumbnail: guide-cover.png
+  - url: https://example.com/files/data.zip
+    mimeType: application/zip
+</code></pre>
+<h3 id="the-content">The content</h3>
+<p>After the header comes the article in Markdown:</p>
+<ul>
+<li><strong>The title</strong> is the first <code># Title</code> heading, unless the header sets <code>title</code>. It is taken out of the body, as templates show it on its own.</li>
+<li><strong>Images and links</strong> to files in the article’s folder are written relative to it, e.g. <code>![A photo](photo.jpg)</code>. Links to other pages of the website can start at its root, e.g. <code>[Configuration](/docs/03-configuration/)</code>; for a website in a sub-folder (see <a href="/edaha.md/docs/03-configuration/#siteurl"><code>siteUrl</code></a>), they are put under it when built. Links in raw HTML are left as they are.</li>
+<li><strong>Headings</strong> get IDs from their text, so they can be linked to: <code>## Getting started</code> can be linked as <code>#getting-started</code>.</li>
+<li><strong>Embeds</strong> turn a URL into a video or player. See <a href="/edaha.md/docs/07-embeds/">Embeds</a>.</li>
+<li><strong>Raw content</strong> is shown exactly as it is written. See <a href="#raw-content">Raw content</a>.</li>
+<li><strong>Extra HTML:</strong> <code>&lt;small&gt;</code>, <code>&lt;big&gt;</code>, <code>&lt;u&gt;</code> (underlined) and <code>&lt;details&gt;&lt;summary&gt;…&lt;/summary&gt;…&lt;/details&gt;</code> can be used. Leave a blank line after <code>&lt;/summary&gt;</code> and before <code>&lt;/details&gt;</code>, so the content between them is read as Markdown.</li>
+</ul>
+<h2 id="raw-content">Raw content</h2>
+<p>Put content between <code>&lt;!-- raw --&gt;</code> and <code>&lt;!-- /raw --&gt;</code> to show it exactly as it is written. Nothing inside is read as Markdown, embeds, read more breaks or HTML, and quotes and dashes aren’t made typographic:</p>
+<pre><code class="language-md">&lt;!-- raw --&gt;
+
+_Not italic_, # not a heading, &lt;b&gt;not bold&lt;/b&gt;
+&lt;!-- readmore --&gt; isn't a read more break here
+&lt;!-- /raw --&gt;
+</code></pre>
+<p>Shows on the page as:</p>
+<pre class="raw">&#10;&#95;Not italic&#95;&#44; &#35; not a heading&#44; &#60;b&#62;not bold&#60;&#47;b&#62;&#10;&#60;&#33;&#45;&#45; readmore &#45;&#45;&#62; isn&#39;t a read more break here</pre>
+<ul>
+<li><strong>On its own lines</strong>, raw content is a block, <code>&lt;pre class=&quot;raw&quot;&gt;</code>, keeping its spaces and line breaks.</li>
+<li><strong>Within a line</strong>, e.g. <code>Type &lt;!-- raw --&gt;*&lt;!-- /raw --&gt; for a star</code>, it is inline, <code>&lt;span class=&quot;raw&quot;&gt;</code>.</li>
+<li>The default theme shows raw content in the page’s own font. Style <code>.raw</code> in your site’s <code>static/site.css</code> to change it.</li>
+<li>Raw markers inside code blocks and inline code are left alone, as on this page.</li>
+</ul>
+<p>In the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a>, the <strong>Raw</strong> button turns a block into raw content.</p>
+<h3 id="raw-content-and-code-formatters">Raw content and code formatters</h3>
+<p>If your project formats Markdown with a tool like <a href="https://prettier.io/">Prettier</a>, it may change the content of raw blocks, e.g. turn <code>*text*</code> into <code>_text_</code> or add blank lines, which changes what the page shows. It also formats Markdown inside <code>```md</code> code blocks.</p>
+<p>Tell it to leave them alone. For Prettier, wrap raw blocks in <code>prettier-ignore-start</code> and <code>prettier-ignore-end</code> comments, or put <code>&lt;!-- prettier-ignore --&gt;</code> just before a code block:</p>
+<pre><code class="language-md">&lt;!-- prettier-ignore-start --&gt;
+
+&lt;pre class=&quot;raw&quot;&gt;&amp;#42;Shown with its stars&amp;#42;&lt;/pre&gt;
+
+&lt;!-- prettier-ignore-end --&gt;
+</code></pre>
+<p>These comments are kept in the built page’s HTML, where visitors don’t see them. You can also leave your articles folder out of formatting altogether, e.g. by adding it to <code>.prettierignore</code>.</p>
+<h2 id="excerpts">Excerpts</h2>
+<p>Lists and RSS feeds show a short excerpt of each article. It is, in order of preference:</p>
+<ol>
+<li>the <code>excerpt</code> setting;</li>
+<li>everything before a <code>&lt;!-- readmore --&gt;</code> comment;</li>
+<li>the first 200 characters of the article’s text.</li>
+</ol>
+<p>Put <code>&lt;!-- readmore --&gt;</code> where the excerpt should end:</p>
+<pre><code class="language-md"># Hello world
+
+This paragraph is the excerpt shown in lists. &lt;!-- readmore --&gt;
+
+This part is only shown on the article's own page.
+</code></pre>
+<p>The comment itself is removed from the page. A <code>&lt;!-- readmore --&gt;</code> inside a code block or inline code is left alone, so you can write about it, as on this page.</p>
+<p>Templates can show the excerpt as HTML (<code>article.excerptHtml</code>) or plain text (<code>article.excerptText</code>). See <a href="/edaha.md/docs/05-templating/">Templating</a>.</p>
+<h2 id="statuses">Statuses</h2>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Its page</th>
+<th>In lists and feeds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>published</code></td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>unlisted</code></td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>draft</code></td>
+<td>No</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<p>Drafts are still listed in the editor, so you can keep working on them.</p>
+
+  </div>
+
+</article>
+        </main>
+
+  <aside>
+<ol>
+  <li><a href="/docs/01-introduction">Introduction</a></li>
+  <li><a href="/docs/02-quick-start">Quick start</a></li>
+  <li><a href="/docs/03-configuration">Configuration</a></li>
+  <li><a href="/docs/04-articles">Articles</a></li>
+  <li><a href="/docs/05-templating">Templating</a></li>
+  <li><a href="/docs/06-lists">Lists</a></li>
+  <li><a href="/docs/07-embeds">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor">WYSIWYG editor</a></li>
+</ol>
+  </aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/edaha.md/">Home</a>
+    <a href="/edaha.md/about">About</a>
+<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/edaha.md/theme-switcher.js" defer></script>
+  </body>
+</html>

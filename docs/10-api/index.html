@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>API | edaha.md</title>
+    <meta name="description" content="Everything the edaha command does, you can do from JavaScript or TypeScript: build a site when and how you like, read its config file, write embed plugins, and run the article editor." />
+
+
+  <link rel="stylesheet" href="/edaha.md/base.css" />
+  <link rel="stylesheet" href="/edaha.md/site.css" />
+  </head>
+  <body class="docs ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/edaha.md/">Home</a></li>
+<li><a href="/edaha.md/docs/">Documentation</a></li>
+<li><a href="/edaha.md/docs/10-api/" aria-current="page">API</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">API</h1>
+
+  <div class="article-body">
+      <p>Everything the <code>edaha</code> command does, you can do from JavaScript or TypeScript: build a site when and how you like, read its config file, write embed plugins, and run the article editor.</p>
+<p>The packages are ES modules with TypeScript types, and need Node.js 22 or later:</p>
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>What it exports</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@lvl99dotcom/edaha.md</code></td>
+<td><code>buildSite</code>, <code>loadSiteConfig</code> and the other config helpers, the embed API, <code>runCli</code></td>
+</tr>
+<tr>
+<td><code>@lvl99dotcom/edaha-editor</code></td>
+<td><code>startEditor</code> and <code>createEditorServer</code></td>
+</tr>
+<tr>
+<td><code>@lvl99dotcom/edaha-plugin-…</code></td>
+<td>One embed plugin each, as their default export</td>
+</tr>
+</tbody>
+</table>
+<h2 id="build">Build</h2>
+<p><code>buildSite</code> builds a site, as <code>edaha build</code> does:</p>
+<pre><code class="language-ts">import { buildSite } from &quot;@lvl99dotcom/edaha.md&quot;;
+
+const result = await buildSite({
+  siteDir: &quot;my-site&quot;,
+  siteUrl: &quot;https://example.com&quot;,
+});
+console.log(`Built ${result.files.length} files into ${result.outputDir}`);
+</code></pre>
+<h3 id="how-a-build-works">How a build works</h3>
+<p>A build reads the <a href="/edaha.md/docs/03-configuration/">config file</a> and the site’s articles, turns each article’s Markdown into HTML, and renders it with the site’s <a href="/edaha.md/docs/05-templating/">templates</a> into the output folder:</p>
+<div class="embed embed-mermaidjs"><pre class="mermaid">flowchart TD
+config[&quot;Config file&lt;br&gt;(edahaconfig.yml)&quot;] --&gt; load[&quot;loadSiteConfig&lt;br&gt;settings and embed plugins&quot;]
+load --&gt; types[&quot;Article types&quot;]
+articles[&quot;articles/&amp;lt;type&amp;gt;/&amp;lt;slug&amp;gt;/article.md&quot;] --&gt; article[&quot;Each article:&lt;br&gt;header settings, embeds, Markdown to HTML&quot;]
+types --&gt; article
+article --&gt; lists[&quot;Lists: types, tags and authors&quot;]
+article --&gt; pages[&quot;Article pages&quot;]
+lists --&gt; listPages[&quot;List pages and RSS feeds&quot;]
+templates[&quot;Templates:&lt;br&gt;the site&#39;s over the theme&#39;s&quot;] --&gt; pages
+templates --&gt; listPages
+pages --&gt; output[&quot;outputDir&quot;]
+listPages --&gt; output
+files[&quot;Articles&#39; files&quot;] --&gt; output
+statics[&quot;Static files:&lt;br&gt;the site&#39;s over the theme&#39;s&quot;] --&gt; output
+output -. &quot;if set&quot; .-&gt; publish[&quot;publishDir&quot;]</pre></div>
+<ol>
+<li><code>loadSiteConfig</code> finds and reads the config file, checks its settings and loads its embed plugins. The site folder is the config file’s folder.</li>
+<li>Every folder in the articles folder is an article type, with its settings from the config file (or the defaults, with a warning).</li>
+<li>Each article’s <code>article.md</code> is read: its header settings are checked, its embed blocks are set aside for the pages that show them, and its Markdown becomes HTML. Drafts are checked but not built.</li>
+<li>Published articles are collected into lists: one for each type, and one for each tag and author within a type, as the types’ <code>generate</code> settings say.</li>
+<li>Each article page, list page and RSS feed is rendered with its template, then the embed blocks it shows are rendered by their plugins (sharing each embed’s state on the page) and the HTML its embeds need is added. Pages are written to <code>outputDir</code> with the articles’ files and the static files. If <code>publishDir</code> is set, everything is then copied there.</li>
+</ol>
+<p>Templates are found in the site’s templates folder first, then in the default theme. A type’s own template (e.g. <code>templates/news/single.njk</code>) comes before the <code>article</code> ones, and an article can name another with its <code>template</code> setting. Every page template extends a layout:</p>
+<div class="embed embed-mermaidjs"><pre class="mermaid">flowchart LR
+data[&quot;Template data:&lt;br&gt;site, type, article, list, embeds&quot;] --&gt; page
+subgraph page[&quot;Page template&quot;]
+direction TB
+own[&quot;templates/&amp;lt;type&amp;gt;/single.njk&quot;] -. &quot;if missing&quot; .-&gt; siteArticle[&quot;templates/article/single.njk&quot;]
+siteArticle -. &quot;if missing&quot; .-&gt; themeArticle[&quot;theme: article/single.njk&quot;]
+end
+page -- &quot;extends&quot; --&gt; layout[&quot;layouts/html.njk&lt;br&gt;(the site&#39;s, or the theme&#39;s)&quot;]
+layout --&gt; html[&quot;index.html&quot;]</pre></div>
+<p>A site’s template can build on the theme’s version of itself with <code>{% extends &quot;@theme/article/single.njk&quot; %}</code>. See <a href="/edaha.md/docs/05-templating/">Templating</a> for the template data and filters.</p>
+<h3 id="buildsite-options"><code>buildSite</code> options</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>siteDir</code></td>
+<td>String</td>
+<td>The folder to look for a config file in, before the nearest <code>package.json</code>’s folder.</td>
+<td>The current folder</td>
+</tr>
+<tr>
+<td><code>configFile</code></td>
+<td>String</td>
+<td>The config file to use instead of looking for one. The site folder is its folder.</td>
+<td>The first <a href="/edaha.md/docs/03-configuration/#where-it-is-found">config file</a> found</td>
+</tr>
+<tr>
+<td><code>siteUrl</code></td>
+<td>String</td>
+<td>The website’s absolute URL, for feeds. Its path (e.g. <code>/edaha.md</code>) starts every URL in the pages.</td>
+<td><code>siteUrl</code> in the config file, then <code>http://localhost</code> with a warning</td>
+</tr>
+<tr>
+<td><code>themeDir</code></td>
+<td>String</td>
+<td>The default theme’s folder (with <code>templates/</code> and <code>static/</code>), which the site’s own templates and static files override.</td>
+<td>edaha.md’s theme (<code>THEME_DIR</code>)</td>
+</tr>
+<tr>
+<td><code>plugins</code></td>
+<td>EmbedPlugin[]</td>
+<td><a href="/edaha.md/docs/07-embeds/">Embed plugins</a> added after the config file’s <code>plugins</code>. One with the same key as the config file’s is left out.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>logger</code></td>
+<td><code>{ warn }</code></td>
+<td>Where warnings go, e.g. about articles with problems.</td>
+<td><code>console</code></td>
+</tr>
+<tr>
+<td><code>fetch</code></td>
+<td>Function</td>
+<td>Fetches data for embeds that need it, e.g. Bandcamp’s.</td>
+<td>The global <code>fetch</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>buildSite</code> resolves with:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>outputDir</code></td>
+<td>The absolute output folder.</td>
+</tr>
+<tr>
+<td><code>publishDir</code></td>
+<td>The absolute folder the files were copied into, if <code>publishDir</code> is set.</td>
+</tr>
+<tr>
+<td><code>articles</code></td>
+<td>The built articles’ template data (published and unlisted).</td>
+</tr>
+<tr>
+<td><code>files</code></td>
+<td>Every file written, relative to the output folder.</td>
+</tr>
+</tbody>
+</table>
+<p>It rejects with an error that names the problem (and the config file or article) when the site can’t be built, e.g. a config setting is wrong, or a static file has the same path as an article’s file. Problems that don’t stop the build go to <code>logger.warn</code>.</p>
+<h3 id="reading-the-config-file">Reading the config file</h3>
+<p><code>loadSiteConfig</code> finds and reads a site’s config file as the build does, e.g. to read its settings in a script of your own:</p>
+<pre><code class="language-ts">import { loadSiteConfig } from &quot;@lvl99dotcom/edaha.md&quot;;
+
+const { configFile, siteDir, config } = await loadSiteConfig({
+  siteDir: &quot;my-site&quot;,
+});
+console.log(`${config.name}: ${Object.keys(config.types).join(&quot;, &quot;)}`);
+</code></pre>
+<p>It takes <code>siteDir</code>, <code>configFile</code> and <code>logger</code>, like <code>buildSite</code>. The config helpers it uses are exported too: <code>findConfigFile</code> (which file would be used), <code>readConfigFile</code> (its raw settings) and <code>parseConfig</code> (check settings and fill in defaults; give it plugin objects, as it doesn’t load packages).</p>
+<h3 id="embed-plugins">Embed plugins</h3>
+<p>The embed API (<code>EmbedPlugin</code>, <code>EmbedResolver</code>, <code>EMBED_PAGE_PARTS</code>, <code>embedBlock</code>, <code>splitEmbed</code>, <code>cachedFetch</code>, <code>isEmbedPlugin</code>, <code>loadPlugins</code> and <code>validationErrors</code>) is exported too. <code>EmbedResolver</code> renders embeds page by page: <code>replaceBlocks</code> puts placeholders for a page’s blocks in its Markdown, and <code>renderPage</code> renders them in the page’s HTML, with the HTML its embeds need in place of <code>EMBED_PAGE_PARTS</code> (the template data for <code>{% embedHead %}</code> and <code>{% embedFoot %}</code>). The fields’ <code>defaultValue</code>, <code>showWhen</code> and <code>hideWhen</code> are applied by <code>resolveFields</code>, from <code>@lvl99dotcom/edaha.md/generator/fields</code>. See <a href="/edaha.md/docs/07-embeds/#creating-your-own">Embeds</a> for how to write a plugin.</p>
+<h3 id="the-command-line">The command line</h3>
+<p><code>runCli</code> runs the <code>edaha</code> command with its arguments, and resolves with its exit code. It takes the folder, environment and output to use, so it can run inside another tool:</p>
+<pre><code class="language-ts">import { runCli } from &quot;@lvl99dotcom/edaha.md&quot;;
+
+const code = await runCli([&quot;build&quot;, &quot;--dir&quot;, &quot;my-site&quot;], {
+  cwd: process.cwd(),
+  env: process.env,
+  log: console.log,
+  error: console.error,
+});
+</code></pre>
+<h2 id="editor">Editor</h2>
+<p><code>startEditor</code>, from the editor package, starts the <a href="/edaha.md/docs/09-wysiwyg-editor/">article editor</a> on this computer, as <code>edaha editor</code> does:</p>
+<pre><code class="language-ts">import { startEditor } from &quot;@lvl99dotcom/edaha-editor&quot;;
+
+const editor = await startEditor({ siteDir: &quot;my-site&quot;, port: 5180 });
+console.log(`Open ${editor.url}`);
+// Later
+await editor.close();
+</code></pre>
+<p>It only listens on <code>127.0.0.1</code>: never deploy it, as it reads and writes the site’s files.</p>
+<h3 id="starteditor-options"><code>startEditor</code> options</h3>
+<p><code>startEditor</code> (and <code>createEditorServer</code>) take:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>siteDir</code></td>
+<td>String</td>
+<td>The folder to look for a config file in, before the nearest <code>package.json</code>’s folder.</td>
+<td>The current folder</td>
+</tr>
+<tr>
+<td><code>configFile</code></td>
+<td>String</td>
+<td>The config file to use instead of looking for one.</td>
+<td>The first config file found</td>
+</tr>
+<tr>
+<td><code>port</code></td>
+<td>Number</td>
+<td>The port to listen on.</td>
+<td><code>5180</code></td>
+</tr>
+<tr>
+<td><code>themeDir</code></td>
+<td>String</td>
+<td>The default theme’s folder, which the site’s own templates and static files override.</td>
+<td>edaha.md’s theme</td>
+</tr>
+<tr>
+<td><code>plugins</code></td>
+<td>EmbedPlugin[]</td>
+<td>Embed plugins added after the config file’s <code>plugins</code>.</td>
+<td>None</td>
+</tr>
+<tr>
+<td><code>fetch</code></td>
+<td>Function</td>
+<td>Fetches data for embeds that need it.</td>
+<td>The global <code>fetch</code></td>
+</tr>
+<tr>
+<td><code>clientDir</code></td>
+<td>String</td>
+<td>The folder with the editor page’s built files.</td>
+<td>The editor package’s <code>dist/client</code></td>
+</tr>
+<tr>
+<td><code>logger</code></td>
+<td><code>{ warn }</code></td>
+<td>Where the warning about a folder with several config files goes.</td>
+<td>None</td>
+</tr>
+</tbody>
+</table>
+<p><code>startEditor</code> resolves with the editor’s <code>url</code> and a <code>close</code> function, once it is listening. It rejects if the config file can’t be read, or the port is in use.</p>
+<h3 id="serving-it-yourself">Serving it yourself</h3>
+<p><code>createEditorServer</code> gives the editor as a <a href="https://hono.dev">Hono</a> app instead, without listening, e.g. to serve it with your own server or test it:</p>
+<pre><code class="language-ts">import { createEditorServer } from &quot;@lvl99dotcom/edaha-editor&quot;;
+
+const app = await createEditorServer({ siteDir: &quot;my-site&quot; });
+const response = await app.request(&quot;/api/articles&quot;);
+console.log(await response.json());
+</code></pre>
+<p>Its API only accepts changes from the editor page’s own address (<code>http://127.0.0.1:&lt;port&gt;</code>), so serve it there.</p>
+
+  </div>
+
+</article>
+        </main>
+
+  <aside>
+<ol>
+  <li><a href="/docs/01-introduction">Introduction</a></li>
+  <li><a href="/docs/02-quick-start">Quick start</a></li>
+  <li><a href="/docs/03-configuration">Configuration</a></li>
+  <li><a href="/docs/04-articles">Articles</a></li>
+  <li><a href="/docs/05-templating">Templating</a></li>
+  <li><a href="/docs/06-lists">Lists</a></li>
+  <li><a href="/docs/07-embeds">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor">WYSIWYG editor</a></li>
+</ol>
+  </aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/edaha.md/">Home</a>
+    <a href="/edaha.md/about">About</a>
+<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/edaha.md/theme-switcher.js" defer></script>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12.3.0/dist/mermaid.esm.min.mjs";
+  const theme = document.documentElement.dataset.theme;
+  const dark = theme ? theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" });
+  await mermaid.run({ querySelector: ".embed-mermaidjs .mermaid" });
+</script>  </body>
+</html>

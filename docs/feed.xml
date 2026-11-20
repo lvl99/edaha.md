@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Documentation | edaha.md</title>
+    <link>https://lvl99.github.io/edaha.md/docs/</link>
+    <description>Static site generator powered by TypeScript and markdown</description>
+    <language>en</language>
+    <atom:link href="https://lvl99.github.io/edaha.md/docs/feed.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 20 Nov 2026 16:00:00 GMT</lastBuildDate>
+    <item>
+      <title>MermaidJS Embed</title>
+      <link>https://lvl99.github.io/edaha.md/docs/plugin-mermaidjs/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/plugin-mermaidjs/</guid>
+      <pubDate>Fri, 20 Nov 2026 16:00:00 GMT</pubDate>
+      <description>&lt;p&gt;The &lt;a href=&quot;https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-mermaidjs&quot;&gt;MermaidJS embed plugin&lt;/a&gt; allows you to insert diagrams, such as flowcharts and sequence diagrams, written in &lt;a href=&quot;https://mermaid.js.org&quot;&gt;Mermaid&lt;/a&gt; code.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>YouTube Embed</title>
+      <link>https://lvl99.github.io/edaha.md/docs/plugin-youtube/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/plugin-youtube/</guid>
+      <pubDate>Fri, 20 Nov 2026 16:00:00 GMT</pubDate>
+      <description>&lt;p&gt;The &lt;a href=&quot;https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-youtube&quot;&gt;YouTube embed plugin&lt;/a&gt; allows you to insert YouTube video players via URL.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>Bandcamp Embed</title>
+      <link>https://lvl99.github.io/edaha.md/docs/plugin-bandcamp/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/plugin-bandcamp/</guid>
+      <pubDate>Fri, 20 Nov 2026 12:00:42 GMT</pubDate>
+      <description>&lt;p&gt;The &lt;a href=&quot;https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-bandcamp&quot;&gt;Bandcamp embed plugin&lt;/a&gt; allows you to insert Bandcamp players via URL.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>Introduction</title>
+      <link>https://lvl99.github.io/edaha.md/docs/01-introduction/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/01-introduction/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;&lt;strong&gt;edaha.md&lt;/strong&gt; is a static site generator written in TypeScript. It converts Markdown files into HTML pages and RSS feeds.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>Quick start</title>
+      <link>https://lvl99.github.io/edaha.md/docs/02-quick-start/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/02-quick-start/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;This builds a small website with one news article, using as little configuration as possible. You need &lt;a href=&quot;https://nodejs.org/&quot;&gt;Node.js&lt;/a&gt; 22 or later.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>Configuration</title>
+      <link>https://lvl99.github.io/edaha.md/docs/03-configuration/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/03-configuration/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;A config file tells edaha.md about your website, where its files are, and what to build for each type of article.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>Articles</title>
+      <link>https://lvl99.github.io/edaha.md/docs/04-articles/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/04-articles/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;An article is a Markdown file with a short header of settings, in its own folder with its images and attachments.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>Templating</title>
+      <link>https://lvl99.github.io/edaha.md/docs/05-templating/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/05-templating/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;edaha.md renders every page with &lt;a href=&quot;https://mozilla.github.io/nunjucks/&quot;&gt;Nunjucks&lt;/a&gt; templates. It comes with a neutral default theme, and you can replace any of its templates with your own, one file at a time.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>Lists</title>
+      <link>https://lvl99.github.io/edaha.md/docs/06-lists/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/06-lists/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;A list is a collection of articles, newest first. edaha.md builds lists of each article type, and of its articles by tag and by author, each with its own RSS feed.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>Embeds</title>
+      <link>https://lvl99.github.io/edaha.md/docs/07-embeds/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/07-embeds/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;Embeds turn text in an article into richer content, such as a video, a music player or a diagram. They are like shortcodes in WordPress, or an HTML &lt;code&gt;&amp;lt;iframe&amp;gt;&lt;/code&gt; you don’t have to write yourself. Each kind of embed is a plugin you add to your site.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>Build &amp; deploy</title>
+      <link>https://lvl99.github.io/edaha.md/docs/08-build-and-deploy/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/08-build-and-deploy/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;&lt;code&gt;edaha build&lt;/code&gt; turns your articles into a folder of plain HTML, RSS and static files. Deploying is uploading that folder to any host that serves static files.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>WYSIWYG editor</title>
+      <link>https://lvl99.github.io/edaha.md/docs/09-wysiwyg-editor/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/09-wysiwyg-editor/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;edaha.md comes with an editor that lets you write and manage your website’s articles in your browser, without editing Markdown files. What you see as you write is what your visitors will see.&lt;/p&gt;
+</description>
+    </item>
+    <item>
+      <title>API</title>
+      <link>https://lvl99.github.io/edaha.md/docs/10-api/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/docs/10-api/</guid>
+      <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
+      <description>&lt;p&gt;Everything the &lt;code&gt;edaha&lt;/code&gt; command does, you can do from JavaScript or TypeScript: build a site when and how you like, read its config file, write embed plugins, and run the article editor.&lt;/p&gt;
+</description>
+    </item>
+  </channel>
+</rss>
