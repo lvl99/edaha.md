@@ -1,5 +1,10 @@
 import type { Editor } from "@tiptap/core";
-import { html, LitElement, type PropertyValues } from "lit";
+import {
+  html,
+  LitElement,
+  render as renderTemplate,
+  type PropertyValues,
+} from "lit";
 import {
   embedButton,
   type EmbedTools,
@@ -26,6 +31,27 @@ interface ToolbarAction {
   /** Whether the button can be used now (default: always) */
   enabled?: (editor: Editor) => boolean;
 }
+
+/** A toggle for a heading level, labelled e.g. "Heading 1" */
+const headingAction = (level: 1 | 2 | 3): ToolbarAction => ({
+  label: `Heading ${level}`,
+  run: (e) => e.chain().focus().toggleHeading({ level }).run(),
+  active: (e) => e.isActive("heading", { level }),
+});
+
+/** Render a toolbar button for an action, pressed when it is active, and disabled until the editor is ready */
+const actionButton = (action: ToolbarAction, editor: Editor | undefined) =>
+  html`<button
+    type="button"
+    class="toolbar-button"
+    data-action=${action.label}
+    title=${action.label}
+    ?disabled=${!editor || (action.enabled ? !action.enabled(editor) : false)}
+    aria-pressed=${editor && action.active ? String(action.active(editor)) : "false"}
+    @click=${() => editor && action.run(editor)}
+  >
+    ${toolbarButtonContent(action.label)}
+  </button>`;
 
 /** Whether the cursor is in a table */
 const inTable = (editor: Editor) => editor.isActive("table");
@@ -61,6 +87,12 @@ export class EdahaRichtext extends LitElement {
   /** The Tiptap editor, once rendered */
   editor?: Editor;
 
+  /**
+   * The toolbar that floats above selected text, with its format buttons. The editor shows it and moves it into the
+   * editable area's box while text is selected, so it is rendered here rather than in the component's template.
+   */
+  readonly formatMenu: HTMLElement;
+
   /** Asks for a URL (replaceable for tests) */
   prompt: (message: string, value?: string) => string | null = (
     message,
@@ -70,11 +102,55 @@ export class EdahaRichtext extends LitElement {
   constructor() {
     super();
     this.value = "";
+    this.formatMenu = document.createElement("div");
+    this.formatMenu.className = "editor-toolbar format-menu";
+    this.formatMenu.setAttribute("role", "toolbar");
+    this.formatMenu.setAttribute("aria-label", "Text format");
+    // Pressing a button keeps the text selected
+    this.formatMenu.addEventListener("mousedown", (event) =>
+      event.preventDefault(),
+    );
+    // Escape goes back to the text
+    this.formatMenu.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") this.editor?.commands.focus();
+    });
   }
 
   protected override createRenderRoot() {
     return this;
   }
+
+  /** The floating toolbar's buttons, for formatting selected text */
+  private readonly formatActions: ToolbarAction[] = [
+    {
+      label: "Bold",
+      run: (e) => e.chain().focus().toggleBold().run(),
+      active: (e) => e.isActive("bold"),
+    },
+    {
+      label: "Italic",
+      run: (e) => e.chain().focus().toggleItalic().run(),
+      active: (e) => e.isActive("italic"),
+    },
+    {
+      label: "Underline",
+      run: (e) => e.chain().focus().toggleUnderline().run(),
+      active: (e) => e.isActive("underline"),
+    },
+    {
+      label: "Strikethrough",
+      run: (e) => e.chain().focus().toggleStrike().run(),
+      active: (e) => e.isActive("strike"),
+    },
+    {
+      label: "Link",
+      run: (e) => this.editLink(e),
+      active: (e) => e.isActive("link"),
+    },
+    headingAction(1),
+    headingAction(2),
+    headingAction(3),
+  ];
 
   /** The toolbar's buttons */
   private readonly actions: ToolbarAction[] = [
@@ -294,6 +370,7 @@ export class EdahaRichtext extends LitElement {
       },
       // Read when embed blocks are shown, so the tools can be set after the editor is created
       () => this.embedTools,
+      this.formatMenu,
     );
     // An embed block's "Edit" button selects it, then asks for its new kind and content here
     element.addEventListener(EMBED_EDIT_EVENT, () => {
@@ -304,6 +381,11 @@ export class EdahaRichtext extends LitElement {
   }
 
   protected override updated(changed: PropertyValues<this>): void {
+    // The floating toolbar's buttons show what the selected text has
+    renderTemplate(
+      this.formatActions.map((action) => actionButton(action, this.editor)),
+      this.formatMenu,
+    );
     // Replace the content when a different value is set from outside (e.g. another article is loaded)
     if (
       changed.has("value") &&
@@ -331,20 +413,7 @@ export class EdahaRichtext extends LitElement {
         role="toolbar"
         aria-label="Formatting"
       >
-        ${this.actions.map(
-          (action) =>
-            html`<button
-              type="button"
-              class="toolbar-button"
-              data-action=${action.label}
-              title=${action.label}
-              ?disabled=${!editor || (action.enabled ? !action.enabled(editor) : false)}
-              aria-pressed=${editor && action.active ? String(action.active(editor)) : "false"}
-              @click=${() => editor && action.run(editor)}
-            >
-              ${toolbarButtonContent(action.label)}
-            </button>`,
-        )}
+        ${this.actions.map((action) => actionButton(action, editor))}
         ${this.embedTools?.embeds.map((embed) =>
           embedButton(embed, {
             pressed: !!editor?.isActive("embed", { key: embed.key }),

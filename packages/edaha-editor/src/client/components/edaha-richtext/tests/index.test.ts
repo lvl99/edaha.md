@@ -91,6 +91,63 @@ describe("edaha-richtext", () => {
     }
   });
 
+  it("should format selected text from the floating toolbar, which keeps the selection", async () => {
+    const element = await setup("<p>Hello world</p>", ["https://x.com"]);
+    const menu = element.formatMenu;
+    expect(menu.getAttribute("role")).toBe("toolbar");
+    expect(menu.getAttribute("aria-label")).toBe("Text format");
+    const format = (label: string) =>
+      menu.querySelector<HTMLButtonElement>(`[data-action="${label}"]`)!;
+    expect([...menu.querySelectorAll("button")].map((b) => b.title)).toEqual([
+      "Bold",
+      "Italic",
+      "Underline",
+      "Strikethrough",
+      "Link",
+      "Heading 1",
+      "Heading 2",
+      "Heading 3",
+    ]);
+    element.editor!.commands.setTextSelection({ from: 1, to: 6 });
+    for (const label of [
+      "Bold",
+      "Italic",
+      "Underline",
+      "Strikethrough",
+      "Link",
+    ])
+      format(label).click();
+    await element.updateComplete;
+    expect(element.value).toBe(
+      '<p><a target="_blank" rel="noopener noreferrer nofollow" href="https://x.com"><strong><em><s><u>Hello</u></s></em></strong></a> world</p>',
+    );
+    expect(format("Underline").getAttribute("aria-pressed")).toBe("true");
+    expect(format("Strikethrough").getAttribute("aria-pressed")).toBe("true");
+    for (const level of [1, 2, 3]) {
+      format(`Heading ${level}`).click();
+      await element.updateComplete;
+      expect(element.value).toMatch(new RegExp(`^<h${level}>`));
+      expect(format(`Heading ${level}`).getAttribute("aria-pressed")).toBe(
+        "true",
+      );
+    }
+    // Pressing a button doesn't move focus out of the text
+    const press = new MouseEvent("mousedown", {
+      bubbles: true,
+      cancelable: true,
+    });
+    format("Bold").dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(true);
+    // Escape goes back to the text
+    const focus = vi.fn();
+    vi.spyOn(element.editor!, "commands", "get").mockReturnValue({
+      focus,
+    } as never);
+    menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    menu.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+    expect(focus).toHaveBeenCalledOnce();
+  });
+
   it("should unwrap a details block from the toolbar", async () => {
     const element = await setup(
       "<details><summary>More</summary><p>Hidden</p></details>",

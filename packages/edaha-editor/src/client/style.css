@@ -514,6 +514,8 @@ edaha-article form {
 }
 
 .body-panel .richtext-content {
+  /* Holds the floating format toolbar, which scrolls with the text */
+  position: relative;
   flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
@@ -918,6 +920,19 @@ edaha-article .preview {
 .toolbar-button[data-disabled] {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* The toolbar that floats above selected text in the rich text body (placed by the editor) */
+.format-menu {
+  z-index: 10;
+  flex-wrap: nowrap;
+  width: max-content;
+  max-width: calc(100vw - 2rem);
+  padding: 0.25rem;
+  background: var(--colour-background);
+  border: 1px solid var(--colour-border);
+  border-radius: var(--border-radius);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
 }
 
 /* The upload button is a label for its hidden file input, so it shows the input's focus */

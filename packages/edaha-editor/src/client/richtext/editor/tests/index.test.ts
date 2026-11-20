@@ -8,7 +8,7 @@ import {
   editorHtmlToMarkdown,
   markdownToEditorHtml,
 } from "../../../../server/convert";
-import { createRichtextEditor } from "..";
+import { createRichtextEditor, showFormatMenu } from "..";
 import { EMBED_EDIT_EVENT, Embed, blockView } from "../../extensions";
 
 let editor: Editor | undefined;
@@ -85,6 +85,52 @@ describe("createRichtextEditor", () => {
     expect(editor.view.dom.querySelector(".embed-content")!.textContent).toBe(
       "<!--yaml\nsize: 1\n-->\nhttps://youtu.be/x",
     );
+  });
+
+  it("should allow headings from 1 to 4", () => {
+    const { editor } = create("<h1>A</h1><h4>B</h4><h5>C</h5>");
+    expect(editor.getHTML()).toBe("<h1>A</h1><h4>B</h4><p>C</p>");
+  });
+
+  it("should show the floating format toolbar only while text that can be formatted is selected", () => {
+    const element = document.createElement("div");
+    document.body.append(element);
+    const menu = document.createElement("div");
+    menu.append(document.createElement("button"));
+    editor = createRichtextEditor(
+      element,
+      '<p>Hello</p><pre><code>code</code></pre><pre class="raw">raw</pre>',
+      vi.fn(),
+      undefined,
+      menu,
+    );
+    expect(
+      editor.extensionManager.extensions.some((e) => e.name === "bubbleMenu"),
+    ).toBe(true);
+    const focused = vi.spyOn(editor.view, "hasFocus").mockReturnValue(true);
+    const shown = (from: number, to: number) => {
+      editor!.commands.setTextSelection({ from, to });
+      return showFormatMenu(editor!, menu);
+    };
+    expect(shown(1, 6)).toBe(true);
+    // Nothing selected
+    expect(shown(2, 2)).toBe(false);
+    // Code and raw text can't be formatted
+    expect(shown(8, 10)).toBe(false);
+    expect(shown(14, 16)).toBe(false);
+    // A selected block isn't text
+    editor.commands.setNodeSelection(0);
+    expect(showFormatMenu(editor, menu)).toBe(false);
+    // Without focus in the text or the toolbar, it hides
+    focused.mockReturnValue(false);
+    expect(shown(1, 6)).toBe(false);
+    document.body.append(menu);
+    menu.querySelector("button")!.focus();
+    expect(shown(1, 6)).toBe(true);
+    // Nor while the editor can't be changed
+    editor.setEditable(false);
+    expect(shown(1, 6)).toBe(false);
+    menu.remove();
   });
 
   it("should keep raw blocks and raw text as they are, without other formatting", () => {

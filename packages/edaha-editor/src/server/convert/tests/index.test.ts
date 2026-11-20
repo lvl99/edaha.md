@@ -22,6 +22,18 @@ describe("markdownToEditorHtml", () => {
   });
 });
 
+describe("underlined and struck-through text", () => {
+  it("should keep underlined text as HTML and struck-through text as ~~, both ways", () => {
+    const markdown = "<u>under</u> and ~~struck~~";
+    const html = markdownToEditorHtml(markdown, BASE);
+    expect(html).toBe("<p><u>under</u> and <s>struck</s></p>\n");
+    expect(editorHtmlToMarkdown(html, BASE)).toBe(markdown);
+    expect(editorHtmlToMarkdown("<p><del>gone</del></p>", BASE)).toBe(
+      "~~gone~~",
+    );
+  });
+});
+
 describe("embed blocks with options", () => {
   it("should keep embed blocks' options through the editor, as JSON in the editor's HTML", () => {
     const markdown =

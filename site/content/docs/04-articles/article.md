@@ -112,7 +112,7 @@ After the header comes the article in Markdown:
 - **Headings** get IDs from their text, so they can be linked to: `## Getting started` can be linked as `#getting-started`.
 - **Embeds** turn a URL into a video or player. See [Embeds](/docs/07-embeds/).
 - **Raw content** is shown exactly as it is written. See [Raw content](#raw-content).
-- **Extra HTML:** `<small>`, `<big>` and `<details><summary>…</summary>…</details>` can be used. Leave a blank line after `</summary>` and before `</details>`, so the content between them is read as Markdown.
+- **Extra HTML:** `<small>`, `<big>`, `<u>` (underlined) and `<details><summary>…</summary>…</details>` can be used. Leave a blank line after `</summary>` and before `</details>`, so the content between them is read as Markdown.
 
 ## Raw content
 

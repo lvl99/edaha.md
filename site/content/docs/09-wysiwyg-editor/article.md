@@ -50,6 +50,8 @@ Searches and the article browser include changes made outside the editor straigh
    - **Read more**: where the article's summary in lists ends.
 4. Choose **Save**.
 
+Selecting text also shows a small toolbar just above it, with **Bold**, **Italic**, **Underline**, **Strikethrough**, **Link**, **Heading 1**, **Heading 2** and **Heading 3**. It doesn't show for code or raw text, which can't be formatted. From the keyboard, press Tab to move from the selected text into it, and Escape to go back to the text. Underlined text is saved as HTML (`<u>`), as Markdown has none, and struck-through text as `~~text~~`. The article's title is its page's main heading, so use **Heading 1** in the body sparingly.
+
 **Upload image** saves the image into the article's folder, so it needs the article to be saved first.
 
 **Choose file** opens the file browser (see [Managing files](#managing-files)) to choose a file you have already uploaded, in any article. An image is shown in the body; any other file is linked, from the text you selected or named after the file.

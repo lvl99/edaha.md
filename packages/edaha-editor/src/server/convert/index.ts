@@ -148,6 +148,15 @@ const createTurndown = () => {
       return `<${tag}>${content}</${tag}>`;
     },
   });
+  // Underlined text stays HTML (Markdown has none), and struck-through text is GFM's ~~
+  turndown.addRule("underline", {
+    filter: "u",
+    replacement: (content) => `<u>${content}</u>`,
+  });
+  turndown.addRule("strikethrough", {
+    filter: ["s", "del"],
+    replacement: (content) => `~~${content}~~`,
+  });
   turndown.addRule("summary", { filter: "summary", replacement: () => "" });
   turndown.addRule("details", {
     filter: "details",
