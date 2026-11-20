@@ -30,9 +30,16 @@ const EMBED =
 
 /** Embed tools whose dialog gives the given answers in turn */
 const embedTools = (answers: (EmbedValue | undefined)[]): EmbedTools => ({
-  embeds: [{ key: "youtube", name: "YouTube video" }],
+  embeds: [
+    { key: "youtube", name: "YouTube video", icon: '<svg id="yt"></svg>' },
+    { key: "mermaidjs", name: "MermaidJS diagram" },
+  ],
   edit: vi.fn(async () => answers.shift()),
-  loadFrame: vi.fn(async () => ({ url: "/embed-frame/x/", warnings: [] })),
+  loadFrame: vi.fn(async () => ({
+    url: "/embed-frame/x/",
+    errors: [],
+    warnings: [],
+  })),
 });
 
 /** Select all text in the editor */
@@ -135,22 +142,32 @@ describe("edaha-richtext", () => {
     expect(element.value.match(/<img/g)).toHaveLength(1);
   });
 
-  it("should insert embeds from the embed dialog, once the site's embeds are known", async () => {
+  it("should have a button for each of the site's embeds, once they are known, that adds one from the embed dialog", async () => {
     const element = await setup("<p>Hi</p>");
-    expect(button(element, "Embed").disabled).toBe(true);
+    expect(element.querySelector(".toolbar-embed")).toBeNull();
     const tools = embedTools([
       undefined,
       { key: "youtube", content: "https://youtu.be/x" },
     ]);
     element.embedTools = tools;
     await element.updateComplete;
-    expect(button(element, "Embed").disabled).toBe(false);
+    const youtube = button(element, "YouTube video");
+    expect(youtube.title).toBe("YouTube video");
+    expect(youtube.dataset.embed).toBe("youtube");
+    expect(youtube.querySelector(".embed-icon svg")!.id).toBe("yt");
+    // A kind without an icon gets the general one
+    expect(
+      button(element, "MermaidJS diagram").querySelector(".icon svg"),
+    ).not.toBeNull();
     // Cancelled
-    button(element, "Embed").click();
+    youtube.click();
     await settle(element);
-    expect(tools.edit).toHaveBeenLastCalledWith(undefined);
+    expect(tools.edit).toHaveBeenLastCalledWith(
+      { key: "youtube", content: "" },
+      true,
+    );
     expect(element.value).not.toContain("embed");
-    button(element, "Embed").click();
+    button(element, "YouTube video").click();
     await settle(element);
     expect(element.value).toContain(EMBED);
   });
@@ -166,23 +183,40 @@ describe("edaha-richtext", () => {
     expect(element.value).toBe("<p>One</p><p>Two</p>");
   });
 
-  it("should change a selected embed from the toolbar", async () => {
+  it("should change a selected embed with its kind's button, and add another kind after it", async () => {
     const element = await setup(`<p>One</p>${EMBED}`);
     element.embedTools = embedTools([
       { key: "youtube", content: "https://youtu.be/y" },
+      { key: "mermaidjs", content: "graph TD;" },
     ]);
     await element.updateComplete;
     element.editor!.commands.setNodeSelection(5);
     await element.updateComplete;
-    expect(button(element, "Embed").getAttribute("aria-pressed")).toBe("true");
-    button(element, "Embed").click();
+    expect(button(element, "YouTube video").getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(
+      button(element, "MermaidJS diagram").getAttribute("aria-pressed"),
+    ).toBe("false");
+    button(element, "YouTube video").click();
     await settle(element);
-    expect(element.embedTools.edit).toHaveBeenCalledWith({
-      key: "youtube",
-      content: "https://youtu.be/x",
-    });
+    expect(element.embedTools!.edit).toHaveBeenCalledWith(
+      { key: "youtube", content: "https://youtu.be/x" },
+      false,
+    );
+    const changed =
+      '<div class="embed" data-embed="youtube" data-content="https://youtu.be/y"></div>';
+    expect(element.value).toContain(changed);
+    // The YouTube block is still selected: a diagram goes after it, keeping it
+    element.editor!.commands.setNodeSelection(5);
+    button(element, "MermaidJS diagram").click();
+    await settle(element);
+    expect(element.embedTools!.edit).toHaveBeenLastCalledWith(
+      { key: "mermaidjs", content: "" },
+      true,
+    );
     expect(element.value).toContain(
-      '<div class="embed" data-embed="youtube" data-content="https://youtu.be/y"></div>',
+      `${changed}<div class="embed" data-embed="mermaidjs" data-content="graph TD;"></div>`,
     );
   });
 
@@ -197,10 +231,10 @@ describe("edaha-richtext", () => {
     ) as HTMLButtonElement;
     edit.click();
     await settle(element);
-    expect(element.embedTools.edit).toHaveBeenCalledWith({
-      key: "youtube",
-      content: "https://youtu.be/x",
-    });
+    expect(element.embedTools!.edit).toHaveBeenCalledWith(
+      { key: "youtube", content: "https://youtu.be/x" },
+      false,
+    );
     expect(element.value).toContain('data-content="https://youtu.be/y"');
   });
 

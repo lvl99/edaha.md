@@ -28,6 +28,8 @@ declare module "@tiptap/core" {
     embed: {
       /** Insert an embed block, or change the selected embed block's kind and content */
       setEmbed: (value: EmbedValue) => ReturnType;
+      /** Insert an embed block, after the selected block if one is selected (rather than in its place) */
+      insertEmbed: (value: EmbedValue) => ReturnType;
     };
     raw: {
       /** Turn the current block into a raw block, or a raw block back into a paragraph */
@@ -329,8 +331,24 @@ export const Embed = Node.create<EmbedOptions>({
             message.textContent = warning;
             preview.append(message);
           }
+          // Content that isn't valid is left out of the website: say why, under its content
+          if (result.errors.length) {
+            const errors = document.createElement("div");
+            errors.className = "embed-errors";
+            const intro = document.createElement("p");
+            intro.textContent =
+              "This embed isn't valid, so the website leaves it out:";
+            const list = document.createElement("ul");
+            for (const error of result.errors) {
+              const item = document.createElement("li");
+              item.textContent = error;
+              list.append(item);
+            }
+            errors.append(intro, list);
+            preview.append(errors);
+          }
           // An embed that can't be shown is shown as it is written
-          if (result.warnings.length) {
+          if (result.errors.length || result.warnings.length) {
             preview.append(text);
             return;
           }
@@ -376,6 +394,15 @@ export const Embed = Node.create<EmbedOptions>({
         ({ commands, editor }) =>
           editor.isActive(this.name)
             ? commands.updateAttributes(this.name, value)
+            : commands.insertContent({ type: this.name, attrs: value }),
+      insertEmbed:
+        (value: EmbedValue) =>
+        ({ commands, state }) =>
+          state.selection instanceof NodeSelection
+            ? commands.insertContentAt(state.selection.to, {
+                type: this.name,
+                attrs: value,
+              })
             : commands.insertContent({ type: this.name, attrs: value }),
     };
   },

@@ -277,9 +277,11 @@ export interface EmbedValidation {
 
 /** An embed block's frame in the editor's body */
 export interface EmbedFrame {
-  /** The frame page's URL, e.g. "/embed-frame/<id>/" */
+  /** The frame page's URL, e.g. "/embed-frame/<id>/", or "" when the content isn't valid */
   url: string;
-  /** Why the block couldn't be embedded, if it couldn't (it then shows as it is written) */
+  /** Why the content isn't valid for its plugin, if it isn't (the website leaves the block out) */
+  errors: string[];
+  /** Why the block couldn't be embedded otherwise, e.g. its plugin is missing (it then shows as it is written) */
   warnings: string[];
 }
 

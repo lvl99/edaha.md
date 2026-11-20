@@ -25,6 +25,7 @@ export class EdahaEmbedDialog extends LitElement {
     changing: { state: true },
     errors: { state: true },
     checking: { state: true },
+    kind: { state: true },
   };
 
   /** The site's embed plugins */
@@ -39,6 +40,8 @@ export class EdahaEmbedDialog extends LitElement {
   declare errors: string[];
   /** Whether the content is being checked */
   declare checking: boolean;
+  /** The embed's kind, when it is known as the dialog opens (only its content is asked for then) */
+  declare kind: EmbedInfo | undefined;
 
   /** Resolves the open `edit` call */
   private editing: ((value: EmbedValue | undefined) => void) | undefined;
@@ -65,27 +68,31 @@ export class EdahaEmbedDialog extends LitElement {
   }
 
   /**
-   * Open the dialog to add an embed, or change the given one. Resolves with the chosen kind and content, or undefined
-   * if the dialog is closed without saving.
+   * Open the dialog to add an embed of a kind (`adding`, with empty content), or change an embed block. For a kind
+   * the site has a plugin for, only its content is asked for; otherwise (e.g. an old block without a key), its kind
+   * too. Resolves with the kind and content, or undefined if the dialog is closed without saving.
    *
    * @param validate - gives why an embed's content isn't valid (none when it is), checked before it is saved
    * @example
-   * const embed = await dialog.edit(embeds, undefined, ({ key, content }) => api.validateEmbed(key, content));
+   * const embed = await dialog.edit(embeds, { key: "youtube", content: "" }, true, ({ key, content }) => api.validateEmbed(key, content));
    */
   async edit(
     embeds: readonly EmbedInfo[],
-    current?: EmbedValue,
+    value: EmbedValue,
+    adding: boolean,
     validate?: EmbedValidator,
   ): Promise<EmbedValue | undefined> {
     this.finish(undefined);
     this.embeds = embeds;
     this.validator = validate;
     this.errors = [];
-    // A new embed starts as the only kind there is, if there is just one
+    this.kind = embeds.find((embed) => embed.key === value.key);
+    // Without a known kind, it starts as the only kind there is, if there is just one
     this.key =
-      current?.key ?? (embeds.length === 1 ? (embeds[0] as EmbedInfo).key : "");
-    this.content = current?.content ?? "";
-    this.changing = current !== undefined;
+      this.kind?.key ??
+      (embeds.length === 1 ? (embeds[0] as EmbedInfo).key : "");
+    this.content = value.content;
+    this.changing = !adding;
     const result = new Promise<EmbedValue | undefined>(
       (resolve) => (this.editing = resolve),
     );
@@ -151,7 +158,7 @@ export class EdahaEmbedDialog extends LitElement {
       <form @submit=${this.save}>
         <div class="article-browser-header">
           <h2 id="embed-dialog-title">
-            ${this.changing ? "Change embed" : "Add embed"}
+            ${this.changing ? "Change" : "Add"} ${this.kind?.name ?? "embed"}
           </h2>
           <button
             type="button"
@@ -164,41 +171,46 @@ export class EdahaEmbedDialog extends LitElement {
         </div>
         <div class="embed-dialog-body">
           ${
-            this.embeds.length
-              ? html`<fieldset class="embed-dialog-kinds">
-                  <legend>Kind of embed</legend>
-                  ${this.embeds.map(
-                    (embed) =>
-                      html`<label class="embed-dialog-kind">
-                        <input
-                          type="radio"
-                          name="embed-kind"
-                          required
-                          .value=${embed.key}
-                          .checked=${embed.key === this.key}
-                          @change=${() => {
-                            this.key = embed.key;
-                            this.errors = [];
-                          }}
-                        />
-                        ${embedIcon(embed)}
-                        <span>
-                          <strong>${embed.name}</strong>
-                          ${
-                            embed.description
-                              ? html`<span class="embed-dialog-description"
-                                  >${embed.description}</span
-                                >`
-                              : ""
-                          }
-                        </span>
-                      </label>`,
-                  )}
-                </fieldset>`
-              : html`<p class="error" role="alert">
-                  This site has no embed plugins. Add them under
-                  <code>plugins</code> in its config file.
+            this.kind
+              ? html`<p class="embed-dialog-about">
+                  ${embedIcon(this.kind)}
+                  <span>${this.kind.description ?? ""}</span>
                 </p>`
+              : this.embeds.length
+                ? html`<fieldset class="embed-dialog-kinds">
+                    <legend>Kind of embed</legend>
+                    ${this.embeds.map(
+                      (embed) =>
+                        html`<label class="embed-dialog-kind">
+                          <input
+                            type="radio"
+                            name="embed-kind"
+                            required
+                            .value=${embed.key}
+                            .checked=${embed.key === this.key}
+                            @change=${() => {
+                              this.key = embed.key;
+                              this.errors = [];
+                            }}
+                          />
+                          ${embedIcon(embed)}
+                          <span>
+                            <strong>${embed.name}</strong>
+                            ${
+                              embed.description
+                                ? html`<span class="embed-dialog-description"
+                                    >${embed.description}</span
+                                  >`
+                                : ""
+                            }
+                          </span>
+                        </label>`,
+                    )}
+                  </fieldset>`
+                : html`<p class="error" role="alert">
+                    This site has no embed plugins. Add them under
+                    <code>plugins</code> in its config file.
+                  </p>`
           }
           <label for="embed-dialog-content">Content</label>
           <textarea

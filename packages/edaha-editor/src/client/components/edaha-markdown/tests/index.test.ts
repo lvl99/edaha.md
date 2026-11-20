@@ -82,7 +82,6 @@ describe("edaha-markdown", () => {
       "Remove row",
       "Remove column",
       "Remove table",
-      "Embed",
       "Raw",
       "Read more",
       "Choose file",
@@ -157,40 +156,60 @@ describe("edaha-markdown", () => {
     expect(image.value).toBe("Hi ![](cat.png)");
   });
 
-  it("should add and change embed blocks with the embed dialog, once the site's embeds are known", async () => {
+  it("should have a button for each of the site's embeds, once they are known, that adds or changes one with the embed dialog", async () => {
     const element = await setup("Intro", [5, 5]);
-    expect(button(element, "Embed").disabled).toBe(true);
+    expect(element.querySelector(".toolbar-embed")).toBeNull();
     const answers: (EmbedValue | undefined)[] = [
       { key: "youtube", content: "https://youtu.be/abc" },
       undefined,
+      { key: "youtube", content: "https://youtu.be/def" },
       { key: "mermaidjs", content: "graph TD;\n  A-->B;" },
     ];
     element.embedTools = {
-      embeds: [],
+      embeds: [
+        { key: "youtube", name: "YouTube video" },
+        { key: "mermaidjs", name: "MermaidJS diagram" },
+      ],
       edit: vi.fn(async () => answers.shift()),
       loadFrame: vi.fn(),
     };
     await element.updateComplete;
-    await press(element, "Embed");
+    await press(element, "YouTube video");
     await settle(element);
-    expect(element.embedTools.edit).toHaveBeenLastCalledWith(undefined);
-    const code =
-      "<!-- embed:youtube -->https://youtu.be/abc<!-- /embed:youtube -->";
-    expect(element.value).toBe(`Intro\n\n${code}`);
-    // The selected block is changed; cancelling changes nothing
+    expect(element.embedTools.edit).toHaveBeenLastCalledWith(
+      { key: "youtube", content: "" },
+      true,
+    );
+    const code = (id: string) =>
+      `<!-- embed:youtube -->https://youtu.be/${id}<!-- /embed:youtube -->`;
+    expect(element.value).toBe(`Intro\n\n${code("abc")}`);
+    // A selected block of the button's kind is changed; cancelling changes nothing
     textarea(element).setSelectionRange(7, element.value.length);
-    await press(element, "Embed");
+    await element.updateComplete;
+    expect(button(element, "YouTube video").getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    await press(element, "YouTube video");
     await settle(element);
-    expect(element.embedTools.edit).toHaveBeenLastCalledWith({
-      key: "youtube",
-      content: "https://youtu.be/abc",
-    });
-    expect(element.value).toBe(`Intro\n\n${code}`);
+    expect(element.embedTools.edit).toHaveBeenLastCalledWith(
+      { key: "youtube", content: "https://youtu.be/abc" },
+      false,
+    );
+    expect(element.value).toBe(`Intro\n\n${code("abc")}`);
     textarea(element).setSelectionRange(7, element.value.length);
-    await press(element, "Embed");
+    await press(element, "YouTube video");
     await settle(element);
+    expect(element.value).toBe(`Intro\n\n${code("def")}`);
+    // Another kind's button adds one after the selected block
+    textarea(element).setSelectionRange(7, element.value.length);
+    await press(element, "MermaidJS diagram");
+    await settle(element);
+    expect(element.embedTools.edit).toHaveBeenLastCalledWith(
+      { key: "mermaidjs", content: "" },
+      true,
+    );
     expect(element.value).toBe(
-      "Intro\n\n<!-- embed:mermaidjs -->\ngraph TD;\n  A-->B;\n<!-- /embed:mermaidjs -->",
+      `Intro\n\n${code("def")}\n\n<!-- embed:mermaidjs -->\ngraph TD;\n  A-->B;\n<!-- /embed:mermaidjs -->`,
     );
   });
 

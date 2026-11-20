@@ -1,6 +1,10 @@
 import type { Editor } from "@tiptap/core";
 import { html, LitElement, type PropertyValues } from "lit";
-import type { EmbedTools, EmbedValue } from "../../embeds/index.ts";
+import {
+  embedButton,
+  type EmbedTools,
+  type EmbedValue,
+} from "../../embeds/index.ts";
 import { createRichtextEditor } from "../../richtext/editor/index.ts";
 import {
   EMBED_EDIT_EVENT,
@@ -175,13 +179,6 @@ export class EdahaRichtext extends LitElement {
       enabled: inTable,
     },
     {
-      label: "Embed",
-      run: (e) => this.editEmbed(e),
-      active: (e) => e.isActive("embed"),
-      // The site's embeds must be known to choose one
-      enabled: () => !!this.embedTools,
-    },
-    {
       label: "Raw",
       // Text shown exactly as it is written, with no formatting
       run: (e) => e.chain().focus().toggleRaw().run(),
@@ -226,17 +223,22 @@ export class EdahaRichtext extends LitElement {
   }
 
   /**
-   * Insert an embed block (e.g. a YouTube video or a diagram), or change the selected one, asking for its kind and
-   * content in the embed dialog.
+   * Ask for an embed's content in the embed dialog: a new embed of a kind (from its toolbar button), inserted after the
+   * selected block, or the selected embed block (from its "Edit" button, or its kind's toolbar button).
+   *
+   * @param key - the kind of embed to add, from its toolbar button
    */
-  private async editEmbed(editor: Editor) {
-    if (!this.embedTools) return;
-    const current = editor.isActive("embed")
+  private async editEmbed(editor: Editor, key?: string) {
+    const selected = editor.isActive("embed")
       ? (editor.getAttributes("embed") as EmbedValue)
       : undefined;
-    const value = await this.embedTools.edit(current);
-    if (value) editor.chain().focus().setEmbed(value).run();
-    else editor.commands.focus();
+    const adding = key !== undefined && selected?.key !== key;
+    const current = adding ? { key, content: "" } : selected;
+    if (!this.embedTools || !current) return;
+    const value = await this.embedTools.edit(current, adding);
+    if (!value) editor.commands.focus();
+    else if (adding) editor.chain().focus().insertEmbed(value).run();
+    else editor.chain().focus().setEmbed(value).run();
   }
 
   /**
@@ -342,6 +344,13 @@ export class EdahaRichtext extends LitElement {
             >
               ${toolbarButtonContent(action.label)}
             </button>`,
+        )}
+        ${this.embedTools?.embeds.map((embed) =>
+          embedButton(embed, {
+            pressed: !!editor?.isActive("embed", { key: embed.key }),
+            disabled: !editor,
+            onClick: () => editor && void this.editEmbed(editor, embed.key),
+          }),
         )}
         <label
           class="toolbar-button toolbar-upload"

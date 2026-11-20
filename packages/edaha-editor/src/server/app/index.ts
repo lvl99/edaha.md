@@ -238,7 +238,7 @@ ${FRAME_HEIGHT_SCRIPT}
  * - `POST /api/embed-validations`: check an embed block's content (`{ key, content }`) with its plugin's `validate`,
  *   giving why it isn't valid (`EmbedValidation`)
  * - `POST /api/embed-frames`: remember an embed block (`{ key, content }`) for its frame in the editor's body, and give
- *   the frame's URL and any problems (`EmbedFrame`); `GET /embed-frame/:id/?theme=light|dark` is the frame's page
+ *   the frame's URL, and why its content isn't valid (then it has no frame) or can't be shown (`EmbedFrame`); `GET /embed-frame/:id/?theme=light|dark` is the frame's page
  * - `POST /api/convert/markdown` and `POST /api/convert/html`: convert an article body between editor HTML and Markdown
  *   (`{ html | markdown, location? }`, where `location` is the saved article's, which relative URLs are relative to)
  * - `POST /api/preview`: remember unsaved article data (`{ data, location? }`) for a preview page, and give its URL
@@ -384,12 +384,18 @@ export const createEditorApp = (
       content: string;
     }>();
     const warnings: string[] = [];
+    const embeds = await embedResolver({
+      warn: (message) => warnings.push(message),
+    });
+    // Content that isn't valid isn't on the website, so it has no frame
+    const known = (await plugins()).some((plugin) => plugin.key === key);
+    const errors = known ? await embeds.validate(key, content) : [];
+    if (errors.length) return c.json<EmbedFrame>({ url: "", errors, warnings });
     // Rendered now to report problems, then again each time the frame is shown
-    await (
-      await embedResolver({ warn: (message) => warnings.push(message) })
-    ).render(key, content, "Embed", "editor");
+    await embeds.render(key, content, "Embed", "editor");
     return c.json<EmbedFrame>({
       url: `/embed-frame/${store.rememberEmbedFrame({ key, content })}/`,
+      errors,
       warnings,
     });
   });

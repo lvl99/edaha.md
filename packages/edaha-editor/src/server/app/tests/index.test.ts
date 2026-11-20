@@ -404,6 +404,16 @@ describe("createEditorApp", () => {
     expect(await check("nope", "x")).toEqual([
       'No embed plugin with the key "nope"',
     ]);
+    // Content that isn't valid has no frame, and its errors are given apart from other problems
+    const frame = await app.request(
+      "/api/embed-frames",
+      json("POST", { key: "media", content: "v/1" }),
+    );
+    expect(await frame.json()).toEqual({
+      url: "",
+      errors: ["Not a URL"],
+      warnings: [],
+    });
     // Like other changes, only the editor page may ask
     const other = await app.request("/api/embed-validations", {
       method: "POST",

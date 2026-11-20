@@ -612,10 +612,11 @@ export class EdahaArticle extends LitElement {
       const embeds = await this.api.embeds();
       this.embedTools = {
         embeds,
-        edit: (current) =>
+        edit: (value, adding) =>
           (this.querySelector("edaha-embed-dialog") as EdahaEmbedDialog).edit(
             embeds,
-            current,
+            value,
+            adding,
             ({ key, content }) => this.api.validateEmbed(key, content),
           ),
         loadFrame: ({ key, content }) => this.api.embedFrame(key, content),

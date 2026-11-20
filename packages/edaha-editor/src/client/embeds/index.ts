@@ -1,4 +1,5 @@
 import { html, type TemplateResult } from "lit";
+import { icon } from "../icons/index.ts";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import type { EmbedFrame, EmbedInfo } from "../../server/types/index.ts";
 
@@ -17,8 +18,12 @@ export type EmbedValidator = (value: EmbedValue) => Promise<string[]>;
 export interface EmbedTools {
   /** The site's embed plugins */
   embeds: readonly EmbedInfo[];
-  /** Ask for an embed's kind and content (changing the given one): undefined if cancelled */
-  edit(current?: EmbedValue): Promise<EmbedValue | undefined>;
+  /**
+   * Ask for an embed's content in the embed dialog, checking it is valid: for a new embed of a kind (`adding`, with
+   * empty content), or a block to change. A block whose kind has no plugin asks for its kind too. Undefined if
+   * cancelled.
+   */
+  edit(value: EmbedValue, adding: boolean): Promise<EmbedValue | undefined>;
   /** Render an embed block for its frame in the rich text body */
   loadFrame(value: EmbedValue): Promise<EmbedFrame>;
 }
@@ -49,3 +54,38 @@ export const embedIcon = (
         >${unsafeHTML(embed.icon)}</span
       >`
     : "";
+
+/** What an embed's toolbar button does */
+export interface EmbedButtonOptions {
+  /** Whether a block of its kind is selected */
+  pressed: boolean;
+  disabled: boolean;
+  /** Add an embed of its kind, or change the selected one */
+  onClick: () => void;
+}
+
+/**
+ * A toolbar button for adding an embed of a kind: its icon (or a general one), named by the embed's name for screen
+ * readers and tooltips.
+ *
+ * @example
+ * html`${embeds.map((embed) => embedButton(embed, { pressed: false, disabled: false, onClick: () => add(embed.key) }))}`
+ */
+export const embedButton = (
+  embed: EmbedInfo,
+  { pressed, disabled, onClick }: EmbedButtonOptions,
+): TemplateResult =>
+  html`<button
+    type="button"
+    class="toolbar-button toolbar-embed"
+    data-embed=${embed.key}
+    title=${embed.name}
+    aria-pressed=${String(pressed)}
+    ?disabled=${disabled}
+    @click=${onClick}
+  >
+    ${embed.icon ? embedIcon(embed) : icon("smart_display")}<span
+      class="visually-hidden"
+      >${embed.name}</span
+    >
+  </button>`;

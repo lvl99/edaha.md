@@ -228,6 +228,7 @@ describe("createRichtextEditor", () => {
   it("should show embeds by their kind, in sandboxed frames sized to their content", async () => {
     const loadFrame = vi.fn(async ({ key, content }: EmbedValue) => ({
       url: `/embed-frame/${key}/`,
+      errors: [],
       warnings: content.includes("bad") ? ["First", "Second"] : [],
     }));
     const { editor } = create(
@@ -281,8 +282,38 @@ describe("createRichtextEditor", () => {
     expect(frame.style.height).toBe("40px");
   });
 
+  it("should list why an embed isn't valid, and show its content as it is written", async () => {
+    const { editor } = create(
+      EMBED,
+      vi.fn(),
+      embedTools(async () => ({
+        url: "",
+        errors: ["Not a URL", "No video ID"],
+        warnings: [],
+      })),
+    );
+    await flush();
+    const block = editor.view.dom.querySelector(".embed-block")!;
+    expect(block.querySelector(".embed-errors p")!.textContent).toBe(
+      "This embed isn't valid, so the website leaves it out:",
+    );
+    expect(
+      [...block.querySelectorAll(".embed-errors li")].map(
+        (li) => li.textContent,
+      ),
+    ).toEqual(["Not a URL", "No video ID"]);
+    expect(block.querySelector(".embed-content")!.textContent).toBe(
+      "https://youtu.be/x",
+    );
+    expect(block.querySelector("iframe")).toBeNull();
+  });
+
   it("should show frames in the editor's theme", async () => {
-    const tools = embedTools(async () => ({ url: "/f/", warnings: [] }));
+    const tools = embedTools(async () => ({
+      url: "/f/",
+      errors: [],
+      warnings: [],
+    }));
     const frameSrc = async () => {
       const { editor } = create(EMBED, vi.fn(), tools);
       await flush();
@@ -336,9 +367,9 @@ describe("createRichtextEditor", () => {
     expect(loadFrame).toHaveBeenCalledTimes(2);
 
     // Frames for the old embed are ignored, even if they arrive last
-    answers["https://youtu.be/y"]!({ url: "/new/", warnings: [] });
+    answers["https://youtu.be/y"]!({ url: "/new/", errors: [], warnings: [] });
     await flush();
-    answers["https://youtu.be/x"]!({ url: "/old/", warnings: [] });
+    answers["https://youtu.be/x"]!({ url: "/old/", errors: [], warnings: [] });
     await flush();
     expect(view!.querySelector("iframe")!.getAttribute("src")).toBe(
       "/new/?theme=light",
@@ -475,7 +506,7 @@ describe("createRichtextEditor", () => {
     expect(preview.textContent).toBe("Loading…");
     // A frame that arrives after its block was removed isn't sized
     preview.closest(".embed-block")!.remove();
-    answer({ url: "/f/", warnings: [] });
+    answer({ url: "/f/", errors: [], warnings: [] });
     await flush();
     expect(preview.querySelector("iframe")!.contentWindow).toBeNull();
   });

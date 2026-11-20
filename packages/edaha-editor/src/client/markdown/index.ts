@@ -323,6 +323,18 @@ export const setEmbed = (edit: TextEdit, embed: EmbedValue): TextEdit => {
 };
 
 /**
+ * Insert an embed block on its own line after the selection (keeping what is selected, e.g. another embed block).
+ *
+ * @example
+ * insertEmbed({ value: "Intro", start: 0, end: 5 }, { key: "youtube", content: "https://youtu.be/abc" }); // "Intro\n\n<!-- embed:youtube -->..."
+ */
+export const insertEmbed = (edit: TextEdit, embed: EmbedValue): TextEdit =>
+  insertBlock(
+    { ...edit, start: edit.end },
+    embedBlock(embed.key, embed.content),
+  );
+
+/**
  * Remove the selected read more break, or insert one on its own line.
  *
  * @example

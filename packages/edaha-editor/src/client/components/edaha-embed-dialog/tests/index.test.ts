@@ -34,6 +34,9 @@ const EMBEDS: EmbedInfo[] = [
   { key: "mermaidjs", name: "MermaidJS diagram" },
 ];
 
+/** A new embed of a kind */
+const NEW_YOUTUBE = { key: "youtube", content: "" };
+
 /** The dialog's radio button for a kind of embed */
 const kind = (element: HTMLElement, key: string) =>
   find<HTMLInputElement>(element, `input[name="embed-kind"][value="${key}"]`);
@@ -42,6 +45,10 @@ const kind = (element: HTMLElement, key: string) =>
 const content = (element: HTMLElement) =>
   find<HTMLTextAreaElement>(element, "#embed-dialog-content");
 
+/** The dialog's title */
+const title = (element: HTMLElement) =>
+  find(element, "#embed-dialog-title").textContent?.replace(/\s+/g, " ").trim();
+
 /** Submit the dialog's form, as its Add or Save button would */
 const submit = (element: HTMLElement) =>
   find<HTMLFormElement>(element, "form").dispatchEvent(
@@ -49,35 +56,25 @@ const submit = (element: HTMLElement) =>
   );
 
 describe("edaha-embed-dialog", () => {
-  it("should add an embed: choose its kind (with descriptions and icons), then write its content", async () => {
+  it("should add an embed of a kind, asking only for its content", async () => {
     const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
-    const result = element.edit(EMBEDS);
+    const result = element.edit(EMBEDS, NEW_YOUTUBE, true);
     await settle(element);
     const dialog = find<HTMLDialogElement>(element, "dialog");
     expect(dialog.open).toBe(true);
-    expect(find(element, "#embed-dialog-title").textContent?.trim()).toBe(
-      "Add embed",
-    );
+    expect(title(element)).toBe("Add YouTube video");
     expect(dialog.getAttribute("aria-labelledby")).toBe("embed-dialog-title");
-    expect(find(element, "legend").textContent).toBe("Kind of embed");
-    const labels = [...element.querySelectorAll(".embed-dialog-kind")];
-    expect(
-      labels.map((label) => label.textContent?.replace(/\s+/g, " ").trim()),
-    ).toEqual(["YouTube video A YouTube video player", "MermaidJS diagram"]);
-    expect(labels[0]!.querySelector(".embed-icon svg")!.id).toBe("yt");
-    // With several kinds, none is chosen, and choosing one comes first
-    expect(document.activeElement).toBe(kind(element, "youtube"));
-    expect(find(element, ".embed-dialog-hint").textContent).toContain(
-      "Choose a kind of embed",
+    // Its description and icon, without the other kinds
+    expect(find(element, ".embed-dialog-about").textContent?.trim()).toBe(
+      "A YouTube video player",
     );
-    // Without a kind and content, it isn't added
-    submit(element);
-    expect(dialog.open).toBe(true);
-    kind(element, "youtube").click();
-    await element.updateComplete;
+    expect(find(element, ".embed-dialog-about .embed-icon svg").id).toBe("yt");
+    expect(element.querySelector('input[name="embed-kind"]')).toBeNull();
+    expect(document.activeElement).toBe(content(element));
     expect(find(element, ".embed-dialog-hint").textContent?.trim()).toBe(
       "What the YouTube video shows, e.g. a URL or code.",
     );
+    // Without content, it isn't added
     input(content(element), "   ");
     submit(element);
     expect(dialog.open).toBe(true);
@@ -90,28 +87,51 @@ describe("edaha-embed-dialog", () => {
     expect(dialog.open).toBe(false);
   });
 
-  it("should change an embed, starting with its kind and content", async () => {
+  it("should change an embed block, starting with its content", async () => {
     const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
-    const result = element.edit(EMBEDS, {
-      key: "mermaidjs",
-      content: "graph TD;",
-    });
-    await settle(element);
-    expect(find(element, "#embed-dialog-title").textContent?.trim()).toBe(
-      "Change embed",
+    const result = element.edit(
+      EMBEDS,
+      { key: "mermaidjs", content: "graph TD;" },
+      false,
     );
-    expect(kind(element, "mermaidjs").checked).toBe(true);
+    await settle(element);
+    expect(title(element)).toBe("Change MermaidJS diagram");
+    // Without a description, the line has only the (missing) icon
+    expect(find(element, ".embed-dialog-about").textContent?.trim()).toBe("");
     expect(content(element).value).toBe("graph TD;");
-    expect(document.activeElement).toBe(content(element));
     expect(button(element, "Save")).toBeTruthy();
     input(content(element), "graph LR;");
     submit(element);
     expect(await result).toEqual({ key: "mermaidjs", content: "graph LR;" });
   });
 
-  it("should start with the only kind of embed there is", async () => {
+  it("should ask for the kind of a block whose kind has no plugin, with descriptions and icons", async () => {
     const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
-    void element.edit([EMBEDS[1]!]);
+    const result = element.edit(EMBEDS, { key: "", content: "old" }, false);
+    await settle(element);
+    expect(title(element)).toBe("Change embed");
+    expect(find(element, "legend").textContent).toBe("Kind of embed");
+    const labels = [...element.querySelectorAll(".embed-dialog-kind")];
+    expect(
+      labels.map((label) => label.textContent?.replace(/\s+/g, " ").trim()),
+    ).toEqual(["YouTube video A YouTube video player", "MermaidJS diagram"]);
+    expect(labels[0]!.querySelector(".embed-icon svg")!.id).toBe("yt");
+    // None is chosen, and choosing one comes first
+    expect(document.activeElement).toBe(kind(element, "youtube"));
+    expect(find(element, ".embed-dialog-hint").textContent).toContain(
+      "Choose a kind of embed",
+    );
+    submit(element);
+    expect(find<HTMLDialogElement>(element, "dialog").open).toBe(true);
+    kind(element, "mermaidjs").click();
+    await element.updateComplete;
+    submit(element);
+    expect(await result).toEqual({ key: "mermaidjs", content: "old" });
+  });
+
+  it("should start an unknown kind as the only kind there is", async () => {
+    const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
+    void element.edit([EMBEDS[1]!], { key: "vimeo", content: "x" }, false);
     await settle(element);
     expect(kind(element, "mermaidjs").checked).toBe(true);
     expect(document.activeElement).toBe(content(element));
@@ -119,16 +139,16 @@ describe("edaha-embed-dialog", () => {
 
   it("should give nothing when closed or cancelled, or opened again", async () => {
     const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
-    const closed = element.edit(EMBEDS);
+    const closed = element.edit(EMBEDS, NEW_YOUTUBE, true);
     await settle(element);
     button(element, "Close").click();
     expect(await closed).toBeUndefined();
-    const cancelled = element.edit(EMBEDS);
+    const cancelled = element.edit(EMBEDS, NEW_YOUTUBE, true);
     await settle(element);
     button(element, "Cancel").click();
     expect(await cancelled).toBeUndefined();
-    const replaced = element.edit(EMBEDS);
-    void element.edit(EMBEDS);
+    const replaced = element.edit(EMBEDS, NEW_YOUTUBE, true);
+    void element.edit(EMBEDS, NEW_YOUTUBE, true);
     expect(await replaced).toBeUndefined();
   });
 
@@ -141,6 +161,7 @@ describe("edaha-embed-dialog", () => {
     const result = element.edit(
       EMBEDS,
       { key: "youtube", content: "bad" },
+      false,
       validate,
     );
     await settle(element);
@@ -193,12 +214,16 @@ describe("edaha-embed-dialog", () => {
       )
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValue([]);
+    // A block without a known kind, so its kind can change
     const result = element.edit(
       EMBEDS,
-      { key: "youtube", content: "a" },
+      { key: "", content: "a" },
+      false,
       validate,
     );
     await settle(element);
+    kind(element, "youtube").click();
+    await element.updateComplete;
     submit(element);
     // Another kind is chosen while the first is checked
     kind(element, "mermaidjs").click();
@@ -221,7 +246,7 @@ describe("edaha-embed-dialog", () => {
 
   it("should explain when the site has no embeds", async () => {
     const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
-    void element.edit([]);
+    void element.edit([], { key: "", content: "" }, true);
     await settle(element);
     expect(find(element, "[role=alert]").textContent).toContain(
       "This site has no embed plugins",

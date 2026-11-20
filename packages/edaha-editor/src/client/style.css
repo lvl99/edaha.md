@@ -774,6 +774,22 @@ edaha-article .preview {
   overflow-wrap: anywhere;
 }
 
+.richtext-content .embed-errors {
+  margin-block-start: 0.5rem;
+  color: var(--colour-error);
+}
+
+.richtext-content .embed-errors p,
+.richtext-content .embed-errors ul {
+  margin: 0;
+}
+
+/* Each kind of embed's toolbar button shows its icon at the toolbar's size */
+.toolbar-embed .embed-icon svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
 .richtext-content .embed-warning {
   margin: 0.5rem 0 0;
   color: var(--colour-error);

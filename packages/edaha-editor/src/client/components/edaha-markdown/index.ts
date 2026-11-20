@@ -3,7 +3,11 @@ import { live } from "lit/directives/live.js";
 import { defineElement } from "../define/index.ts";
 import type { ImageUploader } from "../edaha-richtext/index.ts";
 import type { FileChooser } from "../edaha-file-browser/index.ts";
-import type { EmbedTools } from "../../embeds/index.ts";
+import {
+  embedButton,
+  type EmbedTools,
+  type EmbedValue,
+} from "../../embeds/index.ts";
 import { toolbarButtonContent } from "../../icons/index.ts";
 import {
   addTableColumn,
@@ -14,6 +18,7 @@ import {
   removeTable,
   removeTableColumn,
   removeTableRow,
+  insertEmbed,
   selectedEmbed,
   selectedLinkUrl,
   setEmbed,
@@ -132,14 +137,6 @@ export class EdahaMarkdown extends LitElement {
     { label: "Remove column", run: removeTableColumn, enabled: inTable },
     { label: "Remove table", run: removeTable, enabled: inTable },
     {
-      label: "Embed",
-      run: (e) => {
-        void this.editEmbed(e);
-        return undefined;
-      },
-      enabled: () => !!this.embedTools,
-    },
-    {
       label: "Raw",
       // Text shown exactly as it is written, with no formatting
       run: (e) => wrapLines(e, "<!-- raw -->", "<!-- /raw -->"),
@@ -211,13 +208,18 @@ export class EdahaMarkdown extends LitElement {
   }
 
   /**
-   * Insert an embed block, or change the selected one, asking for its kind and content in the embed dialog (where the
-   * selection was when asked).
+   * Ask for an embed's content in the embed dialog (where the selection was when asked): a new embed of a kind,
+   * inserted after the selection, or the selected embed block when it is of that kind.
    */
-  private async editEmbed(selection: TextEdit) {
-    const value = await this.embedTools?.edit(selectedEmbed(selection));
-    if (value) this.apply(setEmbed(selection, value));
-    else this.textarea?.focus();
+  private async editEmbed(selection: TextEdit, key: string) {
+    const selected = selectedEmbed(selection);
+    const adding = selected?.key !== key;
+    const value = await this.embedTools?.edit(
+      adding ? { key, content: "" } : (selected as EmbedValue),
+      adding,
+    );
+    if (!value) this.textarea?.focus();
+    else this.apply((adding ? insertEmbed : setEmbed)(selection, value));
   }
 
   /** Let the user choose an existing file, and insert it where the selection was when asked */
@@ -252,6 +254,13 @@ export class EdahaMarkdown extends LitElement {
             >
               ${toolbarButtonContent(action.label)}
             </button>`,
+        )}
+        ${this.embedTools?.embeds.map((embed) =>
+          embedButton(embed, {
+            pressed: selectedEmbed(selection)?.key === embed.key,
+            disabled: false,
+            onClick: () => void this.editEmbed(this.selection, embed.key),
+          }),
         )}
         <label
           class="toolbar-button toolbar-upload"
