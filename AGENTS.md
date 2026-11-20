@@ -124,9 +124,14 @@ Every commit must be signed off under the Developer Certificate of Origin (see [
 
 Adhere to semver.
 
+The packages in [packages](packages) (core `@lvl99dotcom/edaha.md`, the editor and the plugins) share their major and minor version numbers, e.g. `0.2.x`, but each has its own patch number:
+
+- A patch release bumps the patch number of only the packages that changed, e.g. `@lvl99dotcom/edaha-plugin-bandcamp` 0.2.0 → 0.2.1, and releases only them.
+- A major or minor release bumps every package to the same version, e.g. 0.2.3 → 0.3.0, and releases them all, changed or not.
+
 Don't bump the version in collaboration project branches or PRs. The version is bumped when a release is made (see below).
 
-For each version release, collate and summarise relevant actions undertaken since last release under the new version's heading with three sub-headings (Fixed, Added, Changed) and put them in [CHANGELOG.md] which will be committed to the project before each release.
+For each version release, collate and summarise relevant actions undertaken since last release under the new version's heading with three sub-headings (Fixed, Added, Changed) and put them in [CHANGELOG.md] which will be committed to the project before each release. A major or minor release's heading is its version, e.g. `## 0.3.0 (2026-12-01)`; a patch release's heading names its packages, e.g. `## @lvl99dotcom/edaha-plugin-bandcamp 0.2.1 (2026-12-01)`.
 
 ## Development, testing, release workflow
 
@@ -141,8 +146,12 @@ PRs will be submitted, reviewed, and hopefully merged into `main`.
 Releases will be made via NPM, and only from the `main` branch, when human signals to prepare a release:
 
 1. Update [CHANGELOG.md] for the new version and commit it to `main`.
-2. Bump the version, commit and tag in one step with `pnpm version <patch|minor|major> -m "edaha.md %s"`. This makes the commit "edaha.md <version>" and the annotated tag `v<version>`, so the tagged release includes its changelog.
-3. Push the commit and the tag: `git push --follow-tags`.
-4. Publish to NPM: `pnpm publish`. Please note that this will require human intervention to complete. You need to trigger the command in an interactive terminal and then get the human to follow the rest of the process to complete. Don't bother verifying that the new version is updated in npm as it will take at least 5 minutes for the release to be verified by npm before it will be available.
+2. Bump the versions without committing:
+   - Major or minor release, every package: `pnpm -r --filter "./packages/*" version <minor|major>`.
+   - Patch release, only the changed packages: `pnpm -r --filter <package name> --filter <package name> version patch`.
+3. Commit the bump as "edaha.md <version>" for a major or minor release, or "<package name> <version>, ..." for a patch release.
+4. Tag each released package with an annotated tag `<package name>@<version>`, e.g. `git tag -a @lvl99dotcom/edaha.md@0.3.0 -m "@lvl99dotcom/edaha.md 0.3.0"`, so the tagged release includes its changelog.
+5. Push the commit and the tags: `git push --follow-tags`.
+6. Publish to NPM: `pnpm -r publish`. It builds each package (core first) and publishes the packages whose version isn't on NPM yet, turning their `workspace:^` dependencies into `^<version>`. Please note that this will require human intervention to complete. You need to trigger the command in an interactive terminal and then get the human to follow the rest of the process to complete. Don't bother verifying that the new version is updated in npm as it will take at least 5 minutes for the release to be verified by npm before it will be available.
 
-Code will be provided only as ESM with TypeScript definitions in released NPM package. Ensure that [site] is not included in the NPM package.
+Code will be provided only as ESM with TypeScript definitions in released NPM package. Ensure that [site] is not included in the NPM packages.
