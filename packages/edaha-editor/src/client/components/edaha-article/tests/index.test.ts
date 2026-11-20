@@ -1350,6 +1350,65 @@ describe("edaha-article custom settings", () => {
     ]);
   });
 
+  it("should show fields' defaults, hide fields by their conditions, and save every shown value", async () => {
+    const definitions = {
+      layout: {
+        type: "string",
+        enum: ["slim", "large"],
+        $edahaField: { select: true, defaultValue: "large" },
+      },
+      tracklist: {
+        type: "boolean",
+        $edahaField: {
+          checkbox: true,
+          defaultValue: false,
+          hideWhen: ["layout", "=", "slim"],
+        },
+      },
+    } as const;
+    const result = await setup({
+      ...ARTICLE,
+      meta: { tracklist: true, oops: 1 },
+      problems: [],
+    });
+    const { element, api } = result;
+    element.metadata = {
+      definitions,
+      types: {},
+      groups: metadataLayout(definitions as never, {}),
+    } as never;
+    await settle(element);
+    // The default shows, without changing the article
+    expect(find<HTMLSelectElement>(element, "#meta-layout").value).toBe(
+      "large",
+    );
+    expect(find<HTMLInputElement>(element, "#meta-tracklist").checked).toBe(
+      true,
+    );
+    expect(element.dirty).toBe(false);
+    // Choosing "slim" hides the tracklist, keeping its value until it is saved
+    input(find<HTMLSelectElement>(element, "#meta-layout"), "slim", "change");
+    await settle(element);
+    expect(element.querySelector("#meta-tracklist")).toBeNull();
+    expect(element.data.meta).toEqual({
+      tracklist: true,
+      oops: 1,
+      layout: "slim",
+    });
+    input(find<HTMLSelectElement>(element, "#meta-layout"), "large", "change");
+    await settle(element);
+    expect(find<HTMLInputElement>(element, "#meta-tracklist").checked).toBe(
+      true,
+    );
+    input(find<HTMLSelectElement>(element, "#meta-layout"), "slim", "change");
+    await settle(element);
+    await element.save();
+    expect(api.save.mock.calls[0]![1].meta).toEqual({
+      oops: 1,
+      layout: "slim",
+    });
+  });
+
   it("should remove other settings with their Remove buttons, once saved", async () => {
     const { element, api } = await setupMetadata({ rating: 3, oops: true });
     button(element, 'Remove "oops"').click();

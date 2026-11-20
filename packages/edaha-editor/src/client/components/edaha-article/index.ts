@@ -41,6 +41,10 @@ import {
   type MetadataSchema,
 } from "@lvl99dotcom/edaha.md/generator/metadata";
 import { setAt } from "../../metadataForm/index.ts";
+import {
+  resolveFields,
+  type ResolvedFields,
+} from "@lvl99dotcom/edaha.md/generator/fields";
 import { icon } from "../../icons/index.ts";
 import {
   BUILT_IN_GROUPS,
@@ -753,8 +757,9 @@ export class EdahaArticle extends LitElement {
    */
   async save(): Promise<boolean> {
     // Invalid custom metadata values aren't saved
+    const { values } = this.resolvedMeta();
     const errors = this.metadataKeys().flatMap((key) =>
-      this.checkMetadata(key),
+      this.checkMetadata(key, values),
     );
     if (errors.length) {
       this.metaProblems = errors;
@@ -762,7 +767,19 @@ export class EdahaArticle extends LitElement {
       return false;
     }
     if (!(await this.syncBody())) return false;
-    const data = cleanArticleData(this.data);
+    // Saved with every shown field's value, defaults included, and without hidden fields' values
+    const keys = this.metadataKeys();
+    const data = cleanArticleData({
+      ...this.data,
+      meta: {
+        ...Object.fromEntries(
+          Object.entries(this.data.meta ?? {}).filter(
+            ([key]) => !keys.includes(key),
+          ),
+        ),
+        ...values,
+      },
+    });
     const from = this.location;
     const location = await this.run(() =>
       from ? this.api.save(from, data) : this.api.create(data),
@@ -848,9 +865,34 @@ export class EdahaArticle extends LitElement {
     );
   }
 
-  /** The errors in a custom metadata field's value (none when it has no value) */
-  private checkMetadata(key: string): MetadataProblem[] {
-    const value = this.data.meta?.[key];
+  /**
+   * The custom metadata values of the fields the article's type uses, with their defaults and without hidden ones, and
+   * which fields are hidden (see resolveFields). Hidden values stay in the article's data until it is saved, so a
+   * field shown again gets its value back.
+   */
+  private resolvedMeta(): ResolvedFields {
+    const definitions = this.metadata?.definitions ?? {};
+    // The config file only lets types use defined fields
+    const schemas = Object.fromEntries(
+      this.metadataKeys().map((key) => [
+        key,
+        definitions[key] as MetadataSchema,
+      ]),
+    );
+    return resolveFields(
+      schemas,
+      Object.fromEntries(
+        Object.entries(this.data.meta ?? {}).filter(([key]) => key in schemas),
+      ),
+    );
+  }
+
+  /** The errors in a custom metadata field's value (none when it has no value, or is hidden) */
+  private checkMetadata(
+    key: string,
+    values = this.resolvedMeta().values,
+  ): MetadataProblem[] {
+    const value = values[key];
     return value === undefined ? [] : this.validator().validate(key, value);
   }
 
@@ -1323,13 +1365,15 @@ export class EdahaArticle extends LitElement {
     </div>`;
   }
 
-  /** Render a custom field the article's type uses */
-  private renderCustomField(key: string) {
+  /** Render a custom field the article's type uses, unless its conditions hide it */
+  private renderCustomField(key: string, { values, hidden }: ResolvedFields) {
+    if (hidden.has(key)) return nothing;
     return html`<edaha-metadata-field
       path=${key}
       .schema=${(this.metadata as MetadataInfo).definitions[key] as MetadataSchema}
-      .value=${this.data.meta?.[key]}
+      .value=${values[key]}
       .problems=${this.metaProblems}
+      .hiddenFields=${hidden}
       .uploadFile=${this.location ? this.uploadMarkdownImage : undefined}
       .chooseFile=${this.choosers().file}
       .fileUrl=${(name: string) => this.fileUrl(name)}
@@ -1343,6 +1387,7 @@ export class EdahaArticle extends LitElement {
    */
   private renderGroups(changed: Set<string>, typeOptions: FieldOption[]) {
     const customKeys = this.metadataKeys();
+    const resolved = this.resolvedMeta();
     const warnings = this.metadataWarnings();
     const withErrors = this.groupsWithErrors();
     return this.groups().map((group) => {
@@ -1351,7 +1396,7 @@ export class EdahaArticle extends LitElement {
         .map((key) =>
           isCoreSetting(key)
             ? this.renderSetting(key, changed, typeOptions)
-            : this.renderCustomField(key),
+            : this.renderCustomField(key, resolved),
         )
         .filter((field) => field !== nothing);
       const groupWarnings = group.key === "custom" ? warnings : [];
