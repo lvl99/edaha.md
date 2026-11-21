@@ -5,7 +5,7 @@ articlesDir: site/content
 templatesDir: site/templates
 staticDir: site/static
 outputDir: build
-siteUrl: https://lvl99.github.io/edaha.md
+siteUrl: https://edaha.md
 plugins:
   - "@lvl99dotcom/edaha-plugin-youtube"
   - "@lvl99dotcom/edaha-plugin-bandcamp"

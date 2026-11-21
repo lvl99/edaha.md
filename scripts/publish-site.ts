@@ -1,5 +1,5 @@
 // Builds edaha.md's website (site/) with the config's siteUrl and publishes it to the gh-pages branch, which GitHub
-// Pages serves at https://lvl99.github.io/edaha.md. Run with `pnpm site:publish`; add `--dry-run` to build and commit
+// Pages serves at https://edaha.md (site/static/CNAME names the domain). Run with `pnpm site:publish`; add `--dry-run` to build and commit
 // in a temporary folder and show what would be published, without pushing. Uses this repository's `origin` remote and
 // your git identity.
 import { execFileSync } from "node:child_process";
@@ -19,7 +19,7 @@ const git = (cwd: string, ...args: string[]) =>
   execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 
 const source = git(projectDir, "rev-parse", "--short", "HEAD");
-// Built with the config's siteUrl, so every URL starts with its path (/edaha.md)
+// Built with the config's siteUrl, so every URL starts with its path (none for https://edaha.md)
 const { outputDir, articles } = await buildSite({ siteDir: projectDir });
 console.log(`Built ${articles.length} articles from ${source}`);
 
