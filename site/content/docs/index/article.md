@@ -22,3 +22,5 @@ template: index
 - [YouTube](/docs/plugin-youtube): embed your videos hosted on YouTube
 - [Bandcamp](/docs/plugin-bandcamp): embed your audio hosted on Bandcamp
 - [MermaidJS](/docs/plugin-mermaidjs): embed MermaidJS diagrams
+- [Table of contents](/docs/plugin-toc): list an article's headings
+- [Code highlighter](/docs/plugin-codehighlight): show code with line numbers, highlighting and tabs

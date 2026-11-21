@@ -72,11 +72,13 @@ A block whose options aren't the embed's (an unknown name, or a value of the wro
 
 edaha.md has no embeds of its own. Install the plugins you want, then list their packages under `plugins` in your [config file](/docs/03-configuration/#plugins):
 
-| Plugin                                                                                                     | Key         | Content                                                                                                           |
-| ---------------------------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
-| [`@lvl99dotcom/edaha-plugin-youtube`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-youtube)     | `youtube`   | A YouTube video's URL. Always embedded from youtube-nocookie.com.                                                 |
-| [`@lvl99dotcom/edaha-plugin-bandcamp`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-bandcamp)   | `bandcamp`  | A Bandcamp album or track page's URL. The page is read when building, so it needs internet access. Options below. |
-| [`@lvl99dotcom/edaha-plugin-mermaidjs`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-mermaidjs) | `mermaidjs` | [Mermaid](https://mermaid.js.org) code. Pages with diagrams load Mermaid from jsDelivr to draw them.              |
+| Plugin                                                                                                             | Key             | Content                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@lvl99dotcom/edaha-plugin-youtube`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-youtube)             | `youtube`       | A YouTube video's URL. Always embedded from youtube-nocookie.com.                                                                                                             |
+| [`@lvl99dotcom/edaha-plugin-bandcamp`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-bandcamp)           | `bandcamp`      | A Bandcamp album or track page's URL. The page is read when building, so it needs internet access. Options below.                                                             |
+| [`@lvl99dotcom/edaha-plugin-mermaidjs`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-mermaidjs)         | `mermaidjs`     | [Mermaid](https://mermaid.js.org) code. Pages with diagrams load Mermaid from jsDelivr to draw them.                                                                          |
+| [`@lvl99dotcom/edaha-plugin-toc`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-toc)                     | `toc`           | Optional Markdown shown above a table of contents of the article's headings. [Options](/docs/plugin-toc/) set each level's list style.                                        |
+| [`@lvl99dotcom/edaha-plugin-codehighlight`](https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-codehighlight) | `codehighlight` | Fenced code blocks, shown with line numbers, a copy button and highlighting (Shiki, from jsDelivr); several become tabs. See [Code highlighter](/docs/plugin-codehighlight/). |
 
 ```sh
 npm add --save-dev @lvl99dotcom/edaha-plugin-youtube @lvl99dotcom/edaha-plugin-mermaidjs
@@ -148,19 +150,20 @@ export const vimeo = {
 };
 ```
 
-| Property                         | Description                                                                                                                                                                                                                                   |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `key`                            | Which blocks it renders: `<!-- embed:<key> -->`. Lowercase kebab-case, e.g. `vimeo`. Also its wrapper's class: `embed-<key>`.                                                                                                                 |
-| `name`                           | Its name, shown in the editor and in warnings, e.g. `Vimeo video`.                                                                                                                                                                            |
-| `description`                    | Optional; what it embeds, shown in the editor's embed dialog.                                                                                                                                                                                 |
-| `info`                           | Optional; what to put in the content, shown under the content's label in the embed dialog. Without it, the dialog says "Provide the embed's content, e.g. a URL or code".                                                                     |
-| `sources`                        | Optional; the `https://` origins its HTML loads from, by kind: `frame`, `script`, `style`, `font` and `connect` (requests from its scripts). The editor's previews allow them.                                                                |
-| `options`                        | Optional; the options blocks can set, as fields like [custom metadata](/docs/03-configuration/#metadata). See below.                                                                                                                          |
-| `validate(content, options)`     | Optional; checks a block's content (and options) before it is rendered. Return `true` when it is valid; throw an error saying what is wrong (or an `AggregateError` with one error for each problem). See below.                              |
-| `build.render(content, context)` | Returns a promise of the HTML for a block. `context.options` has the block's options; `context.fetch` fetches other data, e.g. an oEmbed response; `context.state` is shared by the page (see below). Throw if the content can't be embedded. |
-| `build.renderHead(context)`      | Optional; HTML for the `<head>` of each page that has this embed, once, e.g. a stylesheet.                                                                                                                                                    |
-| `build.renderFoot(context)`      | Optional; HTML for the end of the `<body>` of each page that has this embed, once, e.g. a script.                                                                                                                                             |
-| `editor`                         | Optional; how it shows in the editor's rich text body (see "Previews in the editor").                                                                                                                                                         |
+| Property                         | Description                                                                                                                                                                                                                                                                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `key`                            | Which blocks it renders: `<!-- embed:<key> -->`. Lowercase kebab-case, e.g. `vimeo`. Also its wrapper's class: `embed-<key>`.                                                                                                                                                                                                   |
+| `name`                           | Its name, shown in the editor and in warnings, e.g. `Vimeo video`.                                                                                                                                                                                                                                                              |
+| `description`                    | Optional; what it embeds, shown in the editor's embed dialog.                                                                                                                                                                                                                                                                   |
+| `info`                           | Optional; what to put in the content, shown under the content's label in the embed dialog. Without it, the dialog says "Provide the embed's content, e.g. a URL or code".                                                                                                                                                       |
+| `contentOptional`                | Optional; `true` when a block can have no content, e.g. a table of contents. The embed dialog then saves blocks without content. Default: `false`.                                                                                                                                                                              |
+| `sources`                        | Optional; the `https://` origins its HTML loads from, by kind: `frame`, `script`, `style`, `font` and `connect` (requests from its scripts). The editor's previews allow them.                                                                                                                                                  |
+| `options`                        | Optional; the options blocks can set, as fields like [custom metadata](/docs/03-configuration/#metadata). See below.                                                                                                                                                                                                            |
+| `validate(content, options)`     | Optional; checks a block's content (and options) before it is rendered. Return `true` when it is valid; throw an error saying what is wrong (or an `AggregateError` with one error for each problem). See below.                                                                                                                |
+| `build.render(content, context)` | Returns a promise of the HTML for a block. `context.options` has the block's options; `context.fetch` fetches other data, e.g. an oEmbed response; `context.state` is shared by the page (see below); `context.headings` lists the headings of the article the block is in (see below). Throw if the content can't be embedded. |
+| `build.renderHead(context)`      | Optional; HTML for the `<head>` of each page that has this embed, once, e.g. a stylesheet.                                                                                                                                                                                                                                      |
+| `build.renderFoot(context)`      | Optional; HTML for the end of the `<body>` of each page that has this embed, once, e.g. a script.                                                                                                                                                                                                                               |
+| `editor`                         | Optional; how it shows in the editor's rich text body (see "Previews in the editor").                                                                                                                                                                                                                                           |
 
 Escape anything from the content or options that you put into the HTML. Blocks are rendered with each page that shows them (an article's page, and list pages showing its excerpt), and each address `fetch` fetches is fetched once per build.
 
@@ -267,6 +270,22 @@ const example = {
       const { html } = await response.json();
       return html;
     },
+  },
+};
+```
+
+### The article's headings
+
+`context.headings` lists the headings of the article a block is in, from its body, in order: each has a `level` (1 for `<h1>` to 6 for `<h6>`), its `text` without formatting, and its `id` to link to, e.g. `{ level: 2, text: "Fish & chips", id: "fish-chips" }`. The article's title isn't in its body, and headings inside embed blocks aren't listed. Blocks in an article's excerpt get the whole body's headings. It is empty in the editor's embed frames, which show one block on its own (its preview pages have it).
+
+```js
+const outline = {
+  key: "outline",
+  name: "Outline",
+  contentOptional: true,
+  build: {
+    render: async (content, { headings }) =>
+      `<ul>${headings.map(({ text, id }) => `<li><a href="#${escapeHtml(id)}">${escapeHtml(text)}</a></li>`).join("")}</ul>`,
   },
 };
 ```

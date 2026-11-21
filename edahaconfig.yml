@@ -10,6 +10,8 @@ plugins:
   - "@lvl99dotcom/edaha-plugin-youtube"
   - "@lvl99dotcom/edaha-plugin-bandcamp"
   - "@lvl99dotcom/edaha-plugin-mermaidjs"
+  - "@lvl99dotcom/edaha-plugin-toc"
+  - "@lvl99dotcom/edaha-plugin-codehighlight"
 types:
   news:
     labelSingle: News

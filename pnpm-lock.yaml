@@ -175,9 +175,15 @@ importers:
       '@lvl99dotcom/edaha-plugin-bandcamp':
         specifier: workspace:^
         version: link:packages/edaha-plugin-bandcamp
+      '@lvl99dotcom/edaha-plugin-codehighlight':
+        specifier: workspace:^
+        version: link:packages/edaha-plugin-codehighlight
       '@lvl99dotcom/edaha-plugin-mermaidjs':
         specifier: workspace:^
         version: link:packages/edaha-plugin-mermaidjs
+      '@lvl99dotcom/edaha-plugin-toc':
+        specifier: workspace:^
+        version: link:packages/edaha-plugin-toc
       '@lvl99dotcom/edaha-plugin-youtube':
         specifier: workspace:^
         version: link:packages/edaha-plugin-youtube
