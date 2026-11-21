@@ -84,7 +84,7 @@ Every template gets:
 - `site.name` and `site.description`: the website's name and description.
 - `site.author`: the author of articles that don't name one (`name`, `email` and `url`): the config file's `author`, the website's name without one, or nothing when it is `false`.
 - `site.url`: the website's absolute URL, e.g. `https://example.com`, for links that leave the website (e.g. in feeds).
-- `site.baseUrl`: the path of `site.url`, e.g. `/edaha.md` for `https://lvl99.github.io/edaha.md`, or nothing for a website at its domain's root. Every URL in the template data already starts with it. Use it for links you write yourself, such as static files: `{{ site.baseUrl }}/base.css`.
+- `site.baseUrl`: the path of `site.url`, e.g. `/my-site` for `https://example.github.io/my-site`, or nothing for a website at its domain's root. Every URL in the template data already starts with it. Use it for links you write yourself, such as static files: `{{ site.baseUrl }}/base.css`.
 - `site.path`: the URL of the website's home page, e.g. `/` (or `/docs/` with the `path` setting `docs`), after `site.baseUrl`.
 - `site.types`: each article type's settings (`labelSingle`, `labelPlural`, `path`, `generate`) and `url`.
 - `type`: the page's article type, e.g. `news`: the article's, or the list's.

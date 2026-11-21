@@ -210,7 +210,7 @@ publishDir: ../app/dist
 
 The website's absolute URL. RSS feeds need it, because their links must be absolute. The `SITE_URL` environment variable and the `--site-url` option of `edaha build` take its place when they are set.
 
-If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at `https://lvl99.github.io/edaha.md`, every URL in its pages starts with that path (`/edaha.md/`), which templates get as [`site.baseUrl`](/docs/05-templating/#template-data). The built files stay at the same places in the output folder, so publish its contents to that sub-folder.
+If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at `https://example.github.io/my-site`, every URL in its pages starts with that path (`/my-site/`), which templates get as [`site.baseUrl`](/docs/05-templating/#template-data). The built files stay at the same places in the output folder, so publish its contents to that sub-folder.
 
 - **Accepted values:** an `http://` or `https://` URL.
 - **Default:** `http://localhost`, with a warning.

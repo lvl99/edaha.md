@@ -81,7 +81,7 @@ edaha editor   # Run the local article editor (only reachable from this computer
 | `-h`, `--help`          |         | Show help                                                                            |
 | `-v`, `--version`       |         | Show the version                                                                     |
 
-> For more information, see [Build & deploy](https://lvl99.github.io/edaha.md/docs/08-build-and-deploy/) and [WYSIWYG Editor](https://lvl99.github.io/edaha.md/docs/09-wysiwyg-editor/).
+> For more information, see [Build & deploy](https://edaha.md/docs/08-build-and-deploy/) and [WYSIWYG Editor](https://edaha.md/docs/09-wysiwyg-editor/).
 
 ## Config file
 
@@ -104,7 +104,7 @@ export default {
 };
 ```
 
-> For more information, see [Configuration](https://lvl99.github.io/edaha.md/docs/03-configuration/).
+> For more information, see [Configuration](https://edaha.md/docs/03-configuration/).
 
 ## Articles
 
@@ -112,7 +112,7 @@ Each article is a folder `<articlesDir>/<type>/<slug>/` (e.g. `articles/news/hel
 
 Articles can contain metadata. The metadata is located in the article's header within an HTML comment block that has its data format: YAML (`<!--yaml` or `<!--yml`) or JSON (`<!--json`). It is never written into the built files.
 
-> For more information on articles and also how to configure metadata, see [Articles](https://lvl99.github.io/edaha.md/docs/04-articles/).
+> For more information on articles and also how to configure metadata, see [Articles](https://edaha.md/docs/04-articles/).
 
 ## Embeds
 
@@ -143,7 +143,7 @@ plugins:
 
 Some embeds have options, e.g. the Bandcamp player's layout, written in YAML at the start of the block (in a `<!--yaml ... -->` comment); the editor's embed dialog shows them as fields. A block whose key has no plugin gives a warning and is shown as it is written. Plugins can add stylesheets and scripts once per page, through the `{% embedHead %}` and `{% embedFoot %}` template tags (the default theme has them).
 
-> For more information about embeds such as how to create your own, see [Embeds](https://lvl99.github.io/edaha.md/docs/07-embeds/).
+> For more information about embeds such as how to create your own, see [Embeds](https://edaha.md/docs/07-embeds/).
 
 ## Lists
 
@@ -155,9 +155,9 @@ edaha.md will collate articles by various properties into paginated lists. Typic
 
 Lists will also have RSS feeds generated.
 
-When defining article types in the [config](https://lvl99.github.io/edaha.md/docs/03-configuration/) file, you can specify what lists are built.
+When defining article types in the [config](https://edaha.md/docs/03-configuration/) file, you can specify what lists are built.
 
-> For more information about lists, see [Lists](https://lvl99.github.io/edaha.md/docs/06-lists/).
+> For more information about lists, see [Lists](https://edaha.md/docs/06-lists/).
 
 ## Templates and the default theme
 
@@ -171,7 +171,7 @@ Within Nunjucks templates, names starting with `@theme/` always load the theme's
 
 A site's own static files folder (`static/`, or `staticDir`) is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
 
-> For more information, see [Templating](https://lvl99.github.io/edaha.md/docs/05-templating/).
+> For more information, see [Templating](https://edaha.md/docs/05-templating/).
 
 ## Editor
 
@@ -179,7 +179,7 @@ A site's own static files folder (`static/`, or `staticDir`) is copied to the we
 
 edaha.md was designed to be file-system first, with an editor as a convenience for non-technical users or ones who prefer a GUI.
 
-> For more information about the editor, see [WYSIWYG Editor](https://lvl99.github.io/edaha.md/docs/09-wysiwyg-editor/).
+> For more information about the editor, see [WYSIWYG Editor](https://edaha.md/docs/09-wysiwyg-editor/).
 
 ## API
 

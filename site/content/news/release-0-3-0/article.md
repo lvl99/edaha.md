@@ -17,7 +17,7 @@ author: false
 - Embed plugins get the headings of the article a block is in, through `context.headings` in their `render` function.
 - Embed plugins can set `contentOptional`, so the editor's embed dialog saves blocks without content.
 - Templates have new `json`, `parseJson`, `contains` and `where` filters.
-- The [docs](https://lvl99.github.io/edaha.md/docs/) have a front page, and a page for each new plugin.
+- The [docs](https://edaha.md/docs/) have a front page, and a page for each new plugin.
 
 ## Changed
 

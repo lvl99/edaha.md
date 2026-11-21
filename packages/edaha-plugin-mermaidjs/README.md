@@ -24,6 +24,6 @@ graph TD;
 ```
 <!-- prettier-ignore-end -->
 
-Your layout template needs `{% embedFoot %}` before `</body>` (the default theme has it). See [Embeds](https://lvl99.github.io/edaha.md/docs/07-embeds/) in the docs.
+Your layout template needs `{% embedFoot %}` before `</body>` (the default theme has it). See [Embeds](https://edaha.md/docs/07-embeds/) in the docs.
 
 Licensed under the [Apache License 2.0](LICENSE).

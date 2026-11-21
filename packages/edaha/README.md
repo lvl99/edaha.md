@@ -9,6 +9,6 @@ npx edaha build --dir my-site
 
 Add [`@lvl99dotcom/edaha-editor`](https://www.npmjs.com/package/@lvl99dotcom/edaha-editor) to write articles in a local WYSIWYG editor with `edaha editor`.
 
-See the [edaha.md README](https://github.com/lvl99/edaha.md#readme) and [docs](https://lvl99.github.io/edaha.md/).
+See the [edaha.md README](https://github.com/lvl99/edaha.md#readme) and [docs](https://edaha.md/).
 
 Licensed under the [Apache License 2.0](LICENSE).

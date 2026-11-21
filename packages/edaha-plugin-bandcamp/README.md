@@ -18,6 +18,6 @@ plugins:
 <!-- embed:bandcamp -->https://artist.bandcamp.com/album/name<!-- /embed:bandcamp -->
 ```
 
-See [Embeds](https://lvl99.github.io/edaha.md/docs/07-embeds/) in the docs.
+See [Embeds](https://edaha.md/docs/07-embeds/) in the docs.
 
 Licensed under the [Apache License 2.0](LICENSE).

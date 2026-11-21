@@ -43,6 +43,6 @@ Each tab is labelled by the heading before its code block, else its language's n
 
 Without JavaScript, the code blocks are shown one under another with their labels, without highlighting or copy buttons. Code in a language Shiki doesn't know is shown as it is.
 
-Your layout template needs `{% embedHead %}` before `</head>` and `{% embedFoot %}` before `</body>` (the default theme has them). See [Embeds](https://lvl99.github.io/edaha.md/docs/07-embeds/) in the docs.
+Your layout template needs `{% embedHead %}` before `</head>` and `{% embedFoot %}` before `</body>` (the default theme has them). See [Embeds](https://edaha.md/docs/07-embeds/) in the docs.
 
 Licensed under the [Apache License 2.0](LICENSE).

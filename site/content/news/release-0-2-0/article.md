@@ -31,7 +31,7 @@ author: false
 - The editor shows embeds in sandboxed frames.
 - The editor has a floating toolbar above selected text, with bold, italic, underline, strikethrough, link and headings 1–3.
 - The editor has a Markdown toolbar, a Preview width control, focus mode, light and dark themes, and a layout for narrow screens.
-- edaha.md has its own [docs](https://lvl99.github.io/edaha.md) website, including an article for each plugin.
+- edaha.md has its own [docs](https://edaha.md) website, including an article for each plugin.
 
 ## Changed
 

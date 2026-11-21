@@ -43,6 +43,6 @@ Headings nest by level: a heading goes under the nearest heading before it with 
 
 By default: `level1` number, `level2` and `level3` number-depth, `level4` alpha, `level5` number-roman, `level6` circle.
 
-Your layout template needs `{% embedHead %}` before `</head>` (the default theme has it). The editor's embed frames show one block on its own, so they show a note instead of the list; previews show it. See [Embeds](https://lvl99.github.io/edaha.md/docs/07-embeds/) in the docs.
+Your layout template needs `{% embedHead %}` before `</head>` (the default theme has it). The editor's embed frames show one block on its own, so they show a note instead of the list; previews show it. See [Embeds](https://edaha.md/docs/07-embeds/) in the docs.
 
 Licensed under the [Apache License 2.0](LICENSE).
