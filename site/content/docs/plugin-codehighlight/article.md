@@ -12,7 +12,6 @@ The [code highlighter embed plugin](https://www.npmjs.com/package/@lvl99dotcom/e
 ## Demo
 
 <!-- embed:codehighlight -->
-
 ## ts-node
 
 ```ts
@@ -30,7 +29,6 @@ const example = {
 ```
 This is just a random example to show default code tab label.
 ```
-
 <!-- /embed:codehighlight -->
 
 ## Installation
@@ -86,11 +84,11 @@ A single code block is shown on its own, with its heading as a label if it has o
 
 ### Options
 
-| Option            | What it does                     | Default |
-| ----------------- | -------------------------------- | ------- |
-| `lineNumbers`     | Shows line numbers               | `true`  |
-| `syntaxHighlight` | Highlights the code with Shiki   | `true`  |
-| `copyButton`      | Shows a copy to clipboard button | `true`  |
+| Option | What it does | Default |
+| --- | --- | --- |
+| `lineNumbers` | Shows line numbers | `true` |
+| `syntaxHighlight` | Highlights the code with Shiki | `true` |
+| `copyButton` | Shows a copy to clipboard button | `true` |
 
 ```md
 <!-- embed:codehighlight -->
