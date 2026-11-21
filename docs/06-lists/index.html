@@ -7,12 +7,12 @@
     <meta name="description" content="A list is a collection of articles, newest first. edaha.md builds lists of each article type, and of its articles by tag and by author, each with its own RSS feed." />
 
 
-  <link rel="stylesheet" href="/edaha.md/base.css" />
-  <link rel="stylesheet" href="/edaha.md/site.css" />
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -24,9 +24,9 @@
         <main class="site-main">
   <nav class="site-breadcrumb" aria-label="Breadcrumb">
     <ul>
-      <li><a href="/edaha.md/">Home</a></li>
-<li><a href="/edaha.md/docs/">Documentation</a></li>
-<li><a href="/edaha.md/docs/06-lists/" aria-current="page">Lists</a></li>
+      <li><a href="/">Home</a></li>
+<li><a href="/docs/">Documentation</a></li>
+<li><a href="/docs/06-lists/" aria-current="page">Lists</a></li>
     </ul>
   </nav>
 
@@ -63,18 +63,18 @@
 </tbody>
 </table>
 <p>Tag and author names become kebab-case in URLs, e.g. “Release notes” is <code>/news/tags/release-notes/</code>.</p>
-<p>Only <code>published</code> articles are listed: <code>unlisted</code> articles only have their own page, and drafts aren’t built. See <a href="/edaha.md/docs/04-articles/#statuses">Articles</a>.</p>
+<p>Only <code>published</code> articles are listed: <code>unlisted</code> articles only have their own page, and drafts aren’t built. See <a href="/docs/04-articles/#statuses">Articles</a>.</p>
 <h2 id="pages">Pages</h2>
 <p>Lists show 20 articles per page. The first page is at the list’s URL, and the others follow it with their number:</p>
 <pre><code>/news/          # Articles 1 to 20
 /news/2         # Articles 21 to 40
 /news/3         # ...
 </code></pre>
-<p>Templates get the page’s articles in <code>list.articles</code> and links to the other pages in <code>list.pagination</code>. See <a href="/edaha.md/docs/05-templating/#template-data">Templating</a>.</p>
+<p>Templates get the page’s articles in <code>list.articles</code> and links to the other pages in <code>list.pagination</code>. See <a href="/docs/05-templating/#template-data">Templating</a>.</p>
 <h2 id="rss-feeds">RSS feeds</h2>
 <p>Each list has an RSS feed next to its first page, e.g. <code>/news/feed.xml</code> or <code>/news/tags/release-notes/feed.xml</code>. Each item has the article’s title, link, date, tags, excerpt and, when the author has an email address, its author.</p>
-<p>Feeds need the website’s absolute URL for their links: set <code>siteUrl</code> in the <a href="/edaha.md/docs/03-configuration/#siteurl">config file</a>, the <code>SITE_URL</code> environment variable or the <code>--site-url</code> option.</p>
-<p>The feeds are rendered with <code>layouts/rssfeed.njk</code>, which you can <a href="/edaha.md/docs/05-templating/">override</a> like any other template.</p>
+<p>Feeds need the website’s absolute URL for their links: set <code>siteUrl</code> in the <a href="/docs/03-configuration/#siteurl">config file</a>, the <code>SITE_URL</code> environment variable or the <code>--site-url</code> option.</p>
+<p>The feeds are rendered with <code>layouts/rssfeed.njk</code>, which you can <a href="/docs/05-templating/">override</a> like any other template.</p>
 <h2 id="choosing-what-is-built">Choosing what is built</h2>
 <p>Each article type’s <code>generate</code> settings choose its lists and feeds. For example, documentation without author lists, and plain pages without any lists:</p>
 <pre><code class="language-yaml">types:
@@ -117,7 +117,7 @@
 </tr>
 </tbody>
 </table>
-<p>See <a href="/edaha.md/docs/03-configuration/#types">Configuration</a> for every type setting.</p>
+<p>See <a href="/docs/03-configuration/#types">Configuration</a> for every type setting.</p>
 <h2 id="index-articles">Index articles</h2>
 <p>An article named <code>index</code> is built at its type’s URL in place of the type’s list pages, e.g. <code>articles/news/index/article.md</code> becomes <code>/news/</code>. The type’s feed, tag lists and author lists are still built.</p>
 <p>Its template gets the list’s first page as well as the article, so an index article can introduce a type and show its newest articles:</p>
@@ -143,7 +143,7 @@
 &lt;p&gt;{{ site.types[list.type].labelPlural }} by {{ list.name }}.&lt;/p&gt;
 {% endif %}
 </code></pre>
-<p>See <a href="/edaha.md/docs/05-templating/">Templating</a> for more.</p>
+<p>See <a href="/docs/05-templating/">Templating</a> for more.</p>
 
   </div>
 
@@ -152,38 +152,38 @@
 
   <aside>
 <ol>
-  <li><a href="/edaha.md/docs/01-introduction/">Introduction</a></li>
-  <li><a href="/edaha.md/docs/02-quick-start/">Quick start</a></li>
-  <li><a href="/edaha.md/docs/03-configuration/">Configuration</a></li>
-  <li><a href="/edaha.md/docs/04-articles/">Articles</a></li>
-  <li><a href="/edaha.md/docs/05-templating/">Templating</a></li>
-  <li><a href="/edaha.md/docs/06-lists/">Lists</a></li>
-  <li><a href="/edaha.md/docs/07-embeds/">Embeds</a></li>
-  <li><a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
-  <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
-  <li><a href="/edaha.md/docs/10-api/">API</a></li>
+  <li><a href="/docs/01-introduction/">Introduction</a></li>
+  <li><a href="/docs/02-quick-start/">Quick start</a></li>
+  <li><a href="/docs/03-configuration/">Configuration</a></li>
+  <li><a href="/docs/04-articles/">Articles</a></li>
+  <li><a href="/docs/05-templating/">Templating</a></li>
+  <li><a href="/docs/06-lists/">Lists</a></li>
+  <li><a href="/docs/07-embeds/">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
+  <li><a href="/docs/10-api/">API</a></li>
 </ol>
 
 <h5>Plugins</h5>
 <ul>
-  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
-  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
-  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
-  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
-  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+  <li><a href="/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/docs/plugin-codehighlighter/">Code Highlighter</a></li>
 </ul>
   </aside>
       </div>
 
       <footer class="site-footer">
   <nav aria-label="Sections">
-    <a href="/edaha.md/">Home</a>
-    <a href="/edaha.md/about">About</a>
-<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
   </nav>
 
   <p class="colophon">
-    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
     &middot;
     Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
     &middot;
@@ -200,6 +200,6 @@
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     } catch {}
   </script>
-  <script src="/edaha.md/theme-switcher.js" defer></script>
+  <script src="/theme-switcher.js" defer></script>
   </body>
 </html>

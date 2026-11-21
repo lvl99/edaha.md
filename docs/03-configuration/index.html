@@ -7,12 +7,12 @@
     <meta name="description" content="A config file tells edaha.md about your website, where its files are, and what to build for each type of article." />
 
 
-  <link rel="stylesheet" href="/edaha.md/base.css" />
-  <link rel="stylesheet" href="/edaha.md/site.css" />
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -24,9 +24,9 @@
         <main class="site-main">
   <nav class="site-breadcrumb" aria-label="Breadcrumb">
     <ul>
-      <li><a href="/edaha.md/">Home</a></li>
-<li><a href="/edaha.md/docs/">Documentation</a></li>
-<li><a href="/edaha.md/docs/03-configuration/" aria-current="page">Configuration</a></li>
+      <li><a href="/">Home</a></li>
+<li><a href="/docs/">Documentation</a></li>
+<li><a href="/docs/03-configuration/" aria-current="page">Configuration</a></li>
     </ul>
   </nav>
 
@@ -206,7 +206,7 @@ module.exports = {
 <pre><code class="language-yaml">articlesDir: content
 </code></pre>
 <h3 id="templatesdir"><code>templatesDir</code></h3>
-<p>The folder that holds your own <a href="/edaha.md/docs/05-templating/">templates</a>, relative to the site folder. Templates in it are used over the default theme’s, one file at a time.</p>
+<p>The folder that holds your own <a href="/docs/05-templating/">templates</a>, relative to the site folder. Templates in it are used over the default theme’s, one file at a time.</p>
 <ul>
 <li><strong>Accepted values:</strong> a folder inside the site folder, apart from the articles and static files folders.</li>
 <li><strong>Default:</strong> <code>templates</code></li>
@@ -246,7 +246,7 @@ outputDir: site/build
 </code></pre>
 <h3 id="siteurl"><code>siteUrl</code></h3>
 <p>The website’s absolute URL. RSS feeds need it, because their links must be absolute. The <code>SITE_URL</code> environment variable and the <code>--site-url</code> option of <code>edaha build</code> take its place when they are set.</p>
-<p>If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at <code>https://lvl99.github.io/edaha.md</code>, every URL in its pages starts with that path (<code>/edaha.md/</code>), which templates get as <a href="/edaha.md/docs/05-templating/#template-data"><code>site.baseUrl</code></a>. The built files stay at the same places in the output folder, so publish its contents to that sub-folder.</p>
+<p>If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at <code>https://lvl99.github.io/edaha.md</code>, every URL in its pages starts with that path (<code>/edaha.md/</code>), which templates get as <a href="/docs/05-templating/#template-data"><code>site.baseUrl</code></a>. The built files stay at the same places in the output folder, so publish its contents to that sub-folder.</p>
 <ul>
 <li><strong>Accepted values:</strong> an <code>http://</code> or <code>https://</code> URL.</li>
 <li><strong>Default:</strong> <code>http://localhost</code>, with a warning.</li>
@@ -319,7 +319,7 @@ outputDir: site/build
 </tr>
 <tr>
 <td><code>list</code></td>
-<td>The type’s <a href="/edaha.md/docs/06-lists/">list pages</a>.</td>
+<td>The type’s <a href="/docs/06-lists/">list pages</a>.</td>
 </tr>
 <tr>
 <td><code>feed</code></td>
@@ -356,7 +356,7 @@ outputDir: site/build
 <li>A type with <code>generate: false</code> builds nothing, but its articles are still checked for errors.</li>
 </ul>
 <h3 id="plugins"><code>plugins</code></h3>
-<p>The site’s <a href="/edaha.md/docs/07-embeds/">embed plugins</a>, which render <code>&lt;!-- embed:&lt;key&gt; --&gt;</code> blocks. edaha.md has none of its own.</p>
+<p>The site’s <a href="/docs/07-embeds/">embed plugins</a>, which render <code>&lt;!-- embed:&lt;key&gt; --&gt;</code> blocks. edaha.md has none of its own.</p>
 <ul>
 <li><strong>Accepted values:</strong> a list of package names, found from the config file’s folder (install them first). A JavaScript config file can also give the plugins themselves.</li>
 <li><strong>Default:</strong> none</li>
@@ -374,11 +374,11 @@ export default {
   plugins: [&quot;@lvl99dotcom/edaha-plugin-youtube&quot;, vimeo],
 };
 </code></pre>
-<p>No two plugins can have the same key. See <a href="/edaha.md/docs/07-embeds/">Embeds</a> for the plugins there are, and how to write one.</p>
+<p>No two plugins can have the same key. See <a href="/docs/07-embeds/">Embeds</a> for the plugins there are, and how to write one.</p>
 <h3 id="author"><code>author</code></h3>
 <p>The author of articles that don’t name one (unless their type has its own <code>author</code>): their author lists and feeds use it, and the editor shows it in the author fields. <code>false</code> means no author: those articles have none, and aren’t in any author’s list.</p>
 <ul>
-<li><strong>Accepted values:</strong> a name, <code>{ name, email, url }</code> like an article’s <a href="/edaha.md/docs/04-articles/#settings"><code>author</code></a>, or <code>false</code>.</li>
+<li><strong>Accepted values:</strong> a name, <code>{ name, email, url }</code> like an article’s <a href="/docs/04-articles/#settings"><code>author</code></a>, or <code>false</code>.</li>
 <li><strong>Default:</strong> the website’s <a href="#name"><code>name</code></a></li>
 </ul>
 <pre><code class="language-yaml">author:
@@ -526,7 +526,7 @@ types:
           - [layout, &quot;=&quot;, large]
           - [tracklist, &quot;=&quot;, true]
 </code></pre>
-<p><a href="/edaha.md/docs/07-embeds/#defining-options">Embed options</a> use the same fields and conditions.</p>
+<p><a href="/docs/07-embeds/#defining-options">Embed options</a> use the same fields and conditions.</p>
 <p>Values are checked against their schemas with <a href="https://ajv.js.org/">ajv</a>, including formats like <code>uri</code> and <code>email</code>. Problems are described in plain words, e.g. “Rating must be at most 10” or “Credit name is required”, and show above the field in the editor. The build and the editor stop with an error if a key is a core setting’s name, a type lists a key that isn’t defined, a value has no field kind or more than one, a default value or condition isn’t valid, or a schema isn’t valid.</p>
 <h3 id="metadatagroups"><code>metadataGroups</code></h3>
 <p>The editor shows articles’ settings in groups that open and close. These are built in, in this order:</p>
@@ -594,7 +594,7 @@ metadata:
 <p>A setting in a group that doesn’t exist, or coming after a setting or group that isn’t there, stops the build and the editor with an error.</p>
 <h2 id="commands">Commands</h2>
 <h3 id="edaha-build"><code>edaha build</code></h3>
-<p>Builds the website into <code>outputDir</code>, and copies it into <code>publishDir</code> if that is set. See <a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a>.</p>
+<p>Builds the website into <code>outputDir</code>, and copies it into <code>publishDir</code> if that is set. See <a href="/docs/08-build-and-deploy/">Build &amp; deploy</a>.</p>
 <table>
 <thead>
 <tr>
@@ -618,7 +618,7 @@ metadata:
 </tbody>
 </table>
 <h3 id="edaha-editor"><code>edaha editor</code></h3>
-<p>Runs the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a> on your computer.</p>
+<p>Runs the <a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a> on your computer.</p>
 <table>
 <thead>
 <tr>
@@ -650,38 +650,38 @@ metadata:
 
   <aside>
 <ol>
-  <li><a href="/edaha.md/docs/01-introduction/">Introduction</a></li>
-  <li><a href="/edaha.md/docs/02-quick-start/">Quick start</a></li>
-  <li><a href="/edaha.md/docs/03-configuration/">Configuration</a></li>
-  <li><a href="/edaha.md/docs/04-articles/">Articles</a></li>
-  <li><a href="/edaha.md/docs/05-templating/">Templating</a></li>
-  <li><a href="/edaha.md/docs/06-lists/">Lists</a></li>
-  <li><a href="/edaha.md/docs/07-embeds/">Embeds</a></li>
-  <li><a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
-  <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
-  <li><a href="/edaha.md/docs/10-api/">API</a></li>
+  <li><a href="/docs/01-introduction/">Introduction</a></li>
+  <li><a href="/docs/02-quick-start/">Quick start</a></li>
+  <li><a href="/docs/03-configuration/">Configuration</a></li>
+  <li><a href="/docs/04-articles/">Articles</a></li>
+  <li><a href="/docs/05-templating/">Templating</a></li>
+  <li><a href="/docs/06-lists/">Lists</a></li>
+  <li><a href="/docs/07-embeds/">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
+  <li><a href="/docs/10-api/">API</a></li>
 </ol>
 
 <h5>Plugins</h5>
 <ul>
-  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
-  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
-  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
-  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
-  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+  <li><a href="/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/docs/plugin-codehighlighter/">Code Highlighter</a></li>
 </ul>
   </aside>
       </div>
 
       <footer class="site-footer">
   <nav aria-label="Sections">
-    <a href="/edaha.md/">Home</a>
-    <a href="/edaha.md/about">About</a>
-<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
   </nav>
 
   <p class="colophon">
-    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
     &middot;
     Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
     &middot;
@@ -698,6 +698,6 @@ metadata:
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     } catch {}
   </script>
-  <script src="/edaha.md/theme-switcher.js" defer></script>
+  <script src="/theme-switcher.js" defer></script>
   </body>
 </html>

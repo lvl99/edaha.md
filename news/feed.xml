@@ -2,29 +2,29 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title>News | edaha.md</title>
-    <link>https://lvl99.github.io/edaha.md/news/</link>
+    <link>https://edaha.md/news/</link>
     <description>Static site generator powered by TypeScript and markdown</description>
     <language>en</language>
-    <atom:link href="https://lvl99.github.io/edaha.md/news/feed.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://edaha.md/news/feed.xml" rel="self" type="application/rss+xml" />
     <lastBuildDate>Sat, 21 Nov 2026 10:39:00 GMT</lastBuildDate>
     <item>
       <title>Release v0.3.0</title>
-      <link>https://lvl99.github.io/edaha.md/news/release-0-3-0/</link>
-      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/news/release-0-3-0/</guid>
+      <link>https://edaha.md/news/release-0-3-0/</link>
+      <guid isPermaLink="true">https://edaha.md/news/release-0-3-0/</guid>
       <pubDate>Sat, 21 Nov 2026 10:39:00 GMT</pubDate>
       <description>&lt;p&gt;edaha.md v0.3.0 has been published! Two new plugins plus some core updates and additions: Added The new table of contents plugin lists an article’s headings as nested lists of links, built with the…&lt;/p&gt;</description>
     </item>
     <item>
       <title>Release v0.2.0</title>
-      <link>https://lvl99.github.io/edaha.md/news/release-0-2-0/</link>
-      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/news/release-0-2-0/</guid>
+      <link>https://edaha.md/news/release-0-2-0/</link>
+      <guid isPermaLink="true">https://edaha.md/news/release-0-2-0/</guid>
       <pubDate>Fri, 20 Nov 2026 18:52:00 GMT</pubDate>
       <description>&lt;p&gt;edaha.md v0.2.0 has been published! Lots of new updates: Added The article editor is now its own package, @lvl99dotcom/edaha-editor , which edaha editor loads when it’s installed. Embeds are plugins,…&lt;/p&gt;</description>
     </item>
     <item>
       <title>Welcome</title>
-      <link>https://lvl99.github.io/edaha.md/news/welcome/</link>
-      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/news/welcome/</guid>
+      <link>https://edaha.md/news/welcome/</link>
+      <guid isPermaLink="true">https://edaha.md/news/welcome/</guid>
       <pubDate>Sun, 15 Nov 2026 18:36:00 GMT</pubDate>
       <description>&lt;p&gt;edaha.md v0.1.0 was launched as a simple approach to a static site generator, utilising markdown to then render articles into HTML and RSS XML files. You can find out more on our About page, or on our…&lt;/p&gt;</description>
     </item>

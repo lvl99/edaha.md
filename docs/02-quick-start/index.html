@@ -7,12 +7,12 @@
     <meta name="description" content="This builds a small website with one news article, using as little configuration as possible. You need Node.js 22 or later." />
 
 
-  <link rel="stylesheet" href="/edaha.md/base.css" />
-  <link rel="stylesheet" href="/edaha.md/site.css" />
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -24,9 +24,9 @@
         <main class="site-main">
   <nav class="site-breadcrumb" aria-label="Breadcrumb">
     <ul>
-      <li><a href="/edaha.md/">Home</a></li>
-<li><a href="/edaha.md/docs/">Documentation</a></li>
-<li><a href="/edaha.md/docs/02-quick-start/" aria-current="page">Quick start</a></li>
+      <li><a href="/">Home</a></li>
+<li><a href="/docs/">Documentation</a></li>
+<li><a href="/docs/02-quick-start/" aria-current="page">Quick start</a></li>
     </ul>
   </nav>
 
@@ -41,7 +41,7 @@
 yarn add --dev @lvl99dotcom/edaha.md
 pnpm add --save-dev @lvl99dotcom/edaha.md
 </code></pre>
-<p>To also write articles in the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a>, add its package too:</p>
+<p>To also write articles in the <a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a>, add its package too:</p>
 <pre><code class="language-sh">npm install --save-dev @lvl99dotcom/edaha-editor
 yarn add --dev @lvl99dotcom/edaha-editor
 pnpm add --save-dev @lvl99dotcom/edaha-editor
@@ -51,7 +51,7 @@ pnpm add --save-dev @lvl99dotcom/edaha-editor
 <pre><code class="language-yaml">name: My blog
 description: My cool blog powered by edaha.md
 </code></pre>
-<p>The config file can also be JSON or JavaScript, and can have other names. See <a href="/edaha.md/docs/03-configuration/">Configuration</a> for every setting.</p>
+<p>The config file can also be JSON or JavaScript, and can have other names. See <a href="/docs/03-configuration/">Configuration</a> for every setting.</p>
 <h2 id="3-write-an-article">3. Write an article</h2>
 <p>Create <code>articles/news/hello-world/article.md</code>:</p>
 <pre><code class="language-md">&lt;!--yaml
@@ -68,7 +68,7 @@ Everything after the read more break is only shown on the article's own page.
 <ul>
 <li><code>news</code> is the article type. Types that aren’t in the config file get default settings, with a warning.</li>
 <li><code>hello-world</code> is the article’s slug, used in its URL.</li>
-<li>The header at the top holds the article’s metadata. Only <code>date</code> is required. See <a href="/edaha.md/docs/04-articles/">Articles</a>.</li>
+<li>The header at the top holds the article’s metadata. Only <code>date</code> is required. See <a href="/docs/04-articles/">Articles</a>.</li>
 </ul>
 <p>Your project now looks like this:</p>
 <pre><code>&lt;project&gt;/
@@ -99,12 +99,12 @@ pnpx edaha build --site-url https://myblog.example.com
 yarn edaha editor
 pnpx edaha editor
 </code></pre>
-<p>Open <a href="http://127.0.0.1:8449">http://127.0.0.1:8449</a> to write and edit articles without touching Markdown. See <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a>.</p>
+<p>Open <a href="http://127.0.0.1:8449">http://127.0.0.1:8449</a> to write and edit articles without touching Markdown. See <a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a>.</p>
 <h2 id="next-steps">Next steps</h2>
 <ul>
-<li><a href="/edaha.md/docs/03-configuration/">Configuration</a>: article types, URL paths, output folders and more.</li>
-<li><a href="/edaha.md/docs/05-templating/">Templating</a>: change how your pages look.</li>
-<li><a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a>: put your website online.</li>
+<li><a href="/docs/03-configuration/">Configuration</a>: article types, URL paths, output folders and more.</li>
+<li><a href="/docs/05-templating/">Templating</a>: change how your pages look.</li>
+<li><a href="/docs/08-build-and-deploy/">Build &amp; deploy</a>: put your website online.</li>
 </ul>
 
   </div>
@@ -114,38 +114,38 @@ pnpx edaha editor
 
   <aside>
 <ol>
-  <li><a href="/edaha.md/docs/01-introduction/">Introduction</a></li>
-  <li><a href="/edaha.md/docs/02-quick-start/">Quick start</a></li>
-  <li><a href="/edaha.md/docs/03-configuration/">Configuration</a></li>
-  <li><a href="/edaha.md/docs/04-articles/">Articles</a></li>
-  <li><a href="/edaha.md/docs/05-templating/">Templating</a></li>
-  <li><a href="/edaha.md/docs/06-lists/">Lists</a></li>
-  <li><a href="/edaha.md/docs/07-embeds/">Embeds</a></li>
-  <li><a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
-  <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
-  <li><a href="/edaha.md/docs/10-api/">API</a></li>
+  <li><a href="/docs/01-introduction/">Introduction</a></li>
+  <li><a href="/docs/02-quick-start/">Quick start</a></li>
+  <li><a href="/docs/03-configuration/">Configuration</a></li>
+  <li><a href="/docs/04-articles/">Articles</a></li>
+  <li><a href="/docs/05-templating/">Templating</a></li>
+  <li><a href="/docs/06-lists/">Lists</a></li>
+  <li><a href="/docs/07-embeds/">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
+  <li><a href="/docs/10-api/">API</a></li>
 </ol>
 
 <h5>Plugins</h5>
 <ul>
-  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
-  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
-  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
-  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
-  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+  <li><a href="/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/docs/plugin-codehighlighter/">Code Highlighter</a></li>
 </ul>
   </aside>
       </div>
 
       <footer class="site-footer">
   <nav aria-label="Sections">
-    <a href="/edaha.md/">Home</a>
-    <a href="/edaha.md/about">About</a>
-<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
   </nav>
 
   <p class="colophon">
-    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
     &middot;
     Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
     &middot;
@@ -162,6 +162,6 @@ pnpx edaha editor
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     } catch {}
   </script>
-  <script src="/edaha.md/theme-switcher.js" defer></script>
+  <script src="/theme-switcher.js" defer></script>
   </body>
 </html>

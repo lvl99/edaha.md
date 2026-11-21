@@ -7,12 +7,12 @@
     <meta name="description" content="Embeds turn text in an article into richer content, such as a video, a music player or a diagram. They are like shortcodes in WordPress, or an HTML &lt;iframe&gt; you don’t have to write yourself. Each kind of embed is a plugin you add to your site." />
 
 
-  <link rel="stylesheet" href="/edaha.md/base.css" />
-  <link rel="stylesheet" href="/edaha.md/site.css" />
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -24,9 +24,9 @@
         <main class="site-main">
   <nav class="site-breadcrumb" aria-label="Breadcrumb">
     <ul>
-      <li><a href="/edaha.md/">Home</a></li>
-<li><a href="/edaha.md/docs/">Documentation</a></li>
-<li><a href="/edaha.md/docs/07-embeds/" aria-current="page">Embeds</a></li>
+      <li><a href="/">Home</a></li>
+<li><a href="/docs/">Documentation</a></li>
+<li><a href="/docs/07-embeds/" aria-current="page">Embeds</a></li>
     </ul>
   </nav>
 
@@ -56,7 +56,7 @@ A--&gt;B;
 A--&gt;C;</pre></div>
 <p>A block whose key has no plugin, or whose plugin fails, gives a warning and is shown as it is written instead (a URL as a link), so the build carries on. So does an old block without a key (<code>&lt;!-- embed --&gt;...&lt;!-- /embed --&gt;</code>): add the key to embed it again.</p>
 <p>Embed blocks inside code blocks and inline code are left alone, so you can write about them.</p>
-<p>In the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a>, each embed has its own toolbar button, which asks for its content (and options) and shows the embed in the article’s body.</p>
+<p>In the <a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a>, each embed has its own toolbar button, which asks for its content (and options) and shows the embed in the article’s body.</p>
 <h3 id="options">Options</h3>
 <p>Some embeds have options that change how they show, e.g. the Bandcamp player’s layout and colours. A block’s options go in YAML in a <code>&lt;!--yaml ... --&gt;</code> comment before its content, like an article’s settings:</p>
 <pre><code class="language-md">&lt;!-- embed:bandcamp --&gt;
@@ -72,7 +72,7 @@ https://artist.bandcamp.com/album/name
 <p>Options you leave out get their defaults. The editor’s embed dialog shows each option as a field below the content, and saves every option that applies (defaults included), so the block keeps looking the same if a plugin’s defaults change. Options that don’t apply to the others’ values (e.g. the tracklist for a slim player) are hidden in the dialog and left out.</p>
 <p>A block whose options aren’t the embed’s (an unknown name, or a value of the wrong kind) is left out of the website with a warning, like one whose content isn’t valid.</p>
 <h2 id="adding-embeds-to-your-site">Adding embeds to your site</h2>
-<p>edaha.md has no embeds of its own. Install the plugins you want, then list their packages under <code>plugins</code> in your <a href="/edaha.md/docs/03-configuration/#plugins">config file</a>:</p>
+<p>edaha.md has no embeds of its own. Install the plugins you want, then list their packages under <code>plugins</code> in your <a href="/docs/03-configuration/#plugins">config file</a>:</p>
 <table>
 <thead>
 <tr>
@@ -100,12 +100,12 @@ https://artist.bandcamp.com/album/name
 <tr>
 <td><a href="https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-toc"><code>@lvl99dotcom/edaha-plugin-toc</code></a></td>
 <td><code>toc</code></td>
-<td>Optional Markdown shown above a table of contents of the article’s headings. <a href="/edaha.md/docs/plugin-toc/">Options</a> set each level’s list style.</td>
+<td>Optional Markdown shown above a table of contents of the article’s headings. <a href="/docs/plugin-toc/">Options</a> set each level’s list style.</td>
 </tr>
 <tr>
 <td><a href="https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-codehighlight"><code>@lvl99dotcom/edaha-plugin-codehighlight</code></a></td>
 <td><code>codehighlight</code></td>
-<td>Fenced code blocks, shown with line numbers, a copy button and highlighting (Shiki, from jsDelivr); several become tabs. See <a href="/edaha.md/docs/plugin-codehighlight/">Code highlighter</a>.</td>
+<td>Fenced code blocks, shown with line numbers, a copy button and highlighting (Shiki, from jsDelivr); several become tabs. See <a href="/docs/plugin-codehighlight/">Code highlighter</a>.</td>
 </tr>
 </tbody>
 </table>
@@ -245,7 +245,7 @@ export const vimeo = {
 </tr>
 <tr>
 <td><code>options</code></td>
-<td>Optional; the options blocks can set, as fields like <a href="/edaha.md/docs/03-configuration/#metadata">custom metadata</a>. See below.</td>
+<td>Optional; the options blocks can set, as fields like <a href="/docs/03-configuration/#metadata">custom metadata</a>. See below.</td>
 </tr>
 <tr>
 <td><code>validate(content, options)</code></td>
@@ -271,10 +271,10 @@ export const vimeo = {
 </table>
 <p>Escape anything from the content or options that you put into the HTML. Blocks are rendered with each page that shows them (an article’s page, and list pages showing its excerpt), and each address <code>fetch</code> fetches is fetched once per build.</p>
 <h3 id="defining-options">Defining options</h3>
-<p><code>options</code> lists the options a block can set, by the name they are saved under. Each is a JSON Schema with <code>$edahaField</code>, saying how the editor’s embed dialog shows it, exactly like <a href="/edaha.md/docs/03-configuration/#metadata">custom metadata fields</a>, including:</p>
+<p><code>options</code> lists the options a block can set, by the name they are saved under. Each is a JSON Schema with <code>$edahaField</code>, saying how the editor’s embed dialog shows it, exactly like <a href="/docs/03-configuration/#metadata">custom metadata fields</a>, including:</p>
 <ul>
 <li><code>defaultValue</code>: the value used when a block doesn’t set one.</li>
-<li><code>showWhen</code> and <code>hideWhen</code>: conditions on the other options for when the option applies. An option that doesn’t apply is hidden in the dialog and left out of the options <code>render</code> gets. See <a href="/edaha.md/docs/03-configuration/#default-values-and-conditions">conditions</a>.</li>
+<li><code>showWhen</code> and <code>hideWhen</code>: conditions on the other options for when the option applies. An option that doesn’t apply is hidden in the dialog and left out of the options <code>render</code> gets. See <a href="/docs/03-configuration/#default-values-and-conditions">conditions</a>.</li>
 </ul>
 <pre><code class="language-js">options: {
   layout: {
@@ -324,7 +324,7 @@ const chart = {
   },
 };
 </code></pre>
-<p>Your layout template needs <code>{% embedHead %}</code> before <code>&lt;/head&gt;</code> and <code>{% embedFoot %}</code> before <code>&lt;/body&gt;</code> for these to show; the default theme’s <code>layouts/html.njk</code> has both. See <a href="/edaha.md/docs/05-templating/#embed-tags">Templating</a>.</p>
+<p>Your layout template needs <code>{% embedHead %}</code> before <code>&lt;/head&gt;</code> and <code>{% embedFoot %}</code> before <code>&lt;/body&gt;</code> for these to show; the default theme’s <code>layouts/html.njk</code> has both. See <a href="/docs/05-templating/#embed-tags">Templating</a>.</p>
 <h3 id="adding-it-to-your-site">Adding it to your site</h3>
 <p>Publish it as a package and list its name under <code>plugins</code>, or give the plugin itself in a JavaScript config file:</p>
 <pre><code class="language-js">// edaha.config.mjs
@@ -396,7 +396,7 @@ await buildSite({ siteDir: &quot;my-site&quot;, plugins: [youtube, vimeo] });
   border: 0;
 }
 </code></pre>
-<p>See <a href="/edaha.md/docs/05-templating/">Templating</a> for how your static files override the theme’s.</p>
+<p>See <a href="/docs/05-templating/">Templating</a> for how your static files override the theme’s.</p>
 
   </div>
 
@@ -405,38 +405,38 @@ await buildSite({ siteDir: &quot;my-site&quot;, plugins: [youtube, vimeo] });
 
   <aside>
 <ol>
-  <li><a href="/edaha.md/docs/01-introduction/">Introduction</a></li>
-  <li><a href="/edaha.md/docs/02-quick-start/">Quick start</a></li>
-  <li><a href="/edaha.md/docs/03-configuration/">Configuration</a></li>
-  <li><a href="/edaha.md/docs/04-articles/">Articles</a></li>
-  <li><a href="/edaha.md/docs/05-templating/">Templating</a></li>
-  <li><a href="/edaha.md/docs/06-lists/">Lists</a></li>
-  <li><a href="/edaha.md/docs/07-embeds/">Embeds</a></li>
-  <li><a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
-  <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
-  <li><a href="/edaha.md/docs/10-api/">API</a></li>
+  <li><a href="/docs/01-introduction/">Introduction</a></li>
+  <li><a href="/docs/02-quick-start/">Quick start</a></li>
+  <li><a href="/docs/03-configuration/">Configuration</a></li>
+  <li><a href="/docs/04-articles/">Articles</a></li>
+  <li><a href="/docs/05-templating/">Templating</a></li>
+  <li><a href="/docs/06-lists/">Lists</a></li>
+  <li><a href="/docs/07-embeds/">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
+  <li><a href="/docs/10-api/">API</a></li>
 </ol>
 
 <h5>Plugins</h5>
 <ul>
-  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
-  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
-  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
-  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
-  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+  <li><a href="/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/docs/plugin-codehighlighter/">Code Highlighter</a></li>
 </ul>
   </aside>
       </div>
 
       <footer class="site-footer">
   <nav aria-label="Sections">
-    <a href="/edaha.md/">Home</a>
-    <a href="/edaha.md/about">About</a>
-<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
   </nav>
 
   <p class="colophon">
-    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
     &middot;
     Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
     &middot;
@@ -453,7 +453,7 @@ await buildSite({ siteDir: &quot;my-site&quot;, plugins: [youtube, vimeo] });
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     } catch {}
   </script>
-  <script src="/edaha.md/theme-switcher.js" defer></script>
+  <script src="/theme-switcher.js" defer></script>
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12.3.0/dist/mermaid.esm.min.mjs";
   const theme = document.documentElement.dataset.theme;

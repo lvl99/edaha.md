@@ -7,12 +7,12 @@
     <meta name="description" content="edaha.md renders every page with Nunjucks templates. It comes with a neutral default theme, and you can replace any of its templates with your own, one file at a time." />
 
 
-  <link rel="stylesheet" href="/edaha.md/base.css" />
-  <link rel="stylesheet" href="/edaha.md/site.css" />
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
   </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -24,9 +24,9 @@
         <main class="site-main">
   <nav class="site-breadcrumb" aria-label="Breadcrumb">
     <ul>
-      <li><a href="/edaha.md/">Home</a></li>
-<li><a href="/edaha.md/docs/">Documentation</a></li>
-<li><a href="/edaha.md/docs/05-templating/" aria-current="page">Templating</a></li>
+      <li><a href="/">Home</a></li>
+<li><a href="/docs/">Documentation</a></li>
+<li><a href="/docs/05-templating/" aria-current="page">Templating</a></li>
     </ul>
   </nav>
 
@@ -42,7 +42,7 @@
 <li>each page of each list with its type’s <code>list</code> template;</li>
 <li>each RSS feed with <code>layouts/rssfeed.njk</code>.</li>
 </ul>
-<p>Templates are looked for in your site’s templates folder first (<code>templates/</code>, or the <a href="/edaha.md/docs/03-configuration/#templatesdir"><code>templatesDir</code></a> setting), then in the default theme’s. So to change one, copy it from the theme into your <code>templates/</code> folder at the same path and edit it. The theme’s files are in <code>node_modules/@lvl99dotcom/edaha.md/theme/templates/</code>:</p>
+<p>Templates are looked for in your site’s templates folder first (<code>templates/</code>, or the <a href="/docs/03-configuration/#templatesdir"><code>templatesDir</code></a> setting), then in the default theme’s. So to change one, copy it from the theme into your <code>templates/</code> folder at the same path and edit it. The theme’s files are in <code>node_modules/@lvl99dotcom/edaha.md/theme/templates/</code>:</p>
 <pre><code>templates/
   layouts/
     html.njk          # The HTML page every other template extends
@@ -54,7 +54,7 @@
     single.njk        # Pages: a &quot;last updated&quot; date, without author or tags
     home.njk          # The home page
 </code></pre>
-<p>Your site’s static files folder (<code>static/</code>, or <a href="/edaha.md/docs/03-configuration/#staticdir"><code>staticDir</code></a>) works the same way: its files are copied to the website’s root over the theme’s, so a <code>static/site.css</code> replaces the theme’s stylesheet.</p>
+<p>Your site’s static files folder (<code>static/</code>, or <a href="/docs/03-configuration/#staticdir"><code>staticDir</code></a>) works the same way: its files are copied to the website’s root over the theme’s, so a <code>static/site.css</code> replaces the theme’s stylesheet.</p>
 <h2 id="building-on-the-themes-templates">Building on the theme’s templates</h2>
 <p>A template can extend, include or import any other by its name, e.g. <code>{% extends &quot;article/single.njk&quot; %}</code>. Names are looked for in your templates folder first, then in the theme’s, so this gets the theme’s file as long as you haven’t overridden it.</p>
 <p>To build on the theme’s version of a template you <strong>have</strong> overridden, start its name with <code>@theme/</code>. It always loads the theme’s file. For example, a <code>templates/article/single.njk</code> that adds to the theme’s sidebar instead of replacing the whole page:</p>
@@ -150,11 +150,11 @@
 </tr>
 <tr>
 <td><code>article.meta</code></td>
-<td>The article’s <a href="/edaha.md/docs/03-configuration/#metadata">custom settings</a> by key, e.g. <code>article.meta.featured</code>: the valid values of those its type uses, with file fields’ names as their URLs.</td>
+<td>The article’s <a href="/docs/03-configuration/#metadata">custom settings</a> by key, e.g. <code>article.meta.featured</code>: the valid values of those its type uses, with file fields’ names as their URLs.</td>
 </tr>
 </tbody>
 </table>
-<p>List pages (and <a href="/edaha.md/docs/06-lists/#index-articles">index articles</a>) get <code>list</code>:</p>
+<p>List pages (and <a href="/docs/06-lists/#index-articles">index articles</a>) get <code>list</code>:</p>
 <table>
 <thead>
 <tr>
@@ -251,7 +251,7 @@
 </tbody>
 </table>
 <h2 id="embed-tags">Embed tags</h2>
-<p>Some <a href="/edaha.md/docs/07-embeds/">embeds</a> need a stylesheet or a script on the pages that use them, e.g. to draw diagrams. Two tags output them, once per page:</p>
+<p>Some <a href="/docs/07-embeds/">embeds</a> need a stylesheet or a script on the pages that use them, e.g. to draw diagrams. Two tags output them, once per page:</p>
 <ul>
 <li><code>{% embedHead %}</code>: before <code>&lt;/head&gt;</code>.</li>
 <li><code>{% embedFoot %}</code>: before <code>&lt;/body&gt;</code>.</li>
@@ -318,38 +318,38 @@
 
   <aside>
 <ol>
-  <li><a href="/edaha.md/docs/01-introduction/">Introduction</a></li>
-  <li><a href="/edaha.md/docs/02-quick-start/">Quick start</a></li>
-  <li><a href="/edaha.md/docs/03-configuration/">Configuration</a></li>
-  <li><a href="/edaha.md/docs/04-articles/">Articles</a></li>
-  <li><a href="/edaha.md/docs/05-templating/">Templating</a></li>
-  <li><a href="/edaha.md/docs/06-lists/">Lists</a></li>
-  <li><a href="/edaha.md/docs/07-embeds/">Embeds</a></li>
-  <li><a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
-  <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
-  <li><a href="/edaha.md/docs/10-api/">API</a></li>
+  <li><a href="/docs/01-introduction/">Introduction</a></li>
+  <li><a href="/docs/02-quick-start/">Quick start</a></li>
+  <li><a href="/docs/03-configuration/">Configuration</a></li>
+  <li><a href="/docs/04-articles/">Articles</a></li>
+  <li><a href="/docs/05-templating/">Templating</a></li>
+  <li><a href="/docs/06-lists/">Lists</a></li>
+  <li><a href="/docs/07-embeds/">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
+  <li><a href="/docs/10-api/">API</a></li>
 </ol>
 
 <h5>Plugins</h5>
 <ul>
-  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
-  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
-  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
-  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
-  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+  <li><a href="/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/docs/plugin-codehighlighter/">Code Highlighter</a></li>
 </ul>
   </aside>
       </div>
 
       <footer class="site-footer">
   <nav aria-label="Sections">
-    <a href="/edaha.md/">Home</a>
-    <a href="/edaha.md/about">About</a>
-<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
   </nav>
 
   <p class="colophon">
-    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
     &middot;
     Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
     &middot;
@@ -366,6 +366,6 @@
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     } catch {}
   </script>
-  <script src="/edaha.md/theme-switcher.js" defer></script>
+  <script src="/theme-switcher.js" defer></script>
   </body>
 </html>

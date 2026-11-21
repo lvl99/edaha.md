@@ -7,8 +7,8 @@
     <meta name="description" content="Everything the edaha command does, you can do from JavaScript or TypeScript: build a site when and how you like, read its config file, write embed plugins, and run the article editor." />
 
 
-  <link rel="stylesheet" href="/edaha.md/base.css" />
-  <link rel="stylesheet" href="/edaha.md/site.css" />
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
 <style>
   .embed-toc ol { list-style: none; margin: 0; padding-left: 1.5em; }
   .embed-toc nav > ol { padding-left: 0; }
@@ -17,7 +17,7 @@
 </style>  </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -29,9 +29,9 @@
         <main class="site-main">
   <nav class="site-breadcrumb" aria-label="Breadcrumb">
     <ul>
-      <li><a href="/edaha.md/">Home</a></li>
-<li><a href="/edaha.md/docs/">Documentation</a></li>
-<li><a href="/edaha.md/docs/10-api/" aria-current="page">API</a></li>
+      <li><a href="/">Home</a></li>
+<li><a href="/docs/">Documentation</a></li>
+<li><a href="/docs/10-api/" aria-current="page">API</a></li>
     </ul>
   </nav>
 
@@ -76,7 +76,7 @@ const result = await buildSite({
 console.log(`Built ${result.files.length} files into ${result.outputDir}`);
 </code></pre>
 <h3 id="how-a-build-works">How a build works</h3>
-<p>A build reads the <a href="/edaha.md/docs/03-configuration/">config file</a> and the site’s articles, turns each article’s Markdown into HTML, and renders it with the site’s <a href="/edaha.md/docs/05-templating/">templates</a> into the output folder:</p>
+<p>A build reads the <a href="/docs/03-configuration/">config file</a> and the site’s articles, turns each article’s Markdown into HTML, and renders it with the site’s <a href="/docs/05-templating/">templates</a> into the output folder:</p>
 <div class="embed embed-mermaidjs"><pre class="mermaid">flowchart TD
 config[&quot;Config file&lt;br&gt;(edahaconfig.yml)&quot;] --&gt; load[&quot;loadSiteConfig&lt;br&gt;settings and embed plugins&quot;]
 load --&gt; types[&quot;Article types&quot;]
@@ -109,7 +109,7 @@ siteArticle -. &quot;if missing&quot; .-&gt; themeArticle[&quot;theme: article/s
 end
 page -- &quot;extends&quot; --&gt; layout[&quot;layouts/html.njk&lt;br&gt;(the site&#39;s, or the theme&#39;s)&quot;]
 layout --&gt; html[&quot;index.html&quot;]</pre></div>
-<p>A site’s template can build on the theme’s version of itself with <code>{% extends &quot;@theme/article/single.njk&quot; %}</code>. See <a href="/edaha.md/docs/05-templating/">Templating</a> for the template data and filters.</p>
+<p>A site’s template can build on the theme’s version of itself with <code>{% extends &quot;@theme/article/single.njk&quot; %}</code>. See <a href="/docs/05-templating/">Templating</a> for the template data and filters.</p>
 <h3 id="buildsite-options"><code>buildSite</code> options</h3>
 <table>
 <thead>
@@ -131,7 +131,7 @@ layout --&gt; html[&quot;index.html&quot;]</pre></div>
 <td><code>configFile</code></td>
 <td>String</td>
 <td>The config file to use instead of looking for one. The site folder is its folder.</td>
-<td>The first <a href="/edaha.md/docs/03-configuration/#where-it-is-found">config file</a> found</td>
+<td>The first <a href="/docs/03-configuration/#where-it-is-found">config file</a> found</td>
 </tr>
 <tr>
 <td><code>siteUrl</code></td>
@@ -148,7 +148,7 @@ layout --&gt; html[&quot;index.html&quot;]</pre></div>
 <tr>
 <td><code>plugins</code></td>
 <td>EmbedPlugin[]</td>
-<td><a href="/edaha.md/docs/07-embeds/">Embed plugins</a> added after the config file’s <code>plugins</code>. One with the same key as the config file’s is left out.</td>
+<td><a href="/docs/07-embeds/">Embed plugins</a> added after the config file’s <code>plugins</code>. One with the same key as the config file’s is left out.</td>
 <td>None</td>
 </tr>
 <tr>
@@ -204,7 +204,7 @@ console.log(`${config.name}: ${Object.keys(config.types).join(&quot;, &quot;)}`)
 </code></pre>
 <p>It takes <code>siteDir</code>, <code>configFile</code> and <code>logger</code>, like <code>buildSite</code>. The config helpers it uses are exported too: <code>findConfigFile</code> (which file would be used), <code>readConfigFile</code> (its raw settings) and <code>parseConfig</code> (check settings and fill in defaults; give it plugin objects, as it doesn’t load packages).</p>
 <h3 id="embed-plugins">Embed plugins</h3>
-<p>The embed API (<code>EmbedPlugin</code>, <code>EmbedResolver</code>, <code>EMBED_PAGE_PARTS</code>, <code>embedBlock</code>, <code>splitEmbed</code>, <code>cachedFetch</code>, <code>isEmbedPlugin</code>, <code>loadPlugins</code> and <code>validationErrors</code>) is exported too. <code>EmbedResolver</code> renders embeds page by page: <code>replaceBlocks</code> puts placeholders for a page’s blocks in its Markdown, and <code>renderPage</code> renders them in the page’s HTML, with the HTML its embeds need in place of <code>EMBED_PAGE_PARTS</code> (the template data for <code>{% embedHead %}</code> and <code>{% embedFoot %}</code>). The fields’ <code>defaultValue</code>, <code>showWhen</code> and <code>hideWhen</code> are applied by <code>resolveFields</code>, from <code>@lvl99dotcom/edaha.md/generator/fields</code>. See <a href="/edaha.md/docs/07-embeds/#creating-your-own">Embeds</a> for how to write a plugin.</p>
+<p>The embed API (<code>EmbedPlugin</code>, <code>EmbedResolver</code>, <code>EMBED_PAGE_PARTS</code>, <code>embedBlock</code>, <code>splitEmbed</code>, <code>cachedFetch</code>, <code>isEmbedPlugin</code>, <code>loadPlugins</code> and <code>validationErrors</code>) is exported too. <code>EmbedResolver</code> renders embeds page by page: <code>replaceBlocks</code> puts placeholders for a page’s blocks in its Markdown, and <code>renderPage</code> renders them in the page’s HTML, with the HTML its embeds need in place of <code>EMBED_PAGE_PARTS</code> (the template data for <code>{% embedHead %}</code> and <code>{% embedFoot %}</code>). The fields’ <code>defaultValue</code>, <code>showWhen</code> and <code>hideWhen</code> are applied by <code>resolveFields</code>, from <code>@lvl99dotcom/edaha.md/generator/fields</code>. See <a href="/docs/07-embeds/#creating-your-own">Embeds</a> for how to write a plugin.</p>
 <h3 id="the-command-line">The command line</h3>
 <p><code>runCli</code> runs the <code>edaha</code> command with its arguments, and resolves with its exit code. It takes the folder, environment and output to use, so it can run inside another tool:</p>
 <pre><code class="language-ts">import { runCli } from &quot;@lvl99dotcom/edaha.md&quot;;
@@ -217,7 +217,7 @@ const code = await runCli([&quot;build&quot;, &quot;--dir&quot;, &quot;my-site&q
 });
 </code></pre>
 <h2 id="editor">Editor</h2>
-<p><code>startEditor</code>, from the editor package, starts the <a href="/edaha.md/docs/09-wysiwyg-editor/">article editor</a> on this computer, as <code>edaha editor</code> does:</p>
+<p><code>startEditor</code>, from the editor package, starts the <a href="/docs/09-wysiwyg-editor/">article editor</a> on this computer, as <code>edaha editor</code> does:</p>
 <pre><code class="language-ts">import { startEditor } from &quot;@lvl99dotcom/edaha-editor&quot;;
 
 const editor = await startEditor({ siteDir: &quot;my-site&quot;, port: 5180 });
@@ -306,38 +306,38 @@ console.log(await response.json());
 
   <aside>
 <ol>
-  <li><a href="/edaha.md/docs/01-introduction/">Introduction</a></li>
-  <li><a href="/edaha.md/docs/02-quick-start/">Quick start</a></li>
-  <li><a href="/edaha.md/docs/03-configuration/">Configuration</a></li>
-  <li><a href="/edaha.md/docs/04-articles/">Articles</a></li>
-  <li><a href="/edaha.md/docs/05-templating/">Templating</a></li>
-  <li><a href="/edaha.md/docs/06-lists/">Lists</a></li>
-  <li><a href="/edaha.md/docs/07-embeds/">Embeds</a></li>
-  <li><a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
-  <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
-  <li><a href="/edaha.md/docs/10-api/">API</a></li>
+  <li><a href="/docs/01-introduction/">Introduction</a></li>
+  <li><a href="/docs/02-quick-start/">Quick start</a></li>
+  <li><a href="/docs/03-configuration/">Configuration</a></li>
+  <li><a href="/docs/04-articles/">Articles</a></li>
+  <li><a href="/docs/05-templating/">Templating</a></li>
+  <li><a href="/docs/06-lists/">Lists</a></li>
+  <li><a href="/docs/07-embeds/">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
+  <li><a href="/docs/10-api/">API</a></li>
 </ol>
 
 <h5>Plugins</h5>
 <ul>
-  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
-  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
-  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
-  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
-  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+  <li><a href="/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/docs/plugin-codehighlighter/">Code Highlighter</a></li>
 </ul>
   </aside>
       </div>
 
       <footer class="site-footer">
   <nav aria-label="Sections">
-    <a href="/edaha.md/">Home</a>
-    <a href="/edaha.md/about">About</a>
-<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
   </nav>
 
   <p class="colophon">
-    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
     &middot;
     Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
     &middot;
@@ -354,7 +354,7 @@ console.log(await response.json());
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     } catch {}
   </script>
-  <script src="/edaha.md/theme-switcher.js" defer></script>
+  <script src="/theme-switcher.js" defer></script>
 <script type="module">
   import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@12.3.0/dist/mermaid.esm.min.mjs";
   const theme = document.documentElement.dataset.theme;

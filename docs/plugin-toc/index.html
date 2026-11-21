@@ -7,8 +7,8 @@
     <meta name="description" content="The table of contents embed plugin lists an article’s headings as a table of contents, with links to each heading." />
 
 
-  <link rel="stylesheet" href="/edaha.md/base.css" />
-  <link rel="stylesheet" href="/edaha.md/site.css" />
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
 <style>
   .embed-toc ol { list-style: none; margin: 0; padding-left: 1.5em; }
   .embed-toc nav > ol { padding-left: 0; }
@@ -17,7 +17,7 @@
 </style>  </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -29,9 +29,9 @@
         <main class="site-main">
   <nav class="site-breadcrumb" aria-label="Breadcrumb">
     <ul>
-      <li><a href="/edaha.md/">Home</a></li>
-<li><a href="/edaha.md/docs/">Documentation</a></li>
-<li><a href="/edaha.md/docs/plugin-toc/" aria-current="page">Table of Contents Embed</a></li>
+      <li><a href="/">Home</a></li>
+<li><a href="/docs/">Documentation</a></li>
+<li><a href="/docs/plugin-toc/" aria-current="page">Table of Contents Embed</a></li>
     </ul>
   </nav>
 
@@ -49,13 +49,13 @@
 yarn add --dev @lvl99dotcom/edaha-plugin-toc
 pnpm add --save-dev @lvl99dotcom/edaha-plugin-toc
 </code></pre>
-<p>Add the plugin’s package name to your <a href="/edaha.md/docs/03-configuration/#plugins">configuration file</a>:</p>
+<p>Add the plugin’s package name to your <a href="/docs/03-configuration/#plugins">configuration file</a>:</p>
 <pre><code class="language-yaml">plugins:
   - &quot;@lvl99dotcom/edaha-plugin-toc&quot;
 </code></pre>
-<p>If you use your own layout template, it needs <code>{% embedHead %}</code> before <code>&lt;/head&gt;</code> for the table of contents’ styles (the default theme’s <code>layouts/html.njk</code> has it). See <a href="/edaha.md/docs/05-templating/#embed-tags">Templating</a>.</p>
+<p>If you use your own layout template, it needs <code>{% embedHead %}</code> before <code>&lt;/head&gt;</code> for the table of contents’ styles (the default theme’s <code>layouts/html.njk</code> has it). See <a href="/docs/05-templating/#embed-tags">Templating</a>.</p>
 <h2 id="how-to-use">How to use</h2>
-<p>When using the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG or Markdown editor</a>, press the <strong>Table of contents</strong> button in the toolbar to add one. You can leave its content empty, or write Markdown to show above the list, e.g. a heading. The editor’s body shows a note in its place, as it doesn’t show the article; the <strong>Preview</strong> tab shows the list.</p>
+<p>When using the <a href="/docs/09-wysiwyg-editor/">WYSIWYG or Markdown editor</a>, press the <strong>Table of contents</strong> button in the toolbar to add one. You can leave its content empty, or write Markdown to show above the list, e.g. a heading. The editor’s body shows a note in its place, as it doesn’t show the article; the <strong>Preview</strong> tab shows the list.</p>
 <p>You can also write it in an article’s Markdown yourself:</p>
 <pre><code class="language-md">&lt;!-- embed:toc --&gt;
 &lt;!--yaml
@@ -151,7 +151,7 @@ level3: alpha
 <h2 id="how-it-works">How it works</h2>
 <p>The table of contents is built with the page, so it needs no JavaScript. It is a <code>&lt;nav aria-label=&quot;Table of contents&quot;&gt;</code> with nested ordered lists (<code>&lt;ol role=&quot;list&quot;&gt;</code>) of links to the headings, under the block’s own Markdown. Markers are written into the page as text, so they look the same in every browser; bullets are hidden from screen readers. Pages with a table of contents get a small stylesheet, once.</p>
 <p>A table of contents in an article’s excerpt (on list pages) lists the whole article’s headings, linking to them on that page.</p>
-<p>Tables of contents are wrapped in <code>&lt;div class=&quot;embed embed-toc&quot;&gt;</code>. See <a href="/edaha.md/docs/07-embeds/">Embeds</a> for more about embeds.</p>
+<p>Tables of contents are wrapped in <code>&lt;div class=&quot;embed embed-toc&quot;&gt;</code>. See <a href="/docs/07-embeds/">Embeds</a> for more about embeds.</p>
 
   </div>
 
@@ -160,38 +160,38 @@ level3: alpha
 
   <aside>
 <ol>
-  <li><a href="/edaha.md/docs/01-introduction/">Introduction</a></li>
-  <li><a href="/edaha.md/docs/02-quick-start/">Quick start</a></li>
-  <li><a href="/edaha.md/docs/03-configuration/">Configuration</a></li>
-  <li><a href="/edaha.md/docs/04-articles/">Articles</a></li>
-  <li><a href="/edaha.md/docs/05-templating/">Templating</a></li>
-  <li><a href="/edaha.md/docs/06-lists/">Lists</a></li>
-  <li><a href="/edaha.md/docs/07-embeds/">Embeds</a></li>
-  <li><a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
-  <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
-  <li><a href="/edaha.md/docs/10-api/">API</a></li>
+  <li><a href="/docs/01-introduction/">Introduction</a></li>
+  <li><a href="/docs/02-quick-start/">Quick start</a></li>
+  <li><a href="/docs/03-configuration/">Configuration</a></li>
+  <li><a href="/docs/04-articles/">Articles</a></li>
+  <li><a href="/docs/05-templating/">Templating</a></li>
+  <li><a href="/docs/06-lists/">Lists</a></li>
+  <li><a href="/docs/07-embeds/">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
+  <li><a href="/docs/10-api/">API</a></li>
 </ol>
 
 <h5>Plugins</h5>
 <ul>
-  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
-  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
-  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
-  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
-  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+  <li><a href="/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/docs/plugin-codehighlighter/">Code Highlighter</a></li>
 </ul>
   </aside>
       </div>
 
       <footer class="site-footer">
   <nav aria-label="Sections">
-    <a href="/edaha.md/">Home</a>
-    <a href="/edaha.md/about">About</a>
-<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
   </nav>
 
   <p class="colophon">
-    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
     &middot;
     Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
     &middot;
@@ -208,6 +208,6 @@ level3: alpha
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     } catch {}
   </script>
-  <script src="/edaha.md/theme-switcher.js" defer></script>
+  <script src="/theme-switcher.js" defer></script>
   </body>
 </html>

@@ -7,8 +7,8 @@
     <meta name="description" content="The code highlighter embed plugin shows code with line numbers, syntax highlighting and a copy button. Several code blocks in one embed become tabs." />
 
 
-  <link rel="stylesheet" href="/edaha.md/base.css" />
-  <link rel="stylesheet" href="/edaha.md/site.css" />
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
 <style>
   .embed-codehighlight { --codehighlight-copy-size: 2.25rem; --codehighlight-copy-inset: 0.5rem; }
   .embed-codehighlight .codehighlight-block { margin: 0 0 1rem; }
@@ -52,7 +52,7 @@
 </style>  </head>
   <body class="docs ">
   <header class="site-header">
-    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+    <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
   </header>
 
   <button type="button" class="theme-switcher">
@@ -64,9 +64,9 @@
         <main class="site-main">
   <nav class="site-breadcrumb" aria-label="Breadcrumb">
     <ul>
-      <li><a href="/edaha.md/">Home</a></li>
-<li><a href="/edaha.md/docs/">Documentation</a></li>
-<li><a href="/edaha.md/docs/plugin-codehighlight/" aria-current="page">Code Highlighter Embed</a></li>
+      <li><a href="/">Home</a></li>
+<li><a href="/docs/">Documentation</a></li>
+<li><a href="/docs/plugin-codehighlight/" aria-current="page">Code Highlighter Embed</a></li>
     </ul>
   </nav>
 
@@ -87,13 +87,13 @@
 yarn add --dev @lvl99dotcom/edaha-plugin-codehighlight
 pnpm add --save-dev @lvl99dotcom/edaha-plugin-codehighlight
 </code></pre>
-<p>Add the plugin’s package name to your <a href="/edaha.md/docs/03-configuration/#plugins">configuration file</a>:</p>
+<p>Add the plugin’s package name to your <a href="/docs/03-configuration/#plugins">configuration file</a>:</p>
 <pre><code class="language-yaml">plugins:
   - &quot;@lvl99dotcom/edaha-plugin-codehighlight&quot;
 </code></pre>
-<p>If you use your own layout template, it needs <code>{% embedHead %}</code> before <code>&lt;/head&gt;</code> and <code>{% embedFoot %}</code> before <code>&lt;/body&gt;</code> (the default theme’s <code>layouts/html.njk</code> has them). See <a href="/edaha.md/docs/05-templating/#embed-tags">Templating</a>.</p>
+<p>If you use your own layout template, it needs <code>{% embedHead %}</code> before <code>&lt;/head&gt;</code> and <code>{% embedFoot %}</code> before <code>&lt;/body&gt;</code> (the default theme’s <code>layouts/html.njk</code> has them). See <a href="/docs/05-templating/#embed-tags">Templating</a>.</p>
 <h2 id="how-to-use">How to use</h2>
-<p>When using the <a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG or Markdown editor</a>, press the <strong>Code</strong> button in the toolbar, then write one or more fenced code blocks. To change it, select it in the body and press its <strong>Edit</strong> button.</p>
+<p>When using the <a href="/docs/09-wysiwyg-editor/">WYSIWYG or Markdown editor</a>, press the <strong>Code</strong> button in the toolbar, then write one or more fenced code blocks. To change it, select it in the body and press its <strong>Edit</strong> button.</p>
 <p>You can also write it in an article’s Markdown yourself:</p>
 <pre><code class="language-md">&lt;!-- embed:codehighlight --&gt;
 
@@ -117,7 +117,7 @@ const example = { treatPeople: &quot;With kindness!&quot; };
 <li>else its language’s name, e.g. <code>ts</code> is “TypeScript” (common languages only; others are shown as written);</li>
 <li>else “Code”.</li>
 </ol>
-<p>A single code block is shown on its own, with its heading as a label if it has one. Other Markdown in the embed is left out, and headings inside it aren’t listed by a <a href="/edaha.md/docs/plugin-toc/">table of contents</a>. An embed without fenced code blocks gives a warning and is left out of the website.</p>
+<p>A single code block is shown on its own, with its heading as a label if it has one. Other Markdown in the embed is left out, and headings inside it aren’t listed by a <a href="/docs/plugin-toc/">table of contents</a>. An embed without fenced code blocks gives a warning and is left out of the website.</p>
 <h3 id="options">Options</h3>
 <table>
 <thead>
@@ -163,7 +163,7 @@ copyButton: false
 <li>loads <a href="https://shiki.style">Shiki</a> 4.6.0 from <code>https://cdn.jsdelivr.net</code>, only when a code block on the page has highlighting on, and highlights the code in GitHub’s light or dark colours: dark when the page’s <code>&lt;html&gt;</code> element’s <code>data-theme</code> is <code>dark</code> (as the default theme’s switcher sets it), or, without <code>data-theme</code>, when the visitor’s device is set to dark mode. Shiki loads only the languages the page uses.</li>
 </ul>
 <p>Code in a language Shiki doesn’t know, or without a language, is shown without highlighting, as it is when Shiki can’t be loaded. Building doesn’t need internet access.</p>
-<p>Code blocks are wrapped in <code>&lt;div class=&quot;embed embed-codehighlight&quot;&gt;</code>. See <a href="/edaha.md/docs/07-embeds/">Embeds</a> for more about embeds.</p>
+<p>Code blocks are wrapped in <code>&lt;div class=&quot;embed embed-codehighlight&quot;&gt;</code>. See <a href="/docs/07-embeds/">Embeds</a> for more about embeds.</p>
 
   </div>
 
@@ -172,38 +172,38 @@ copyButton: false
 
   <aside>
 <ol>
-  <li><a href="/edaha.md/docs/01-introduction/">Introduction</a></li>
-  <li><a href="/edaha.md/docs/02-quick-start/">Quick start</a></li>
-  <li><a href="/edaha.md/docs/03-configuration/">Configuration</a></li>
-  <li><a href="/edaha.md/docs/04-articles/">Articles</a></li>
-  <li><a href="/edaha.md/docs/05-templating/">Templating</a></li>
-  <li><a href="/edaha.md/docs/06-lists/">Lists</a></li>
-  <li><a href="/edaha.md/docs/07-embeds/">Embeds</a></li>
-  <li><a href="/edaha.md/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
-  <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
-  <li><a href="/edaha.md/docs/10-api/">API</a></li>
+  <li><a href="/docs/01-introduction/">Introduction</a></li>
+  <li><a href="/docs/02-quick-start/">Quick start</a></li>
+  <li><a href="/docs/03-configuration/">Configuration</a></li>
+  <li><a href="/docs/04-articles/">Articles</a></li>
+  <li><a href="/docs/05-templating/">Templating</a></li>
+  <li><a href="/docs/06-lists/">Lists</a></li>
+  <li><a href="/docs/07-embeds/">Embeds</a></li>
+  <li><a href="/docs/08-build-and-deploy/">Build &amp; deploy</a></li>
+  <li><a href="/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
+  <li><a href="/docs/10-api/">API</a></li>
 </ol>
 
 <h5>Plugins</h5>
 <ul>
-  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
-  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
-  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
-  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
-  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+  <li><a href="/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/docs/plugin-codehighlighter/">Code Highlighter</a></li>
 </ul>
   </aside>
       </div>
 
       <footer class="site-footer">
   <nav aria-label="Sections">
-    <a href="/edaha.md/">Home</a>
-    <a href="/edaha.md/about">About</a>
-<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
   </nav>
 
   <p class="colophon">
-    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
     &middot;
     Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
     &middot;
@@ -220,7 +220,7 @@ copyButton: false
       if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
     } catch {}
   </script>
-  <script src="/edaha.md/theme-switcher.js" defer></script>
+  <script src="/theme-switcher.js" defer></script>
 <script type="module">
   await (async (
   doc          ,
