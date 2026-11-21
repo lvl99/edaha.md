@@ -246,7 +246,7 @@ outputDir: site/build
 </code></pre>
 <h3 id="siteurl"><code>siteUrl</code></h3>
 <p>The website’s absolute URL. RSS feeds need it, because their links must be absolute. The <code>SITE_URL</code> environment variable and the <code>--site-url</code> option of <code>edaha build</code> take its place when they are set.</p>
-<p>If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at <code>https://lvl99.github.io/edaha.md</code>, every URL in its pages starts with that path (<code>/edaha.md/</code>), which templates get as <a href="/docs/05-templating/#template-data"><code>site.baseUrl</code></a>. The built files stay at the same places in the output folder, so publish its contents to that sub-folder.</p>
+<p>If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at <code>https://example.github.io/my-site</code>, every URL in its pages starts with that path (<code>/my-site/</code>), which templates get as <a href="/docs/05-templating/#template-data"><code>site.baseUrl</code></a>. The built files stay at the same places in the output folder, so publish its contents to that sub-folder.</p>
 <ul>
 <li><strong>Accepted values:</strong> an <code>http://</code> or <code>https://</code> URL.</li>
 <li><strong>Default:</strong> <code>http://localhost</code>, with a warning.</li>
