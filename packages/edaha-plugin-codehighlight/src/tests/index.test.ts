@@ -171,7 +171,7 @@ describe("codeBlockHtml", () => {
         false,
       ),
     ).toBe(
-      '<div class="codehighlight-block" id="codehighlight-1-1" data-language="js"><pre tabindex="0"><code class="language-js"><span class="line">a &lt; b</span>\n<span class="line">c</span></code></pre></div>',
+      '<div class="codehighlight-block" id="codehighlight-1-1" data-language="js"><div class="codehighlight-code"><pre tabindex="0"><code class="language-js"><span class="line">a &lt; b</span>\n<span class="line">c</span></code></pre></div></div>',
     );
   });
 
@@ -183,7 +183,7 @@ describe("codeBlockHtml", () => {
         true,
       ),
     ).toBe(
-      '<div class="codehighlight-block" id="c-1"><p class="codehighlight-label" id="c-1-label">A &amp; B</p><pre tabindex="0" aria-labelledby="c-1-label"><code><span class="line">x</span></code></pre></div>',
+      '<div class="codehighlight-block" id="c-1"><p class="codehighlight-label" id="c-1-label">A &amp; B</p><div class="codehighlight-code"><pre tabindex="0" aria-labelledby="c-1-label"><code><span class="line">x</span></code></pre></div></div>',
     );
   });
 });
@@ -193,7 +193,7 @@ describe("codehighlight.build", () => {
     expect(
       await codehighlight.build.render("```ts\nconst a = 1;\n```", context()),
     ).toBe(
-      '<div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-1-1" data-language="ts"><pre tabindex="0"><code class="language-ts"><span class="line">const a = 1;</span></code></pre></div></div>',
+      '<div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-1-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">const a = 1;</span></code></pre></div></div></div>',
     );
   });
 
@@ -333,6 +333,8 @@ describe("enhanceCodeBlocks", () => {
     expect(button.querySelector("span")?.className).toBe(
       "codehighlight-hidden",
     );
+    // In the code's box, which it floats in
+    expect(button.parentElement?.className).toBe("codehighlight-code");
     expect(button.nextElementSibling).toBe(status);
     expect(status.nextElementSibling?.tagName).toBe("PRE");
     button.click();

@@ -110,13 +110,13 @@ export const codeBlocks = (content: string): CodeBlock[] => {
 
 /**
  * A code block's HTML: its label (when it is in tabs or has a heading), and its lines (for line numbers), in a
- * `<pre>` that can be scrolled with the keyboard.
+ * `<pre>` that can be scrolled with the keyboard, in a box the copy button floats in.
  *
  * @param id - its ID on the page
  * @param labelled - whether to show its label
  * @example
  * codeBlockHtml({ language: "js", label: "JavaScript", headed: false, code: "1;" }, "codehighlight-1-1", false);
- * // '<div class="codehighlight-block" id="codehighlight-1-1" data-language="js"><pre tabindex="0"><code class="language-js"><span class="line">1;</span></code></pre></div>'
+ * // '<div class="codehighlight-block" id="codehighlight-1-1" data-language="js"><div class="codehighlight-code"><pre tabindex="0"><code class="language-js"><span class="line">1;</span></code></pre></div></div>'
  */
 export const codeBlockHtml = (
   { language, label, code }: CodeBlock,
@@ -132,8 +132,8 @@ export const codeBlockHtml = (
     labelled
       ? `<p class="codehighlight-label" id="${id}-label">${escapeHtml(label)}</p>`
       : "",
-    `<pre tabindex="0"${labelled ? ` aria-labelledby="${id}-label"` : ""}>`,
-    `<code${language ? ` class="language-${escapeHtml(language)}"` : ""}>${lines}</code></pre></div>`,
+    `<div class="codehighlight-code"><pre tabindex="0"${labelled ? ` aria-labelledby="${id}-label"` : ""}>`,
+    `<code${language ? ` class="language-${escapeHtml(language)}"` : ""}>${lines}</code></pre></div></div>`,
   ].join("");
 };
 
@@ -298,17 +298,19 @@ const START_SCRIPT = `<script type="module">
 </script>`;
 
 /**
- * Line numbers (not copied with the code), tabs and copy buttons (above the code, so they don't cover it) big enough to
- * tap, and Shiki's colours for the page's theme: its `data-theme` ("light" or "dark", as the default theme's switcher
+ * Line numbers (not copied with the code), tabs and copy buttons big enough to tap (the copy button floats in the
+ * code's top corner, and the code leaves room for it at the end of its lines), and Shiki's colours for the page's theme: its `data-theme` ("light" or "dark", as the default theme's switcher
  * sets it), or else the visitor's setting.
  */
 const STYLE = `<style>
-  .embed-codehighlight .codehighlight-block {
-    display: flex; flex-wrap: wrap; align-items: end; gap: 0.25rem; margin: 0 0 1rem;
+  .embed-codehighlight { --codehighlight-copy-size: 2.25rem; --codehighlight-copy-inset: 0.5rem; }
+  .embed-codehighlight .codehighlight-block { margin: 0 0 1rem; }
+  .embed-codehighlight .codehighlight-label { margin: 0 0 0.25rem; font-weight: bold; }
+  .embed-codehighlight .codehighlight-code { position: relative; }
+  .embed-codehighlight pre { margin: 0; }
+  .embed-codehighlight .codehighlight-code:has(.codehighlight-copy) pre {
+    padding-inline-end: calc(var(--codehighlight-copy-size) + 2 * var(--codehighlight-copy-inset));
   }
-  .embed-codehighlight .codehighlight-block[hidden] { display: none; }
-  .embed-codehighlight .codehighlight-label { flex: 1; margin: 0; font-weight: bold; }
-  .embed-codehighlight pre { flex: 1 0 100%; min-width: 0; margin: 0; }
   .embed-codehighlight pre code { display: block; padding: 0; background: none; color: inherit; font-size: inherit; }
   .embed-codehighlight .codehighlight-line-numbers code { counter-reset: line; }
   .embed-codehighlight .codehighlight-line-numbers .line::before {
@@ -323,8 +325,10 @@ const STYLE = `<style>
   .embed-codehighlight button:focus-visible { outline: 2px solid var(--colour-focus, #db5a10); outline-offset: 2px; }
   .embed-codehighlight .codehighlight-tab[aria-selected="true"] { border-color: currentColor; font-weight: bold; }
   .embed-codehighlight .codehighlight-copy {
-    display: inline-flex; align-items: center; justify-content: center; min-width: 2.25rem; min-height: 2.25rem;
-    margin-inline-start: auto; padding: 0.25rem; background: var(--colour-surface, #f4f4f6);
+    position: absolute; inset-block-start: var(--codehighlight-copy-inset); inset-inline-end: var(--codehighlight-copy-inset);
+    display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    width: var(--codehighlight-copy-size); height: var(--codehighlight-copy-size); min-width: 0; min-height: 0;
+    padding: 0.25rem; background: var(--colour-surface, #f4f4f6);
     border: 1px solid var(--colour-border, #d8d8de); border-radius: 5px; color: var(--colour-text, #1d1d1f);
   }
   .embed-codehighlight .codehighlight-copy:hover { border-color: var(--colour-muted, #5a5a60); }
