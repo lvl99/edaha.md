@@ -269,6 +269,8 @@ export interface EmbedInfo {
   description?: string | undefined;
   /** What its content is, shown under the content's label in the embed dialog, if it says */
   info?: string | undefined;
+  /** Whether a block can have no content (see EmbedPlugin.contentOptional) */
+  contentOptional?: boolean | undefined;
   /** Its SVG icon (markup), if it has one */
   icon?: string | undefined;
   /** Its options' fields (see EmbedPlugin.options), if it has options */

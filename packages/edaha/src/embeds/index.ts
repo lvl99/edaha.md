@@ -121,7 +121,7 @@ const isRenderers = (value: unknown, renderRequired: boolean) => {
 
 /**
  * Whether a value is an embed plugin: a kebab-case `key`, a `name`, a `build.render` function, and valid optional
- * `description`, `info`, `sources`, `options` (a map), `validate` and `editor` renderers.
+ * `description`, `info`, `contentOptional`, `sources`, `options` (a map), `validate` and `editor` renderers.
  *
  * @example
  * isEmbedPlugin({ key: "quote", name: "Quote", build: { render: async (text) => text } }); // true
@@ -133,6 +133,7 @@ export const isEmbedPlugin = (value: unknown): value is EmbedPlugin => {
     name,
     description,
     info,
+    contentOptional,
     sources,
     options,
     validate,
@@ -147,6 +148,7 @@ export const isEmbedPlugin = (value: unknown): value is EmbedPlugin => {
     [description, info].every(
       (text) => text === undefined || typeof text === "string",
     ) &&
+    (contentOptional === undefined || typeof contentOptional === "boolean") &&
     (options === undefined ||
       (typeof options === "object" &&
         options !== null &&
@@ -177,7 +179,7 @@ export const checkEmbedPlugins = (plugins: unknown[]): EmbedPlugin[] => {
   for (const plugin of plugins) {
     if (!isEmbedPlugin(plugin))
       throw new Error(
-        `"plugins" must be embed plugins ({ key, name, description?, info?, sources?, options?, validate?, build: { render, renderHead?, renderFoot? }, editor? }, with a lowercase kebab-case key and https origins), got ${JSON.stringify(plugin) ?? String(plugin)}`,
+        `"plugins" must be embed plugins ({ key, name, description?, info?, contentOptional?, sources?, options?, validate?, build: { render, renderHead?, renderFoot? }, editor? }, with a lowercase kebab-case key and https origins), got ${JSON.stringify(plugin) ?? String(plugin)}`,
       );
     if (keys.has(plugin.key))
       throw new Error(

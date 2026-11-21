@@ -415,11 +415,20 @@ export const createEditorApp = (
   app.get("/api/embeds", async (c) =>
     c.json<EmbedInfo[]>(
       (await plugins()).map(
-        ({ key, name, description, info, options, editor }) => ({
+        ({
           key,
           name,
           description,
           info,
+          contentOptional,
+          options,
+          editor,
+        }) => ({
+          key,
+          name,
+          description,
+          info,
+          contentOptional,
           icon: editor?.icon,
           options,
         }),

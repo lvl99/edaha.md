@@ -109,6 +109,11 @@ export interface EmbedPlugin {
    * it, the dialog says "Provide the embed's content, e.g. a URL or code".
    */
   info?: string | undefined;
+  /**
+   * Optional; whether a block can have no content, e.g. a table of contents (default: false). The embed dialog then
+   * saves a block without content.
+   */
+  contentOptional?: boolean | undefined;
   /** Optional; the web addresses its HTML loads from, which the editor's previews allow */
   sources?: EmbedSources | undefined;
   /**

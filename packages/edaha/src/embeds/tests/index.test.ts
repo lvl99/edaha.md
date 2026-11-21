@@ -13,6 +13,7 @@ import {
   loadPlugins,
   validationErrors,
   type EmbedPlugin,
+  type EmbedRenderContext,
   type EmbedTarget,
 } from "..";
 
@@ -71,6 +72,7 @@ describe("isEmbedPlugin and checkEmbedPlugins", () => {
         ...plain,
         description: "Plain text",
         info: "Any text",
+        contentOptional: true,
         options: {},
         validate: () => true,
         sources: {
@@ -92,6 +94,7 @@ describe("isEmbedPlugin and checkEmbedPlugins", () => {
       { ...plain, name: " " },
       { ...plain, description: 3 },
       { ...plain, info: 3 },
+      { ...plain, contentOptional: "yes" },
       { ...plain, options: [] },
       { ...plain, options: null },
       { ...plain, validate: true },
@@ -505,7 +508,9 @@ describe("htmlHeadings", () => {
 
 describe("EmbedResolver headings", () => {
   it("should give blocks their article's headings, and none to other blocks", async () => {
-    const render = vi.fn(async () => "toc");
+    const render = vi.fn(
+      async (_content: string, _context: EmbedRenderContext) => "toc",
+    );
     const { resolver } = setup([
       { key: "toc", name: "TOC", build: { render } },
     ]);
