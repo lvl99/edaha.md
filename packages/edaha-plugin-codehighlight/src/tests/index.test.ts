@@ -67,15 +67,19 @@ const tabs = () => [
   ...document.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
 ];
 
-/** A copy button's tooltip, name (for screen readers) and icon */
+/** A copy button's tooltip, name (for screen readers; its icon is hidden from them) and icon */
 const copyButton = (button: HTMLButtonElement) => ({
   title: button.title,
-  name: button.textContent,
-  icon: button.querySelector("path")?.getAttribute("d"),
+  name: button.querySelector(".codehighlight-hidden")?.textContent,
+  icon: button.firstElementChild?.outerHTML,
 });
 
-/** An icon's path, to compare with a copy button's (see copyButton) */
-const iconPath = (svg: string) => /\bd="([^"]+)"/.exec(svg)?.[1];
+/** An icon as the page shows it, to compare with a copy button's (see copyButton) */
+const iconHtml = (markup: string) => {
+  const template = document.createElement("template");
+  template.innerHTML = markup;
+  return template.content.firstElementChild?.outerHTML;
+};
 
 /** Which of the page's blocks are hidden */
 const hidden = () =>
@@ -323,7 +327,7 @@ describe("enhanceCodeBlocks", () => {
     const ready = {
       title: "Copy code",
       name: "Copy code",
-      icon: iconPath(COPY_ICONS.copy),
+      icon: iconHtml(COPY_ICONS.copy),
     };
     expect(copyButton(button)).toEqual(ready);
     expect(button.querySelector("span")?.className).toBe(
@@ -337,7 +341,7 @@ describe("enhanceCodeBlocks", () => {
     const copied = {
       title: "Copied",
       name: "Copied",
-      icon: iconPath(COPY_ICONS.copied),
+      icon: iconHtml(COPY_ICONS.copied),
     };
     expect(copyButton(button)).toEqual(copied);
     // Clicked again, it waits from then
@@ -362,7 +366,7 @@ describe("enhanceCodeBlocks", () => {
       expect(copyButton(button)).toEqual({
         title: "Couldn't copy",
         name: "Couldn't copy",
-        icon: iconPath(COPY_ICONS.copy),
+        icon: iconHtml(COPY_ICONS.failed),
       }),
     );
     expect(document.querySelector('[role="status"]')?.textContent).toBe(

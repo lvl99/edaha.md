@@ -55,11 +55,11 @@ export const LANGUAGE_NAMES: Readonly<Record<string, string>> = {
   zsh: "Zsh",
 };
 
-/** The copy button's icons (SVG markup): before copying, and once copied */
+/** The copy button's icons (markup): before copying, once copied, and when it couldn't copy */
 export const COPY_ICONS = {
   copy: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>',
-  copied:
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg>',
+  copied: '<span class="codehighlight-emoji" aria-hidden="true">✅</span>',
+  failed: '<span class="codehighlight-emoji" aria-hidden="true">🙅</span>',
 };
 
 /** A code block in an embed block */
@@ -250,7 +250,7 @@ export const enhanceCodeBlocks = async (
         );
         show((status.textContent = "Copied"), icons.copied);
       } catch {
-        show((status.textContent = "Couldn't copy"), icons.copy);
+        show((status.textContent = "Couldn't copy"), icons.failed);
       }
       // Ready to copy again after a moment
       view.clearTimeout(reset);
@@ -329,6 +329,7 @@ const STYLE = `<style>
   }
   .embed-codehighlight .codehighlight-copy:hover { border-color: var(--colour-muted, #5a5a60); }
   .embed-codehighlight .codehighlight-copy svg { width: 1.5rem; height: 1.5rem; fill: currentColor; }
+  .embed-codehighlight .codehighlight-emoji { width: 1.5rem; font-size: 1.25rem; line-height: 1.5rem; text-align: center; }
   .embed-codehighlight .codehighlight-hidden {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
