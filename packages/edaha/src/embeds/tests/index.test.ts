@@ -13,7 +13,6 @@ import {
   loadPlugins,
   validationErrors,
   type EmbedPlugin,
-  type EmbedRenderContext,
   type EmbedTarget,
 } from "..";
 
@@ -508,9 +507,7 @@ describe("htmlHeadings", () => {
 
 describe("EmbedResolver headings", () => {
   it("should give blocks their article's headings, and none to other blocks", async () => {
-    const render = vi.fn(
-      async (_content: string, _context: EmbedRenderContext) => "toc",
-    );
+    const render = vi.fn<EmbedPlugin["build"]["render"]>(async () => "toc");
     const { resolver } = setup([
       { key: "toc", name: "TOC", build: { render } },
     ]);
