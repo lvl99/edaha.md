@@ -9,7 +9,12 @@
 
   <link rel="stylesheet" href="/edaha.md/base.css" />
   <link rel="stylesheet" href="/edaha.md/site.css" />
-  </head>
+<style>
+  .embed-toc ol { list-style: none; margin: 0; padding-left: 1.5em; }
+  .embed-toc nav > ol { padding-left: 0; }
+  .embed-toc li { margin: 0.25em 0; }
+  .embed-toc .toc-marker { font-variant-numeric: tabular-nums; }
+</style>  </head>
   <body class="docs ">
   <header class="site-header">
     <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
@@ -58,6 +63,8 @@
 </tr>
 </tbody>
 </table>
+<div class="embed embed-toc"><h1 id="contents">Contents</h1>
+<nav aria-label="Table of contents"><ol role="list"><li><span class="toc-marker">1.</span> <a href="#build">Build</a><ol role="list"><li><span class="toc-marker">1.1.</span> <a href="#how-a-build-works">How a build works</a></li><li><span class="toc-marker">1.2.</span> <a href="#buildsite-options">buildSite options</a></li><li><span class="toc-marker">1.3.</span> <a href="#reading-the-config-file">Reading the config file</a></li><li><span class="toc-marker">1.4.</span> <a href="#embed-plugins">Embed plugins</a></li><li><span class="toc-marker">1.5.</span> <a href="#the-command-line">The command line</a></li></ol></li><li><span class="toc-marker">2.</span> <a href="#editor">Editor</a><ol role="list"><li><span class="toc-marker">2.1.</span> <a href="#starteditor-options">startEditor options</a></li><li><span class="toc-marker">2.2.</span> <a href="#serving-it-yourself">Serving it yourself</a></li></ol></li></ol></nav></div>
 <h2 id="build">Build</h2>
 <p><code>buildSite</code> builds a site, as <code>edaha build</code> does:</p>
 <pre><code class="language-ts">import { buildSite } from &quot;@lvl99dotcom/edaha.md&quot;;
@@ -310,6 +317,15 @@ console.log(await response.json());
   <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
   <li><a href="/edaha.md/docs/10-api/">API</a></li>
 </ol>
+
+<h5>Plugins</h5>
+<ul>
+  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+</ul>
   </aside>
       </div>
 

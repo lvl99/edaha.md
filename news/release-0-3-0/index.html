@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Release v0.3.0 | edaha.md</title>
+    <meta name="description" content="edaha.md v0.3.0 has been published! Two new plugins plus some core updates and additions: Added The new table of contents plugin lists an article’s headings as nested lists of links, built with the…" />
+
+
+  <link rel="stylesheet" href="/edaha.md/base.css" />
+  <link rel="stylesheet" href="/edaha.md/site.css" />
+  </head>
+  <body class="news ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="https://lvl99.github.io/edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/edaha.md/">Home</a></li>
+<li><a href="/edaha.md/news/">News</a></li>
+<li><a href="/edaha.md/news/release-0-3-0/" aria-current="page">Release v0.3.0</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">Release v0.3.0</h1>
+
+  <div class="article-body">
+      <p><strong>edaha.md</strong> v0.3.0 has been published! Two new plugins plus some core updates and additions:</p>
+<h2 id="added">Added</h2>
+<ul>
+<li>The new <a href="https://www.npmjs.org/package/@lvl99dotcom/edaha-plugin-toc">table of contents plugin</a> lists an article’s headings as nested lists of links, built with the page so it needs no JavaScript.</li>
+<li>Each heading level in a table of contents can have its own list style: number, number-depth, alpha, number-roman, circle, disc, square or diamond.</li>
+<li>The new <a href="https://www.npmjs.org/package/@lvl99dotcom/edaha-plugin-codehighlight">code highlighter plugin</a> shows code blocks with line numbers, a copy button and syntax highlighting by Shiki, in light or dark colours to match the page.</li>
+<li>Several code blocks in one code highlighter embed become tabs, labelled by the heading before each block or its language.</li>
+<li>Embed plugins get the headings of the article a block is in, through <code>context.headings</code> in their <code>render</code> function.</li>
+<li>Embed plugins can set <code>contentOptional</code>, so the editor’s embed dialog saves blocks without content.</li>
+<li>Templates have new <code>json</code>, <code>parseJson</code>, <code>contains</code> and <code>where</code> filters.</li>
+<li>The <a href="https://lvl99.github.io/edaha.md/docs/">docs</a> have a front page, and a page for each new plugin.</li>
+</ul>
+<h2 id="changed">Changed</h2>
+<ul>
+<li>Checkboxes and radio buttons in the editor’s metadata and embed option fields now come before their labels, or after them in right-to-left text.</li>
+</ul>
+<h2 id="fixed">Fixed</h2>
+<ul>
+<li>Links to the docs in the READMEs now work on GitHub and npm.</li>
+</ul>
+
+  </div>
+
+</article>
+        </main>
+
+<aside>
+  <dl>
+    <dt>Date</dt>
+    <dd><time datetime="2026-11-21T10:39:00.000Z">21 November 2026</time></dd>
+  </dl>
+</aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/edaha.md/">Home</a>
+    <a href="/edaha.md/about">About</a>
+<a href="/edaha.md/news/">News</a><a href="/edaha.md/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/edaha.md/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/edaha.md/theme-switcher.js" defer></script>
+  </body>
+</html>

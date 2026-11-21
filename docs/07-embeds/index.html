@@ -97,6 +97,16 @@ https://artist.bandcamp.com/album/name
 <td><code>mermaidjs</code></td>
 <td><a href="https://mermaid.js.org">Mermaid</a> code. Pages with diagrams load Mermaid from jsDelivr to draw them.</td>
 </tr>
+<tr>
+<td><a href="https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-toc"><code>@lvl99dotcom/edaha-plugin-toc</code></a></td>
+<td><code>toc</code></td>
+<td>Optional Markdown shown above a table of contents of the article’s headings. <a href="/edaha.md/docs/plugin-toc/">Options</a> set each level’s list style.</td>
+</tr>
+<tr>
+<td><a href="https://www.npmjs.com/package/@lvl99dotcom/edaha-plugin-codehighlight"><code>@lvl99dotcom/edaha-plugin-codehighlight</code></a></td>
+<td><code>codehighlight</code></td>
+<td>Fenced code blocks, shown with line numbers, a copy button and highlighting (Shiki, from jsDelivr); several become tabs. See <a href="/edaha.md/docs/plugin-codehighlight/">Code highlighter</a>.</td>
+</tr>
 </tbody>
 </table>
 <pre><code class="language-sh">npm add --save-dev @lvl99dotcom/edaha-plugin-youtube @lvl99dotcom/edaha-plugin-mermaidjs
@@ -226,6 +236,10 @@ export const vimeo = {
 <td>Optional; what to put in the content, shown under the content’s label in the embed dialog. Without it, the dialog says “Provide the embed’s content, e.g. a URL or code”.</td>
 </tr>
 <tr>
+<td><code>contentOptional</code></td>
+<td>Optional; <code>true</code> when a block can have no content, e.g. a table of contents. The embed dialog then saves blocks without content. Default: <code>false</code>.</td>
+</tr>
+<tr>
 <td><code>sources</code></td>
 <td>Optional; the <code>https://</code> origins its HTML loads from, by kind: <code>frame</code>, <code>script</code>, <code>style</code>, <code>font</code> and <code>connect</code> (requests from its scripts). The editor’s previews allow them.</td>
 </tr>
@@ -239,7 +253,7 @@ export const vimeo = {
 </tr>
 <tr>
 <td><code>build.render(content, context)</code></td>
-<td>Returns a promise of the HTML for a block. <code>context.options</code> has the block’s options; <code>context.fetch</code> fetches other data, e.g. an oEmbed response; <code>context.state</code> is shared by the page (see below). Throw if the content can’t be embedded.</td>
+<td>Returns a promise of the HTML for a block. <code>context.options</code> has the block’s options; <code>context.fetch</code> fetches other data, e.g. an oEmbed response; <code>context.state</code> is shared by the page (see below); <code>context.headings</code> lists the headings of the article the block is in (see below). Throw if the content can’t be embedded.</td>
 </tr>
 <tr>
 <td><code>build.renderHead(context)</code></td>
@@ -340,6 +354,18 @@ export default {
   },
 };
 </code></pre>
+<h3 id="the-articles-headings">The article’s headings</h3>
+<p><code>context.headings</code> lists the headings of the article a block is in, from its body, in order: each has a <code>level</code> (1 for <code>&lt;h1&gt;</code> to 6 for <code>&lt;h6&gt;</code>), its <code>text</code> without formatting, and its <code>id</code> to link to, e.g. <code>{ level: 2, text: &quot;Fish &amp; chips&quot;, id: &quot;fish-chips&quot; }</code>. The article’s title isn’t in its body, and headings inside embed blocks aren’t listed. Blocks in an article’s excerpt get the whole body’s headings. It is empty in the editor’s embed frames, which show one block on its own (its preview pages have it).</p>
+<pre><code class="language-js">const outline = {
+  key: &quot;outline&quot;,
+  name: &quot;Outline&quot;,
+  contentOptional: true,
+  build: {
+    render: async (content, { headings }) =&gt;
+      `&lt;ul&gt;${headings.map(({ text, id }) =&gt; `&lt;li&gt;&lt;a href=&quot;#${escapeHtml(id)}&quot;&gt;${escapeHtml(text)}&lt;/a&gt;&lt;/li&gt;`).join(&quot;&quot;)}&lt;/ul&gt;`,
+  },
+};
+</code></pre>
 <h3 id="previews-in-the-editor">Previews in the editor</h3>
 <p>The editor shows each embed block in its rich text body in a small frame, and the <strong>Preview</strong> tab shows the whole page, with the embeds’ scripts and styles. Both are shown from a separate, sandboxed address: they can’t reach the editor, and they only load from their own address and the web addresses the site’s embeds list in <code>sources</code>. An embed that loads from somewhere it doesn’t list shows empty there; the website itself isn’t affected.</p>
 <p>By default, the editor’s frame shows the embed as the website does. An embed can show differently there with <code>editor</code>, whose functions each take the place of the website’s:</p>
@@ -390,6 +416,15 @@ await buildSite({ siteDir: &quot;my-site&quot;, plugins: [youtube, vimeo] });
   <li><a href="/edaha.md/docs/09-wysiwyg-editor/">WYSIWYG editor</a></li>
   <li><a href="/edaha.md/docs/10-api/">API</a></li>
 </ol>
+
+<h5>Plugins</h5>
+<ul>
+  <li><a href="/edaha.md/docs/plugin-youtube/">YouTube</a></li>
+  <li><a href="/edaha.md/docs/plugin-bandcamp/">Bandcamp</a></li>
+  <li><a href="/edaha.md/docs/plugin-mermaidjs/">MermaidJS</a></li>
+  <li><a href="/edaha.md/docs/plugin-toc/">Table of Contents</a></li>
+  <li><a href="/edaha.md/docs/plugin-codehighlighter/">Code Highlighter</a></li>
+</ul>
   </aside>
       </div>
 

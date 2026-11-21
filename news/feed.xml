@@ -6,7 +6,14 @@
     <description>Static site generator powered by TypeScript and markdown</description>
     <language>en</language>
     <atom:link href="https://lvl99.github.io/edaha.md/news/feed.xml" rel="self" type="application/rss+xml" />
-    <lastBuildDate>Fri, 20 Nov 2026 18:52:00 GMT</lastBuildDate>
+    <lastBuildDate>Sat, 21 Nov 2026 10:39:00 GMT</lastBuildDate>
+    <item>
+      <title>Release v0.3.0</title>
+      <link>https://lvl99.github.io/edaha.md/news/release-0-3-0/</link>
+      <guid isPermaLink="true">https://lvl99.github.io/edaha.md/news/release-0-3-0/</guid>
+      <pubDate>Sat, 21 Nov 2026 10:39:00 GMT</pubDate>
+      <description>&lt;p&gt;edaha.md v0.3.0 has been published! Two new plugins plus some core updates and additions: Added The new table of contents plugin lists an article’s headings as nested lists of links, built with the…&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Release v0.2.0</title>
       <link>https://lvl99.github.io/edaha.md/news/release-0-2-0/</link>
