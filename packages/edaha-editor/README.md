@@ -9,6 +9,6 @@ npx edaha editor --dir my-site
 
 It only listens on `127.0.0.1`, as it reads and writes the site's files: never deploy it.
 
-See the [edaha.md README](https://github.com/lvl99/edaha.md#readme) and [docs](https://lvl99.github.io/edaha.md/docs/09-wysiwyg-editor/).
+See the [edaha.md README](https://github.com/lvl99/edaha.md#readme) and [docs](/docs/09-wysiwyg-editor/).
 
 Licensed under the [Apache License 2.0](LICENSE).

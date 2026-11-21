@@ -12,6 +12,7 @@ The [MermaidJS embed plugin](https://www.npmjs.com/package/@lvl99dotcom/edaha-pl
 ## Demo
 
 <!-- embed:mermaidjs -->
+
 graph LR;
 Write-->Edit;
 Edit-->Build;
@@ -45,6 +46,7 @@ You can also write the diagram in an article's Markdown yourself, with its code 
 
 ```md
 <!-- embed:mermaidjs -->
+
 graph LR;
 Write-->Edit;
 Edit-->Build;

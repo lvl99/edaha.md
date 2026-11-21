@@ -33,6 +33,7 @@
     "@lvl99dotcom/edaha-plugin-mermaidjs": "workspace:^",
     "@lvl99dotcom/edaha-plugin-youtube": "workspace:^",
     "@lvl99dotcom/edaha.md": "workspace:^",
+    "@types/lodash": "^4.17.27",
     "@types/markdown-it": "^14.1.2",
     "@types/mime-types": "^3.0.1",
     "@types/node": "^26.1.1",

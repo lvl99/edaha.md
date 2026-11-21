@@ -4,6 +4,8 @@ An [edaha.md](https://github.com/lvl99/edaha.md#readme) embed plugin for [Mermai
 
 ```sh
 npm add @lvl99dotcom/edaha-plugin-mermaidjs --save-dev
+yarn add @lvl99dotcom/edaha-plugin-mermaidjs -D
+pnpm add @lvl99dotcom/edaha-plugin-mermaidjs -D
 ```
 
 ```yaml
@@ -12,15 +14,16 @@ plugins:
   - "@lvl99dotcom/edaha-plugin-mermaidjs"
 ```
 
+<!-- prettier-ignore-start -->
 ```md
 <!-- embed:mermaidjs -->
-
 graph TD;
-A-->B;
-A-->C;
+  A-->B;
+  A-->C;
 <!-- /embed:mermaidjs -->
 ```
+<!-- prettier-ignore-end -->
 
-Your layout template needs `{% embedFoot %}` before `</body>` (the default theme has it). See [Embeds](https://lvl99.github.io/edaha.md/docs/07-embeds/) in the docs.
+Your layout template needs `{% embedFoot %}` before `</body>` (the default theme has it). See [Embeds](/docs/07-embeds/) in the docs.
 
 Licensed under the [Apache License 2.0](LICENSE).

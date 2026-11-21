@@ -4,6 +4,8 @@ An [edaha.md](https://github.com/lvl99/edaha.md#readme) embed plugin for YouTube
 
 ```sh
 npm add @lvl99dotcom/edaha-plugin-youtube --save-dev
+yarn add @lvl99dotcom/edaha-plugin-youtube -D
+pnpm add @lvl99dotcom/edaha-plugin-youtube -D
 ```
 
 ```yaml
@@ -16,6 +18,6 @@ plugins:
 <!-- embed:youtube -->https://www.youtube.com/watch?v=aju_UB5VIf8<!-- /embed:youtube -->
 ```
 
-See [Embeds](https://lvl99.github.io/edaha.md/docs/07-embeds/) in the docs.
+See [Embeds](/docs/07-embeds/) in the docs.
 
 Licensed under the [Apache License 2.0](LICENSE).

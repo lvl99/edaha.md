@@ -93,23 +93,23 @@ The folder that holds the config file is the **site folder**. Every folder in th
 
 ## Settings
 
-| Setting | Required | Description |
-| --- | --- | --- |
-| [`name`](#name) | Yes | The website's name. |
-| [`description`](#description) | Yes | The website's description. |
-| [`path`](#path) | No | A URL path that every article type's URLs start with. |
-| [`articlesDir`](#articlesdir) | No | The folder that holds the articles. |
-| [`templatesDir`](#templatesdir) | No | The folder that holds your own templates. |
-| [`staticDir`](#staticdir) | No | The folder that holds your own static files. |
-| [`outputDir`](#outputdir) | No | The folder the website is built into. |
-| [`publishDir`](#publishdir) | No | A folder outside the site folder that the built website is copied into. |
-| [`siteUrl`](#siteurl) | No | The website's absolute URL, for links in RSS feeds. |
-| [`reservedPaths`](#reservedpaths) | No | Paths at the website's root that articles and article types can't use. |
-| [`types`](#types) | No | Settings for each article type: URL path, labels and what is built. |
-| [`plugins`](#plugins) | No | Embed plugins: their package names, or (JavaScript config only) the plugins themselves. |
-| [`metadata`](#metadata) | No | Custom settings for articles, with how the editor shows them. |
-| [`metadataGroups`](#metadatagroups) | No | Groups of settings in the editor, besides the built-in ones. |
-| [`author`](#author) | No | The author of articles that don't name one. |
+| Setting                             | Required | Description                                                                             |
+| ----------------------------------- | -------- | --------------------------------------------------------------------------------------- |
+| [`name`](#name)                     | Yes      | The website's name.                                                                     |
+| [`description`](#description)       | Yes      | The website's description.                                                              |
+| [`path`](#path)                     | No       | A URL path that every article type's URLs start with.                                   |
+| [`articlesDir`](#articlesdir)       | No       | The folder that holds the articles.                                                     |
+| [`templatesDir`](#templatesdir)     | No       | The folder that holds your own templates.                                               |
+| [`staticDir`](#staticdir)           | No       | The folder that holds your own static files.                                            |
+| [`outputDir`](#outputdir)           | No       | The folder the website is built into.                                                   |
+| [`publishDir`](#publishdir)         | No       | A folder outside the site folder that the built website is copied into.                 |
+| [`siteUrl`](#siteurl)               | No       | The website's absolute URL, for links in RSS feeds.                                     |
+| [`reservedPaths`](#reservedpaths)   | No       | Paths at the website's root that articles and article types can't use.                  |
+| [`types`](#types)                   | No       | Settings for each article type: URL path, labels and what is built.                     |
+| [`plugins`](#plugins)               | No       | Embed plugins: their package names, or (JavaScript config only) the plugins themselves. |
+| [`metadata`](#metadata)             | No       | Custom settings for articles, with how the editor shows them.                           |
+| [`metadataGroups`](#metadatagroups) | No       | Groups of settings in the editor, besides the built-in ones.                            |
+| [`author`](#author)                 | No       | The author of articles that don't name one.                                             |
 
 Unknown settings stop the build, so a typo doesn't go unnoticed.
 
@@ -234,24 +234,24 @@ reservedPaths: [app, api, jwks.json]
 
 Settings for each article type, by its folder name. Each type can set:
 
-| Setting | Description | Default |
-| --- | --- | --- |
-| `path` | The type's URL path: lowercase kebab-case, or `""` for the website root. | The type's name |
-| `labelSingle` | The label for one article, e.g. "Article". | The name, capitalised |
-| `labelPlural` | The label for several articles, e.g. "Articles". | `labelSingle` followed by "s" |
-| `generate` | What is built for the type (see below), or `false` to build nothing. | Everything |
-| `metadata` | The [custom settings](#metadata) the type uses, or `false` for none. | All of them |
-| `author` | The author of the type's articles that don't name one, or `false` for none ([see `author`](#author)). | The site's `author` |
+| Setting       | Description                                                                                           | Default                       |
+| ------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------- |
+| `path`        | The type's URL path: lowercase kebab-case, or `""` for the website root.                              | The type's name               |
+| `labelSingle` | The label for one article, e.g. "Article".                                                            | The name, capitalised         |
+| `labelPlural` | The label for several articles, e.g. "Articles".                                                      | `labelSingle` followed by "s" |
+| `generate`    | What is built for the type (see below), or `false` to build nothing.                                  | Everything                    |
+| `metadata`    | The [custom settings](#metadata) the type uses, or `false` for none.                                  | All of them                   |
+| `author`      | The author of the type's articles that don't name one, or `false` for none ([see `author`](#author)). | The site's `author`           |
 
 `generate` has these settings, all `true` by default:
 
-| Setting | Builds |
-| --- | --- |
+| Setting   | Builds                                                                |
+| --------- | --------------------------------------------------------------------- |
 | `article` | The type's article pages. Without them, nothing else is built either. |
-| `list` | The type's [list pages](/docs/06-lists/). |
-| `feed` | The type's RSS feed, and its articles in the tag and author feeds. |
-| `author` | The type's author lists. |
-| `tag` | The type's tag lists. |
+| `list`    | The type's [list pages](/docs/06-lists/).                             |
+| `feed`    | The type's RSS feed, and its articles in the tag and author feeds.    |
+| `author`  | The type's author lists.                                              |
+| `tag`     | The type's tag lists.                                                 |
 
 ```yaml
 types:
@@ -355,15 +355,15 @@ types:
 
 `$edahaField` has an optional `title`, `description` and `info` (shown under the label), and exactly one field kind, set to `true` or to its options:
 
-| Field kind | Shows |
-| --- | --- |
-| `text`, `email`, `url`, `tel`, `color`, `date`, `time`, `datetime-local` | An input of that type. |
-| `number`, `range` | A number input or slider, e.g. with `step`. |
-| `textarea` | A multi-line text box, e.g. with `rows`. |
-| `select` | A dropdown of `options` (each a `value` and `title`, or the schema's `enum`); `list: true` shows it as a list. |
-| `checkbox` | A checkbox, for `type: boolean` (`true` or `false`). With `{ value: ... }`, it saves that value when checked and nothing when not. |
-| `radio` | Radio buttons for `options` (each with an optional `description`), or the schema's `enum`. |
-| `file` | A file chooser that uploads into the article's folder (e.g. with `accept`). |
+| Field kind                                                               | Shows                                                                                                                              |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `text`, `email`, `url`, `tel`, `color`, `date`, `time`, `datetime-local` | An input of that type.                                                                                                             |
+| `number`, `range`                                                        | A number input or slider, e.g. with `step`.                                                                                        |
+| `textarea`                                                               | A multi-line text box, e.g. with `rows`.                                                                                           |
+| `select`                                                                 | A dropdown of `options` (each a `value` and `title`, or the schema's `enum`); `list: true` shows it as a list.                     |
+| `checkbox`                                                               | A checkbox, for `type: boolean` (`true` or `false`). With `{ value: ... }`, it saves that value when checked and nothing when not. |
+| `radio`                                                                  | Radio buttons for `options` (each with an optional `description`), or the schema's `enum`.                                         |
+| `file`                                                                   | A file chooser that uploads into the article's folder (e.g. with `accept`).                                                        |
 
 A `color` field keeps a value written without its `#` (e.g. `0687f5`) that way.
 
@@ -452,13 +452,13 @@ Values are checked against their schemas with [ajv](https://ajv.js.org/), includ
 
 The editor shows articles' settings in groups that open and close. These are built in, in this order:
 
-| Group | Settings | Starts |
-| --- | --- | --- |
-| `info` | Type, status, slug, publication date and author. | Open |
-| `categorise` | Tags. | Closed |
-| `customise` | Excerpt and template. | Open |
-| `files` | Thumbnail, attachments, and the files in the article's folder (`uploaded`). | Open |
-| `custom` | Custom settings without a group. | Closed |
+| Group        | Settings                                                                    | Starts |
+| ------------ | --------------------------------------------------------------------------- | ------ |
+| `info`       | Type, status, slug, publication date and author.                            | Open   |
+| `categorise` | Tags.                                                                       | Closed |
+| `customise`  | Excerpt and template.                                                       | Open   |
+| `files`      | Thumbnail, attachments, and the files in the article's folder (`uploaded`). | Open   |
+| `custom`     | Custom settings without a group.                                            | Closed |
 
 `metadataGroups` adds groups of your own, for [custom settings](#metadata) to be in.
 
@@ -492,20 +492,20 @@ A setting in a group that doesn't exist, or coming after a setting or group that
 
 Builds the website into `outputDir`, and copies it into `publishDir` if that is set. See [Build & deploy](/docs/08-build-and-deploy/).
 
-| Option | Description |
-| --- | --- |
+| Option                  | Description                                                                                  |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
 | `-c`, `--config <file>` | The config file. Default: the first one found (see [Where it is found](#where-it-is-found)). |
-| `--dir <folder>` | The folder to look for a config file in. Default: the current folder. |
-| `--site-url <url>` | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl`. |
+| `--dir <folder>`        | The folder to look for a config file in. Default: the current folder.                        |
+| `--site-url <url>`      | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl`.                  |
 
 ### `edaha editor`
 
 Runs the [WYSIWYG editor](/docs/09-wysiwyg-editor/) on your computer.
 
-| Option | Description |
-| --- | --- |
-| `-c`, `--config <file>` | The config file, as for `edaha build`. |
-| `--dir <folder>` | The folder to look for a config file in, as for `edaha build`. |
-| `--port <number>` | The port the editor listens on. Default: `5180`. |
+| Option                  | Description                                                    |
+| ----------------------- | -------------------------------------------------------------- |
+| `-c`, `--config <file>` | The config file, as for `edaha build`.                         |
+| `--dir <folder>`        | The folder to look for a config file in, as for `edaha build`. |
+| `--port <number>`       | The port the editor listens on. Default: `5180`.               |
 
 Both commands also take `-h` / `--help` and `-v` / `--version`.

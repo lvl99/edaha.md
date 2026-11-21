@@ -2,7 +2,16 @@ import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { REQUIRED_TEMPLATES, Templates, absoluteUrl, absoluteUrls } from "..";
+import {
+  REQUIRED_TEMPLATES,
+  Templates,
+  absoluteUrl,
+  absoluteUrls,
+  contains,
+  parseJson,
+  toJson,
+  where,
+} from "..";
 
 /** A templates folder containing the given files */
 const templatesDir = async (files: Record<string, string>) => {
@@ -45,6 +54,75 @@ describe("absoluteUrls", () => {
         "https://lvl99.github.io/edaha.md",
       ),
     ).toBe('<a href="https://lvl99.github.io/edaha.md/news/">x</a>');
+  });
+});
+
+describe("toJson", () => {
+  it("should write values as JSON, indented when pretty", () => {
+    expect(toJson(1)).toBe("1");
+    expect(toJson(null)).toBe("null");
+    expect(toJson({ test: 123 })).toBe('{"test":123}');
+    expect(toJson({ test: 123 }, true)).toBe('{\n  "test": 123\n}');
+  });
+
+  it("should give an empty string for values JSON can't hold", () => {
+    expect(toJson(undefined)).toBe("");
+  });
+
+  it("should give the error's message for values JSON can't write", () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(toJson(circular)).toMatch(/circular/i);
+  });
+});
+
+describe("parseJson", () => {
+  it("should parse JSON text into a value", () => {
+    expect(parseJson("1")).toBe(1);
+    expect(parseJson("null")).toBeNull();
+    expect(parseJson('{"test":123}')).toEqual({ test: 123 });
+  });
+
+  it("should give undefined for invalid JSON", () => {
+    expect(parseJson("{test")).toBeUndefined();
+  });
+});
+
+describe("contains", () => {
+  it("should find text in a string, comparing the search value as text", () => {
+    expect(contains("example 1, 2, 3, 4", "4")).toBe(true);
+    expect(contains("example 1, 2, 3, 4", 4)).toBe(true);
+    expect(contains("example 1, 2, 3, 4", "5")).toBe(false);
+  });
+
+  it("should find values in an array, comparing them exactly", () => {
+    expect(contains(["example", 1, 2, 3, 4], 4)).toBe(true);
+    expect(contains(["example", 1, 2, 3, 4], "4")).toBe(false);
+  });
+
+  it("should find nothing in other values", () => {
+    expect(contains(undefined, "a")).toBe(false);
+    expect(contains({ a: 1 }, "a")).toBe(false);
+  });
+});
+
+describe("where", () => {
+  it("should give a property's values, leaving out objects without it", () => {
+    expect(
+      where(
+        [{ example: 1, test: 2 }, { example: 3, test: 4 }, { example: 5 }],
+        "test",
+      ),
+    ).toEqual([2, 4]);
+  });
+
+  it("should read nested properties, keeping falsy values", () => {
+    expect(
+      where(
+        [{ author: { name: "Ana" } }, { author: { name: "" } }, {}],
+        "author.name",
+      ),
+    ).toEqual(["Ana", ""]);
   });
 });
 
@@ -164,6 +242,32 @@ describe("Templates", () => {
     ).toBe(
       '&lt;News&gt;|<b>Bold</b>|19 October 2026|Mon, 19 Oct 2026 09:54:00 GMT| src="https://example.com/a.png"',
     );
+  });
+
+  it("should render with the JSON, contains and where filters", async () => {
+    const dir = await templatesDir({
+      ...REQUIRED,
+      "test.njk":
+        '{{ site.types | json | safe }}|{{ (\'{"a":[1,2]}\' | parseJson).a | contains(2) }}|{{ site.types.news.tags | where("name") | join(",") }}',
+    });
+    const templates = new Templates(dir, { warn: vi.fn() });
+    expect(
+      templates.render("test.njk", {
+        site: {
+          name: "News",
+          description: "",
+          url: "https://example.com",
+          baseUrl: "",
+          path: "/",
+          types: {
+            news: { tags: [{ name: "a" }, {}, { name: "b" }] },
+          } as never,
+        },
+        type: "news",
+        isArticle: false,
+        isList: true,
+      }),
+    ).toBe('{"news":{"tags":[{"name":"a"},{},{"name":"b"}]}}|true|a,b');
   });
 
   it("should let earlier folders override later ones, and list names from all of them", async () => {
