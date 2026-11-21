@@ -55,6 +55,13 @@ export const LANGUAGE_NAMES: Readonly<Record<string, string>> = {
   zsh: "Zsh",
 };
 
+/** The copy button's icons (SVG markup): before copying, and once copied */
+export const COPY_ICONS = {
+  copy: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>',
+  copied:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg>',
+};
+
 /** A code block in an embed block */
 export interface CodeBlock {
   /** Its language, as it is marked, e.g. "ts" (empty without one) */
@@ -152,13 +159,15 @@ export interface Shiki {
  * @param doc - the page
  * @param loadShiki - imports Shiki
  * @param themes - Shiki's themes for light and dark pages
+ * @param icons - the copy button's icons
  * @example
- * await enhanceCodeBlocks(document, () => import(SHIKI_URL), SHIKI_THEMES);
+ * await enhanceCodeBlocks(document, () => import(SHIKI_URL), SHIKI_THEMES, COPY_ICONS);
  */
 export const enhanceCodeBlocks = async (
   doc: Document,
   loadShiki: () => Promise<Shiki>,
   themes: typeof SHIKI_THEMES,
+  icons: typeof COPY_ICONS,
 ): Promise<void> => {
   for (const group of doc.querySelectorAll<HTMLElement>(
     ".codehighlight[data-tabs]",
@@ -223,9 +232,14 @@ export const enhanceCodeBlocks = async (
     const button = doc.createElement("button");
     button.type = "button";
     button.className = "codehighlight-copy";
-    button.textContent = "Copy";
+    // An icon button, named for screen readers and by its tooltip
+    const show = (label: string, icon: string) => {
+      button.title = label;
+      button.innerHTML = `${icon}<span class="codehighlight-hidden">${label}</span>`;
+    };
+    show("Copy code", icons.copy);
     const status = doc.createElement("span");
-    status.className = "codehighlight-status";
+    status.className = "codehighlight-hidden";
     status.setAttribute("role", "status");
     const view = doc.defaultView as Window;
     let reset: number | undefined;
@@ -234,14 +248,14 @@ export const enhanceCodeBlocks = async (
         await view.navigator.clipboard.writeText(
           String((block.querySelector("code") as HTMLElement).textContent),
         );
-        button.textContent = status.textContent = "Copied";
+        show((status.textContent = "Copied"), icons.copied);
       } catch {
-        button.textContent = status.textContent = "Couldn't copy";
+        show((status.textContent = "Couldn't copy"), icons.copy);
       }
       // Ready to copy again after a moment
       view.clearTimeout(reset);
       reset = view.setTimeout(() => {
-        button.textContent = "Copy";
+        show("Copy code", icons.copy);
         status.textContent = "";
       }, 2000);
     });
@@ -280,7 +294,7 @@ export const enhanceCodeBlocks = async (
 
 /** Enhances the page's code blocks once it has loaded (see enhanceCodeBlocks) */
 const START_SCRIPT = `<script type="module">
-  await (${enhanceCodeBlocks.toString()})(document, () => import("${SHIKI_URL}"), ${JSON.stringify(SHIKI_THEMES)});
+  await (${enhanceCodeBlocks.toString()})(document, () => import("${SHIKI_URL}"), ${JSON.stringify(SHIKI_THEMES)}, ${JSON.stringify(COPY_ICONS)});
 </script>`;
 
 /**
@@ -308,8 +322,14 @@ const STYLE = `<style>
   }
   .embed-codehighlight button:focus-visible { outline: 2px solid var(--colour-focus, #db5a10); outline-offset: 2px; }
   .embed-codehighlight .codehighlight-tab[aria-selected="true"] { border-color: currentColor; font-weight: bold; }
-  .embed-codehighlight .codehighlight-copy { margin-left: auto; }
-  .embed-codehighlight .codehighlight-status {
+  .embed-codehighlight .codehighlight-copy {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 2.25rem; min-height: 2.25rem;
+    margin-inline-start: auto; padding: 0.25rem; background: var(--colour-surface, #f4f4f6);
+    border: 1px solid var(--colour-border, #d8d8de); border-radius: 5px; color: var(--colour-text, #1d1d1f);
+  }
+  .embed-codehighlight .codehighlight-copy:hover { border-color: var(--colour-muted, #5a5a60); }
+  .embed-codehighlight .codehighlight-copy svg { width: 1.5rem; height: 1.5rem; fill: currentColor; }
+  .embed-codehighlight .codehighlight-hidden {
     position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
   .embed-codehighlight .shiki span { color: var(--shiki-light); }

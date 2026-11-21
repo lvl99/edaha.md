@@ -10,6 +10,7 @@ import codehighlightDefault, {
   codeBlocks,
   codehighlight,
   enhanceCodeBlocks,
+  COPY_ICONS,
   SHIKI_THEMES,
   SHIKI_URL,
   type Shiki,
@@ -58,13 +59,23 @@ const enhance = async (
   loadShiki: () => Promise<Shiki> = async () => fakeShiki,
 ) => {
   document.body.innerHTML = html;
-  await enhanceCodeBlocks(document, loadShiki, SHIKI_THEMES);
+  await enhanceCodeBlocks(document, loadShiki, SHIKI_THEMES, COPY_ICONS);
 };
 
 /** The page's tabs */
 const tabs = () => [
   ...document.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
 ];
+
+/** A copy button's tooltip, name (for screen readers) and icon */
+const copyButton = (button: HTMLButtonElement) => ({
+  title: button.title,
+  name: button.textContent,
+  icon: button.querySelector("path")?.getAttribute("d"),
+});
+
+/** An icon's path, to compare with a copy button's (see copyButton) */
+const iconPath = (svg: string) => /\bd="([^"]+)"/.exec(svg)?.[1];
 
 /** Which of the page's blocks are hidden */
 const hidden = () =>
@@ -227,7 +238,9 @@ describe("codehighlight.build", () => {
     expect(foot).toContain('<script type="module">');
     expect(foot).toContain(enhanceCodeBlocks.toString());
     expect(foot).toContain(`() => import("${SHIKI_URL}")`);
-    expect(foot).toContain(JSON.stringify(SHIKI_THEMES));
+    expect(foot).toContain(
+      `${JSON.stringify(SHIKI_THEMES)}, ${JSON.stringify(COPY_ICONS)})`,
+    );
   });
 });
 
@@ -306,19 +319,33 @@ describe("enhanceCodeBlocks", () => {
       ".codehighlight-copy",
     ) as HTMLButtonElement;
     const status = document.querySelector('[role="status"]') as HTMLElement;
-    expect(button.textContent).toBe("Copy");
+    // An icon button, like the editor's toolbar buttons
+    const ready = {
+      title: "Copy code",
+      name: "Copy code",
+      icon: iconPath(COPY_ICONS.copy),
+    };
+    expect(copyButton(button)).toEqual(ready);
+    expect(button.querySelector("span")?.className).toBe(
+      "codehighlight-hidden",
+    );
     expect(button.nextElementSibling).toBe(status);
     expect(status.nextElementSibling?.tagName).toBe("PRE");
     button.click();
     await vi.waitFor(() => expect(status.textContent).toBe("Copied"));
     expect(writeText).toHaveBeenCalledWith("const a = 1;\nconst b = 2;");
-    expect(button.textContent).toBe("Copied");
+    const copied = {
+      title: "Copied",
+      name: "Copied",
+      icon: iconPath(COPY_ICONS.copied),
+    };
+    expect(copyButton(button)).toEqual(copied);
     // Clicked again, it waits from then
     button.click();
     await vi.advanceTimersByTimeAsync(1999);
-    expect(button.textContent).toBe("Copied");
+    expect(copyButton(button)).toEqual(copied);
     await vi.advanceTimersByTimeAsync(1);
-    expect(button.textContent).toBe("Copy");
+    expect(copyButton(button)).toEqual(ready);
     expect(status.textContent).toBe("");
   });
 
@@ -331,7 +358,13 @@ describe("enhanceCodeBlocks", () => {
       ".codehighlight-copy",
     ) as HTMLButtonElement;
     button.click();
-    await vi.waitFor(() => expect(button.textContent).toBe("Couldn't copy"));
+    await vi.waitFor(() =>
+      expect(copyButton(button)).toEqual({
+        title: "Couldn't copy",
+        name: "Couldn't copy",
+        icon: iconPath(COPY_ICONS.copy),
+      }),
+    );
     expect(document.querySelector('[role="status"]')?.textContent).toBe(
       "Couldn't copy",
     );
