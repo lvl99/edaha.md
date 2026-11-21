@@ -327,6 +327,12 @@ importers:
         specifier: workspace:^
         version: link:../edaha
 
+  packages/edaha-plugin-toc:
+    devDependencies:
+      '@lvl99dotcom/edaha.md':
+        specifier: workspace:^
+        version: link:../edaha
+
   packages/edaha-plugin-youtube:
     devDependencies:
       '@lvl99dotcom/edaha.md':
