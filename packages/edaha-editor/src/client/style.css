@@ -1361,15 +1361,33 @@ edaha-metadata-field {
   flex: 1;
 }
 
+/*
+ * Checkboxes and radio buttons come before their labels: on the left in left-to-right text, on the right in
+ * right-to-left text. Their notes line up with the labels.
+ */
+.metadata-check,
 .metadata-choice {
-  display: block;
+  display: grid;
+  grid-template-columns: 1rem 1fr;
+  column-gap: 0.5rem;
+  align-items: center;
   margin-block: 0.25rem;
 }
 
+.metadata-check input,
+.metadata-choice input {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+}
+
 .metadata-choice small {
-  display: block;
-  margin-inline-start: 1.5rem;
+  grid-column: 2;
   color: var(--colour-muted);
+}
+
+.metadata-checkbox > :not(.metadata-check) {
+  margin-inline-start: 1.5rem;
 }
 
 .metadata-description,
