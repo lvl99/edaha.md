@@ -2,6 +2,7 @@ import { stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import mime from "mime-types";
 import { parse } from "yaml";
+import { htmlHeadings, type EmbedHeading } from "../../embeds/index.ts";
 import {
   maskCode,
   rawHtml,
@@ -302,6 +303,11 @@ export interface ArticleContext {
   replaceEmbeds(markdown: string, part: "body" | "excerpt"): Promise<string>;
   /** Render markdown to HTML, resolving relative URLs against a folder URL */
   renderMarkdown(markdown: string, baseUrl: string): string;
+  /**
+   * Optional; give the embed blocks in the article's rendered body and excerpt (`html`) the headings of its body (see
+   * EmbedResolver.setHeadings)
+   */
+  setEmbedHeadings?(html: string, headings: readonly EmbedHeading[]): void;
   /** The article's custom metadata fields, to validate its values and give them to templates. Default: none */
   metadata?: MetadataContext | undefined;
 }
@@ -495,6 +501,8 @@ export const loadArticle = async (
       url,
     );
   }
+
+  context.setEmbedHeadings?.(bodyHtml + excerptHtml, htmlHeadings(bodyHtml));
 
   return {
     type,

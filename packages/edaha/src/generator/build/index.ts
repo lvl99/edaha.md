@@ -441,6 +441,8 @@ export const buildSite = async (
         source,
         // Embeds are rendered with the pages that show them
         replaceEmbeds: async (md) => embeds.replaceBlocks(md, source),
+        setEmbedHeadings: (html, headings) =>
+          embeds.setHeadings(html, headings),
         renderMarkdown: (md, baseUrl) =>
           renderMarkdown(markdown, md, baseUrl, site.baseUrl),
         metadata: {

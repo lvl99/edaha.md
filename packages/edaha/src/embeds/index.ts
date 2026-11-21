@@ -3,7 +3,11 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ErrorObject, ValidateFunction } from "ajv";
 import { resolveFields } from "../generator/fields/index.ts";
-import { escapeHtml, replaceOutsideCode } from "../generator/format/index.ts";
+import {
+  escapeHtml,
+  replaceOutsideCode,
+  stripHtml,
+} from "../generator/format/index.ts";
 import {
   checkFieldSchema,
   createAjv,
@@ -18,6 +22,7 @@ import {
 } from "./blocks/index.ts";
 import type {
   EmbedContext,
+  EmbedHeading,
   EmbedPageParts,
   EmbedPlugin,
   EmbedRenderers,
@@ -50,6 +55,31 @@ export const EMBED_PAGE_PARTS: EmbedPageParts = {
   head: "<!--edaha-embeds-head-->",
   foot: "<!--edaha-embeds-foot-->",
 };
+
+/** An HTML heading: group 1 is its level, group 2 its attributes, group 3 its content */
+const HTML_HEADING = /<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/gi;
+
+/**
+ * The headings with IDs in HTML, e.g. an article's body, for embeds (see EmbedRenderContext.headings). Headings
+ * without an ID can't be linked to, so they are left out.
+ *
+ * @example
+ * htmlHeadings('<h2 id="fish-chips">Fish &amp; <em>chips</em></h2><h3>No ID</h3>');
+ * // [{ level: 2, text: "Fish & chips", id: "fish-chips" }]
+ */
+export const htmlHeadings = (html: string): EmbedHeading[] =>
+  [...html.matchAll(HTML_HEADING)].flatMap(([, level, attributes, content]) => {
+    const id = /\bid="([^"]+)"/.exec(attributes as string)?.[1];
+    return id
+      ? [
+          {
+            level: Number(level),
+            text: stripHtml((content as string).replace(/<[^>]*>/g, "")),
+            id: stripHtml(id),
+          },
+        ]
+      : [];
+  });
 
 /** Embed keys: lowercase kebab-case */
 const EMBED_KEY = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -225,6 +255,8 @@ interface PlacedEmbed {
   text: string;
   /** Where it is, for warnings */
   source: string;
+  /** The headings of the article it is in (see setHeadings) */
+  headings?: readonly EmbedHeading[];
 }
 
 /** What each embed on a page keeps (see EmbedState), and its blocks' options, by its key */
@@ -302,6 +334,21 @@ export class EmbedResolver {
       EMBED_BLOCK,
       ([, key, text]) => `\n\n${this.place(key, text as string, source)}\n\n`,
     );
+  }
+
+  /**
+   * Give the embed blocks placed in HTML (e.g. an article's rendered body and excerpt) their article's headings, which
+   * their `render` gets (see EmbedRenderContext.headings).
+   *
+   * @example
+   * const body = renderMarkdown(embeds.replaceBlocks(source, "news/hello"));
+   * embeds.setHeadings(body, htmlHeadings(body));
+   */
+  setHeadings(html: string, headings: readonly EmbedHeading[]): void {
+    for (const [, , id] of html.matchAll(EMBED_PLACEHOLDER)) {
+      const block = this.placed[Number(id)];
+      if (block) block.headings = headings;
+    }
   }
 
   /**
@@ -427,7 +474,7 @@ export class EmbedResolver {
 
   /** Render a block on a page: its HTML, a fallback, or nothing when it is left out (see renderPage) */
   private async renderBlock(
-    { key, text, source }: PlacedEmbed,
+    { key, text, source, headings = [] }: PlacedEmbed,
     page: EmbedPage,
     target: EmbedTarget,
   ): Promise<string> {
@@ -461,6 +508,7 @@ export class EmbedResolver {
         fetch: this.options.fetch,
         state: used.state,
         options: resolved,
+        headings,
       });
       used.options.push(resolved);
       page.set(plugin.key, used);
