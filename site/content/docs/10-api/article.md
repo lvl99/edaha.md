@@ -1,6 +1,6 @@
 <!--yaml
 status: published
-date: 2026-11-15T18:36:00.000Z
+date: 2026-11-20T18:36:00.000Z
 author: false
 -->
 
@@ -12,11 +12,23 @@ Everything the `edaha` command does, you can do from JavaScript or TypeScript: b
 
 The packages are ES modules with TypeScript types, and need Node.js 22 or later:
 
-| Package                       | What it exports                                                                     |
-| ----------------------------- | ----------------------------------------------------------------------------------- |
-| `@lvl99dotcom/edaha.md`       | `buildSite`, `loadSiteConfig` and the other config helpers, the embed API, `runCli` |
-| `@lvl99dotcom/edaha-editor`   | `startEditor` and `createEditorServer`                                              |
-| `@lvl99dotcom/edaha-plugin-…` | One embed plugin each, as their default export                                      |
+| Package | What it exports |
+| --- | --- |
+| `@lvl99dotcom/edaha.md` | `buildSite`, `loadSiteConfig` and the other config helpers, the embed API, `runCli` |
+| `@lvl99dotcom/edaha-editor` | `startEditor` and `createEditorServer` |
+| `@lvl99dotcom/edaha-plugin-…` | One embed plugin each, as their default export |
+
+<!-- embed:toc -->
+<!--yaml
+level1: number
+level2: number-depth
+level3: number-depth
+level4: alpha
+level5: number-roman
+level6: circle
+-->
+# Contents
+<!-- /embed:toc -->
 
 ## Build
 
@@ -37,7 +49,6 @@ console.log(`Built ${result.files.length} files into ${result.outputDir}`);
 A build reads the [config file](/docs/03-configuration/) and the site's articles, turns each article's Markdown into HTML, and renders it with the site's [templates](/docs/05-templating/) into the output folder:
 
 <!-- embed:mermaidjs -->
-
 flowchart TD
 config["Config file<br>(edahaconfig.yml)"] --> load["loadSiteConfig<br>settings and embed plugins"]
 load --> types["Article types"]
@@ -64,7 +75,6 @@ output -. "if set" .-> publish["publishDir"]
 Templates are found in the site's templates folder first, then in the default theme. A type's own template (e.g. `templates/news/single.njk`) comes before the `article` ones, and an article can name another with its `template` setting. Every page template extends a layout:
 
 <!-- embed:mermaidjs -->
-
 flowchart LR
 data["Template data:<br>site, type, article, list, embeds"] --> page
 subgraph page["Page template"]
@@ -80,24 +90,24 @@ A site's template can build on the theme's version of itself with `{% extends "@
 
 ### `buildSite` options
 
-| Option       | Type          | Description                                                                                                                        | Default                                                                  |
-| ------------ | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `siteDir`    | String        | The folder to look for a config file in, before the nearest `package.json`'s folder.                                               | The current folder                                                       |
-| `configFile` | String        | The config file to use instead of looking for one. The site folder is its folder.                                                  | The first [config file](/docs/03-configuration/#where-it-is-found) found |
-| `siteUrl`    | String        | The website's absolute URL, for feeds. Its path (e.g. `/edaha.md`) starts every URL in the pages.                                  | `siteUrl` in the config file, then `http://localhost` with a warning     |
-| `themeDir`   | String        | The default theme's folder (with `templates/` and `static/`), which the site's own templates and static files override.            | edaha.md's theme (`THEME_DIR`)                                           |
-| `plugins`    | EmbedPlugin[] | [Embed plugins](/docs/07-embeds/) added after the config file's `plugins`. One with the same key as the config file's is left out. | None                                                                     |
-| `logger`     | `{ warn }`    | Where warnings go, e.g. about articles with problems.                                                                              | `console`                                                                |
-| `fetch`      | Function      | Fetches data for embeds that need it, e.g. Bandcamp's.                                                                             | The global `fetch`                                                       |
+| Option | Type | Description | Default |
+| --- | --- | --- | --- |
+| `siteDir` | String | The folder to look for a config file in, before the nearest `package.json`'s folder. | The current folder |
+| `configFile` | String | The config file to use instead of looking for one. The site folder is its folder. | The first [config file](/docs/03-configuration/#where-it-is-found) found |
+| `siteUrl` | String | The website's absolute URL, for feeds. Its path (e.g. `/edaha.md`) starts every URL in the pages. | `siteUrl` in the config file, then `http://localhost` with a warning |
+| `themeDir` | String | The default theme's folder (with `templates/` and `static/`), which the site's own templates and static files override. | edaha.md's theme (`THEME_DIR`) |
+| `plugins` | EmbedPlugin\[\] | [Embed plugins](/docs/07-embeds/) added after the config file's `plugins`. One with the same key as the config file's is left out. | None |
+| `logger` | `{ warn }` | Where warnings go, e.g. about articles with problems. | `console` |
+| `fetch` | Function | Fetches data for embeds that need it, e.g. Bandcamp's. | The global `fetch` |
 
 `buildSite` resolves with:
 
-| Property     | Description                                                             |
-| ------------ | ----------------------------------------------------------------------- |
-| `outputDir`  | The absolute output folder.                                             |
+| Property | Description |
+| --- | --- |
+| `outputDir` | The absolute output folder. |
 | `publishDir` | The absolute folder the files were copied into, if `publishDir` is set. |
-| `articles`   | The built articles' template data (published and unlisted).             |
-| `files`      | Every file written, relative to the output folder.                      |
+| `articles` | The built articles' template data (published and unlisted). |
+| `files` | Every file written, relative to the output folder. |
 
 It rejects with an error that names the problem (and the config file or article) when the site can't be built, e.g. a config setting is wrong, or a static file has the same path as an article's file. Problems that don't stop the build go to `logger.warn`.
 
@@ -154,16 +164,16 @@ It only listens on `127.0.0.1`: never deploy it, as it reads and writes the site
 
 `startEditor` (and `createEditorServer`) take:
 
-| Option       | Type          | Description                                                                           | Default                            |
-| ------------ | ------------- | ------------------------------------------------------------------------------------- | ---------------------------------- |
-| `siteDir`    | String        | The folder to look for a config file in, before the nearest `package.json`'s folder.  | The current folder                 |
-| `configFile` | String        | The config file to use instead of looking for one.                                    | The first config file found        |
-| `port`       | Number        | The port to listen on.                                                                | `5180`                             |
-| `themeDir`   | String        | The default theme's folder, which the site's own templates and static files override. | edaha.md's theme                   |
-| `plugins`    | EmbedPlugin[] | Embed plugins added after the config file's `plugins`.                                | None                               |
-| `fetch`      | Function      | Fetches data for embeds that need it.                                                 | The global `fetch`                 |
-| `clientDir`  | String        | The folder with the editor page's built files.                                        | The editor package's `dist/client` |
-| `logger`     | `{ warn }`    | Where the warning about a folder with several config files goes.                      | None                               |
+| Option | Type | Description | Default |
+| --- | --- | --- | --- |
+| `siteDir` | String | The folder to look for a config file in, before the nearest `package.json`'s folder. | The current folder |
+| `configFile` | String | The config file to use instead of looking for one. | The first config file found |
+| `port` | Number | The port to listen on. | `5180` |
+| `themeDir` | String | The default theme's folder, which the site's own templates and static files override. | edaha.md's theme |
+| `plugins` | EmbedPlugin\[\] | Embed plugins added after the config file's `plugins`. | None |
+| `fetch` | Function | Fetches data for embeds that need it. | The global `fetch` |
+| `clientDir` | String | The folder with the editor page's built files. | The editor package's `dist/client` |
+| `logger` | `{ warn }` | Where the warning about a folder with several config files goes. | None |
 
 `startEditor` resolves with the editor's `url` and a `close` function, once it is listening. It rejects if the config file can't be read, or the port is in use.
 

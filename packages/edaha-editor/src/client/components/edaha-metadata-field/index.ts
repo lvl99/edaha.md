@@ -469,15 +469,24 @@ export class EdahaMetadataField extends LitElement {
       return html`<div @focusout=${onFocusOut}>${this.renderList(id)}</div>`;
     if (kind === "radio")
       return html`<div @focusout=${onFocusOut}>${this.renderRadio(id)}</div>`;
-    return html`<div class="metadata-field" @focusout=${onFocusOut}>
-      <label for=${id}
-        >${this.fieldTitle}${
-          this.required
-            ? html`<span class="required" aria-hidden="true"> *</span>`
-            : nothing
-        }</label
+    const label = html`<label for=${id}
+      >${this.fieldTitle}${
+        this.required
+          ? html`<span class="required" aria-hidden="true"> *</span>`
+          : nothing
+      }</label
+    >`;
+    // A checkbox comes before its label (on its left in left-to-right text), with its notes below
+    if (kind === "checkbox")
+      return html`<div
+        class="metadata-field metadata-checkbox"
+        @focusout=${onFocusOut}
       >
-      ${this.renderNotes(id)} ${this.renderInput(id, kind)}
+        <div class="metadata-check">${this.renderInput(id, kind)} ${label}</div>
+        ${this.renderNotes(id)}
+      </div>`;
+    return html`<div class="metadata-field" @focusout=${onFocusOut}>
+      ${label} ${this.renderNotes(id)} ${this.renderInput(id, kind)}
     </div>`;
   }
 }

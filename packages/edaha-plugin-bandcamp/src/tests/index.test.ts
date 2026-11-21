@@ -53,7 +53,12 @@ describe("bandcamp", () => {
       "https://example.com/album/name",
     ])
       await expect(
-        bandcamp.build.render(url, { fetch, state: {}, options: {} }),
+        bandcamp.build.render(url, {
+          fetch,
+          state: {},
+          headings: [],
+          options: {},
+        }),
       ).rejects.toThrow("is not a Bandcamp album or track page");
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -64,6 +69,7 @@ describe("bandcamp", () => {
     const html = await bandcamp.build.render(url, {
       fetch,
       state: {},
+      headings: [],
       options: options(),
     });
     expect(fetch).toHaveBeenCalledWith(new URL(url));
@@ -75,6 +81,7 @@ describe("bandcamp", () => {
       await bandcamp.build.render(url, {
         fetch,
         state: {},
+        headings: [],
         options: options({ tracklist: true, linkcol: "#051C2C" }),
       }),
     ).toBe(
@@ -160,6 +167,7 @@ describe("bandcamp", () => {
           '<meta property="og:video" content="https://bandcamp.com/EmbeddedPlayer/track=42/">',
         ),
         state: {},
+        headings: [],
         options: options(),
       },
     );
@@ -173,6 +181,7 @@ describe("bandcamp", () => {
       bandcamp.build.render(url, {
         fetch: fetchPage("", 404),
         state: {},
+        headings: [],
         options: {},
       }),
     ).rejects.toThrow("failed with 404");
@@ -180,6 +189,7 @@ describe("bandcamp", () => {
       bandcamp.build.render(url, {
         fetch: fetchPage("<html></html>"),
         state: {},
+        headings: [],
         options: {},
       }),
     ).rejects.toThrow("No Bandcamp player");

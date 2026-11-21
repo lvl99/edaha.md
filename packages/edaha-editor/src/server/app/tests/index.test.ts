@@ -29,6 +29,7 @@ const MEDIA = {
   name: "Media",
   description: "A media player",
   info: "Paste the media's URL",
+  contentOptional: true,
   options: {
     size: {
       title: "Size",
@@ -340,6 +341,7 @@ describe("createEditorApp", () => {
         name: "Media",
         description: "A media player",
         info: "Paste the media's URL",
+        contentOptional: true,
         icon: "<svg></svg>",
         options: MEDIA.options,
       },

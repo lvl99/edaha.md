@@ -8,6 +8,7 @@ import {
   checkEmbedPlugins,
   EMBED_PAGE_PARTS,
   EmbedResolver,
+  htmlHeadings,
   isEmbedPlugin,
   loadPlugins,
   validationErrors,
@@ -70,6 +71,7 @@ describe("isEmbedPlugin and checkEmbedPlugins", () => {
         ...plain,
         description: "Plain text",
         info: "Any text",
+        contentOptional: true,
         options: {},
         validate: () => true,
         sources: {
@@ -91,6 +93,7 @@ describe("isEmbedPlugin and checkEmbedPlugins", () => {
       { ...plain, name: " " },
       { ...plain, description: 3 },
       { ...plain, info: 3 },
+      { ...plain, contentOptional: "yes" },
       { ...plain, options: [] },
       { ...plain, options: null },
       { ...plain, validate: true },
@@ -479,6 +482,46 @@ describe("EmbedResolver", () => {
     expect(logger.warn).toHaveBeenCalledWith(
       "/news/: Plain embed's renderHead failed (offline); left out",
     );
+  });
+});
+
+describe("htmlHeadings", () => {
+  it("should list headings with IDs, with their level and plain text", () => {
+    expect(
+      htmlHeadings(
+        [
+          '<h1 id="intro">Intro</h1>',
+          '<h2 class="x" id="fish-chips">Fish &amp; <em>chips</em></h2>',
+          "<h3>No ID</h3>",
+          '<H6 id="deep">Deep\nheading</H6>',
+        ].join("\n"),
+      ),
+    ).toEqual([
+      { level: 1, text: "Intro", id: "intro" },
+      { level: 2, text: "Fish & chips", id: "fish-chips" },
+      { level: 6, text: "Deep heading", id: "deep" },
+    ]);
+    expect(htmlHeadings("<p>None</p>")).toEqual([]);
+  });
+});
+
+describe("EmbedResolver headings", () => {
+  it("should give blocks their article's headings, and none to other blocks", async () => {
+    const render = vi.fn<EmbedPlugin["build"]["render"]>(async () => "toc");
+    const { resolver } = setup([
+      { key: "toc", name: "TOC", build: { render } },
+    ]);
+    const headings = [{ level: 2, text: "One", id: "one" }];
+    const body = `<h2 id="one">One</h2>${resolver.place("toc", "", "news/a")}`;
+    const other = resolver.place("toc", "", "news/b");
+    resolver.setHeadings(body, headings);
+    // Placeholders this resolver didn't make are skipped
+    resolver.setHeadings("<!--edaha-embed:99-->", headings);
+    await resolver.renderPage(body + other, "/news/");
+    expect(render.mock.calls.map(([, context]) => context.headings)).toEqual([
+      headings,
+      [],
+    ]);
   });
 });
 

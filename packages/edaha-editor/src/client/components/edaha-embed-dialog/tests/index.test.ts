@@ -99,6 +99,7 @@ describe("edaha-embed-dialog", () => {
       "Provide the embed's content, e.g. a URL or code",
     );
     expect(element.querySelector("edaha-metadata-field")).toBeNull();
+    expect(content(element).required).toBe(true);
     // Without content, it isn't added
     input(content(element), "   ");
     submit(element);
@@ -107,6 +108,19 @@ describe("edaha-embed-dialog", () => {
     submit(element);
     expect(await result).toEqual(value("youtube", "https://youtu.be/x"));
     expect(dialog.open).toBe(false);
+  });
+
+  it("should add an embed without content when its content is optional", async () => {
+    const element = await mount<EdahaEmbedDialog>("edaha-embed-dialog");
+    const result = element.edit(
+      { key: "toc", name: "Table of contents", contentOptional: true },
+      value("toc"),
+      true,
+    );
+    await settle(element);
+    expect(content(element).required).toBe(false);
+    submit(element);
+    expect(await result).toEqual(value("toc"));
   });
 
   it("should change an embed block's content", async () => {

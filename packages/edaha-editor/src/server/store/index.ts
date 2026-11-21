@@ -824,6 +824,8 @@ export class ArticleStore {
         typeUrl: (site.types[data.type] as TemplateDataArticleType).url,
         source: name,
         replaceEmbeds: async (md) => embeds.replaceBlocks(md, name),
+        setEmbedHeadings: (html, headings) =>
+          embeds.setHeadings(html, headings),
         renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
         metadata: {
           ...metadata.context(data.type),

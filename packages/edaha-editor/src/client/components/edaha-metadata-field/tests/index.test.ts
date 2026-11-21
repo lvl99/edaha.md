@@ -128,14 +128,26 @@ describe("edaha-metadata-field", () => {
     expect(find<HTMLTextAreaElement>(plain, "textarea").rows).toBe(3);
   });
 
-  it("should show checkboxes", async () => {
+  it("should show checkboxes before their labels, with their notes below", async () => {
     const { element, changes } = await setup(
       "featured",
-      { type: "boolean", $edahaField: { checkbox: true } },
+      {
+        type: "boolean",
+        description: "Shown first",
+        $edahaField: { checkbox: true },
+      },
       true,
     );
     const box = find<HTMLInputElement>(element, "input");
     expect(box.checked).toBe(true);
+    // Before its label in the page, so on its left in left-to-right text (and its right in right-to-left text)
+    const label = find<HTMLLabelElement>(element, "label");
+    expect(label.htmlFor).toBe(box.id);
+    expect(box.nextElementSibling).toBe(label);
+    expect(box.parentElement?.className).toBe("metadata-check");
+    expect(box.parentElement?.nextElementSibling?.textContent?.trim()).toBe(
+      "Shown first",
+    );
     box.checked = false;
     box.dispatchEvent(new Event("change"));
     expect(changes).toEqual([{ path: "featured", value: false }]);
@@ -270,6 +282,8 @@ describe("edaha-metadata-field", () => {
     );
     expect(find(element, "legend").textContent).toBe("mood");
     const radios = [...element.querySelectorAll<HTMLInputElement>("input")];
+    // Each radio button comes before its label's text
+    expect(radios[0]!.parentElement?.firstElementChild).toBe(radios[0]);
     expect(radios.map((r) => [r.checked, r.required])).toEqual([
       [true, true],
       [false, true],

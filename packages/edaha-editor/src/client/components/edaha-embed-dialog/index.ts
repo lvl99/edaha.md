@@ -130,11 +130,16 @@ export class EdahaEmbedDialog extends LitElement {
     this.dialog?.close();
   }
 
-  /** Save the content and options, if there is content and they are valid; otherwise show why not */
+  /** Save the content and options, if there is content (or it is optional) and they are valid; otherwise show why not */
   private async save(event: Event): Promise<void> {
     event.preventDefault();
     const content = this.content.trim();
-    if (!this.embed || !content || this.checking) return;
+    if (
+      !this.embed ||
+      (!content && !this.embed.contentOptional) ||
+      this.checking
+    )
+      return;
     const value = {
       key: this.embed.key,
       content,
@@ -229,7 +234,7 @@ export class EdahaEmbedDialog extends LitElement {
           <textarea
             id="embed-dialog-content"
             rows="8"
-            required
+            ?required=${!embed?.contentOptional}
             spellcheck="false"
             aria-describedby=${
               this.errors.length

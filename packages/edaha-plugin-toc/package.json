@@ -1,0 +1,54 @@
+{
+  "name": "@lvl99dotcom/edaha-plugin-toc",
+  "version": "0.2.0",
+  "description": "Tables of contents of articles' headings in edaha.md sites.",
+  "keywords": [
+    "edaha.md",
+    "edaha-plugin",
+    "embed",
+    "table of contents",
+    "toc"
+  ],
+  "author": "Matt Scheurich <matt@lvl99.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lvl99/edaha.md.git",
+    "directory": "packages/edaha-plugin-toc"
+  },
+  "homepage": "https://github.com/lvl99/edaha.md#readme",
+  "bugs": "https://github.com/lvl99/edaha.md/issues",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "build": "node ../edaha/scripts/build-plugin.ts",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "@lvl99dotcom/edaha.md": "workspace:^"
+  },
+  "devDependencies": {
+    "@lvl99dotcom/edaha.md": "workspace:^"
+  }
+}

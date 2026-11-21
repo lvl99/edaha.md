@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   articleAuthor,
   authorData,
@@ -445,6 +445,22 @@ Intro ![pic](thumb.png). <!-- readmore -->Rest.
     });
     expect(article!.bodyHtml).toContain("<div>embed https://youtu.be/x</div>");
     expect(article!.body).not.toContain("readmore");
+  });
+
+  it("should give the embeds in its body and excerpt the body's headings", async () => {
+    const setEmbedHeadings = vi.fn();
+    await loadArticle(
+      `<!--yaml\ndate: ${DATE}\n-->\n# Title\n\nIntro\n\n<!-- readmore -->\n\n## One\n\n### Two`,
+      "article",
+      context({ setEmbedHeadings }),
+    );
+    expect(setEmbedHeadings).toHaveBeenCalledWith(
+      '<p>Intro</p>\n<h2 id="one">One</h2>\n<h3 id="two">Two</h3>\n<p>Intro</p>\n',
+      [
+        { level: 2, text: "One", id: "one" },
+        { level: 3, text: "Two", id: "two" },
+      ],
+    );
   });
 
   it("should prefer the configured title and excerpt", async () => {

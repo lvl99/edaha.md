@@ -1,5 +1,6 @@
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import get from "lodash/get.js";
 import nunjucks from "nunjucks";
 import { formatDate, formatRfc822 } from "../format/index.ts";
 import type { Logger, TemplateData } from "../types/index.ts";
@@ -56,6 +57,65 @@ export const absoluteUrl = (url: string, siteUrl: string): string =>
  */
 export const absoluteUrls = (html: string, siteUrl: string): string =>
   html.replace(/(\s(?:href|src)=")\/(?!\/)/g, `$1${new URL(siteUrl).origin}/`);
+
+/**
+ * A value as JSON text, optionally indented by 2 spaces. Values JSON can't hold (e.g. `undefined`) give "", and
+ * values it can't write (e.g. circular objects) give the error's message.
+ *
+ * @example
+ * toJson(1); // "1"
+ * toJson(null); // "null"
+ * toJson({ test: 123 }); // '{"test":123}'
+ * toJson({ test: 123 }, true); // '{\n  "test": 123\n}'
+ */
+export const toJson = (input: unknown, pretty = false): string => {
+  try {
+    return JSON.stringify(input, undefined, pretty ? 2 : undefined) ?? "";
+  } catch (err) {
+    return (err as Error).message;
+  }
+};
+
+/**
+ * Parse JSON text into a value, or `undefined` if the text isn't valid JSON.
+ *
+ * @example
+ * parseJson("1"); // 1
+ * parseJson("null"); // null
+ * parseJson('{"test":123}'); // { test: 123 }
+ * parseJson("{test"); // undefined
+ */
+export const parseJson = (input: string): unknown => {
+  try {
+    return JSON.parse(input);
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Whether a string contains a piece of text, or an array contains a value. Anything else contains nothing.
+ *
+ * @example
+ * contains("example 1, 2, 3, 4", "4"); // true
+ * contains("example 1, 2, 3, 4", 4); // true (the value is compared as text)
+ * contains(["example", 1, 2, 3, 4], 4); // true
+ * contains(["example", 1, 2, 3, 4], "4"); // false (array values are compared exactly)
+ */
+export const contains = (input: unknown, search: unknown): boolean =>
+  Array.isArray(input)
+    ? input.includes(search)
+    : typeof input === "string" && input.includes(String(search));
+
+/**
+ * The values of a (nested) property from an array of objects, leaving out objects without it.
+ *
+ * @example
+ * where([{ example: 1, test: 2 }, { example: 3, test: 4 }], "test"); // [2, 4]
+ * where([{ author: { name: "Ana" } }, {}], "author.name"); // ["Ana"]
+ */
+export const where = (input: readonly unknown[], prop: string): unknown[] =>
+  input.map((item) => get(item, prop)).filter((value) => value !== undefined);
 
 /** Template tags that output the page's embed HTML (`TemplateData.embeds`), by where it goes */
 export const EMBED_TAGS = {
@@ -150,6 +210,10 @@ export class Templates {
     this.env.addFilter("rfc822", formatRfc822);
     this.env.addFilter("absoluteUrl", absoluteUrl);
     this.env.addFilter("absoluteUrls", absoluteUrls);
+    this.env.addFilter("json", toJson);
+    this.env.addFilter("parseJson", parseJson);
+    this.env.addFilter("contains", contains);
+    this.env.addFilter("where", where);
     this.env.addExtension("embeds", new EmbedTags());
   }
 

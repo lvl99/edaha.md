@@ -1,0 +1,19 @@
+{
+  // Writes the published code and type definitions (dist/). edaha.md's core is read from its built types, so build it
+  // first (`pnpm build` in the workspace's folder builds the packages in order).
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "types": ["node"],
+    "paths": {
+      "@lvl99dotcom/edaha.md": ["../edaha/dist/index.d.ts"],
+      "@lvl99dotcom/edaha.md/*": ["../edaha/dist/*/index.d.ts"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["src/**/tests"]
+}

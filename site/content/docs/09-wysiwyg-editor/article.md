@@ -45,7 +45,7 @@ Searches and the article browser include changes made outside the editor straigh
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
    - **Image URL**, **Upload image**, **Choose file** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
-   - a button for each of the site's [embeds](/docs/07-embeds/), e.g. **YouTube video** or **MermaidJS diagram**: paste or write its content (e.g. a video's address), and set its options, if it has any (e.g. the Bandcamp player's layout), below the content. Options show their defaults, and options that don't apply to the others' values are hidden. If the content or options aren't right for that kind of embed, the dialog says why before adding it. The body shows the embed as the website will; its **Edit** button (or its kind's toolbar button, while it is selected) changes it. An embed that isn't valid lists why in the body, and the website leaves it out. An embed's kind can't be changed: remove it and add another. One whose kind the site has no plugin for can only be removed, or changed in the **Markdown** tab;
+   - a button for each of the site's [embeds](/docs/07-embeds/), e.g. **YouTube video** or **MermaidJS diagram**: paste or write its content (e.g. a video's address; some embeds, e.g. a table of contents, can be added without any), and set its options, if it has any (e.g. the Bandcamp player's layout), below the content. Options show their defaults, and options that don't apply to the others' values are hidden. If the content or options aren't right for that kind of embed, the dialog says why before adding it. The body shows the embed as the website will; its **Edit** button (or its kind's toolbar button, while it is selected) changes it. An embed that isn't valid lists why in the body, and the website leaves it out. An embed's kind can't be changed: remove it and add another. One whose kind the site has no plugin for can only be removed, or changed in the **Markdown** tab;
    - **Raw**: text shown exactly as you type it, without any formatting, e.g. to show Markdown or HTML as text. Press Enter for a new line, and Cmd+Enter (Ctrl+Enter on Windows and Linux) to leave it;
    - **Read more**: where the article's summary in lists ends.
 4. Choose **Save**.
@@ -62,15 +62,15 @@ The settings are in groups you can open and close: **Info** (type, status, slug,
 
 What the settings do:
 
-| Setting | What it does |
-| --- | --- |
-| **Type** | The kind of article, e.g. News or Page. |
-| **Template** | How the article is laid out, if your website has more than one layout for it. |
-| **Status** | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website). |
-| **Slug** | The last part of the article's address. Left empty, it is made from the title. |
-| **Publication date** | The article's date. |
-| **Excerpt** | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
-| **Thumbnail** | An image shown in lists. |
+| Setting              | What it does                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| **Type**             | The kind of article, e.g. News or Page.                                                          |
+| **Template**         | How the article is laid out, if your website has more than one layout for it.                    |
+| **Status**           | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website).      |
+| **Slug**             | The last part of the article's address. Left empty, it is made from the title.                   |
+| **Publication date** | The article's date.                                                                              |
+| **Excerpt**          | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
+| **Thumbnail**        | An image shown in lists.                                                                         |
 
 The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file**, chosen with **Choose existing file…**, or linked by address. Uploads need the article to be saved first. The thumbnail can also be chosen with **Choose existing file…**.
 

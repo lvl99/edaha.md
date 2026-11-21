@@ -26,13 +26,15 @@ yarn add @lvl99dotcom/edaha-editor -D
 pnpm add @lvl99dotcom/edaha-editor -D
 ```
 
-| Package                               | What it has                                                    |
-| ------------------------------------- | -------------------------------------------------------------- |
-| `@lvl99dotcom/edaha.md`               | The `edaha` command, the build, embed blocks and default theme |
-| `@lvl99dotcom/edaha-editor`           | The local WYSIWYG article editor (`edaha editor`)              |
-| `@lvl99dotcom/edaha-plugin-youtube`   | Embeds YouTube videos                                          |
-| `@lvl99dotcom/edaha-plugin-bandcamp`  | Embeds Bandcamp albums and tracks                              |
-| `@lvl99dotcom/edaha-plugin-mermaidjs` | Draws Mermaid diagrams                                         |
+| Package                                   | What it has                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------------- |
+| `@lvl99dotcom/edaha.md`                   | The `edaha` command, the build, embed blocks and default theme            |
+| `@lvl99dotcom/edaha-editor`               | The local WYSIWYG article editor (`edaha editor`)                         |
+| `@lvl99dotcom/edaha-plugin-youtube`       | Embeds YouTube videos                                                     |
+| `@lvl99dotcom/edaha-plugin-bandcamp`      | Embeds Bandcamp albums and tracks                                         |
+| `@lvl99dotcom/edaha-plugin-mermaidjs`     | Draws Mermaid diagrams                                                    |
+| `@lvl99dotcom/edaha-plugin-toc`           | Lists an article's headings as a table of contents                        |
+| `@lvl99dotcom/edaha-plugin-codehighlight` | Shows code with line numbers, syntax highlighting, a copy button and tabs |
 
 ## Quick start
 
@@ -231,7 +233,7 @@ pnpm site:publish   # build site/ and publish it to the gh-pages branch (GitHub 
   - `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`.
   - `src/editor/`: the editor's web server (`startEditor`).
   - `src/shared/tests/`: test helpers.
-- `packages/edaha-plugin-youtube/`, `packages/edaha-plugin-bandcamp/`, `packages/edaha-plugin-mermaidjs/`: embed plugins.
+- `packages/edaha-plugin-youtube/`, `packages/edaha-plugin-bandcamp/`, `packages/edaha-plugin-mermaidjs/`, `packages/edaha-plugin-toc/`, `packages/edaha-plugin-codehighlight/`: embed plugins.
 - `scripts/`: the `site:*` scripts for edaha.md's own website.
 - `site/`: edaha.md's own website and docs.
 

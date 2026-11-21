@@ -18,8 +18,23 @@ export interface EmbedContext {
  */
 export type EmbedState = Record<string, unknown>;
 
+/** One of an article's headings, as an embed sees it (see EmbedRenderContext.headings) */
+export interface EmbedHeading {
+  /** Its level: 1 for `<h1>` to 6 for `<h6>` */
+  level: number;
+  /** Its text, without formatting, e.g. "Fish & chips" */
+  text: string;
+  /** Its ID, to link to it, e.g. "fish-chips" */
+  id: string;
+}
+
 /** What an embed's `render` gets besides the content */
 export interface EmbedRenderContext extends EmbedContext {
+  /**
+   * The headings (with IDs) of the article the block is in, from its body, in order: not its title, nor headings in
+   * embed blocks. Empty where the block isn't in an article, e.g. the editor's embed frames.
+   */
+  headings: readonly EmbedHeading[];
   /** What the embed keeps for this page (see EmbedState): change it while rendering */
   state: EmbedState;
   /** The block's options, with their defaults and without hidden ones (see EmbedPlugin.options) */
@@ -94,6 +109,11 @@ export interface EmbedPlugin {
    * it, the dialog says "Provide the embed's content, e.g. a URL or code".
    */
   info?: string | undefined;
+  /**
+   * Optional; whether a block can have no content, e.g. a table of contents (default: false). The embed dialog then
+   * saves a block without content.
+   */
+  contentOptional?: boolean | undefined;
   /** Optional; the web addresses its HTML loads from, which the editor's previews allow */
   sources?: EmbedSources | undefined;
   /**

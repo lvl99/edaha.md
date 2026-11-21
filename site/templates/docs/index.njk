@@ -1,0 +1,8 @@
+{% extends "@theme/article/single.njk" %}
+
+{# The index article is the type's front page, so it's the only breadcrumb item after Home #}
+{% block breadcrumbItems %}
+<li><a href="{{ article.url }}" aria-current="page">{{ article.title }}</a></li>
+{% endblock %}
+
+{% block aside %}{% endblock %}

@@ -101,30 +101,30 @@ These make it easy to show something on some pages only, e.g. in your `layouts/h
 
 Article pages also get `article`:
 
-| Variable | Description |
-| --- | --- |
-| `article.title` | The title. |
-| `article.url` | The page's URL, e.g. `/news/hello-world/`. |
-| `article.type`, `article.slug`, `article.status` | The type, slug and status (`published` or `unlisted`). |
-| `article.date` | The date, as an ISO 8601 timestamp. Use the `date` filter to show it. |
-| `article.author` | `name`, `email`, `url`, and `listUrl` (the author's list); nothing for articles without an author, so check it first: `{% if article.author %}`. |
-| `article.tags` | Each tag's `name` and `url` (the tag's list). |
-| `article.thumbnail` | The thumbnail's URL, if there is one. |
-| `article.bodyHtml`, `article.bodyText` | The body as HTML, and as plain text. |
-| `article.excerptHtml`, `article.excerptText` | The excerpt as HTML, and as plain text. |
-| `article.attachments` | Each attachment's `name`, `url`, `thumbnail`, `mimeType` and `sizeRelative` (e.g. "2.5 MB"). |
-| `article.meta` | The article's [custom settings](/docs/03-configuration/#metadata) by key, e.g. `article.meta.featured`: the valid values of those its type uses, with file fields' names as their URLs. |
+| Variable                                         | Description                                                                                                                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `article.title`                                  | The title.                                                                                                                                                                              |
+| `article.url`                                    | The page's URL, e.g. `/news/hello-world/`.                                                                                                                                              |
+| `article.type`, `article.slug`, `article.status` | The type, slug and status (`published` or `unlisted`).                                                                                                                                  |
+| `article.date`                                   | The date, as an ISO 8601 timestamp. Use the `date` filter to show it.                                                                                                                   |
+| `article.author`                                 | `name`, `email`, `url`, and `listUrl` (the author's list); nothing for articles without an author, so check it first: `{% if article.author %}`.                                        |
+| `article.tags`                                   | Each tag's `name` and `url` (the tag's list).                                                                                                                                           |
+| `article.thumbnail`                              | The thumbnail's URL, if there is one.                                                                                                                                                   |
+| `article.bodyHtml`, `article.bodyText`           | The body as HTML, and as plain text.                                                                                                                                                    |
+| `article.excerptHtml`, `article.excerptText`     | The excerpt as HTML, and as plain text.                                                                                                                                                 |
+| `article.attachments`                            | Each attachment's `name`, `url`, `thumbnail`, `mimeType` and `sizeRelative` (e.g. "2.5 MB").                                                                                            |
+| `article.meta`                                   | The article's [custom settings](/docs/03-configuration/#metadata) by key, e.g. `article.meta.featured`: the valid values of those its type uses, with file fields' names as their URLs. |
 
 List pages (and [index articles](/docs/06-lists/#index-articles)) get `list`:
 
-| Variable | Description |
-| --- | --- |
-| `list.name` | The type's plural label, the tag's name or the author's name. |
-| `list.kind` | `type`, `tag` or `author`. |
-| `list.type` | The article type the list belongs to. |
-| `list.url`, `list.feedUrl`, `list.hasFeed` | The list's first page, its RSS feed, and whether it has one. |
-| `list.articles` | The articles on this page, newest first. |
-| `list.pagination` | `pages` (each with `index`, `url` and `isCurrent`), `page`, `prevPage` and `nextPage`. |
+| Variable                                   | Description                                                                            |
+| ------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `list.name`                                | The type's plural label, the tag's name or the author's name.                          |
+| `list.kind`                                | `type`, `tag` or `author`.                                                             |
+| `list.type`                                | The article type the list belongs to.                                                  |
+| `list.url`, `list.feedUrl`, `list.hasFeed` | The list's first page, its RSS feed, and whether it has one.                           |
+| `list.articles`                            | The articles on this page, newest first.                                               |
+| `list.pagination`                          | `pages` (each with `index`, `url` and `isCurrent`), `page`, `prevPage` and `nextPage`. |
 
 HTML values such as `bodyHtml` must be output with the `safe` filter, as Nunjucks escapes everything else:
 
@@ -136,12 +136,17 @@ HTML values such as `bodyHtml` must be output with the `safe` filter, as Nunjuck
 
 As well as Nunjucks' own filters, templates have:
 
-| Filter | Example | Output |
-| --- | --- | --- |
-| `date` | `{{ article.date \| date }}` | 16 November 2026 |
-| `rfc822` | `{{ article.date \| rfc822 }}` | Mon, 16 Nov 2026 09:00:00 GMT |
-| `absoluteUrl(site.url)` | `{{ article.url \| absoluteUrl(site.url) }}` | `https://example.com/news/hello/` |
-| `absoluteUrls(site.url)` | `{{ article.excerptHtml \| absoluteUrls(site.url) }}` | The HTML with absolute links |
+| Filter                   | Example                                               | Output                                                                                                             |
+| ------------------------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `date`                   | `{{ article.date \| date }}`                          | 16 November 2026                                                                                                   |
+| `rfc822`                 | `{{ article.date \| rfc822 }}`                        | Mon, 16 Nov 2026 09:00:00 GMT                                                                                      |
+| `absoluteUrl(site.url)`  | `{{ article.url \| absoluteUrl(site.url) }}`          | `https://example.com/news/hello/`                                                                                  |
+| `absoluteUrls(site.url)` | `{{ article.excerptHtml \| absoluteUrls(site.url) }}` | The HTML with absolute links                                                                                       |
+| `json`                   | `{{ article.tags \| json \| safe }}`                  | `[{"name":"News","url":"/tags/news/"}]`                                                                            |
+| `json(true)`             | `{{ article.tags \| json(true) \| safe }}`            | The same JSON, indented by 2 spaces                                                                                |
+| `parseJson`              | `{% set data = '{"a":1}' \| parseJson %}{{ data.a }}` | `1` (nothing if the text isn't valid JSON)                                                                         |
+| `contains(value)`        | `{% if article.slug \| contains("plugin-") %}`        | `true` if a string has the text, or an array has the value                                                         |
+| `where(property)`        | `{{ article.tags \| where("name") \| join(", ") }}`   | `News, Releases` (a property's values, skipping items without it; nested properties like `"author.name"` work too) |
 
 ## Embed tags
 

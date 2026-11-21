@@ -4,6 +4,8 @@ An [edaha.md](https://github.com/lvl99/edaha.md#readme) embed plugin for Bandcam
 
 ```sh
 npm add @lvl99dotcom/edaha-plugin-bandcamp --save-dev
+yarn add @lvl99dotcom/edaha-plugin-bandcamp -D
+pnpm add @lvl99dotcom/edaha-plugin-bandcamp -D
 ```
 
 ```yaml
