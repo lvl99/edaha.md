@@ -2,6 +2,26 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
+## 0.3.0 (2026-11-21)
+
+Two new embed plugins: a table of contents and a code highlighter.
+
+### Added
+
+- `@lvl99dotcom/edaha-plugin-toc`: a table of contents of the article's headings, as nested lists of links, with a list style for each heading level (`number`, `number-depth`, `alpha`, `number-roman`, `circle`, `disc`, `square`, `diamond`). It is built with the page and needs no JavaScript.
+- `@lvl99dotcom/edaha-plugin-codehighlight`: code blocks with line numbers, a copy button and syntax highlighting (Shiki, loaded from jsDelivr, in light or dark colours to match the page). Several code blocks become tabs, labelled by their headings or languages.
+- Embed plugins get the headings of the article a block is in (`context.headings` in `render`), and can set `contentOptional` so the embed dialog saves blocks without content.
+- The `json`, `parseJson`, `contains` and `where` template filters.
+- A docs front page, and docs pages for the new plugins.
+
+### Changed
+
+- Checkboxes and radio buttons in the editor's metadata and embed option fields come before their labels (after them in right-to-left text).
+
+### Fixed
+
+- Links to the docs in the READMEs work on GitHub and npm.
+
 ## 0.2.0 (2026-11-20)
 
 edaha.md is now a set of packages: the core `@lvl99dotcom/edaha.md`, the article editor `@lvl99dotcom/edaha-editor`, and embed plugins for YouTube, Bandcamp and MermaidJS. From this release, the packages share their major and minor version numbers; each has its own patch number.
