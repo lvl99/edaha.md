@@ -321,6 +321,12 @@ importers:
         specifier: workspace:^
         version: link:../edaha
 
+  packages/edaha-plugin-codehighlight:
+    devDependencies:
+      '@lvl99dotcom/edaha.md':
+        specifier: workspace:^
+        version: link:../edaha
+
   packages/edaha-plugin-mermaidjs:
     devDependencies:
       '@lvl99dotcom/edaha.md':
