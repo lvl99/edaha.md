@@ -250,6 +250,9 @@ importers:
       '@lvl99dotcom/edaha-editor':
         specifier: workspace:^
         version: link:../edaha-editor
+      '@lvl99dotcom/edaha-theme-default':
+        specifier: workspace:^
+        version: link:../edaha-theme-default
       ajv:
         specifier: ^8.20.0
         version: 8.20.0
@@ -350,6 +353,8 @@ importers:
       '@lvl99dotcom/edaha.md':
         specifier: workspace:^
         version: link:../edaha
+
+  packages/edaha-theme-default: {}
 
 packages:
 

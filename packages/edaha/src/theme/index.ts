@@ -1,10 +1,15 @@
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * edaha.md's default theme folder, which holds `templates/` and `static/`. A site's own `templates/` and `static/`
- * override its files one by one. The path is the same from `src/` and from the published `dist/`.
+ * edaha.md's default theme folder (the `@lvl99dotcom/edaha-theme-default` package), which holds `templates/` and
+ * `static/`. A site's own `templates/` and `static/` override its files one by one.
  *
  * @example
- * join(THEME_DIR, "templates"); // ".../node_modules/@lvl99dotcom/edaha.md/theme/templates"
+ * join(THEME_DIR, "templates"); // ".../node_modules/@lvl99dotcom/edaha-theme-default/templates"
  */
-export const THEME_DIR = fileURLToPath(new URL("../../theme", import.meta.url));
+export const THEME_DIR = dirname(
+  fileURLToPath(
+    import.meta.resolve("@lvl99dotcom/edaha-theme-default/package.json"),
+  ),
+);

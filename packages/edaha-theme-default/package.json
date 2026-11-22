@@ -1,0 +1,33 @@
+{
+  "name": "@lvl99dotcom/edaha-theme-default",
+  "version": "0.3.0",
+  "description": "edaha.md's default theme: neutral Nunjucks templates and a stylesheet.",
+  "keywords": [
+    "edaha.md",
+    "edaha-theme",
+    "theme",
+    "nunjucks"
+  ],
+  "author": "Matt Scheurich <matt@lvl99.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lvl99/edaha.md.git",
+    "directory": "packages/edaha-theme-default"
+  },
+  "homepage": "https://github.com/lvl99/edaha.md#readme",
+  "bugs": "https://github.com/lvl99/edaha.md/issues",
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "templates",
+    "static",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

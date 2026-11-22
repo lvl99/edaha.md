@@ -28,7 +28,8 @@ pnpm add @lvl99dotcom/edaha-editor -D
 
 | Package                                   | What it has                                                               |
 | ----------------------------------------- | ------------------------------------------------------------------------- |
-| `@lvl99dotcom/edaha.md`                   | The `edaha` command, the build, embed blocks and default theme            |
+| `@lvl99dotcom/edaha.md`                   | The `edaha` command, the build and embed blocks                           |
+| `@lvl99dotcom/edaha-theme-default`        | The default theme (installed with `@lvl99dotcom/edaha.md`)                |
 | `@lvl99dotcom/edaha-editor`               | The local WYSIWYG article editor (`edaha editor`)                         |
 | `@lvl99dotcom/edaha-plugin-youtube`       | Embeds YouTube videos                                                     |
 | `@lvl99dotcom/edaha-plugin-bandcamp`      | Embeds Bandcamp albums and tracks                                         |
@@ -161,7 +162,7 @@ When defining article types in the [config](https://edaha.md/docs/03-configurati
 
 ## Templates and the default theme
 
-edaha.md ships a neutral default theme in `@lvl99dotcom/edaha.md`'s `theme/` folder: Nunjucks templates in `theme/templates/` and a stylesheet in `theme/static/base.css`.
+edaha.md's neutral default theme is the `@lvl99dotcom/edaha-theme-default` package, installed with `@lvl99dotcom/edaha.md`: Nunjucks templates in `templates/` and a stylesheet in `static/base.css`.
 
 A site's own templates folder (`templates/`, or `templatesDir`) overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type.
 
@@ -225,14 +226,14 @@ pnpm site:publish   # build site/ and publish it to the gh-pages branch (GitHub 
   - `src/generator/`: finds and reads the config file and articles, renders templates and builds the site (`buildSite`).
   - `src/embeds/`: embed blocks, plugins and the embed resolver.
   - `src/cli/`: the `edaha` command. `edaha editor` loads `@lvl99dotcom/edaha-editor` when it is installed.
-  - `src/theme/`: the path to `theme/`.
+  - `src/theme/`: the path to the default theme (`@lvl99dotcom/edaha-theme-default`).
   - `src/shared/tests/fixtures/`: a fixture site, also used by the editor's tests.
-  - `theme/`: the default templates and stylesheet.
 - `packages/edaha-editor/` (`@lvl99dotcom/edaha-editor`):
   - `src/server/`: the editor's API, article store and Markdown conversion.
   - `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`.
   - `src/editor/`: the editor's web server (`startEditor`).
   - `src/shared/tests/`: test helpers.
+- `packages/edaha-theme-default/` (`@lvl99dotcom/edaha-theme-default`): the default templates and stylesheet.
 - `packages/edaha-plugin-youtube/`, `packages/edaha-plugin-bandcamp/`, `packages/edaha-plugin-mermaidjs/`, `packages/edaha-plugin-toc/`, `packages/edaha-plugin-codehighlight/`: embed plugins.
 - `scripts/`: the `site:*` scripts for edaha.md's own website.
 - `site/`: edaha.md's own website and docs.
