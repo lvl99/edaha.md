@@ -9,6 +9,7 @@ import {
   EDITOR_BASE,
   EDITOR_PORT,
   createEditorServer,
+  editorPage,
   editorPort,
   editorUrl,
   startEditor,
@@ -42,6 +43,19 @@ describe("editorUrl and CLIENT_DIR", () => {
   });
 });
 
+describe("editorPage", () => {
+  it("should set the options as attributes of the editor element", () => {
+    const html = "<body><edaha-editor></edaha-editor></body>";
+    expect(editorPage(html, {})).toBe(html);
+    expect(editorPage(html, { hideTitle: true })).toBe(
+      "<body><edaha-editor hide-title></edaha-editor></body>",
+    );
+    expect(editorPage(html, { hideThemeSwitcher: true })).toBe(
+      "<body><edaha-editor hide-theme-switcher></edaha-editor></body>",
+    );
+  });
+});
+
 describe("createEditorServer", () => {
   it("should serve the editor page and its files", async () => {
     const { siteDir, clientDir } = await setup();
@@ -62,6 +76,19 @@ describe("createEditorServer", () => {
       expect((await app.request(`${EDITOR_BASE}${path}`)).status, path).toBe(
         404,
       );
+  });
+
+  it("should hide the title and theme switcher when asked", async () => {
+    const { siteDir, clientDir } = await setup();
+    const app = await createEditorServer({
+      siteDir,
+      clientDir,
+      hideTitle: true,
+      hideThemeSwitcher: true,
+    });
+    expect(await (await app.request("/")).text()).toBe(
+      "<edaha-editor hide-title hide-theme-switcher></edaha-editor>",
+    );
   });
 
   it("should serve the built editor page from CLIENT_DIR by default", async () => {

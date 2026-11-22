@@ -120,12 +120,19 @@ export const groupRecent = (
  * the article list opens over the page from a menu button, and the host element has the `compact` attribute (and
  * `focus-mode` in focus mode) for the stylesheet.
  *
+ * Apps that show the editor inside their own window can hide its "edaha.md" title (the `hide-title` attribute; Home
+ * still goes back to the welcome prompt) and its theme switcher (`hide-theme-switcher`; the device's light or dark
+ * setting is followed instead, so the app can set it).
+ *
  * @example
  * html`<edaha-editor></edaha-editor>`
+ * html`<edaha-editor hide-title hide-theme-switcher></edaha-editor>`
  */
 export class EdahaEditor extends LitElement {
   static override properties = {
     api: { attribute: false },
+    hideTitle: { type: Boolean, attribute: "hide-title" },
+    hideThemeSwitcher: { type: Boolean, attribute: "hide-theme-switcher" },
     recent: { state: true },
     types: { state: true },
     selected: { state: true },
@@ -146,6 +153,10 @@ export class EdahaEditor extends LitElement {
   };
 
   declare api: EditorApi;
+  /** Whether the "edaha.md" title is hidden (the site's name is still the page's heading for screen readers) */
+  declare hideTitle: boolean;
+  /** Whether the theme switcher is hidden, showing the device's light or dark theme instead of a chosen one */
+  declare hideThemeSwitcher: boolean;
   /** Each type's most recently changed articles */
   declare recent: RecentArticles[];
   /** Article types from the config file */
@@ -210,6 +221,8 @@ export class EdahaEditor extends LitElement {
   constructor() {
     super();
     this.api = new EditorApi();
+    this.hideTitle = false;
+    this.hideThemeSwitcher = false;
     this.recent = [];
     this.types = {};
     this.editing = false;
@@ -236,6 +249,8 @@ export class EdahaEditor extends LitElement {
     this.addEventListener(TOAST_EVENT, this.onToast);
     // The theme switcher's label says which theme it switches to, which follows the device until one is chosen
     this.stopWatchingTheme = onDeviceThemeChange(() => this.requestUpdate());
+    // Without the switcher, a theme chosen with it before can't be changed, so the device's is shown
+    if (this.hideThemeSwitcher) delete document.documentElement.dataset.theme;
     this.narrow = isNarrow();
     this.stopWatchingNarrow = onNarrowChange(() => (this.narrow = isNarrow()));
     void this.refresh().then(() => this.openFromAddress());
@@ -742,7 +757,7 @@ export class EdahaEditor extends LitElement {
         >
           ${icon("menu")}<span class="visually-hidden">Articles</span>
         </button>
-        <span class="edaha-editor-bar-title">edaha.md</span>
+        ${this.hideTitle ? nothing : html`<span class="edaha-editor-bar-title">edaha.md</span>`}
       </div>
       <div
         class="nav-backdrop ${classMap({ open: this.navOpen })}"
@@ -764,28 +779,38 @@ export class EdahaEditor extends LitElement {
         >
           ${icon("close")}<span class="visually-hidden">Close articles</span>
         </button>
-        <button
-          type="button"
-          class="theme-switcher"
-          title=${themeSwitcherLabel()}
-          @click=${() => {
-            toggleTheme();
-            this.requestUpdate();
-          }}
-        >
-          <span class="visually-hidden">${themeSwitcherLabel()}</span>
-        </button>
-        <!-- Goes back to the welcome prompt; a button for keyboards and screen readers, but looking like the title -->
-        <h1 class="edaha-title">
-          <button
-            type="button"
-            class="edaha-title-button"
-            title="Show the welcome prompt"
-            @click=${() => void this.showWelcome()}
-          >
-            edaha.md<span class="leaf-device"></span>
-          </button>
-        </h1>
+        ${
+          this.hideThemeSwitcher
+            ? nothing
+            : html`<button
+                type="button"
+                class="theme-switcher"
+                title=${themeSwitcherLabel()}
+                @click=${() => {
+                  toggleTheme();
+                  this.requestUpdate();
+                }}
+              >
+                <span class="visually-hidden">${themeSwitcherLabel()}</span>
+              </button>`
+        }
+        ${
+          this.hideTitle
+            ? html`<h1 class="visually-hidden">
+                ${this.site?.name ?? "Articles"}
+              </h1>`
+            : html`<!-- Goes back to the welcome prompt; a button for keyboards and screen readers, but looking like the title -->
+                <h1 class="edaha-title">
+                  <button
+                    type="button"
+                    class="edaha-title-button"
+                    title="Show the welcome prompt"
+                    @click=${() => void this.showWelcome()}
+                  >
+                    edaha.md<span class="leaf-device"></span>
+                  </button>
+                </h1>`
+        }
         <div class="edaha-editor-new">
           <button
             type="button"
@@ -842,6 +867,17 @@ export class EdahaEditor extends LitElement {
             ${icon("folder_open")}<span class="visually-hidden">Files</span>
           </button>
         </div>
+        <!-- Goes back to the welcome prompt, which is the editor's home -->
+        <a
+          href="#"
+          class="edaha-editor-home edaha-editor-article-group-item-title"
+          aria-current=${this.editing ? "false" : "page"}
+          @click=${(event: Event) => {
+            event.preventDefault();
+            void this.showWelcome();
+          }}
+          >Home</a
+        >
         ${this.searchResult ? this.renderSearchResult(this.searchResult, renderItem) : this.renderGroups(renderItem)}
       </nav>
       <!-- Out of reach while the article list is open over it -->

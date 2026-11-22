@@ -19,7 +19,7 @@ export default tseslint.config(
   },
   {
     // Scripts the website's pages load in the browser
-    files: ["site/static/**/*.js", "packages/*/theme/static/**/*.js"],
+    files: ["site/static/**/*.js", "packages/edaha-theme-*/static/**/*.js"],
     languageOptions: { globals: globals.browser },
   },
   {

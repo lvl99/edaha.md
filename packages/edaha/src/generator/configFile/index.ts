@@ -3,6 +3,7 @@ import { basename, dirname, extname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse } from "yaml";
 import { loadPlugins } from "../../embeds/index.ts";
+import { resolveTheme } from "../../theme/index.ts";
 import { parseConfig, type EdahaConfig } from "../config/index.ts";
 import type { Logger } from "../types/index.ts";
 
@@ -31,6 +32,8 @@ export interface SiteConfig {
   siteDir: string;
   /** The validated settings */
   config: EdahaConfig;
+  /** The folder of the theme the config's `theme` names, or undefined for edaha.md's default theme (THEME_DIR) */
+  themeDir?: string | undefined;
 }
 
 /** Options for finding and reading a site's config file */
@@ -131,7 +134,7 @@ export const readConfigFile = async (file: string): Promise<unknown> => {
 
 /**
  * Find (or use the given) config file, read it and validate its settings. The site folder is the config file's folder.
- * Embed plugin packages named in `plugins` are loaded from it.
+ * Embed plugin packages named in `plugins` are loaded from it, and the folder of the theme named in `theme` is found.
  *
  * @example
  * const { siteDir, config } = await loadSiteConfig({ siteDir: "my-site" });
@@ -155,9 +158,14 @@ export const loadSiteConfig = async (
         cause: error,
       });
     }
-  return {
-    configFile,
-    siteDir,
-    config: parseConfig(data, basename(configFile)),
-  };
+  const config = parseConfig(data, basename(configFile));
+  const themeDir =
+    config.theme === undefined
+      ? undefined
+      : await resolveTheme(config.theme, siteDir).catch((error: Error) => {
+          throw new Error(`${basename(configFile)}: ${error.message}`, {
+            cause: error,
+          });
+        });
+  return { configFile, siteDir, config, themeDir };
 };

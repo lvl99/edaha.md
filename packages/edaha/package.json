@@ -32,7 +32,6 @@
   },
   "files": [
     "dist",
-    "theme",
     "README.md",
     "LICENSE"
   ],
@@ -58,6 +57,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
+    "@lvl99dotcom/edaha-theme-default": "workspace:^",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "lodash": "^4.18.1",

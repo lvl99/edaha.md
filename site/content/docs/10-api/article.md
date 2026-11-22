@@ -34,6 +34,7 @@ level6: circle
 
 `buildSite` builds a site, as `edaha build` does:
 
+<!-- embed:codehighlight -->
 ```ts
 import { buildSite } from "@lvl99dotcom/edaha.md";
 
@@ -43,6 +44,7 @@ const result = await buildSite({
 });
 console.log(`Built ${result.files.length} files into ${result.outputDir}`);
 ```
+<!-- /embed:codehighlight -->
 
 ### How a build works
 
@@ -95,7 +97,7 @@ A site's template can build on the theme's version of itself with `{% extends "@
 | `siteDir` | String | The folder to look for a config file in, before the nearest `package.json`'s folder. | The current folder |
 | `configFile` | String | The config file to use instead of looking for one. The site folder is its folder. | The first [config file](/docs/03-configuration/#where-it-is-found) found |
 | `siteUrl` | String | The website's absolute URL, for feeds. Its path (e.g. `/edaha.md`) starts every URL in the pages. | `siteUrl` in the config file, then `http://localhost` with a warning |
-| `themeDir` | String | The default theme's folder (with `templates/` and `static/`), which the site's own templates and static files override. | edaha.md's theme (`THEME_DIR`) |
+| `themeDir` | String | The theme's folder (with `templates/` and `static/`), which the site's own templates and static files override, instead of the config file's `theme`. | The config file's [`theme`](/docs/03-configuration/#theme), then edaha.md's default theme (`THEME_DIR`) |
 | `plugins` | EmbedPlugin\[\] | [Embed plugins](/docs/07-embeds/) added after the config file's `plugins`. One with the same key as the config file's is left out. | None |
 | `logger` | `{ warn }` | Where warnings go, e.g. about articles with problems. | `console` |
 | `fetch` | Function | Fetches data for embeds that need it, e.g. Bandcamp's. | The global `fetch` |
@@ -115,6 +117,7 @@ It rejects with an error that names the problem (and the config file or article)
 
 `loadSiteConfig` finds and reads a site's config file as the build does, e.g. to read its settings in a script of your own:
 
+<!-- embed:codehighlight -->
 ```ts
 import { loadSiteConfig } from "@lvl99dotcom/edaha.md";
 
@@ -123,8 +126,32 @@ const { configFile, siteDir, config } = await loadSiteConfig({
 });
 console.log(`${config.name}: ${Object.keys(config.types).join(", ")}`);
 ```
+<!-- /embed:codehighlight -->
 
-It takes `siteDir`, `configFile` and `logger`, like `buildSite`. The config helpers it uses are exported too: `findConfigFile` (which file would be used), `readConfigFile` (its raw settings) and `parseConfig` (check settings and fill in defaults; give it plugin objects, as it doesn't load packages).
+It takes `siteDir`, `configFile` and `logger`, like `buildSite`. Besides the config file, its folder and its settings, it gives `themeDir`: the folder of the theme named in the config file's `theme`, or `undefined` for the default theme. The config helpers it uses are exported too: `findConfigFile` (which file would be used), `readConfigFile` (its raw settings) and `parseConfig` (check settings and fill in defaults; give it plugin objects, as it doesn't load packages).
+
+### Themes
+
+`@lvl99dotcom/edaha.md/theme` has helpers for [themes](/docs/05-templating/#using-another-theme), e.g. for tools that manage them:
+
+<!-- embed:codehighlight -->
+```ts
+import { readThemeInfo, resolveTheme, THEME_DIR } from "@lvl99dotcom/edaha.md";
+
+const themeDir = await resolveTheme("../themes/my-theme", "my-site");
+const { name, version, authors, isPackage } = await readThemeInfo(themeDir);
+```
+<!-- /embed:codehighlight -->
+
+| Export | Description |
+| --- | --- |
+| `THEME_DIR` | The default theme's folder. |
+| `THEME_FILE` | The name of a theme's settings file: `edahatheme.yml`. |
+| `resolveTheme(theme, siteDir)` | The folder of a `theme` setting: a folder path (relative to `siteDir`) or an installed package's name. Rejects if it isn't found. |
+| `isThemePath(theme)` | Whether a `theme` setting is a folder path (it starts with `.` or is absolute) rather than a package name. |
+| `readThemeInfo(themeDir)` | A theme's `name`, `description`, `version` and `authors`, from its `package.json` if it has one (then `isPackage` is `true`), else its `edahatheme.yml`, else just its folder's name. Rejects, naming the file, if the file is invalid. |
+| `parseThemeInfo(data, source)` | Checks the settings read from an `edahatheme.yml`. |
+| `packageAuthor(value)` | Reads a `package.json` author, e.g. `"Jane Doe <jane@example.com> (https://example.com)"`. |
 
 ### Embed plugins
 
@@ -134,6 +161,7 @@ The embed API (`EmbedPlugin`, `EmbedResolver`, `EMBED_PAGE_PARTS`, `embedBlock`,
 
 `runCli` runs the `edaha` command with its arguments, and resolves with its exit code. It takes the folder, environment and output to use, so it can run inside another tool:
 
+<!-- embed:codehighlight -->
 ```ts
 import { runCli } from "@lvl99dotcom/edaha.md";
 
@@ -144,11 +172,13 @@ const code = await runCli(["build", "--dir", "my-site"], {
   error: console.error,
 });
 ```
+<!-- /embed:codehighlight -->
 
 ## Editor
 
 `startEditor`, from the editor package, starts the [article editor](/docs/09-wysiwyg-editor/) on this computer, as `edaha editor` does:
 
+<!-- embed:codehighlight -->
 ```ts
 import { startEditor } from "@lvl99dotcom/edaha-editor";
 
@@ -157,6 +187,7 @@ console.log(`Open ${editor.url}`);
 // Later
 await editor.close();
 ```
+<!-- /embed:codehighlight -->
 
 It only listens on `127.0.0.1`: never deploy it, as it reads and writes the site's files.
 
@@ -169,8 +200,10 @@ It only listens on `127.0.0.1`: never deploy it, as it reads and writes the site
 | `siteDir` | String | The folder to look for a config file in, before the nearest `package.json`'s folder. | The current folder |
 | `configFile` | String | The config file to use instead of looking for one. | The first config file found |
 | `port` | Number | The port to listen on. | `5180` |
-| `themeDir` | String | The default theme's folder, which the site's own templates and static files override. | edaha.md's theme |
+| `themeDir` | String | The theme's folder, which the site's own templates and static files override, instead of the config file's `theme`. | The config file's `theme`, then edaha.md's default theme |
 | `plugins` | EmbedPlugin\[\] | Embed plugins added after the config file's `plugins`. | None |
+| `hideTitle` | Boolean | Hide the "edaha.md" title, e.g. in an app that shows the editor in its own window. **Home** still goes back to the welcome prompt. | `false` |
+| `hideThemeSwitcher` | Boolean | Hide the light/dark theme switcher, showing the device's light or dark theme instead. | `false` |
 | `fetch` | Function | Fetches data for embeds that need it. | The global `fetch` |
 | `clientDir` | String | The folder with the editor page's built files. | The editor package's `dist/client` |
 | `logger` | `{ warn }` | Where the warning about a folder with several config files goes. | None |
@@ -181,6 +214,7 @@ It only listens on `127.0.0.1`: never deploy it, as it reads and writes the site
 
 `createEditorServer` gives the editor as a [Hono](https://hono.dev) app instead, without listening, e.g. to serve it with your own server or test it:
 
+<!-- embed:codehighlight -->
 ```ts
 import { createEditorServer } from "@lvl99dotcom/edaha-editor";
 
@@ -188,5 +222,6 @@ const app = await createEditorServer({ siteDir: "my-site" });
 const response = await app.request("/api/articles");
 console.log(await response.json());
 ```
+<!-- /embed:codehighlight -->
 
 Its API only accepts changes from the editor page's own address (`http://127.0.0.1:<port>`), so serve it there.

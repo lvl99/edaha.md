@@ -186,6 +186,24 @@ code {
   top: 1rem;
 }
 
+/* Room for the theme switcher, which sits beside the title, when the title is hidden */
+edaha-editor[hide-title]:not([hide-theme-switcher], [compact])
+  .edaha-editor-nav {
+  padding-top: 3rem;
+}
+
+/* The editor and its scrolling panes hold what's positioned inside them, e.g. the .visually-hidden labels of buttons
+   low in a pane: otherwise those are placed against the page, making it taller than the window, so it scrolls (e.g.
+   when typing) and leaves a gap under the editor */
+edaha-editor,
+.edaha-article-main,
+.edaha-article-metadata,
+.edaha-article-metadata-fields,
+.article-browser-results,
+.embed-dialog-body {
+  position: relative;
+}
+
 /* Hidden on screen but read by screen readers, e.g. extra context for "Read more" links */
 .visually-hidden {
   position: absolute;
@@ -310,6 +328,11 @@ edaha-editor {
 
 .edaha-editor-new button {
   width: 100%;
+}
+
+/* Home (the welcome prompt), under the search */
+.edaha-editor-home {
+  margin-bottom: 1rem;
 }
 
 .edaha-editor-filters {

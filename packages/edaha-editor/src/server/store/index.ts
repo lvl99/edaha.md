@@ -298,18 +298,19 @@ export class ArticleStore {
   /**
    * @param site - the site's config file, folder (which holds the articles, templates and static files folders) and
    *   settings
-   * @param themeDir - the default theme folder that the site's templates and static files override
+   * @param themeDir - the theme folder that the site's templates and static files override, instead of the config's
+   *   `theme` (default: the config's `theme`, else THEME_DIR)
    * @param options - how the article index watches for changes
    */
   constructor(
     site: SiteConfig,
-    themeDir: string = THEME_DIR,
+    themeDir?: string,
     options: ArticleStoreOptions = {},
   ) {
     this.indexOptions = options;
     this.configFile = site.configFile;
     this.siteDir = site.siteDir;
-    this.themeDir = themeDir;
+    this.themeDir = themeDir ?? site.themeDir ?? THEME_DIR;
     this.articlesDir = join(site.siteDir, site.config.articlesDir);
     this.templatesDir = site.config.templatesDir;
     this.staticDir = site.config.staticDir;

@@ -551,6 +551,33 @@ describe("buildSite", () => {
     expect(result.files).not.toContain("site.css");
   });
 
+  it("should use the theme named in the config file, unless given another", async () => {
+    const space = await workspace();
+    const theme = join(space.root, "themes/blog");
+    await cp(join(THEME_DIR, "templates"), join(theme, "templates"), {
+      recursive: true,
+    });
+    await mkdir(join(theme, "static"));
+    await writeFile(join(theme, "static/blog.css"), "blog theme");
+    const config = join(space.siteDir, "edahaconfig.yml");
+    await writeFile(
+      config,
+      `${await readFile(config, "utf8")}\ntheme: ../themes/blog\n`,
+    );
+    const options = {
+      siteDir: space.siteDir,
+      siteUrl: "https://example.com",
+      logger: { warn: vi.fn() },
+      fetch: (() => Promise.reject(new Error("offline"))) as never,
+    };
+    const result = await buildSite(options);
+    expect(result.files).toContain("blog.css");
+    expect(result.files).not.toContain("base.css");
+    const given = await buildSite({ ...options, themeDir: THEME_DIR });
+    expect(given.files).toContain("base.css");
+    expect(given.files).not.toContain("blog.css");
+  });
+
   it("should reject slugs and type paths that clash with other URLs", async () => {
     const tags = await workspace();
     await writeArticle(

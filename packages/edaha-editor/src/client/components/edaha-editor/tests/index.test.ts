@@ -69,7 +69,10 @@ const ARTICLE = {
 } as EditorArticle;
 
 /** Mount the editor with a fake API */
-const setup = async (recent = vi.fn(async () => RECENT)) => {
+const setup = async (
+  recent = vi.fn(async () => RECENT),
+  attributes: string[] = [],
+) => {
   const api = {
     recent,
     // No articles have metadata problems unless a test says so
@@ -107,6 +110,7 @@ const setup = async (recent = vi.fn(async () => RECENT)) => {
     save: ReturnType<typeof vi.fn>;
   };
   const element = document.createElement("edaha-editor") as EdahaEditor;
+  for (const attribute of attributes) element.setAttribute(attribute, "");
   element.api = api;
   document.body.append(element);
   await settle(element);
@@ -712,6 +716,24 @@ describe("edaha-editor unsaved changes", () => {
     expect(api.recent).toHaveBeenCalledTimes(recents + 1);
   });
 
+  it("should go back to the welcome prompt from Home, asking first about unsaved changes", async () => {
+    const { element, api } = await editTitle();
+    const home = find<HTMLAnchorElement>(element, ".edaha-editor-home");
+    expect(home.textContent?.trim()).toBe("Home");
+    expect(home.getAttribute("aria-current")).toBe("false");
+    home.click();
+    await answer(element, "cancel");
+    expect(element.querySelector("edaha-article")).not.toBeNull();
+    const recents = api.recent.mock.calls.length;
+    home.click();
+    await answer(element, "discard");
+    expect(element.querySelector("edaha-article")).toBeNull();
+    expect(element.querySelector(".welcome-prompt")).not.toBeNull();
+    expect(api.recent).toHaveBeenCalledTimes(recents + 1);
+    // Home says when the welcome prompt is showing
+    expect(home.getAttribute("aria-current")).toBe("page");
+  });
+
   it("should not ask when nothing changed", async () => {
     const { element, api } = await setup();
     await element.open(SUMMARIES[0]!);
@@ -762,6 +784,44 @@ describe("edaha-editor theme switcher", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(switcher.title).toBe("Switch to the light theme");
     expect(switcher.textContent?.trim()).toBe("Switch to the light theme");
+  });
+
+  it("should hide the switcher and show the device's theme when asked", async () => {
+    document.documentElement.dataset.theme = "dark";
+    const { element } = await setup(undefined, ["hide-theme-switcher"]);
+    expect(element.hideThemeSwitcher).toBe(true);
+    expect(element.querySelector(".theme-switcher")).toBeNull();
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
+});
+
+describe("edaha-editor title", () => {
+  it("should show the edaha.md title by default", async () => {
+    const { element } = await setup();
+    expect(find(element, ".edaha-title").textContent?.trim()).toBe("edaha.md");
+    expect(find(element, ".edaha-editor-bar-title").textContent).toBe(
+      "edaha.md",
+    );
+  });
+
+  it("should hide the title when asked, keeping the site's name as the heading and Home", async () => {
+    const { element } = await setup(undefined, ["hide-title"]);
+    expect(element.hideTitle).toBe(true);
+    expect(element.querySelector(".edaha-title")).toBeNull();
+    expect(element.querySelector(".edaha-editor-bar-title")).toBeNull();
+    expect(find(element, "nav h1.visually-hidden").textContent?.trim()).toBe(
+      "Test News",
+    );
+    expect(element.querySelector(".edaha-editor-home")).not.toBeNull();
+  });
+
+  it("should name the heading Articles until the site's name is known", async () => {
+    const { element } = await setup(undefined, ["hide-title"]);
+    element.site = undefined;
+    await settle(element);
+    expect(find(element, "nav h1.visually-hidden").textContent?.trim()).toBe(
+      "Articles",
+    );
   });
 });
 

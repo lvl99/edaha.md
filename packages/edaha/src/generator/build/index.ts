@@ -68,7 +68,10 @@ export interface BuildOptions {
   siteDir?: string | undefined;
   /** The config file to use instead of looking for one */
   configFile?: string | undefined;
-  /** The default theme folder (holds templates/ and static/) that the site's own files override. Default: THEME_DIR */
+  /**
+   * The theme folder (holds templates/ and static/) that the site's own files override, instead of the config's
+   * `theme`. Default: the config's `theme`, else THEME_DIR
+   */
   themeDir?: string;
   /** The website's absolute URL, for feeds. Defaults to `siteUrl` in the config file, then DEFAULT_SITE_URL with a warning. */
   siteUrl?: string | undefined;
@@ -313,13 +316,14 @@ export const buildSite = async (
   options: BuildOptions,
 ): Promise<BuildResult> => {
   const logger = options.logger ?? console;
-  const { configFile, siteDir, config } = await loadSiteConfig({
+  const siteConfig = await loadSiteConfig({
     siteDir: options.siteDir,
     configFile: options.configFile,
     logger,
   });
+  const { configFile, siteDir, config } = siteConfig;
   const configName = basename(configFile);
-  const themeDir = options.themeDir ?? THEME_DIR;
+  const themeDir = options.themeDir ?? siteConfig.themeDir ?? THEME_DIR;
   /** Run a check of the config's settings, naming the config file in its error */
   const checkConfig = <T>(check: () => T): T => {
     try {

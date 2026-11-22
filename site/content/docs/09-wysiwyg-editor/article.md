@@ -24,7 +24,7 @@ On a wider window, **Focus mode** (the button at the top right of the title) hid
 
 ## Finding articles
 
-When the editor opens (or you choose **edaha.md** at the top of the list), the welcome prompt in the middle offers to **Write a new article** or **edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Open article browser** opens the article browser.
+When the editor opens (or you choose **Home** or **edaha.md** at the top of the list), the welcome prompt in the middle offers to **Write a new article** or **edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Open article browser** opens the article browser.
 
 The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, **Show all** opens them all in the article browser.
 
@@ -62,15 +62,15 @@ The settings are in groups you can open and close: **Info** (type, status, slug,
 
 What the settings do:
 
-| Setting              | What it does                                                                                     |
-| -------------------- | ------------------------------------------------------------------------------------------------ |
-| **Type**             | The kind of article, e.g. News or Page.                                                          |
-| **Template**         | How the article is laid out, if your website has more than one layout for it.                    |
-| **Status**           | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website).      |
-| **Slug**             | The last part of the article's address. Left empty, it is made from the title.                   |
-| **Publication date** | The article's date.                                                                              |
-| **Excerpt**          | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
-| **Thumbnail**        | An image shown in lists.                                                                         |
+| Setting | What it does |
+| --- | --- |
+| **Type** | The kind of article, e.g. News or Page. |
+| **Template** | How the article is laid out, if your website has more than one layout for it. |
+| **Status** | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website). |
+| **Slug** | The last part of the article's address. Left empty, it is made from the title. |
+| **Publication date** | The article's date. |
+| **Excerpt** | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
+| **Thumbnail** | An image shown in lists. |
 
 The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file**, chosen with **Choose existing file…**, or linked by address. Uploads need the article to be saved first. The thumbnail can also be chosen with **Choose existing file…**.
 
@@ -120,9 +120,11 @@ If you open another article or start a new one with changes that aren't saved, t
 
 The editor is in its own package, `@lvl99dotcom/edaha-editor`. Install it next to `@lvl99dotcom/edaha.md` (see [Quick start](/docs/02-quick-start/)), then:
 
+<!-- embed:codehighlight -->
 ```sh
 npx edaha editor
 ```
+<!-- /embed:codehighlight -->
 
 Without the editor package, `edaha editor` stops and says how to install it.
 
@@ -142,6 +144,7 @@ The editor reads the config file again each time, so you can add or change an em
 
 ### Starting it from code
 
+<!-- embed:codehighlight -->
 ```ts
 import { startEditor } from "@lvl99dotcom/edaha-editor";
 
@@ -153,3 +156,16 @@ const editor = await startEditor({
 });
 console.log(`Open ${editor.url}`);
 ```
+<!-- /embed:codehighlight -->
+
+An app that shows the editor in its own window can hide the "edaha.md" title (**Home** still goes back to the welcome prompt) and the light/dark theme switcher (the device's light or dark setting is used instead):
+
+<!-- embed:codehighlight -->
+```ts
+const editor = await startEditor({
+  siteDir: "my-site",
+  hideTitle: true,
+  hideThemeSwitcher: true,
+});
+```
+<!-- /embed:codehighlight -->

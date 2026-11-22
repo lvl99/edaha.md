@@ -200,6 +200,27 @@ describe("loadSiteConfig", () => {
     );
   });
 
+  it("should find the theme named in the config file, from its folder", async () => {
+    const { root, siteDir } = await project();
+    await writeFile(join(siteDir, "edahaconfig.yml"), FORMATS.yml as string);
+    expect((await loadSiteConfig({ siteDir })).themeDir).toBeUndefined();
+    await mkdir(join(root, "themes/blog"), { recursive: true });
+    await writeFile(
+      join(siteDir, "edahaconfig.yml"),
+      `${FORMATS.yml}theme: ../themes/blog\n`,
+    );
+    expect((await loadSiteConfig({ siteDir })).themeDir).toBe(
+      join(root, "themes/blog"),
+    );
+    await writeFile(
+      join(siteDir, "edahaconfig.yml"),
+      `${FORMATS.yml}theme: edaha-theme-missing\n`,
+    );
+    await expect(loadSiteConfig({ siteDir })).rejects.toThrow(
+      'edahaconfig.yml: theme package "edaha-theme-missing" not found',
+    );
+  });
+
   it("should look in the current folder by default", async () => {
     const { siteDir } = await project();
     await writeFile(join(siteDir, "edahaconfig.yml"), FORMATS.yml as string);

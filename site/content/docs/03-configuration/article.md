@@ -89,7 +89,7 @@ edaha build --config config/edaha.config.json
 
 If no config file is found, the command stops with an error that lists the names it looked for.
 
-The folder that holds the config file is the **site folder**. Every folder in the config file (`articlesDir`, `templatesDir`, `staticDir`, `outputDir`, `publishDir`) is relative to it.
+The folder that holds the config file is the **site folder**. Every folder in the config file (`articlesDir`, `templatesDir`, `staticDir`, `theme`, `outputDir`, `publishDir`) is relative to it.
 
 ## Settings
 
@@ -101,6 +101,7 @@ The folder that holds the config file is the **site folder**. Every folder in th
 | [`articlesDir`](#articlesdir)       | No       | The folder that holds the articles.                                                     |
 | [`templatesDir`](#templatesdir)     | No       | The folder that holds your own templates.                                               |
 | [`staticDir`](#staticdir)           | No       | The folder that holds your own static files.                                            |
+| [`theme`](#theme)                   | No       | The theme your templates and static files override: a folder or a package.              |
 | [`outputDir`](#outputdir)           | No       | The folder the website is built into.                                                   |
 | [`publishDir`](#publishdir)         | No       | A folder outside the site folder that the built website is copied into.                 |
 | [`siteUrl`](#siteurl)               | No       | The website's absolute URL, for links in RSS feeds.                                     |
@@ -181,6 +182,23 @@ templatesDir: site/templates
 staticDir: site/static
 outputDir: site/build
 ```
+
+### `theme`
+
+The [theme](/docs/05-templating/#using-another-theme) that your own templates and static files override, instead of edaha.md's default theme. It's either a folder (with `templates/` and `static/`) or the name of an installed theme package.
+
+- **Accepted values:** a folder path starting with `.` (relative to the site folder) or an absolute path, which can be outside the site folder; or a package name, found from the site folder like a plugin.
+- **Default:** edaha.md's default theme (`@lvl99dotcom/edaha-theme-default`)
+
+```yaml
+theme: ../themes/my-theme
+```
+
+```yaml
+theme: "@my-org/edaha-theme-blog"
+```
+
+The build stops if the folder or package isn't found.
 
 ### `outputDir`
 

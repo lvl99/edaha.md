@@ -32,7 +32,7 @@ export const CLIENT_DIR = fileURLToPath(
 
 /** Options for the article editor's server */
 export interface EditorServerOptions extends SiteConfigOptions {
-  /** The default theme folder that the site's templates and static files override. Default: THEME_DIR */
+  /** The theme folder that the site's templates and static files override. Default: the config's `theme`, else THEME_DIR */
   themeDir?: string;
   /** The port to listen on. Default: EDITOR_PORT */
   port?: number;
@@ -42,6 +42,16 @@ export interface EditorServerOptions extends SiteConfigOptions {
   fetch?: typeof fetch;
   /** Embed plugins added after the config file's `plugins` (a key in both uses the config file's). Default: none */
   plugins?: readonly EmbedPlugin[];
+  /**
+   * Hide the "edaha.md" title, e.g. in an app that shows the editor in its own window (Home still goes back to the
+   * welcome prompt). Default: false
+   */
+  hideTitle?: boolean;
+  /**
+   * Hide the light/dark theme switcher, showing the device's light or dark theme instead, e.g. in an app that sets it.
+   * Default: false
+   */
+  hideThemeSwitcher?: boolean;
 }
 
 /** A running editor server */
@@ -69,6 +79,23 @@ export const editorUrl = (port: number): string =>
  */
 export const editorPort = (options: EditorServerOptions): number =>
   options.port ?? EDITOR_PORT;
+
+/**
+ * The editor page's HTML with the options that change how it looks set as attributes of its `<edaha-editor>` element.
+ *
+ * @example
+ * editorPage("<edaha-editor></edaha-editor>", { hideTitle: true }); // "<edaha-editor hide-title></edaha-editor>"
+ */
+export const editorPage = (
+  html: string,
+  options: Pick<EditorServerOptions, "hideTitle" | "hideThemeSwitcher">,
+): string => {
+  const attributes = [
+    options.hideTitle ? " hide-title" : "",
+    options.hideThemeSwitcher ? " hide-theme-switcher" : "",
+  ].join("");
+  return html.replace("<edaha-editor>", `<edaha-editor${attributes}>`);
+};
 
 /**
  * Read one of the editor page's built files, or undefined if there is no such file or the path leaves the folder.
@@ -141,7 +168,7 @@ const editorServerParts = async (
         "The editor page is missing; build it with `pnpm build`",
         500,
       );
-    return c.body(html, 200, {
+    return c.body(editorPage(new TextDecoder().decode(html), options), 200, {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
     });
