@@ -158,6 +158,8 @@ console.log(`Open ${editor.url}`);
 ```
 <!-- /embed:codehighlight -->
 
+To show the editor in your own app's page instead, as the `<edaha-editor>` web component, see [Showing the editor in your own app](/docs/10-api/#showing-the-editor-in-your-own-app).
+
 An app that shows the editor in its own window can hide the "edaha.md" title (**Home** still goes back to the welcome prompt) and the light/dark theme switcher (the device's light or dark setting is used instead):
 
 <!-- embed:codehighlight -->
