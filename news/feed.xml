@@ -6,7 +6,14 @@
     <description>Static site generator powered by TypeScript and markdown</description>
     <language>en</language>
     <atom:link href="https://edaha.md/news/feed.xml" rel="self" type="application/rss+xml" />
-    <lastBuildDate>Sat, 21 Nov 2026 10:39:00 GMT</lastBuildDate>
+    <lastBuildDate>Sun, 22 Nov 2026 19:50:15 GMT</lastBuildDate>
+    <item>
+      <title>Release v0.4.0</title>
+      <link>https://edaha.md/news/release-v0-4-0/</link>
+      <guid isPermaLink="true">https://edaha.md/news/release-v0-4-0/</guid>
+      <pubDate>Sun, 22 Nov 2026 19:50:15 GMT</pubDate>
+      <description>&lt;p&gt;edaha.md v0.4.0 has been released! There is also work in parallel on some future delights that will hopefully make maintaining a website very easy, especially for non-technical people. Added The…&lt;/p&gt;</description>
+    </item>
     <item>
       <title>Release v0.3.0</title>
       <link>https://edaha.md/news/release-0-3-0/</link>

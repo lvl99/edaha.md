@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Release v0.4.0 | edaha.md</title>
+    <meta name="description" content="edaha.md v0.4.0 has been released! There is also work in parallel on some future delights that will hopefully make maintaining a website very easy, especially for non-technical people. Added The…" />
+
+
+  <link rel="stylesheet" href="/base.css" />
+  <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body class="news ">
+  <header class="site-header">
+    <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
+  </header>
+
+  <button type="button" class="theme-switcher">
+    <span class="visually-hidden">Change site theme</span>
+  </button>
+
+
+      <div class="site-content">
+        <main class="site-main">
+  <nav class="site-breadcrumb" aria-label="Breadcrumb">
+    <ul>
+      <li><a href="/">Home</a></li>
+<li><a href="/news/">News</a></li>
+<li><a href="/news/release-v0-4-0/" aria-current="page">Release v0.4.0</a></li>
+    </ul>
+  </nav>
+
+<article>
+  <h1 class="article-title">Release v0.4.0</h1>
+
+  <div class="article-body">
+      <p><strong>edaha.md</strong> v0.4.0 has been released! There is also work in parallel on some future delights that will hopefully make maintaining a website very easy, especially for non-technical people.</p>
+<h2 id="added">Added</h2>
+<ul>
+<li>The default theme is now its own package, <a href="https://www.npmjs.org/package/@lvl99dotcom/edaha-theme-default"><code>@lvl99dotcom/edaha-theme-default</code></a>, which edaha.md installs for you.</li>
+<li>The new <a href="https://edaha.md/docs/03-configuration/#theme"><code>theme</code></a> setting uses another theme instead of the default one: a folder, or an installed theme package.</li>
+<li>Themes can describe themselves in an <code>edahatheme.yml</code> file with their name, description, version and authors.</li>
+<li>Core has new theme helpers, <code>resolveTheme</code>, <code>readThemeInfo</code>, <code>parseThemeInfo</code>, <code>isThemePath</code> and <code>packageAuthor</code>, for tools that manage themes.</li>
+<li>The editor’s nav has a <strong>Home</strong> link under the search, which shows the welcome prompt.</li>
+<li>The editor’s rich text and Markdown toolbars have underline and strikethrough buttons, after italic.</li>
+<li><code>startEditor</code> has <code>hideTitle</code> and <code>hideThemeSwitcher</code> options, for apps that show the editor in their own window.</li>
+<li>The editor is published as the <code>&lt;edaha-editor&gt;</code> web component, in <code>@lvl99dotcom/edaha-editor/client</code>, with its stylesheet and design tokens, so apps can <a href="https://edaha.md/docs/10-api/#showing-the-editor-in-your-own-app">show it in their own pages</a>.</li>
+<li><code>EditorApi</code> takes a <code>baseUrl</code>, so the editor can use an editor server that isn’t its page’s own, showing articles’ files, images and previews from it.</li>
+<li><code>&lt;edaha-editor&gt;</code> has a <code>dirty</code> property, and <code>startEditor</code>’s server has a <code>fetch</code> function that answers the editor’s requests without the network.</li>
+<li>The docs explain <a href="https://edaha.md/docs/05-templating/#using-another-theme">using another theme</a> and making your own.</li>
+</ul>
+<h2 id="changed">Changed</h2>
+<ul>
+<li>edaha.md’s website is now at <a href="https://edaha.md">https://edaha.md</a>.</li>
+<li>Lit and Tiptap are now dependencies of <code>@lvl99dotcom/edaha-editor</code>, as apps that show the editor’s component install them.</li>
+<li>The table of contents’ <code>disc</code> and <code>circle</code> list styles now use the same bullets as nested HTML lists: <code>disc</code> is • and <code>circle</code> is ◦.</li>
+</ul>
+<h2 id="fixed">Fixed</h2>
+<ul>
+<li>The editor’s page no longer scrolls down and leaves a gap under it while you edit an article.</li>
+</ul>
+
+  </div>
+
+</article>
+        </main>
+
+<aside>
+  <dl>
+    <dt>Date</dt>
+    <dd><time datetime="2026-11-22T19:50:15.372Z">22 November 2026</time></dd>
+  </dl>
+</aside>
+      </div>
+
+      <footer class="site-footer">
+  <nav aria-label="Sections">
+    <a href="/">Home</a>
+    <a href="/about">About</a>
+<a href="/news/">News</a><a href="/docs/">Documentation</a>    <a href="mailto:edaha@lvl99.com">Contact</a>
+  </nav>
+
+  <p class="colophon">
+    <a href="/">edaha.md <span class="leaf-device"></span></a>
+    &middot;
+    Created by <a href="https://www.lvl99.com" target="_blank" rel="noopener noreferrer">LVL99</a>
+    &middot;
+    <a href="https://github.com/lvl99/edaha" target="_blank" rel="noopener noreferrer">Fork on Github</a>
+    &middot;
+    <a href="https://checkout.revolut.com/pay/418c2132-acd0-4365-a22a-2df20b385097" target="_blank" rel="noopener noreferrer">Donate</a>
+  </p>
+      </footer>
+
+  <script>
+    // Show the theme chosen with the theme switcher (see /theme-switcher.js) before the page appears
+    try {
+      const theme = localStorage.getItem("edaha-theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script src="/theme-switcher.js" defer></script>
+  </body>
+</html>

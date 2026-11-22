@@ -92,7 +92,7 @@ module.exports = {
 <pre><code class="language-sh">edaha build --config config/edaha.config.json
 </code></pre>
 <p>If no config file is found, the command stops with an error that lists the names it looked for.</p>
-<p>The folder that holds the config file is the <strong>site folder</strong>. Every folder in the config file (<code>articlesDir</code>, <code>templatesDir</code>, <code>staticDir</code>, <code>outputDir</code>, <code>publishDir</code>) is relative to it.</p>
+<p>The folder that holds the config file is the <strong>site folder</strong>. Every folder in the config file (<code>articlesDir</code>, <code>templatesDir</code>, <code>staticDir</code>, <code>theme</code>, <code>outputDir</code>, <code>publishDir</code>) is relative to it.</p>
 <h2 id="settings">Settings</h2>
 <table>
 <thead>
@@ -132,6 +132,11 @@ module.exports = {
 <td><a href="#staticdir"><code>staticDir</code></a></td>
 <td>No</td>
 <td>The folder that holds your own static files.</td>
+</tr>
+<tr>
+<td><a href="#theme"><code>theme</code></a></td>
+<td>No</td>
+<td>The theme your templates and static files override: a folder or a package.</td>
 </tr>
 <tr>
 <td><a href="#outputdir"><code>outputDir</code></a></td>
@@ -227,6 +232,17 @@ templatesDir: site/templates
 staticDir: site/static
 outputDir: site/build
 </code></pre>
+<h3 id="theme"><code>theme</code></h3>
+<p>The <a href="/docs/05-templating/#using-another-theme">theme</a> that your own templates and static files override, instead of edaha.md’s default theme. It’s either a folder (with <code>templates/</code> and <code>static/</code>) or the name of an installed theme package.</p>
+<ul>
+<li><strong>Accepted values:</strong> a folder path starting with <code>.</code> (relative to the site folder) or an absolute path, which can be outside the site folder; or a package name, found from the site folder like a plugin.</li>
+<li><strong>Default:</strong> edaha.md’s default theme (<code>@lvl99dotcom/edaha-theme-default</code>)</li>
+</ul>
+<pre><code class="language-yaml">theme: ../themes/my-theme
+</code></pre>
+<pre><code class="language-yaml">theme: &quot;@my-org/edaha-theme-blog&quot;
+</code></pre>
+<p>The build stops if the folder or package isn’t found.</p>
 <h3 id="outputdir"><code>outputDir</code></h3>
 <p>The folder the website is built into, relative to the site folder. It is <strong>emptied on every build</strong>, so keep nothing else in it.</p>
 <ul>

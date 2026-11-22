@@ -9,7 +9,47 @@
 
   <link rel="stylesheet" href="/base.css" />
   <link rel="stylesheet" href="/site.css" />
-  </head>
+<style>
+  .embed-codehighlight { --codehighlight-copy-size: 2.25rem; --codehighlight-copy-inset: 0.5rem; }
+  .embed-codehighlight .codehighlight-block { margin: 0 0 1rem; }
+  .embed-codehighlight .codehighlight-label { margin: 0 0 0.25rem; font-weight: bold; }
+  .embed-codehighlight .codehighlight-code { position: relative; }
+  .embed-codehighlight pre { margin: 0; }
+  .embed-codehighlight .codehighlight-code:has(.codehighlight-copy) pre {
+    padding-inline-end: calc(var(--codehighlight-copy-size) + 2 * var(--codehighlight-copy-inset));
+  }
+  .embed-codehighlight pre code { display: block; padding: 0; background: none; color: inherit; font-size: inherit; }
+  .embed-codehighlight .codehighlight-line-numbers code { counter-reset: line; }
+  .embed-codehighlight .codehighlight-line-numbers .line::before {
+    counter-increment: line; content: counter(line); display: inline-block; width: 2.5em; margin-right: 1em;
+    text-align: right; color: var(--colour-muted, #5a5a60); user-select: none;
+  }
+  .embed-codehighlight .codehighlight-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
+  .embed-codehighlight button {
+    min-height: 2.75rem; min-width: 2.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--colour-border, #d8d8de);
+    background: var(--colour-background, #fff); color: inherit; font: inherit; cursor: pointer;
+  }
+  .embed-codehighlight button:focus-visible { outline: 2px solid var(--colour-focus, #db5a10); outline-offset: 2px; }
+  .embed-codehighlight .codehighlight-tab[aria-selected="true"] { border-color: currentColor; font-weight: bold; }
+  .embed-codehighlight .codehighlight-copy {
+    position: absolute; inset-block-start: var(--codehighlight-copy-inset); inset-inline-end: var(--codehighlight-copy-inset);
+    display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    width: var(--codehighlight-copy-size); height: var(--codehighlight-copy-size); min-width: 0; min-height: 0;
+    padding: 0.25rem; background: var(--colour-surface, #f4f4f6);
+    border: 1px solid var(--colour-border, #d8d8de); border-radius: 5px; color: var(--colour-text, #1d1d1f);
+  }
+  .embed-codehighlight .codehighlight-copy:hover { border-color: var(--colour-muted, #5a5a60); }
+  .embed-codehighlight .codehighlight-copy svg { width: 1.5rem; height: 1.5rem; fill: currentColor; }
+  .embed-codehighlight .codehighlight-emoji { width: 1.5rem; font-size: 1.25rem; line-height: 1.5rem; text-align: center; }
+  .embed-codehighlight .codehighlight-hidden {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .embed-codehighlight .shiki span { color: var(--shiki-light); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .embed-codehighlight .shiki span { color: var(--shiki-dark); }
+  }
+  :root[data-theme="dark"] .embed-codehighlight .shiki span { color: var(--shiki-dark); }
+</style>  </head>
   <body class="docs ">
   <header class="site-header">
     <h1 class="site-title"><a href="https://edaha.md">edaha.md <span class="leaf-device"></span></a></h1>
@@ -42,7 +82,7 @@
 <p>On a phone or a narrow window, the list of articles opens from the menu button at the top, and <strong>Save</strong>, <strong>Reset…</strong> and <strong>Delete…</strong> sit in a bar at the bottom of the screen. Its <strong>︽</strong> button opens the article’s settings over the whole screen; <strong>︾</strong> or Escape closes them.</p>
 <p>On a wider window, <strong>Focus mode</strong> (the button at the top right of the title) hides the list of articles and the settings in the same way, keeping the title and body in the middle of the window, at most 900px wide. Choose it again to show them beside the article. Focus mode is off each time you open the editor.</p>
 <h2 id="finding-articles">Finding articles</h2>
-<p>When the editor opens (or you choose <strong>edaha.md</strong> at the top of the list), the welcome prompt in the middle offers to <strong>Write a new article</strong> or <strong>edit an existing one</strong> (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, <strong>Open article browser</strong> opens the article browser.</p>
+<p>When the editor opens (or you choose <strong>Home</strong> or <strong>edaha.md</strong> at the top of the list), the welcome prompt in the middle offers to <strong>Write a new article</strong> or <strong>edit an existing one</strong> (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, <strong>Open article browser</strong> opens the article browser.</p>
 <p>The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, <strong>Show all</strong> opens them all in the article browser.</p>
 <p>To find any other article:</p>
 <ul>
@@ -56,7 +96,7 @@
 <li>Give it a <strong>Title</strong>.</li>
 <li>Write in the <strong>Body</strong>. The toolbar’s buttons format your text. Each shows an icon; point at it to see its name:
 <ul>
-<li><strong>Bold</strong>, <strong>Italic</strong>, <strong>Small</strong> and <strong>Big</strong> text;</li>
+<li><strong>Bold</strong>, <strong>Italic</strong>, <strong>Underline</strong>, <strong>Strikethrough</strong>, <strong>Small</strong> and <strong>Big</strong> text;</li>
 <li><strong>Link</strong>, <strong>Heading</strong> and <strong>Subheading</strong>;</li>
 <li><strong>Bullet list</strong>, <strong>Numbered list</strong>, <strong>Quote</strong> and <strong>Code</strong>;</li>
 <li><strong>Details</strong>: a block readers can open and close;</li>
@@ -122,7 +162,7 @@
 <p>Three tabs above the body change what you see. Move between them with the arrow keys, and press Enter or Space to show one.</p>
 <ul>
 <li><strong>WYSIWYG</strong>: the rich text editor.</li>
-<li><strong>Markdown</strong>: the body as Markdown, if you’d like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.</li>
+<li><strong>Markdown</strong>: the body as Markdown, if you’d like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (underlined, small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.</li>
 <li><strong>Preview</strong>: the article as your website will show it, with its layout and styles. Drafts are shown as if published. <strong>Width</strong> shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred.</li>
 </ul>
 <h2 id="managing-files">Managing files</h2>
@@ -145,8 +185,7 @@
 <h2 id="for-developers">For developers</h2>
 <h3 id="starting-the-editor">Starting the editor</h3>
 <p>The editor is in its own package, <code>@lvl99dotcom/edaha-editor</code>. Install it next to <code>@lvl99dotcom/edaha.md</code> (see <a href="/docs/02-quick-start/">Quick start</a>), then:</p>
-<pre><code class="language-sh">npx edaha editor
-</code></pre>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-1-1" data-language="sh"><div class="codehighlight-code"><pre tabindex="0"><code class="language-sh"><span class="line">npx edaha editor</span></code></pre></div></div></div></div>
 <p>Without the editor package, <code>edaha editor</code> stops and says how to install it.</p>
 <p>It finds the site’s <a href="/docs/03-configuration/#where-it-is-found">config file</a> like <code>edaha build</code> does, and takes the same <code>--config</code> and <code>--dir</code> options, plus <code>--port</code> (default <code>5180</code>). It only listens on <code>127.0.0.1</code>, as it reads and writes the site’s files: <strong>never deploy it</strong>. Its API only accepts changes from the editor page itself.</p>
 <p>The editor reads and writes the same <code>article.md</code> files you would edit by hand. A saved article keeps its header format (<code>yaml</code>, <code>yml</code> or <code>json</code>); new articles get <code>yaml</code>. Settings edaha.md doesn’t know are kept as they are when saving, with a warning. Changes to the config file and templates show without restarting it.</p>
@@ -156,16 +195,22 @@
 <p>The site’s <a href="/docs/07-embeds/">embed plugins</a> (its config file’s <code>plugins</code>) work in the editor too: each has a toolbar button with its icon, its dialog shows its description, options and <code>info</code>, the body shows each embed block in a frame, and the preview pages render them as the website will. An embed’s <code>editor</code> settings can give it an icon and a different look in the body.</p>
 <p>The editor reads the config file again each time, so you can add or change an embed and see the result without restarting it.</p>
 <h3 id="starting-it-from-code">Starting it from code</h3>
-<pre><code class="language-ts">import { startEditor } from &quot;@lvl99dotcom/edaha-editor&quot;;
-
-const editor = await startEditor({
-  siteDir: &quot;my-site&quot;,
-  port: 5180,
-  // Embed plugins added after the config file's (default: none)
-  plugins: [],
-});
-console.log(`Open ${editor.url}`);
-</code></pre>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-2-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">import { startEditor } from &quot;@lvl99dotcom/edaha-editor&quot;;</span>
+<span class="line"></span>
+<span class="line">const editor = await startEditor({</span>
+<span class="line">  siteDir: &quot;my-site&quot;,</span>
+<span class="line">  port: 5180,</span>
+<span class="line">  // Embed plugins added after the config file&#39;s (default: none)</span>
+<span class="line">  plugins: [],</span>
+<span class="line">});</span>
+<span class="line">console.log(`Open ${editor.url}`);</span></code></pre></div></div></div></div>
+<p>To show the editor in your own app’s page instead, as the <code>&lt;edaha-editor&gt;</code> web component, see <a href="/docs/10-api/#showing-the-editor-in-your-own-app">Showing the editor in your own app</a>.</p>
+<p>An app that shows the editor in its own window can hide the “edaha.md” title (<strong>Home</strong> still goes back to the welcome prompt) and the light/dark theme switcher (the device’s light or dark setting is used instead):</p>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-3-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">const editor = await startEditor({</span>
+<span class="line">  siteDir: &quot;my-site&quot;,</span>
+<span class="line">  hideTitle: true,</span>
+<span class="line">  hideThemeSwitcher: true,</span>
+<span class="line">});</span></code></pre></div></div></div></div>
 
   </div>
 
@@ -223,5 +268,134 @@ console.log(`Open ${editor.url}`);
     } catch {}
   </script>
   <script src="/theme-switcher.js" defer></script>
-  </body>
+<script type="module">
+  await (async (
+  doc          ,
+  loadShiki                      ,
+  themes                     ,
+  icons                   ,
+)                => {
+  for (const group of doc.querySelectorAll             (
+    ".codehighlight[data-tabs]",
+  )) {
+    const blocks = [
+      ...group.querySelectorAll             (":scope > .codehighlight-block"),
+    ];
+    const tabList = doc.createElement("div");
+    tabList.className = "codehighlight-tabs";
+    tabList.setAttribute("role", "tablist");
+    tabList.setAttribute("aria-label", "Code examples");
+    const tabs = blocks.map((block) => {
+      // Blocks in tabs always have labels
+      const label = block.querySelector(".codehighlight-label")               ;
+      const tab = doc.createElement("button");
+      tab.type = "button";
+      tab.id = `${block.id}-tab`;
+      tab.className = "codehighlight-tab";
+      tab.textContent = label.textContent;
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-controls", block.id);
+      block.setAttribute("role", "tabpanel");
+      block.setAttribute("aria-labelledby", tab.id);
+      label.hidden = true;
+      tabList.append(tab);
+      return tab;
+    });
+    const select = (index        , focus         ) =>
+      tabs.forEach((tab, i) => {
+        const selected = i === index;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        (blocks[i]               ).hidden = !selected;
+        if (selected && focus) tab.focus();
+      });
+    tabList.addEventListener("click", (event) => {
+      const index = tabs.indexOf(
+        (event.target               ).closest("button")                     ,
+      );
+      if (index >= 0) select(index, false);
+    });
+    tabList.addEventListener("keydown", (event) => {
+      const index = tabs.indexOf(doc.activeElement                     );
+      const keys                         = {
+        ArrowRight: index + 1,
+        ArrowLeft: index - 1,
+        Home: 0,
+        End: tabs.length - 1,
+      };
+      const next = keys[event.key];
+      if (next === undefined) return;
+      event.preventDefault();
+      select((next + tabs.length) % tabs.length, true);
+    });
+    group.prepend(tabList);
+    select(0, false);
+  }
+
+  for (const block of doc.querySelectorAll             (
+    ".codehighlight[data-copy-button] .codehighlight-block",
+  )) {
+    const button = doc.createElement("button");
+    button.type = "button";
+    button.className = "codehighlight-copy";
+    // An icon button, named for screen readers and by its tooltip
+    const show = (label        , icon        ) => {
+      button.title = label;
+      button.innerHTML = `${icon}<span class="codehighlight-hidden">${label}</span>`;
+    };
+    show("Copy code", icons.copy);
+    const status = doc.createElement("span");
+    status.className = "codehighlight-hidden";
+    status.setAttribute("role", "status");
+    const view = doc.defaultView          ;
+    let reset                    ;
+    button.addEventListener("click", async () => {
+      try {
+        await view.navigator.clipboard.writeText(
+          String((block.querySelector("code")               ).textContent),
+        );
+        show((status.textContent = "Copied"), icons.copied);
+      } catch {
+        show((status.textContent = "Couldn't copy"), icons.failed);
+      }
+      // Ready to copy again after a moment
+      view.clearTimeout(reset);
+      reset = view.setTimeout(() => {
+        show("Copy code", icons.copy);
+        status.textContent = "";
+      }, 2000);
+    });
+    (block.querySelector("pre")                  ).before(button, status);
+  }
+
+  const highlighted = [
+    ...doc.querySelectorAll             (
+      ".codehighlight[data-syntax-highlight] .codehighlight-block[data-language]",
+    ),
+  ];
+  if (!highlighted.length) return;
+  let shiki       ;
+  try {
+    shiki = await loadShiki();
+  } catch {
+    return;
+  }
+  for (const block of highlighted) {
+    const pre = block.querySelector("pre")                  ;
+    try {
+      const template = doc.createElement("template");
+      template.innerHTML = await shiki.codeToHtml(String(pre.textContent), {
+        lang: block.dataset.language          ,
+        themes,
+        defaultColor: false,
+      });
+      const code = template.content.querySelector("code")               ;
+      pre.classList.add("shiki");
+      pre.replaceChildren(code);
+    } catch {
+      // Left as it is
+    }
+  }
+})(document, () => import("https://cdn.jsdelivr.net/npm/shiki@4.6.0/+esm"), {"light":"github-light","dark":"github-dark"}, {"copy":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 -960 960 960\" aria-hidden=\"true\"><path d=\"M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z\"/></svg>","copied":"<span class=\"codehighlight-emoji\" aria-hidden=\"true\">✅</span>","failed":"<span class=\"codehighlight-emoji\" aria-hidden=\"true\">🙅</span>"});
+</script>  </body>
 </html>

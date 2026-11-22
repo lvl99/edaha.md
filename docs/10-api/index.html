@@ -14,6 +14,47 @@
   .embed-toc nav > ol { padding-left: 0; }
   .embed-toc li { margin: 0.25em 0; }
   .embed-toc .toc-marker { font-variant-numeric: tabular-nums; }
+</style>
+<style>
+  .embed-codehighlight { --codehighlight-copy-size: 2.25rem; --codehighlight-copy-inset: 0.5rem; }
+  .embed-codehighlight .codehighlight-block { margin: 0 0 1rem; }
+  .embed-codehighlight .codehighlight-label { margin: 0 0 0.25rem; font-weight: bold; }
+  .embed-codehighlight .codehighlight-code { position: relative; }
+  .embed-codehighlight pre { margin: 0; }
+  .embed-codehighlight .codehighlight-code:has(.codehighlight-copy) pre {
+    padding-inline-end: calc(var(--codehighlight-copy-size) + 2 * var(--codehighlight-copy-inset));
+  }
+  .embed-codehighlight pre code { display: block; padding: 0; background: none; color: inherit; font-size: inherit; }
+  .embed-codehighlight .codehighlight-line-numbers code { counter-reset: line; }
+  .embed-codehighlight .codehighlight-line-numbers .line::before {
+    counter-increment: line; content: counter(line); display: inline-block; width: 2.5em; margin-right: 1em;
+    text-align: right; color: var(--colour-muted, #5a5a60); user-select: none;
+  }
+  .embed-codehighlight .codehighlight-tabs { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-bottom: 0.5rem; }
+  .embed-codehighlight button {
+    min-height: 2.75rem; min-width: 2.75rem; padding: 0.5rem 0.75rem; border: 1px solid var(--colour-border, #d8d8de);
+    background: var(--colour-background, #fff); color: inherit; font: inherit; cursor: pointer;
+  }
+  .embed-codehighlight button:focus-visible { outline: 2px solid var(--colour-focus, #db5a10); outline-offset: 2px; }
+  .embed-codehighlight .codehighlight-tab[aria-selected="true"] { border-color: currentColor; font-weight: bold; }
+  .embed-codehighlight .codehighlight-copy {
+    position: absolute; inset-block-start: var(--codehighlight-copy-inset); inset-inline-end: var(--codehighlight-copy-inset);
+    display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    width: var(--codehighlight-copy-size); height: var(--codehighlight-copy-size); min-width: 0; min-height: 0;
+    padding: 0.25rem; background: var(--colour-surface, #f4f4f6);
+    border: 1px solid var(--colour-border, #d8d8de); border-radius: 5px; color: var(--colour-text, #1d1d1f);
+  }
+  .embed-codehighlight .codehighlight-copy:hover { border-color: var(--colour-muted, #5a5a60); }
+  .embed-codehighlight .codehighlight-copy svg { width: 1.5rem; height: 1.5rem; fill: currentColor; }
+  .embed-codehighlight .codehighlight-emoji { width: 1.5rem; font-size: 1.25rem; line-height: 1.5rem; text-align: center; }
+  .embed-codehighlight .codehighlight-hidden {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .embed-codehighlight .shiki span { color: var(--shiki-light); }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .embed-codehighlight .shiki span { color: var(--shiki-dark); }
+  }
+  :root[data-theme="dark"] .embed-codehighlight .shiki span { color: var(--shiki-dark); }
 </style>  </head>
   <body class="docs ">
   <header class="site-header">
@@ -64,17 +105,16 @@
 </tbody>
 </table>
 <div class="embed embed-toc"><h1 id="contents">Contents</h1>
-<nav aria-label="Table of contents"><ol role="list"><li><span class="toc-marker">1.</span> <a href="#build">Build</a><ol role="list"><li><span class="toc-marker">1.1.</span> <a href="#how-a-build-works">How a build works</a></li><li><span class="toc-marker">1.2.</span> <a href="#buildsite-options">buildSite options</a></li><li><span class="toc-marker">1.3.</span> <a href="#reading-the-config-file">Reading the config file</a></li><li><span class="toc-marker">1.4.</span> <a href="#embed-plugins">Embed plugins</a></li><li><span class="toc-marker">1.5.</span> <a href="#the-command-line">The command line</a></li></ol></li><li><span class="toc-marker">2.</span> <a href="#editor">Editor</a><ol role="list"><li><span class="toc-marker">2.1.</span> <a href="#starteditor-options">startEditor options</a></li><li><span class="toc-marker">2.2.</span> <a href="#serving-it-yourself">Serving it yourself</a></li></ol></li></ol></nav></div>
+<nav aria-label="Table of contents"><ol role="list"><li><span class="toc-marker">1.</span> <a href="#build">Build</a><ol role="list"><li><span class="toc-marker">1.1.</span> <a href="#how-a-build-works">How a build works</a></li><li><span class="toc-marker">1.2.</span> <a href="#buildsite-options">buildSite options</a></li><li><span class="toc-marker">1.3.</span> <a href="#reading-the-config-file">Reading the config file</a></li><li><span class="toc-marker">1.4.</span> <a href="#themes">Themes</a></li><li><span class="toc-marker">1.5.</span> <a href="#embed-plugins">Embed plugins</a></li><li><span class="toc-marker">1.6.</span> <a href="#the-command-line">The command line</a></li></ol></li><li><span class="toc-marker">2.</span> <a href="#editor">Editor</a><ol role="list"><li><span class="toc-marker">2.1.</span> <a href="#starteditor-options">startEditor options</a></li><li><span class="toc-marker">2.2.</span> <a href="#serving-it-yourself">Serving it yourself</a></li><li><span class="toc-marker">2.3.</span> <a href="#showing-the-editor-in-your-own-app">Showing the editor in your own app</a></li></ol></li></ol></nav></div>
 <h2 id="build">Build</h2>
 <p><code>buildSite</code> builds a site, as <code>edaha build</code> does:</p>
-<pre><code class="language-ts">import { buildSite } from &quot;@lvl99dotcom/edaha.md&quot;;
-
-const result = await buildSite({
-  siteDir: &quot;my-site&quot;,
-  siteUrl: &quot;https://example.com&quot;,
-});
-console.log(`Built ${result.files.length} files into ${result.outputDir}`);
-</code></pre>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-1-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">import { buildSite } from &quot;@lvl99dotcom/edaha.md&quot;;</span>
+<span class="line"></span>
+<span class="line">const result = await buildSite({</span>
+<span class="line">  siteDir: &quot;my-site&quot;,</span>
+<span class="line">  siteUrl: &quot;https://example.com&quot;,</span>
+<span class="line">});</span>
+<span class="line">console.log(`Built ${result.files.length} files into ${result.outputDir}`);</span></code></pre></div></div></div></div>
 <h3 id="how-a-build-works">How a build works</h3>
 <p>A build reads the <a href="/docs/03-configuration/">config file</a> and the site’s articles, turns each article’s Markdown into HTML, and renders it with the site’s <a href="/docs/05-templating/">templates</a> into the output folder:</p>
 <div class="embed embed-mermaidjs"><pre class="mermaid">flowchart TD
@@ -142,8 +182,8 @@ layout --&gt; html[&quot;index.html&quot;]</pre></div>
 <tr>
 <td><code>themeDir</code></td>
 <td>String</td>
-<td>The default theme’s folder (with <code>templates/</code> and <code>static/</code>), which the site’s own templates and static files override.</td>
-<td>edaha.md’s theme (<code>THEME_DIR</code>)</td>
+<td>The theme’s folder (with <code>templates/</code> and <code>static/</code>), which the site’s own templates and static files override, instead of the config file’s <code>theme</code>.</td>
+<td>The config file’s <a href="/docs/03-configuration/#theme"><code>theme</code></a>, then edaha.md’s default theme (<code>THEME_DIR</code>)</td>
 </tr>
 <tr>
 <td><code>plugins</code></td>
@@ -195,36 +235,77 @@ layout --&gt; html[&quot;index.html&quot;]</pre></div>
 <p>It rejects with an error that names the problem (and the config file or article) when the site can’t be built, e.g. a config setting is wrong, or a static file has the same path as an article’s file. Problems that don’t stop the build go to <code>logger.warn</code>.</p>
 <h3 id="reading-the-config-file">Reading the config file</h3>
 <p><code>loadSiteConfig</code> finds and reads a site’s config file as the build does, e.g. to read its settings in a script of your own:</p>
-<pre><code class="language-ts">import { loadSiteConfig } from &quot;@lvl99dotcom/edaha.md&quot;;
-
-const { configFile, siteDir, config } = await loadSiteConfig({
-  siteDir: &quot;my-site&quot;,
-});
-console.log(`${config.name}: ${Object.keys(config.types).join(&quot;, &quot;)}`);
-</code></pre>
-<p>It takes <code>siteDir</code>, <code>configFile</code> and <code>logger</code>, like <code>buildSite</code>. The config helpers it uses are exported too: <code>findConfigFile</code> (which file would be used), <code>readConfigFile</code> (its raw settings) and <code>parseConfig</code> (check settings and fill in defaults; give it plugin objects, as it doesn’t load packages).</p>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-2-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">import { loadSiteConfig } from &quot;@lvl99dotcom/edaha.md&quot;;</span>
+<span class="line"></span>
+<span class="line">const { configFile, siteDir, config } = await loadSiteConfig({</span>
+<span class="line">  siteDir: &quot;my-site&quot;,</span>
+<span class="line">});</span>
+<span class="line">console.log(`${config.name}: ${Object.keys(config.types).join(&quot;, &quot;)}`);</span></code></pre></div></div></div></div>
+<p>It takes <code>siteDir</code>, <code>configFile</code> and <code>logger</code>, like <code>buildSite</code>. Besides the config file, its folder and its settings, it gives <code>themeDir</code>: the folder of the theme named in the config file’s <code>theme</code>, or <code>undefined</code> for the default theme. The config helpers it uses are exported too: <code>findConfigFile</code> (which file would be used), <code>readConfigFile</code> (its raw settings) and <code>parseConfig</code> (check settings and fill in defaults; give it plugin objects, as it doesn’t load packages).</p>
+<h3 id="themes">Themes</h3>
+<p><code>@lvl99dotcom/edaha.md/theme</code> has helpers for <a href="/docs/05-templating/#using-another-theme">themes</a>, e.g. for tools that manage them:</p>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-3-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">import { readThemeInfo, resolveTheme, THEME_DIR } from &quot;@lvl99dotcom/edaha.md&quot;;</span>
+<span class="line"></span>
+<span class="line">const themeDir = await resolveTheme(&quot;../themes/my-theme&quot;, &quot;my-site&quot;);</span>
+<span class="line">const { name, version, authors, isPackage } = await readThemeInfo(themeDir);</span></code></pre></div></div></div></div>
+<table>
+<thead>
+<tr>
+<th>Export</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>THEME_DIR</code></td>
+<td>The default theme’s folder.</td>
+</tr>
+<tr>
+<td><code>THEME_FILE</code></td>
+<td>The name of a theme’s settings file: <code>edahatheme.yml</code>.</td>
+</tr>
+<tr>
+<td><code>resolveTheme(theme, siteDir)</code></td>
+<td>The folder of a <code>theme</code> setting: a folder path (relative to <code>siteDir</code>) or an installed package’s name. Rejects if it isn’t found.</td>
+</tr>
+<tr>
+<td><code>isThemePath(theme)</code></td>
+<td>Whether a <code>theme</code> setting is a folder path (it starts with <code>.</code> or is absolute) rather than a package name.</td>
+</tr>
+<tr>
+<td><code>readThemeInfo(themeDir)</code></td>
+<td>A theme’s <code>name</code>, <code>description</code>, <code>version</code> and <code>authors</code>, from its <code>package.json</code> if it has one (then <code>isPackage</code> is <code>true</code>), else its <code>edahatheme.yml</code>, else just its folder’s name. Rejects, naming the file, if the file is invalid.</td>
+</tr>
+<tr>
+<td><code>parseThemeInfo(data, source)</code></td>
+<td>Checks the settings read from an <code>edahatheme.yml</code>.</td>
+</tr>
+<tr>
+<td><code>packageAuthor(value)</code></td>
+<td>Reads a <code>package.json</code> author, e.g. <code>&quot;Jane Doe &lt;jane@example.com&gt; (https://example.com)&quot;</code>.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="embed-plugins">Embed plugins</h3>
 <p>The embed API (<code>EmbedPlugin</code>, <code>EmbedResolver</code>, <code>EMBED_PAGE_PARTS</code>, <code>embedBlock</code>, <code>splitEmbed</code>, <code>cachedFetch</code>, <code>isEmbedPlugin</code>, <code>loadPlugins</code> and <code>validationErrors</code>) is exported too. <code>EmbedResolver</code> renders embeds page by page: <code>replaceBlocks</code> puts placeholders for a page’s blocks in its Markdown, and <code>renderPage</code> renders them in the page’s HTML, with the HTML its embeds need in place of <code>EMBED_PAGE_PARTS</code> (the template data for <code>{% embedHead %}</code> and <code>{% embedFoot %}</code>). The fields’ <code>defaultValue</code>, <code>showWhen</code> and <code>hideWhen</code> are applied by <code>resolveFields</code>, from <code>@lvl99dotcom/edaha.md/generator/fields</code>. See <a href="/docs/07-embeds/#creating-your-own">Embeds</a> for how to write a plugin.</p>
 <h3 id="the-command-line">The command line</h3>
 <p><code>runCli</code> runs the <code>edaha</code> command with its arguments, and resolves with its exit code. It takes the folder, environment and output to use, so it can run inside another tool:</p>
-<pre><code class="language-ts">import { runCli } from &quot;@lvl99dotcom/edaha.md&quot;;
-
-const code = await runCli([&quot;build&quot;, &quot;--dir&quot;, &quot;my-site&quot;], {
-  cwd: process.cwd(),
-  env: process.env,
-  log: console.log,
-  error: console.error,
-});
-</code></pre>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-4-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">import { runCli } from &quot;@lvl99dotcom/edaha.md&quot;;</span>
+<span class="line"></span>
+<span class="line">const code = await runCli([&quot;build&quot;, &quot;--dir&quot;, &quot;my-site&quot;], {</span>
+<span class="line">  cwd: process.cwd(),</span>
+<span class="line">  env: process.env,</span>
+<span class="line">  log: console.log,</span>
+<span class="line">  error: console.error,</span>
+<span class="line">});</span></code></pre></div></div></div></div>
 <h2 id="editor">Editor</h2>
 <p><code>startEditor</code>, from the editor package, starts the <a href="/docs/09-wysiwyg-editor/">article editor</a> on this computer, as <code>edaha editor</code> does:</p>
-<pre><code class="language-ts">import { startEditor } from &quot;@lvl99dotcom/edaha-editor&quot;;
-
-const editor = await startEditor({ siteDir: &quot;my-site&quot;, port: 5180 });
-console.log(`Open ${editor.url}`);
-// Later
-await editor.close();
-</code></pre>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-5-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">import { startEditor } from &quot;@lvl99dotcom/edaha-editor&quot;;</span>
+<span class="line"></span>
+<span class="line">const editor = await startEditor({ siteDir: &quot;my-site&quot;, port: 5180 });</span>
+<span class="line">console.log(`Open ${editor.url}`);</span>
+<span class="line">// Later</span>
+<span class="line">await editor.close();</span></code></pre></div></div></div></div>
 <p>It only listens on <code>127.0.0.1</code>: never deploy it, as it reads and writes the site’s files.</p>
 <h3 id="starteditor-options"><code>startEditor</code> options</h3>
 <p><code>startEditor</code> (and <code>createEditorServer</code>) take:</p>
@@ -259,14 +340,26 @@ await editor.close();
 <tr>
 <td><code>themeDir</code></td>
 <td>String</td>
-<td>The default theme’s folder, which the site’s own templates and static files override.</td>
-<td>edaha.md’s theme</td>
+<td>The theme’s folder, which the site’s own templates and static files override, instead of the config file’s <code>theme</code>.</td>
+<td>The config file’s <code>theme</code>, then edaha.md’s default theme</td>
 </tr>
 <tr>
 <td><code>plugins</code></td>
 <td>EmbedPlugin[]</td>
 <td>Embed plugins added after the config file’s <code>plugins</code>.</td>
 <td>None</td>
+</tr>
+<tr>
+<td><code>hideTitle</code></td>
+<td>Boolean</td>
+<td>Hide the “edaha.md” title, e.g. in an app that shows the editor in its own window. <strong>Home</strong> still goes back to the welcome prompt.</td>
+<td><code>false</code></td>
+</tr>
+<tr>
+<td><code>hideThemeSwitcher</code></td>
+<td>Boolean</td>
+<td>Hide the light/dark theme switcher, showing the device’s light or dark theme instead.</td>
+<td><code>false</code></td>
 </tr>
 <tr>
 <td><code>fetch</code></td>
@@ -288,16 +381,82 @@ await editor.close();
 </tr>
 </tbody>
 </table>
-<p><code>startEditor</code> resolves with the editor’s <code>url</code> and a <code>close</code> function, once it is listening. It rejects if the config file can’t be read, or the port is in use.</p>
+<p><code>startEditor</code> resolves with the editor’s <code>url</code>, a <code>fetch</code> function that answers a <code>Request</code> without the network (see <a href="#showing-the-editor-in-your-own-app">Showing the editor in your own app</a>) and a <code>close</code> function, once it is listening. It rejects if the config file can’t be read, or the port is in use.</p>
 <h3 id="serving-it-yourself">Serving it yourself</h3>
 <p><code>createEditorServer</code> gives the editor as a <a href="https://hono.dev">Hono</a> app instead, without listening, e.g. to serve it with your own server or test it:</p>
-<pre><code class="language-ts">import { createEditorServer } from &quot;@lvl99dotcom/edaha-editor&quot;;
-
-const app = await createEditorServer({ siteDir: &quot;my-site&quot; });
-const response = await app.request(&quot;/api/articles&quot;);
-console.log(await response.json());
-</code></pre>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-6-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">import { createEditorServer } from &quot;@lvl99dotcom/edaha-editor&quot;;</span>
+<span class="line"></span>
+<span class="line">const app = await createEditorServer({ siteDir: &quot;my-site&quot; });</span>
+<span class="line">const response = await app.request(&quot;/api/articles&quot;);</span>
+<span class="line">console.log(await response.json());</span></code></pre></div></div></div></div>
 <p>Its API only accepts changes from the editor page’s own address (<code>http://127.0.0.1:&lt;port&gt;</code>), so serve it there.</p>
+<h3 id="showing-the-editor-in-your-own-app">Showing the editor in your own app</h3>
+<p><code>@lvl99dotcom/edaha-editor/client</code> gives the editor’s page as a web component, <code>&lt;edaha-editor&gt;</code>, for an app’s own page (e.g. a desktop app). It’s defined when imported. It needs an editor server for the site (see <code>startEditor</code>), which it reaches with an <code>EditorApi</code>:</p>
+<div class="embed embed-codehighlight"><div class="codehighlight codehighlight-line-numbers" data-syntax-highlight data-copy-button><div class="codehighlight-block" id="codehighlight-7-1" data-language="ts"><div class="codehighlight-code"><pre tabindex="0"><code class="language-ts"><span class="line">import &quot;@lvl99dotcom/edaha-editor/client/style.css&quot;;</span>
+<span class="line">import { EdahaEditor, EditorApi } from &quot;@lvl99dotcom/edaha-editor/client&quot;;</span>
+<span class="line"></span>
+<span class="line">const editor = document.createElement(&quot;edaha-editor&quot;) as EdahaEditor;</span>
+<span class="line">// Set the API before adding the editor to the page, which loads the site&#39;s articles</span>
+<span class="line">editor.api = new EditorApi({ baseUrl: &quot;http://127.0.0.1:5180&quot; });</span>
+<span class="line">editor.setAttribute(&quot;hide-title&quot;, &quot;&quot;);</span>
+<span class="line">document.body.append(editor);</span></code></pre></div></div></div></div>
+<p>The stylesheet styles the editor and has edaha.md’s design tokens as CSS variables on <code>:root</code> (e.g. <code>--colour-text</code>, <code>--colour-link</code>, <code>--border-radius</code>), in light and dark, so the app’s page can use them too. Inside a shadow root, add the stylesheet to the shadow root as well, as <code>:root</code> rules don’t apply there (the variables still do).</p>
+<table>
+<thead>
+<tr>
+<th><code>EditorApi</code> option</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>baseUrl</code></td>
+<td>String</td>
+<td>The editor server’s address, e.g. <code>http://127.0.0.1:5180</code>. Requests, articles’ files and images, and preview pages use it.</td>
+<td><code>&quot;&quot;</code>: the page’s own server</td>
+</tr>
+<tr>
+<td><code>fetch</code></td>
+<td>Function</td>
+<td>Sends the requests, e.g. through the app’s own channel to <code>startEditor</code>’s <code>fetch</code>, so the API isn’t reached over the network. Requests other than <code>GET</code> need an <code>Origin</code> header of the editor’s address.</td>
+<td>The global <code>fetch</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>&lt;edaha-editor&gt;</code> has:</p>
+<table>
+<thead>
+<tr>
+<th>Attribute or property</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>api</code></td>
+<td>The <code>EditorApi</code> it uses. Set it before adding the editor to the page.</td>
+</tr>
+<tr>
+<td><code>hide-title</code></td>
+<td>Hides the “edaha.md” title. <strong>Home</strong> still goes back to the welcome prompt.</td>
+</tr>
+<tr>
+<td><code>hide-theme-switcher</code></td>
+<td>Hides the light/dark theme switcher, showing the device’s (or the app’s) light or dark theme.</td>
+</tr>
+<tr>
+<td><code>dirty</code></td>
+<td>Whether the open article has unsaved changes.</td>
+</tr>
+<tr>
+<td><code>leaveForm()</code></td>
+<td>Asks whether to save unsaved changes first: resolves with whether the editor can be closed (or another site shown).</td>
+</tr>
+</tbody>
+</table>
+<p>Preview pages and embed frames are still shown from the editor server, at its previews’ own address (<code>http://localhost:&lt;port&gt;</code>), so the app’s page must allow loading frames and images from it.</p>
 
   </div>
 
@@ -361,5 +520,135 @@ console.log(await response.json());
   const dark = theme ? theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
   mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default" });
   await mermaid.run({ querySelector: ".embed-mermaidjs .mermaid" });
+</script>
+<script type="module">
+  await (async (
+  doc          ,
+  loadShiki                      ,
+  themes                     ,
+  icons                   ,
+)                => {
+  for (const group of doc.querySelectorAll             (
+    ".codehighlight[data-tabs]",
+  )) {
+    const blocks = [
+      ...group.querySelectorAll             (":scope > .codehighlight-block"),
+    ];
+    const tabList = doc.createElement("div");
+    tabList.className = "codehighlight-tabs";
+    tabList.setAttribute("role", "tablist");
+    tabList.setAttribute("aria-label", "Code examples");
+    const tabs = blocks.map((block) => {
+      // Blocks in tabs always have labels
+      const label = block.querySelector(".codehighlight-label")               ;
+      const tab = doc.createElement("button");
+      tab.type = "button";
+      tab.id = `${block.id}-tab`;
+      tab.className = "codehighlight-tab";
+      tab.textContent = label.textContent;
+      tab.setAttribute("role", "tab");
+      tab.setAttribute("aria-controls", block.id);
+      block.setAttribute("role", "tabpanel");
+      block.setAttribute("aria-labelledby", tab.id);
+      label.hidden = true;
+      tabList.append(tab);
+      return tab;
+    });
+    const select = (index        , focus         ) =>
+      tabs.forEach((tab, i) => {
+        const selected = i === index;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        (blocks[i]               ).hidden = !selected;
+        if (selected && focus) tab.focus();
+      });
+    tabList.addEventListener("click", (event) => {
+      const index = tabs.indexOf(
+        (event.target               ).closest("button")                     ,
+      );
+      if (index >= 0) select(index, false);
+    });
+    tabList.addEventListener("keydown", (event) => {
+      const index = tabs.indexOf(doc.activeElement                     );
+      const keys                         = {
+        ArrowRight: index + 1,
+        ArrowLeft: index - 1,
+        Home: 0,
+        End: tabs.length - 1,
+      };
+      const next = keys[event.key];
+      if (next === undefined) return;
+      event.preventDefault();
+      select((next + tabs.length) % tabs.length, true);
+    });
+    group.prepend(tabList);
+    select(0, false);
+  }
+
+  for (const block of doc.querySelectorAll             (
+    ".codehighlight[data-copy-button] .codehighlight-block",
+  )) {
+    const button = doc.createElement("button");
+    button.type = "button";
+    button.className = "codehighlight-copy";
+    // An icon button, named for screen readers and by its tooltip
+    const show = (label        , icon        ) => {
+      button.title = label;
+      button.innerHTML = `${icon}<span class="codehighlight-hidden">${label}</span>`;
+    };
+    show("Copy code", icons.copy);
+    const status = doc.createElement("span");
+    status.className = "codehighlight-hidden";
+    status.setAttribute("role", "status");
+    const view = doc.defaultView          ;
+    let reset                    ;
+    button.addEventListener("click", async () => {
+      try {
+        await view.navigator.clipboard.writeText(
+          String((block.querySelector("code")               ).textContent),
+        );
+        show((status.textContent = "Copied"), icons.copied);
+      } catch {
+        show((status.textContent = "Couldn't copy"), icons.failed);
+      }
+      // Ready to copy again after a moment
+      view.clearTimeout(reset);
+      reset = view.setTimeout(() => {
+        show("Copy code", icons.copy);
+        status.textContent = "";
+      }, 2000);
+    });
+    (block.querySelector("pre")                  ).before(button, status);
+  }
+
+  const highlighted = [
+    ...doc.querySelectorAll             (
+      ".codehighlight[data-syntax-highlight] .codehighlight-block[data-language]",
+    ),
+  ];
+  if (!highlighted.length) return;
+  let shiki       ;
+  try {
+    shiki = await loadShiki();
+  } catch {
+    return;
+  }
+  for (const block of highlighted) {
+    const pre = block.querySelector("pre")                  ;
+    try {
+      const template = doc.createElement("template");
+      template.innerHTML = await shiki.codeToHtml(String(pre.textContent), {
+        lang: block.dataset.language          ,
+        themes,
+        defaultColor: false,
+      });
+      const code = template.content.querySelector("code")               ;
+      pre.classList.add("shiki");
+      pre.replaceChildren(code);
+    } catch {
+      // Left as it is
+    }
+  }
+})(document, () => import("https://cdn.jsdelivr.net/npm/shiki@4.6.0/+esm"), {"light":"github-light","dark":"github-dark"}, {"copy":"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 -960 960 960\" aria-hidden=\"true\"><path d=\"M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z\"/></svg>","copied":"<span class=\"codehighlight-emoji\" aria-hidden=\"true\">✅</span>","failed":"<span class=\"codehighlight-emoji\" aria-hidden=\"true\">🙅</span>"});
 </script>  </body>
 </html>
