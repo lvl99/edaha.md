@@ -77,6 +77,8 @@ describe("edaha-richtext", () => {
       ["Numbered list", "<ol>"],
       ["Quote", "<blockquote>"],
       ["Code", "<pre>"],
+      ["Underline", "<u>"],
+      ["Strikethrough", "<s>"],
       ["Small", "<small>"],
       ["Big", "<big>"],
       ["Details", "<details>"],

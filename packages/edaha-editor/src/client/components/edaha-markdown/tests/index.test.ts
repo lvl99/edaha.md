@@ -65,6 +65,8 @@ describe("edaha-markdown", () => {
     expect(buttons.map((b) => b.textContent?.trim())).toEqual([
       "Bold",
       "Italic",
+      "Underline",
+      "Strikethrough",
       "Small",
       "Big",
       "Link",
@@ -96,6 +98,8 @@ describe("edaha-markdown", () => {
     const cases: [string, string][] = [
       ["Bold", "Hello **world**"],
       ["Italic", "Hello _world_"],
+      ["Underline", "Hello <u>world</u>"],
+      ["Strikethrough", "Hello ~~world~~"],
       ["Small", "Hello <small>world</small>"],
       ["Big", "Hello <big>world</big>"],
       ["Heading", "## Hello world"],
