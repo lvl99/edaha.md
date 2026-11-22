@@ -95,17 +95,24 @@ export const embedButton = (
 
 /**
  * The address of a preview page or embed frame: on the editor's server, at the previews' own origin (`localhost`
- * rather than `127.0.0.1`), which can't reach the editor's API. Elsewhere (e.g. tests), and for an empty path, the
- * path is kept as it is.
+ * rather than `127.0.0.1`), which can't reach the editor's API. The path is on the page's own server, or the editor
+ * server's address given in full (e.g. when another app shows the editor). Elsewhere (e.g. tests), and for an empty
+ * path, the path is kept as it is.
+ *
+ * @param base - the address the path is relative to: the page's own, by default
  *
  * @example
  * previewAddress("/preview/1/"); // "http://localhost:5180/preview/1/" on http://127.0.0.1:5180
+ * previewAddress("http://127.0.0.1:5180/preview/1/"); // "http://localhost:5180/preview/1/" anywhere
  */
 export const previewAddress = (
   path: string,
-  { protocol, hostname, port } = window.location,
-): string =>
+  base: { href: string } = window.location,
+): string => {
   // Nothing (e.g. a preview not loaded yet) stays nothing
-  path && hostname === "127.0.0.1"
-    ? `${protocol}//localhost:${port}${path}`
-    : path;
+  if (!path) return path;
+  const address = new URL(path, base.href);
+  if (address.hostname !== "127.0.0.1") return path;
+  address.hostname = "localhost";
+  return address.href;
+};

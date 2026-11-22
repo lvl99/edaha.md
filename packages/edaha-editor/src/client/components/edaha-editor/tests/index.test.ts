@@ -743,6 +743,23 @@ describe("edaha-editor unsaved changes", () => {
     expect(api.read).toHaveBeenCalledTimes(2);
   });
 
+  it("should say whether the open article has unsaved changes", async () => {
+    const { element } = await setup();
+    expect(element.dirty).toBe(false);
+    await element.open(SUMMARIES[0]!);
+    await settle(element);
+    expect(element.dirty).toBe(false);
+    input(
+      find<HTMLInputElement>(
+        element,
+        "edaha-article-data-field[name=title] input",
+      ),
+      "Changed",
+    );
+    await settle(element);
+    expect(element.dirty).toBe(true);
+  });
+
   it("should ask the browser before the page closes with unsaved changes, until removed", async () => {
     /** Fire beforeunload and say whether the browser would ask */
     const asks = () => {

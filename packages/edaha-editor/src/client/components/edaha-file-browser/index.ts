@@ -486,7 +486,9 @@ export class EdahaFileBrowser extends LitElement {
           return html`<tr>
             <td>
               <a
-                href="/files/${location}/${encodeURIComponent(file.name)}"
+                href=${this.api.url(
+                  `/files/${location}/${encodeURIComponent(file.name)}`,
+                )}
                 target="_blank"
                 >${file.name}</a
               >
@@ -494,7 +496,9 @@ export class EdahaFileBrowser extends LitElement {
             <td>${kindLabels[file.kind]}</td>
             <td>${formatFileSize(file.size)}</td>
             <td>
-              <a href="/#${location}" target="_blank">${location}</a>
+              <a href=${this.api.url(`/#${location}`)} target="_blank"
+                >${location}</a
+              >
             </td>
             <td class="file-browser-operations">
               ${

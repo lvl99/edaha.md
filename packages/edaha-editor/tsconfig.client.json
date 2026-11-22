@@ -1,0 +1,14 @@
+{
+  // Writes the type definitions of the article editor for other apps' pages ("@lvl99dotcom/edaha-editor/client") into
+  // dist/types. Vite bundles its code (see vite.client.config.ts). edaha.md's core is read from its built types, so
+  // build it first.
+  "extends": "./tsconfig.build.json",
+  "compilerOptions": {
+    "emitDeclarationOnly": true,
+    "outDir": "dist/types",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "types": ["vite/client"]
+  },
+  "include": ["src/client/index.ts"],
+  "exclude": ["src/**/tests"]
+}

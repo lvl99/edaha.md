@@ -30,7 +30,7 @@ import type {
 import { showToast } from "../edaha-toasts/index.ts";
 import "../edaha-embed-dialog/index.ts";
 import type { EdahaEmbedDialog } from "../edaha-embed-dialog/index.ts";
-import { previewAddress, type EmbedTools } from "../../embeds/index.ts";
+import type { EmbedTools } from "../../embeds/index.ts";
 import "../edaha-metadata-field/index.ts";
 import type { MetadataChange } from "../edaha-metadata-field/index.ts";
 import {
@@ -533,6 +533,18 @@ export class EdahaArticle extends LitElement {
     return `/files/${this.location.type}/${this.location.slug}/${name}`;
   }
 
+  /**
+   * The address a file is shown from: fileUrl's, on the editor's server (which may not be the page's, see
+   * EditorApi's `baseUrl`). Saved content keeps fileUrl's paths.
+   */
+  private readonly fileAddress = (name: string | undefined) => {
+    const url = this.fileUrl(name);
+    return url && this.api.url(url);
+  };
+
+  /** The address images in the rich text body are shown from: their `src`, on the editor's server */
+  private readonly bodyFileAddress = (src: string) => this.api.url(src);
+
   /** Run an API call, showing errors and a busy state */
   private async run<T>(action: () => Promise<T>): Promise<T | undefined> {
     this.busy = true;
@@ -632,8 +644,11 @@ export class EdahaArticle extends LitElement {
               )
             : undefined;
         },
-        loadFrame: ({ key, content, options }) =>
-          this.api.embedFrame(key, content, options),
+        // Frames are shown from the editor server's previews' origin
+        loadFrame: async ({ key, content, options }) => {
+          const frame = await this.api.embedFrame(key, content, options);
+          return { ...frame, url: frame.url && this.api.previewUrl(frame.url) };
+        },
       };
     } catch {
       this.embedTools = undefined;
@@ -1086,7 +1101,7 @@ export class EdahaArticle extends LitElement {
               accept="image/png, image/jpeg, image/gif, application/zip, application/pdf"
               .value=${attachment.url}
               preview
-              .previewUrl=${this.fileUrl(attachment.url)}
+              .previewUrl=${this.fileAddress(attachment.url)}
               .chooseFile=${this.choosers().file}
               allowchange
               ?disabled=${noUploads}
@@ -1162,7 +1177,7 @@ export class EdahaArticle extends LitElement {
           <iframe
             class="preview"
             title="Preview"
-            src=${previewAddress(this.previewUrl)}
+            src=${this.api.previewUrl(this.previewUrl)}
             style=${styleMap({
               // Only the frame's width changes: the page isn't rendered again
               width: PREVIEW_WIDTHS.find(
@@ -1181,6 +1196,7 @@ export class EdahaArticle extends LitElement {
         .uploadImage=${this.location ? this.uploadImage : undefined}
         .chooseFile=${this.choosers().body}
         .embedTools=${this.embedTools}
+        .fileAddress=${this.bodyFileAddress}
       ></edaha-article-data-field>`;
     return html`<div
         class="body-tabs"
@@ -1341,7 +1357,7 @@ export class EdahaArticle extends LitElement {
           accept="image/png, image/jpeg"
           .value=${data.thumbnail ?? ""}
           preview
-          .previewUrl=${this.fileUrl(data.thumbnail)}
+          .previewUrl=${this.fileAddress(data.thumbnail)}
           .chooseFile=${this.choosers().file}
           allowchange
           allowclear
@@ -1364,7 +1380,7 @@ export class EdahaArticle extends LitElement {
         Files in this article's folder (${this.files.length})
       </h3>
       <ul>
-        ${this.files.map((file) => html`<li><a href=${this.fileUrl(file) as string} target="_blank">${file}</a></li>`)}
+        ${this.files.map((file) => html`<li><a href=${this.fileAddress(file) as string} target="_blank">${file}</a></li>`)}
       </ul>
     </div>`;
   }
@@ -1380,7 +1396,7 @@ export class EdahaArticle extends LitElement {
       .hiddenFields=${hidden}
       .uploadFile=${this.location ? this.uploadMarkdownImage : undefined}
       .chooseFile=${this.choosers().file}
-      .fileUrl=${(name: string) => this.fileUrl(name)}
+      .fileUrl=${(name: string) => this.fileAddress(name)}
     ></edaha-metadata-field>`;
   }
 

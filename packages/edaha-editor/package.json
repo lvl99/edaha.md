@@ -24,6 +24,8 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./client": "./src/client/index.ts",
+    "./client/style.css": "./src/client/style.css",
     "./package.json": "./package.json"
   },
   "files": [
@@ -38,6 +40,11 @@
         "types": "./dist/index.d.ts",
         "default": "./dist/index.js"
       },
+      "./client": {
+        "types": "./dist/types/client/index.d.ts",
+        "default": "./dist/client-lib/index.js"
+      },
+      "./client/style.css": "./dist/client-lib/style.css",
       "./package.json": "./package.json"
     }
   },
@@ -48,13 +55,6 @@
   "dependencies": {
     "@hono/node-server": "^2.1.5",
     "@lvl99dotcom/edaha.md": "workspace:^",
-    "hono": "^4.13.13",
-    "mime-types": "^3.0.2",
-    "turndown": "^7.2.4",
-    "yaml": "^2.9.1"
-  },
-  "devDependencies": {
-    "@material-symbols/svg-400": "0.48.1",
     "@tiptap/core": "^3.32.0",
     "@tiptap/extension-bubble-menu": "^3.34.0",
     "@tiptap/extension-details": "3.32.0",
@@ -62,6 +62,13 @@
     "@tiptap/extension-table": "^3.32.0",
     "@tiptap/pm": "^3.32.0",
     "@tiptap/starter-kit": "^3.32.0",
-    "lit": "^3.3.3"
+    "hono": "^4.13.13",
+    "lit": "^3.3.3",
+    "mime-types": "^3.0.2",
+    "turndown": "^7.2.4",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@material-symbols/svg-400": "0.48.1"
   }
 }

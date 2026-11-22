@@ -4,6 +4,7 @@ import "../edaha-markdown/index.ts";
 import "../edaha-richtext/index.ts";
 import type { ImageUploader } from "../edaha-richtext/index.ts";
 import type { EmbedTools } from "../../embeds/index.ts";
+import type { FileAddress } from "../../richtext/editor/index.ts";
 import { acceptedKind, type FileChooser } from "../edaha-file-browser/index.ts";
 
 /** Kinds of field */
@@ -58,6 +59,7 @@ export class EdahaArticleDataField extends LitElement {
     uploadImage: { attribute: false },
     chooseFile: { attribute: false },
     embedTools: { attribute: false },
+    fileAddress: { attribute: false },
     preview: { type: Boolean },
     allowchange: { type: Boolean },
     allowclear: { type: Boolean },
@@ -84,6 +86,8 @@ export class EdahaArticleDataField extends LitElement {
   declare chooseFile?: FileChooser | undefined;
   /** For rich text and Markdown fields: the site's embeds, the embed dialog, and embed blocks' frames */
   declare embedTools?: EmbedTools | undefined;
+  /** For rich text: the address images in the body are shown from, for their `src` */
+  declare fileAddress?: FileAddress | undefined;
   /** For file fields: show an image preview */
   declare preview: boolean;
   /** For file fields: allow choosing a new file when one is set */
@@ -168,6 +172,7 @@ export class EdahaArticleDataField extends LitElement {
           .uploadImage=${this.uploadImage}
           .chooseFile=${this.chooseFile}
           .embedTools=${this.embedTools}
+          .fileAddress=${this.fileAddress}
           @richtext-change=${(event: Event) => {
             event.stopPropagation();
             this.change(

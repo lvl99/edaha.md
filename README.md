@@ -186,6 +186,8 @@ A site's own static files folder (`static/`, or `staticDir`) is copied to the we
 
 edaha.md was designed to be file-system first, with an editor as a convenience for non-technical users or ones who prefer a GUI.
 
+Apps can show the editor in their own pages too: `@lvl99dotcom/edaha-editor/client` gives it as the `<edaha-editor>` web component, with its stylesheet (and edaha.md's design tokens) in `@lvl99dotcom/edaha-editor/client/style.css`.
+
 > For more information about the editor, see [WYSIWYG Editor](https://edaha.md/docs/09-wysiwyg-editor/).
 
 ## API
@@ -236,7 +238,7 @@ pnpm site:publish   # build site/ and publish it to the gh-pages branch (GitHub 
   - `src/shared/tests/fixtures/`: a fixture site, also used by the editor's tests.
 - `packages/edaha-editor/` (`@lvl99dotcom/edaha-editor`):
   - `src/server/`: the editor's API, article store and Markdown conversion.
-  - `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`.
+  - `src/client/`: the editor page (Lit and Tiptap), bundled into `dist/client`, and the `<edaha-editor>` web component for other apps' pages (`src/client/index.ts`, bundled into `dist/client-lib`).
   - `src/editor/`: the editor's web server (`startEditor`).
   - `src/shared/tests/`: test helpers.
 - `packages/edaha-theme-default/` (`@lvl99dotcom/edaha-theme-default`): the default templates and stylesheet.

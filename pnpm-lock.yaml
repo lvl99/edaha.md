@@ -283,22 +283,6 @@ importers:
       '@lvl99dotcom/edaha.md':
         specifier: workspace:^
         version: link:../edaha
-      hono:
-        specifier: ^4.13.13
-        version: 4.13.18
-      mime-types:
-        specifier: ^3.0.2
-        version: 3.0.2
-      turndown:
-        specifier: ^7.2.4
-        version: 7.2.5
-      yaml:
-        specifier: ^2.9.1
-        version: 2.9.1
-    devDependencies:
-      '@material-symbols/svg-400':
-        specifier: 0.48.1
-        version: 0.48.1
       '@tiptap/core':
         specifier: ^3.32.0
         version: 3.34.0(@tiptap/pm@3.34.0)
@@ -320,9 +304,25 @@ importers:
       '@tiptap/starter-kit':
         specifier: ^3.32.0
         version: 3.34.0
+      hono:
+        specifier: ^4.13.13
+        version: 4.13.18
       lit:
         specifier: ^3.3.3
         version: 3.3.3
+      mime-types:
+        specifier: ^3.0.2
+        version: 3.0.2
+      turndown:
+        specifier: ^7.2.4
+        version: 7.2.5
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+    devDependencies:
+      '@material-symbols/svg-400':
+        specifier: 0.48.1
+        version: 0.48.1
 
   packages/edaha-plugin-bandcamp:
     devDependencies:

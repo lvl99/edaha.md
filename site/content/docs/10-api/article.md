@@ -208,7 +208,7 @@ It only listens on `127.0.0.1`: never deploy it, as it reads and writes the site
 | `clientDir` | String | The folder with the editor page's built files. | The editor package's `dist/client` |
 | `logger` | `{ warn }` | Where the warning about a folder with several config files goes. | None |
 
-`startEditor` resolves with the editor's `url` and a `close` function, once it is listening. It rejects if the config file can't be read, or the port is in use.
+`startEditor` resolves with the editor's `url`, a `fetch` function that answers a `Request` without the network (see [Showing the editor in your own app](#showing-the-editor-in-your-own-app)) and a `close` function, once it is listening. It rejects if the config file can't be read, or the port is in use.
 
 ### Serving it yourself
 
@@ -225,3 +225,39 @@ console.log(await response.json());
 <!-- /embed:codehighlight -->
 
 Its API only accepts changes from the editor page's own address (`http://127.0.0.1:<port>`), so serve it there.
+
+### Showing the editor in your own app
+
+`@lvl99dotcom/edaha-editor/client` gives the editor's page as a web component, `<edaha-editor>`, for an app's own page (e.g. a desktop app). It's defined when imported. It needs an editor server for the site (see `startEditor`), which it reaches with an `EditorApi`:
+
+<!-- embed:codehighlight -->
+```ts
+import "@lvl99dotcom/edaha-editor/client/style.css";
+import { EdahaEditor, EditorApi } from "@lvl99dotcom/edaha-editor/client";
+
+const editor = document.createElement("edaha-editor") as EdahaEditor;
+// Set the API before adding the editor to the page, which loads the site's articles
+editor.api = new EditorApi({ baseUrl: "http://127.0.0.1:5180" });
+editor.setAttribute("hide-title", "");
+document.body.append(editor);
+```
+<!-- /embed:codehighlight -->
+
+The stylesheet styles the editor and has edaha.md's design tokens as CSS variables on `:root` (e.g. `--colour-text`, `--colour-link`, `--border-radius`), in light and dark, so the app's page can use them too. Inside a shadow root, add the stylesheet to the shadow root as well, as `:root` rules don't apply there (the variables still do).
+
+| `EditorApi` option | Type | Description | Default |
+| --- | --- | --- | --- |
+| `baseUrl` | String | The editor server's address, e.g. `http://127.0.0.1:5180`. Requests, articles' files and images, and preview pages use it. | `""`: the page's own server |
+| `fetch` | Function | Sends the requests, e.g. through the app's own channel to `startEditor`'s `fetch`, so the API isn't reached over the network. Requests other than `GET` need an `Origin` header of the editor's address. | The global `fetch` |
+
+`<edaha-editor>` has:
+
+| Attribute or property | Description |
+| --- | --- |
+| `api` | The `EditorApi` it uses. Set it before adding the editor to the page. |
+| `hide-title` | Hides the "edaha.md" title. **Home** still goes back to the welcome prompt. |
+| `hide-theme-switcher` | Hides the light/dark theme switcher, showing the device's (or the app's) light or dark theme. |
+| `dirty` | Whether the open article has unsaved changes. |
+| `leaveForm()` | Asks whether to save unsaved changes first: resolves with whether the editor can be closed (or another site shown). |
+
+Preview pages and embed frames are still shown from the editor server, at its previews' own address (`http://localhost:<port>`), so the app's page must allow loading frames and images from it.

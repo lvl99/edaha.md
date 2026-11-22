@@ -28,6 +28,39 @@ describe("EditorApi", () => {
     fetch.mockRestore();
   });
 
+  it("should reach an editor server that isn't the page's at its address", async () => {
+    const fetch = answer(200, []);
+    const api = new EditorApi({ baseUrl: "http://127.0.0.1:5193/", fetch });
+    expect(api.baseUrl).toBe("http://127.0.0.1:5193");
+    await api.recent();
+    expect(fetch).toHaveBeenCalledWith(
+      "http://127.0.0.1:5193/api/articles/recent",
+      undefined,
+    );
+    expect(api.url("/files/news/a/b.png")).toBe(
+      "http://127.0.0.1:5193/files/news/a/b.png",
+    );
+    // Other addresses are kept as they are
+    for (const address of ["https://x.dev/a.png", "//cdn.dev/a.png", "a.png"])
+      expect(api.url(address)).toBe(address);
+    expect(api.previewUrl("/preview/1/")).toBe(
+      "http://localhost:5193/preview/1/",
+    );
+  });
+
+  it("should use the page's own server by default", async () => {
+    const api = new EditorApi({});
+    expect(api.baseUrl).toBe("");
+    expect(api.url("/files/news/a/b.png")).toBe("/files/news/a/b.png");
+    expect(api.previewUrl("/preview/1/")).toBe("/preview/1/");
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("[]"));
+    await api.recent();
+    expect(fetch).toHaveBeenCalledWith("/api/articles/recent", undefined);
+    fetch.mockRestore();
+  });
+
   it("should call each route", async () => {
     const fetch = answer(200, { ok: true });
     const api = new EditorApi(fetch);

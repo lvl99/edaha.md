@@ -10,7 +10,10 @@ import {
   type EmbedTools,
   type EmbedValue,
 } from "../../embeds/index.ts";
-import { createRichtextEditor } from "../../richtext/editor/index.ts";
+import {
+  createRichtextEditor,
+  type FileAddress,
+} from "../../richtext/editor/index.ts";
 import {
   EMBED_EDIT_EVENT,
   EMBED_REFRESH_EVENT,
@@ -70,6 +73,7 @@ export class EdahaRichtext extends LitElement {
     uploadImage: { attribute: false },
     chooseFile: { attribute: false },
     embedTools: { attribute: false },
+    fileAddress: { attribute: false },
   };
 
   /** The content as HTML */
@@ -83,6 +87,8 @@ export class EdahaRichtext extends LitElement {
 
   /** The site's embeds, the embed dialog, and embed blocks' frames */
   declare embedTools?: EmbedTools | undefined;
+  /** The address images in the body are shown from, for their `src` (e.g. on another page's editor server) */
+  declare fileAddress?: FileAddress | undefined;
 
   /** The Tiptap editor, once rendered */
   editor?: Editor;
@@ -381,6 +387,8 @@ export class EdahaRichtext extends LitElement {
       // Read when embed blocks are shown, so the tools can be set after the editor is created
       () => this.embedTools,
       this.formatMenu,
+      // Read when an image is shown, so it can be set after the editor is created
+      (src) => this.fileAddress?.(src) ?? src,
     );
     // An embed block's "Edit" button selects it, then asks for its new kind and content here
     element.addEventListener(EMBED_EDIT_EVENT, () => {
