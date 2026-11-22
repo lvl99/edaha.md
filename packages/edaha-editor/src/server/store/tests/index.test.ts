@@ -25,6 +25,7 @@ import {
 } from "..";
 import type { EditorArticleData } from "../../types";
 import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
+import { THEME_DIR } from "@lvl99dotcom/edaha.md/theme";
 
 const FIXTURE = fileURLToPath(
   new URL(
@@ -1163,6 +1164,19 @@ describe("ArticleStore previews", () => {
       "",
     ])
       await rejectsWith(store.staticFile(path), 404, "File not found");
+  });
+
+  it("should use the theme named in the config file, unless given another", async () => {
+    const { dir } = await copySite();
+    const theme = await mkdtemp(join(tmpdir(), "edaha-theme-"));
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `${await readFile(join(dir, "edahaconfig.yml"), "utf8")}\ntheme: ${theme}\n`,
+    );
+    expect((await openStore(dir)).staticDirs[1]).toBe(join(theme, "static"));
+    expect((await openStore(dir, THEME_DIR)).staticDirs[1]).toBe(
+      join(THEME_DIR, "static"),
+    );
   });
 
   it("should read articles' files at their paths on the website, after the static files", async () => {

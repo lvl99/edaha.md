@@ -32,7 +32,7 @@ export const CLIENT_DIR = fileURLToPath(
 
 /** Options for the article editor's server */
 export interface EditorServerOptions extends SiteConfigOptions {
-  /** The default theme folder that the site's templates and static files override. Default: THEME_DIR */
+  /** The theme folder that the site's templates and static files override. Default: the config's `theme`, else THEME_DIR */
   themeDir?: string;
   /** The port to listen on. Default: EDITOR_PORT */
   port?: number;

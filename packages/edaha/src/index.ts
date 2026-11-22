@@ -48,4 +48,13 @@ export {
   type RunningEditor,
   type StartEditor,
 } from "./cli/index.ts";
-export { THEME_DIR } from "./theme/index.ts";
+export {
+  isThemePath,
+  packageAuthor,
+  parseThemeInfo,
+  readThemeInfo,
+  resolveTheme,
+  THEME_DIR,
+  THEME_FILE,
+  type ThemeInfo,
+} from "./theme/index.ts";

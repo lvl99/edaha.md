@@ -41,6 +41,16 @@ describe("parseConfig", () => {
     expect(parseYaml(`${VALID}path: docs\n`).path).toBe("docs");
   });
 
+  it("should read the optional theme", () => {
+    expect(parseYaml(VALID).theme).toBeUndefined();
+    expect(parseYaml(`${VALID}theme: ../themes/blog\n`).theme).toBe(
+      "../themes/blog",
+    );
+    expect(() => parseYaml(`${VALID}theme: ""\n`)).toThrow(
+      '"theme" must be a non-empty string',
+    );
+  });
+
   it("should reject anything but a map", () => {
     expect(() => parseYaml("- a")).toThrow(
       "edahaconfig.yml: the config file must be a map of settings",

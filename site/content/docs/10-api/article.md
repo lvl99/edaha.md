@@ -95,7 +95,7 @@ A site's template can build on the theme's version of itself with `{% extends "@
 | `siteDir` | String | The folder to look for a config file in, before the nearest `package.json`'s folder. | The current folder |
 | `configFile` | String | The config file to use instead of looking for one. The site folder is its folder. | The first [config file](/docs/03-configuration/#where-it-is-found) found |
 | `siteUrl` | String | The website's absolute URL, for feeds. Its path (e.g. `/edaha.md`) starts every URL in the pages. | `siteUrl` in the config file, then `http://localhost` with a warning |
-| `themeDir` | String | The default theme's folder (with `templates/` and `static/`), which the site's own templates and static files override. | edaha.md's theme (`THEME_DIR`) |
+| `themeDir` | String | The theme's folder (with `templates/` and `static/`), which the site's own templates and static files override, instead of the config file's `theme`. | The config file's [`theme`](/docs/03-configuration/#theme), then edaha.md's default theme (`THEME_DIR`) |
 | `plugins` | EmbedPlugin\[\] | [Embed plugins](/docs/07-embeds/) added after the config file's `plugins`. One with the same key as the config file's is left out. | None |
 | `logger` | `{ warn }` | Where warnings go, e.g. about articles with problems. | `console` |
 | `fetch` | Function | Fetches data for embeds that need it, e.g. Bandcamp's. | The global `fetch` |
@@ -124,7 +124,28 @@ const { configFile, siteDir, config } = await loadSiteConfig({
 console.log(`${config.name}: ${Object.keys(config.types).join(", ")}`);
 ```
 
-It takes `siteDir`, `configFile` and `logger`, like `buildSite`. The config helpers it uses are exported too: `findConfigFile` (which file would be used), `readConfigFile` (its raw settings) and `parseConfig` (check settings and fill in defaults; give it plugin objects, as it doesn't load packages).
+It takes `siteDir`, `configFile` and `logger`, like `buildSite`. Besides the config file, its folder and its settings, it gives `themeDir`: the folder of the theme named in the config file's `theme`, or `undefined` for the default theme. The config helpers it uses are exported too: `findConfigFile` (which file would be used), `readConfigFile` (its raw settings) and `parseConfig` (check settings and fill in defaults; give it plugin objects, as it doesn't load packages).
+
+### Themes
+
+`@lvl99dotcom/edaha.md/theme` has helpers for [themes](/docs/05-templating/#using-another-theme), e.g. for tools that manage them:
+
+```ts
+import { readThemeInfo, resolveTheme, THEME_DIR } from "@lvl99dotcom/edaha.md";
+
+const themeDir = await resolveTheme("../themes/my-theme", "my-site");
+const { name, version, authors, isPackage } = await readThemeInfo(themeDir);
+```
+
+| Export | Description |
+| --- | --- |
+| `THEME_DIR` | The default theme's folder. |
+| `THEME_FILE` | The name of a theme's settings file: `edahatheme.yml`. |
+| `resolveTheme(theme, siteDir)` | The folder of a `theme` setting: a folder path (relative to `siteDir`) or an installed package's name. Rejects if it isn't found. |
+| `isThemePath(theme)` | Whether a `theme` setting is a folder path (it starts with `.` or is absolute) rather than a package name. |
+| `readThemeInfo(themeDir)` | A theme's `name`, `description`, `version` and `authors`, from its `package.json` if it has one (then `isPackage` is `true`), else its `edahatheme.yml`, else just its folder's name. Rejects, naming the file, if the file is invalid. |
+| `parseThemeInfo(data, source)` | Checks the settings read from an `edahatheme.yml`. |
+| `packageAuthor(value)` | Reads a `package.json` author, e.g. `"Jane Doe <jane@example.com> (https://example.com)"`. |
 
 ### Embed plugins
 
@@ -169,7 +190,7 @@ It only listens on `127.0.0.1`: never deploy it, as it reads and writes the site
 | `siteDir` | String | The folder to look for a config file in, before the nearest `package.json`'s folder. | The current folder |
 | `configFile` | String | The config file to use instead of looking for one. | The first config file found |
 | `port` | Number | The port to listen on. | `5180` |
-| `themeDir` | String | The default theme's folder, which the site's own templates and static files override. | edaha.md's theme |
+| `themeDir` | String | The theme's folder, which the site's own templates and static files override, instead of the config file's `theme`. | The config file's `theme`, then edaha.md's default theme |
 | `plugins` | EmbedPlugin\[\] | Embed plugins added after the config file's `plugins`. | None |
 | `fetch` | Function | Fetches data for embeds that need it. | The global `fetch` |
 | `clientDir` | String | The folder with the editor page's built files. | The editor package's `dist/client` |

@@ -170,6 +170,12 @@ A type's own folder (e.g. `templates/page/`) overrides them, and an article's `t
 
 Within Nunjucks templates, names starting with `@theme/` always load the theme's file, so a template can override the theme's and still extend it: `{% extends "@theme/article/single.njk" %}`.
 
+The `theme` setting uses another theme instead: a folder path starting with `.` (relative to the site folder) or an absolute path, or an installed theme package's name. A theme is a folder with `templates/`, `static/` and optionally an `edahatheme.yml` with its `name`, `description`, `version` and `authors` (packages use their `package.json`).
+
+```yaml
+theme: ../themes/my-theme
+```
+
 A site's own static files folder (`static/`, or `staticDir`) is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
 
 > For more information, see [Templating](https://edaha.md/docs/05-templating/).

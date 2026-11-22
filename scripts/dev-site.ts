@@ -19,7 +19,7 @@ import { THEME_DIR } from "@lvl99dotcom/edaha.md/theme";
 import { startSiteServer } from "./site-server.ts";
 
 const projectDir = resolve(import.meta.dirname, "..");
-const { configFile, siteDir, config } = await loadSiteConfig({
+const { configFile, siteDir, config, themeDir } = await loadSiteConfig({
   siteDir: projectDir,
 });
 
@@ -98,7 +98,7 @@ const folders = [
   join(siteDir, config.articlesDir),
   join(siteDir, config.templatesDir),
   join(siteDir, config.staticDir),
-  THEME_DIR,
+  themeDir ?? THEME_DIR,
 ].filter(
   (folder, index, all) =>
     existsSync(folder) &&

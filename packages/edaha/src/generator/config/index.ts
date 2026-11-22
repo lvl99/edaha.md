@@ -60,6 +60,11 @@ export interface EdahaConfig {
   templatesDir: string;
   /** The site's static files folder, over the theme's, relative to the site folder and inside it. Default: "static" */
   staticDir: string;
+  /**
+   * Optional; the theme the site's templates and static files override: a folder path relative to the site folder
+   * (starting with "." or absolute), or an installed theme package's name. Default: edaha.md's default theme
+   */
+  theme?: string | undefined;
   /** Optional; where built files are copied to, relative to the site folder (e.g. another app's build folder) */
   publishDir?: string | undefined;
   /** Optional; the website's absolute URL for feeds, used when the `SITE_URL` environment variable isn't set */
@@ -109,6 +114,7 @@ const CONFIG_KEYS = [
   "articlesDir",
   "templatesDir",
   "staticDir",
+  "theme",
   "publishDir",
   "siteUrl",
   "reservedPaths",
@@ -404,6 +410,7 @@ const validateConfig = (data: unknown): EdahaConfig => {
     path: parsePath(fields.path, '"path"') ?? "",
     outputDir: optionalString(fields, "outputDir") ?? "build",
     ...parseSourceFolders(fields),
+    theme: optionalString(fields, "theme"),
     publishDir: optionalString(fields, "publishDir"),
     siteUrl: parseSiteUrl(fields),
     reservedPaths: parseReservedPaths(fields),

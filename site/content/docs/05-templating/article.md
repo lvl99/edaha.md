@@ -35,6 +35,43 @@ templates/
 
 Your site's static files folder (`static/`, or [`staticDir`](/docs/03-configuration/#staticdir)) works the same way: its files are copied to the website's root over the theme's, so a `static/site.css` replaces the theme's stylesheet.
 
+## Using another theme
+
+The [`theme`](/docs/03-configuration/#theme) setting uses another theme instead of the default one: a folder, or an installed theme package. Your own templates and static files still override its files one by one, and `@theme/` (see below) loads its files.
+
+```yaml
+theme: ../themes/my-theme
+```
+
+A theme is a folder with:
+
+- `templates/`: its templates. It needs `layouts/html.njk`, `layouts/rssfeed.njk`, `article/single.njk` and `article/list.njk`, unless your site has them.
+- `static/`: files copied to the website's root.
+- `edahatheme.yml` (optional): its name, description, version and authors.
+
+```yaml
+# edahatheme.yml
+name: My theme
+description: A theme for my blog
+version: 1.0.0
+authors:
+  - Jane Doe
+  - name: Sam Lee
+    email: sam@example.com
+    url: https://example.com
+```
+
+| Setting       | Required | Description                                                                                                                              |
+| ------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`        | Yes      | The theme's name.                                                                                                                        |
+| `description` | No       | What the theme is for.                                                                                                                   |
+| `version`     | No       | Its version, e.g. `1.0.0`.                                                                                                               |
+| `authors`     | No       | Its authors: names, or maps with a `name` and optionally an `email` and `url`, like a site's [`author`](/docs/03-configuration/#author). |
+
+A theme that is a package (it has a `package.json`) takes its name, description, version and authors from its `package.json` instead. Installed packages shouldn't be edited: to change one, copy its folder, delete the copy's `package.json` and give it an `edahatheme.yml`.
+
+The easiest way to start a theme is to copy the default theme's `templates/` and `static/` folders.
+
 ## Building on the theme's templates
 
 A template can extend, include or import any other by its name, e.g. `{% extends "article/single.njk" %}`. Names are looked for in your templates folder first, then in the theme's, so this gets the theme's file as long as you haven't overridden it.
