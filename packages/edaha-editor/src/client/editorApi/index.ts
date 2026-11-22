@@ -20,7 +20,20 @@ import type {
   UploadResult,
 } from "../../server/types/index.ts";
 
+import { previewAddress } from "../embeds/index.ts";
+
 export type { ArticleLocation } from "../../server/types/index.ts";
+
+/** How an EditorApi reaches the editor's server */
+export interface EditorApiOptions {
+  /**
+   * The editor server's address, e.g. "http://127.0.0.1:5180", for a page the server doesn't serve itself (e.g. an
+   * app showing `<edaha-editor>`). Requests, articles' files and previews use it. Default: "" (the page's own server)
+   */
+  baseUrl?: string | undefined;
+  /** Sends the requests, e.g. through an app's own channel to the server. Default: the global fetch */
+  fetch?: typeof fetch | undefined;
+}
 
 /** A failed request: the server's message, and the problems with an article's metadata when saving it was refused */
 export class ApiError extends Error {
@@ -57,24 +70,60 @@ const fileRoute = ({ type, slug, name }: FileLocation) =>
   `/api/files/${type}/${slug}/${encodeURIComponent(name)}`;
 
 /**
- * Talks to the editor's local server (see src/server/app.ts).
+ * Talks to the editor's local server (see src/server/app.ts): the page's own, or another at `baseUrl`.
  *
  * @example
  * const api = new EditorApi();
  * const { articles, total } = await api.query({ search: "hello" });
+ * const other = new EditorApi({ baseUrl: "http://127.0.0.1:5193" });
  */
 export class EditorApi {
   private readonly fetch: typeof fetch;
 
-  constructor(fetchFn: typeof fetch = (...args) => fetch(...args)) {
+  /** The editor server's address, without a "/" at the end, or "" for the page's own server */
+  readonly baseUrl: string;
+
+  /**
+   * @param options - the editor server's address and how to send requests to it, or (as before) just the fetch
+   */
+  constructor(options: EditorApiOptions | typeof fetch = {}) {
+    const given: EditorApiOptions =
+      typeof options === "function" ? { fetch: options } : options;
+    const defaultFetch: typeof fetch = (...args) => fetch(...args);
+    const { baseUrl = "", fetch: fetchFn = defaultFetch } = given;
+    this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.fetch = fetchFn;
+  }
+
+  /**
+   * The address of a path on the editor's server (e.g. an article's file), for links and images. Other addresses
+   * (e.g. "https://...", or a name relative to the page) are kept as they are.
+   *
+   * @example
+   * new EditorApi({ baseUrl: "http://127.0.0.1:5193" }).url("/files/news/hello/a.png");
+   * // "http://127.0.0.1:5193/files/news/hello/a.png"
+   */
+  url(path: string): string {
+    return /^\/(?!\/)/.test(path) ? `${this.baseUrl}${path}` : path;
+  }
+
+  /**
+   * The address a preview page or embed frame is shown from: the editor server's, at the previews' own origin (see
+   * previewAddress).
+   *
+   * @example
+   * new EditorApi({ baseUrl: "http://127.0.0.1:5193" }).previewUrl("/preview/1/");
+   * // "http://localhost:5193/preview/1/"
+   */
+  previewUrl(path: string): string {
+    return previewAddress(this.url(path));
   }
 
   /**
    * Send a request and return its JSON response. Throws an Error with the server's message if it fails.
    */
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await this.fetch(path, init);
+    const response = await this.fetch(this.url(path), init);
     if (response.status === 204) return undefined as T;
     const body = (await response.json().catch(() => ({}))) as {
       error?: string;

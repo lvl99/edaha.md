@@ -85,6 +85,9 @@ const fakeApi = () =>
       warnings: [],
     })),
     validateEmbed: vi.fn(async () => ["Bad"]),
+    // The page's own server, as by default
+    url: (path: string) => path,
+    previewUrl: (path: string) => path,
   }) as unknown as EditorApi &
     Record<
       | "create"
@@ -404,6 +407,48 @@ describe("edaha-article", () => {
     expect(find<EdahaMarkdown>(fresh, "edaha-markdown").uploadImage).toBe(
       undefined,
     );
+  });
+
+  it("should show files, images and previews from the editor's server when it isn't the page's", async () => {
+    const api = Object.assign(fakeApi(), {
+      url: (path: string) =>
+        path.startsWith("/") ? `http://127.0.0.1:5193${path}` : path,
+      previewUrl: (path: string) => `http://localhost:5193${path}`,
+    });
+    const element = await mount<EdahaArticle>("edaha-article", {
+      api,
+      article: ARTICLE,
+      typeOptions: [{ value: "article", label: "Article" }],
+    });
+    await settle(element);
+    expect(field(element, "thumbnail").previewUrl).toBe(
+      "http://127.0.0.1:5193/files/article/hello/thumb.png",
+    );
+    // What's saved keeps the file's name
+    expect(element.data.thumbnail).toBe("thumb.png");
+    const body = find<EdahaRichtext>(element, "edaha-richtext");
+    expect(body.fileAddress?.("/files/article/hello/a.png")).toBe(
+      "http://127.0.0.1:5193/files/article/hello/a.png",
+    );
+    const block = { key: "youtube", content: "x", options: {} };
+    expect((await body.embedTools!.loadFrame(block)).url).toBe(
+      "http://localhost:5193/embed-frame/x/",
+    );
+    // A frame that can't be shown has no address
+    api.embedFrame.mockResolvedValueOnce({
+      url: "",
+      errors: ["Bad"],
+      warnings: [],
+    });
+    expect((await body.embedTools!.loadFrame(block)).url).toBe("");
+    find<HTMLButtonElement>(
+      element,
+      '.body-tabs [data-mode="preview"]',
+    ).click();
+    await settle(element);
+    expect(
+      find<HTMLIFrameElement>(element, "iframe.preview").getAttribute("src"),
+    ).toMatch(/^http:\/\/localhost:5193\/preview\//);
   });
 
   it("should give the body the site's embeds, the embed dialog and embed frames from the API", async () => {

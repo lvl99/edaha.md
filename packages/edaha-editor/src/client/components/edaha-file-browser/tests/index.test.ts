@@ -83,6 +83,8 @@ const setup = async () => {
       articles: [{ type: "news", slug: "hello" }],
     })),
     deleteFile: vi.fn(async () => ({ articles: [] })),
+    // The page's own server, as by default
+    url: (path: string) => path,
   } as unknown as EditorApi &
     Record<
       | "queryFiles"
@@ -135,6 +137,19 @@ describe("edaha-file-browser", () => {
       "edaha-file-browser",
     ) as EdahaFileBrowser;
     expect(element.open).toBe(false);
+  });
+
+  it("should link files and their articles on the editor's server when it isn't the page's", async () => {
+    const { element, api } = await setup();
+    element.api = Object.assign(Object.create(api), {
+      url: (path: string) => `http://127.0.0.1:5193${path}`,
+    });
+    await element.updateComplete;
+    const links = [...find(element, "tbody tr").querySelectorAll("a")].map(
+      (link) => link.getAttribute("href"),
+    );
+    expect(links[0]).toMatch(/^http:\/\/127\.0\.0\.1:5193\/files\//);
+    expect(links[1]).toMatch(/^http:\/\/127\.0\.0\.1:5193\/#/);
   });
 
   it("should open as a dialog listing files with their name, type, size, location and operations", async () => {

@@ -27,12 +27,21 @@ describe("embedIcon", () => {
 
 describe("previewAddress", () => {
   it("should show previews from the previews' own origin on the editor's server", () => {
-    const editor = { protocol: "http:", hostname: "127.0.0.1", port: "5180" };
-    expect(previewAddress("/preview/1/", editor as Location)).toBe(
+    const editor = { href: "http://127.0.0.1:5180/#news/hello" };
+    expect(previewAddress("/preview/1/", editor)).toBe(
       "http://localhost:5180/preview/1/",
     );
     // Not loaded yet, or elsewhere (e.g. tests), it is kept as it is
-    expect(previewAddress("", editor as Location)).toBe("");
+    expect(previewAddress("", editor)).toBe("");
     expect(previewAddress("/preview/1/")).toBe("/preview/1/");
+  });
+
+  it("should show previews from the editor server given in full, from any page", () => {
+    expect(previewAddress("http://127.0.0.1:5193/preview/1/?theme=dark")).toBe(
+      "http://localhost:5193/preview/1/?theme=dark",
+    );
+    expect(previewAddress("https://example.com/frame/")).toBe(
+      "https://example.com/frame/",
+    );
   });
 });

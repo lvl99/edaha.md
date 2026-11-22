@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Editor } from "@tiptap/core";
+import { Editor } from "@tiptap/core";
+import StarterKit from "@tiptap/starter-kit";
+import { DecorationSet } from "@tiptap/pm/view";
 import { NodeSelection } from "@tiptap/pm/state";
 import type { EmbedFrame } from "../../../../server/types";
 import type { EmbedTools, EmbedValue } from "../../../embeds";
@@ -8,7 +10,7 @@ import {
   editorHtmlToMarkdown,
   markdownToEditorHtml,
 } from "../../../../server/convert";
-import { createRichtextEditor, showFormatMenu } from "..";
+import { AddressedImage, createRichtextEditor, showFormatMenu } from "..";
 import { EMBED_EDIT_EVENT, Embed, blockView } from "../../extensions";
 
 let editor: Editor | undefined;
@@ -61,6 +63,81 @@ const blockButton = (block: Element | null, text: string) =>
 afterEach(() => {
   editor?.destroy();
   editor = undefined;
+});
+
+describe("createRichtextEditor's images", () => {
+  /** A rich text editor whose images are shown from another server */
+  const withAddress = (content: string) => {
+    const element = document.createElement("div");
+    document.body.append(element);
+    editor = createRichtextEditor(
+      element,
+      content,
+      vi.fn(),
+      undefined,
+      undefined,
+      (src) => `http://127.0.0.1:5193${src}`,
+    );
+    return { editor, element };
+  };
+
+  it("should show images from their address, keeping their src in the HTML", () => {
+    const { editor, element } = withAddress(
+      '<img src="/files/news/a/b.png" alt="B" title="Bee">',
+    );
+    const image = element.querySelector("img")!;
+    expect(image.src).toBe("http://127.0.0.1:5193/files/news/a/b.png");
+    expect([image.alt, image.title]).toEqual(["B", "Bee"]);
+    expect(editor.getHTML()).toBe(
+      '<img src="/files/news/a/b.png" alt="B" title="Bee">',
+    );
+  });
+
+  it("should show an image's changes", () => {
+    const { editor, element } = withAddress('<img src="/a.png" alt="A">');
+    editor.commands.setNodeSelection(0);
+    editor.commands.updateAttributes("image", { src: "/b.png", alt: null });
+    const image = element.querySelector("img")!;
+    expect(image.src).toBe("http://127.0.0.1:5193/b.png");
+    expect(image.hasAttribute("alt")).toBe(false);
+    // Replacing it with other content shows that instead
+    editor.commands.setContent("<p>No image</p>");
+    expect(element.querySelector("img")).toBeNull();
+  });
+
+  it("should leave other nodes to their own views", () => {
+    const { editor } = withAddress('<img src="/a.png">');
+    const view = editor.extensionManager.nodeViews.image!(
+      editor.state.doc.child(0),
+      editor.view,
+      () => 0,
+      [],
+      DecorationSet.empty,
+    );
+    expect(
+      view.update?.(
+        editor.schema.nodes.paragraph!.create(),
+        [],
+        DecorationSet.empty,
+      ),
+    ).toBe(false);
+  });
+
+  it("should show images from their src without an address", () => {
+    const element = document.createElement("div");
+    document.body.append(element);
+    editor = new Editor({
+      element,
+      content: '<img src="/a.png">',
+      extensions: [StarterKit, AddressedImage],
+    });
+    expect(element.querySelector("img")!.getAttribute("src")).toBe("/a.png");
+  });
+
+  it("should show images from their src by default", () => {
+    const { element } = create('<img src="/a.png">');
+    expect(element.querySelector("img")!.getAttribute("src")).toBe("/a.png");
+  });
 });
 
 describe("createRichtextEditor", () => {
