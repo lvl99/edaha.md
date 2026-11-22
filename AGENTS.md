@@ -143,15 +143,16 @@ Human will signal to agent if UAT has passed and when to prepare a PR, or will u
 
 PRs will be submitted, reviewed, and hopefully merged into `main`.
 
-Releases will be made via NPM, and only from the `main` branch, when human signals to prepare a release:
+Releases will be made via `pnpm` (ensure human has logged in first), and only from the `main` branch, when human signals to prepare a release:
 
 1. Update [CHANGELOG.md] for the new version and commit it to `main`.
-2. Bump the versions without committing:
+2. Create a news article at `site/news/release-v<version-kebab-case>/article.md` (e.g. `site/news/release-v0-3-0`) and for each item in the changelog write it as one short sentence (refer to previous release news articles for content and style reference).
+3. Bump the versions without committing:
    - Major or minor release, every package: `pnpm -r --filter "./packages/*" version <minor|major>`.
    - Patch release, only the changed packages: `pnpm -r --filter <package name> --filter <package name> version patch`.
-3. Commit the bump as "edaha.md <version>" for a major or minor release, or "<package name> <version>, ..." for a patch release.
-4. Tag each released package with an annotated tag `<package name>@<version>`, e.g. `git tag -a @lvl99dotcom/edaha.md@0.3.0 -m "@lvl99dotcom/edaha.md 0.3.0"`, so the tagged release includes its changelog.
-5. Push the commit and the tags: `git push --follow-tags`.
-6. Publish to NPM: `pnpm -r publish`. It builds each package (core first) and publishes the packages whose version isn't on NPM yet, turning their `workspace:^` dependencies into `^<version>`. Please note that this will require human intervention to complete. You need to trigger the command in an interactive terminal and then get the human to follow the rest of the process to complete. Don't bother verifying that the new version is updated in npm as it will take at least 5 minutes for the release to be verified by npm before it will be available.
+4. Commit the bump as "edaha.md <version>" for a major or minor release, or "<package name> <version>, ..." for a patch release.
+5. Tag each released package with an annotated tag `<package name>@<version>`, e.g. `git tag -a @lvl99dotcom/edaha.md@0.3.0 -m "@lvl99dotcom/edaha.md 0.3.0"`, so the tagged release includes its changelog.
+6. Push the commit and the tags: `git push --follow-tags`.
+7. Publish to NPM: `pnpm -r publish`. It builds each package (core first) and publishes the packages whose version isn't on NPM yet, turning their `workspace:^` dependencies into `^<version>`. Please note that this will require human intervention to complete. You need to trigger the command in an interactive terminal and then get the human to follow the rest of the process to complete. Don't bother verifying that the new version is updated in npm as it will take at least 5 minutes for the release to be verified by npm before it will be available.
 
 Code will be provided only as ESM with TypeScript definitions in released NPM package. Ensure that [site] is not included in the NPM packages.
