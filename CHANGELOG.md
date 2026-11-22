@@ -2,6 +2,34 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
+## 0.4.0 (2026-11-22)
+
+Themes: the default theme is its own package, and sites can use another theme. The editor can also be shown in other apps' pages, as the `<edaha-editor>` web component.
+
+### Added
+
+- `@lvl99dotcom/edaha-theme-default`: the default theme's templates and stylesheet as their own package, installed with `@lvl99dotcom/edaha.md`.
+- The `theme` setting: a folder (starting with `.`, or absolute) or an installed theme package's name, which the site's own templates and static files override. `loadSiteConfig` gives its folder as `themeDir`, which the build, the editor and `pnpm site:dev` use.
+- `edahatheme.yml`, a theme's name, description, version and authors (a theme package's come from its `package.json`), and the theme helpers `resolveTheme`, `readThemeInfo`, `parseThemeInfo`, `isThemePath`, `packageAuthor` and `THEME_FILE`.
+- The editor:
+  - A **Home** link under the nav's search, which shows the welcome prompt.
+  - Underline and strikethrough buttons in the rich text and Markdown toolbars, after italic.
+  - `startEditor`'s `hideTitle` and `hideThemeSwitcher` options, for apps that show the editor in their own window.
+- `@lvl99dotcom/edaha-editor/client`: the `<edaha-editor>` web component (`EdahaEditor`), `EditorApi` and `ApiError` for apps' own pages, with `@lvl99dotcom/edaha-editor/client/style.css` (the editor's styles and edaha.md's design tokens).
+- `EditorApi` takes `{ baseUrl, fetch }`, with `url()` and `previewUrl()`: articles' files, images, previews and embed frames are shown from the editor server at `baseUrl`. `<edaha-editor>` has `dirty`, and `startEditor`'s server has `fetch(request)`.
+- Docs for using another theme and showing the editor in your own app.
+
+### Changed
+
+- The default theme moved from `@lvl99dotcom/edaha.md`'s `theme/` folder to `@lvl99dotcom/edaha-theme-default`; `THEME_DIR` is its folder.
+- Lit and Tiptap are dependencies of `@lvl99dotcom/edaha-editor`, rather than bundled only into its page.
+- The table of contents' `disc` and `circle` list styles use the same bullets as nested HTML lists: `disc` is • and `circle` is ◦.
+- edaha.md's website is at https://edaha.md.
+
+### Fixed
+
+- The editor's page no longer scrolls and leaves a gap under it while editing.
+
 ## 0.3.0 (2026-11-21)
 
 Two new embed plugins: a table of contents and a code highlighter.
