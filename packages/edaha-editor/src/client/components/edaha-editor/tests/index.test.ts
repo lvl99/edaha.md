@@ -714,9 +714,9 @@ describe("edaha-editor unsaved changes", () => {
 
   it("should go back to the welcome prompt from Home, asking first about unsaved changes", async () => {
     const { element, api } = await editTitle();
-    const home = find<HTMLButtonElement>(element, ".btn-home");
+    const home = find<HTMLAnchorElement>(element, ".edaha-editor-home");
     expect(home.textContent?.trim()).toBe("Home");
-    expect(home.hasAttribute("aria-current")).toBe(false);
+    expect(home.getAttribute("aria-current")).toBe("false");
     home.click();
     await answer(element, "cancel");
     expect(element.querySelector("edaha-article")).not.toBeNull();

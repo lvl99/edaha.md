@@ -786,19 +786,10 @@ export class EdahaEditor extends LitElement {
             edaha.md<span class="leaf-device"></span>
           </button>
         </h1>
-        <div class="edaha-editor-actions">
-          <!-- Goes back to the welcome prompt, which is the editor's home -->
+        <div class="edaha-editor-new">
           <button
             type="button"
-            class="btn btn-home"
-            aria-current=${this.editing ? nothing : "page"}
-            @click=${() => void this.showWelcome()}
-          >
-            ${icon("home")}Home
-          </button>
-          <button
-            type="button"
-            class="btn btn-new"
+            class="btn"
             @click=${() => {
               this.closeNav();
               void this.create();
@@ -851,6 +842,17 @@ export class EdahaEditor extends LitElement {
             ${icon("folder_open")}<span class="visually-hidden">Files</span>
           </button>
         </div>
+        <!-- Goes back to the welcome prompt, which is the editor's home -->
+        <a
+          href="#"
+          class="edaha-editor-home edaha-editor-article-group-item-title"
+          aria-current=${this.editing ? "false" : "page"}
+          @click=${(event: Event) => {
+            event.preventDefault();
+            void this.showWelcome();
+          }}
+          >Home</a
+        >
         ${this.searchResult ? this.renderSearchResult(this.searchResult, renderItem) : this.renderGroups(renderItem)}
       </nav>
       <!-- Out of reach while the article list is open over it -->
