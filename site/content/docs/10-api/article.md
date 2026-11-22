@@ -192,6 +192,8 @@ It only listens on `127.0.0.1`: never deploy it, as it reads and writes the site
 | `port` | Number | The port to listen on. | `5180` |
 | `themeDir` | String | The theme's folder, which the site's own templates and static files override, instead of the config file's `theme`. | The config file's `theme`, then edaha.md's default theme |
 | `plugins` | EmbedPlugin\[\] | Embed plugins added after the config file's `plugins`. | None |
+| `hideTitle` | Boolean | Hide the "edaha.md" title, e.g. in an app that shows the editor in its own window. **Home** still goes back to the welcome prompt. | `false` |
+| `hideThemeSwitcher` | Boolean | Hide the light/dark theme switcher, showing the device's light or dark theme instead. | `false` |
 | `fetch` | Function | Fetches data for embeds that need it. | The global `fetch` |
 | `clientDir` | String | The folder with the editor page's built files. | The editor package's `dist/client` |
 | `logger` | `{ warn }` | Where the warning about a folder with several config files goes. | None |

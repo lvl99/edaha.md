@@ -153,3 +153,13 @@ const editor = await startEditor({
 });
 console.log(`Open ${editor.url}`);
 ```
+
+An app that shows the editor in its own window can hide the "edaha.md" title (**Home** still goes back to the welcome prompt) and the light/dark theme switcher (the device's light or dark setting is used instead):
+
+```ts
+const editor = await startEditor({
+  siteDir: "my-site",
+  hideTitle: true,
+  hideThemeSwitcher: true,
+});
+```

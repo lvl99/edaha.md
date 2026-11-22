@@ -186,6 +186,12 @@ code {
   top: 1rem;
 }
 
+/* Room for the theme switcher, which sits beside the title, when the title is hidden */
+edaha-editor[hide-title]:not([hide-theme-switcher], [compact])
+  .edaha-editor-nav {
+  padding-top: 3rem;
+}
+
 /* Hidden on screen but read by screen readers, e.g. extra context for "Read more" links */
 .visually-hidden {
   position: absolute;
