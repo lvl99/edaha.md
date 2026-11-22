@@ -11,6 +11,7 @@ import contentCopy from "@material-symbols/svg-400/outlined/content_copy.svg?raw
 import deleteIcon from "@material-symbols/svg-400/outlined/delete.svg?raw";
 import findReplace from "@material-symbols/svg-400/outlined/find_replace.svg?raw";
 import folderOpen from "@material-symbols/svg-400/outlined/folder_open.svg?raw";
+import home from "@material-symbols/svg-400/outlined/home.svg?raw";
 import fullscreen from "@material-symbols/svg-400/outlined/fullscreen.svg?raw";
 import fullscreenExit from "@material-symbols/svg-400/outlined/fullscreen_exit.svg?raw";
 import formatBold from "@material-symbols/svg-400/outlined/format_bold.svg?raw";
@@ -61,6 +62,7 @@ export const ICONS = {
   format_underlined: formatUnderlined,
   fullscreen,
   fullscreen_exit: fullscreenExit,
+  home,
   image,
   link,
   manage_search: manageSearch,

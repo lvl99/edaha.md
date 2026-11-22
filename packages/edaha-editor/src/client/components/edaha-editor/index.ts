@@ -786,10 +786,19 @@ export class EdahaEditor extends LitElement {
             edaha.md<span class="leaf-device"></span>
           </button>
         </h1>
-        <div class="edaha-editor-new">
+        <div class="edaha-editor-actions">
+          <!-- Goes back to the welcome prompt, which is the editor's home -->
           <button
             type="button"
-            class="btn"
+            class="btn btn-home"
+            aria-current=${this.editing ? nothing : "page"}
+            @click=${() => void this.showWelcome()}
+          >
+            ${icon("home")}Home
+          </button>
+          <button
+            type="button"
+            class="btn btn-new"
             @click=${() => {
               this.closeNav();
               void this.create();

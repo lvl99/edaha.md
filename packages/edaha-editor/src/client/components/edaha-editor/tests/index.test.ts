@@ -712,6 +712,24 @@ describe("edaha-editor unsaved changes", () => {
     expect(api.recent).toHaveBeenCalledTimes(recents + 1);
   });
 
+  it("should go back to the welcome prompt from Home, asking first about unsaved changes", async () => {
+    const { element, api } = await editTitle();
+    const home = find<HTMLButtonElement>(element, ".btn-home");
+    expect(home.textContent?.trim()).toBe("Home");
+    expect(home.hasAttribute("aria-current")).toBe(false);
+    home.click();
+    await answer(element, "cancel");
+    expect(element.querySelector("edaha-article")).not.toBeNull();
+    const recents = api.recent.mock.calls.length;
+    home.click();
+    await answer(element, "discard");
+    expect(element.querySelector("edaha-article")).toBeNull();
+    expect(element.querySelector(".welcome-prompt")).not.toBeNull();
+    expect(api.recent).toHaveBeenCalledTimes(recents + 1);
+    // Home says when the welcome prompt is showing
+    expect(home.getAttribute("aria-current")).toBe("page");
+  });
+
   it("should not ask when nothing changed", async () => {
     const { element, api } = await setup();
     await element.open(SUMMARIES[0]!);
