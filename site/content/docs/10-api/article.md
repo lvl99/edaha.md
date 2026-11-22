@@ -34,6 +34,7 @@ level6: circle
 
 `buildSite` builds a site, as `edaha build` does:
 
+<!-- embed:codehighlight -->
 ```ts
 import { buildSite } from "@lvl99dotcom/edaha.md";
 
@@ -43,6 +44,7 @@ const result = await buildSite({
 });
 console.log(`Built ${result.files.length} files into ${result.outputDir}`);
 ```
+<!-- /embed:codehighlight -->
 
 ### How a build works
 
@@ -115,6 +117,7 @@ It rejects with an error that names the problem (and the config file or article)
 
 `loadSiteConfig` finds and reads a site's config file as the build does, e.g. to read its settings in a script of your own:
 
+<!-- embed:codehighlight -->
 ```ts
 import { loadSiteConfig } from "@lvl99dotcom/edaha.md";
 
@@ -123,6 +126,7 @@ const { configFile, siteDir, config } = await loadSiteConfig({
 });
 console.log(`${config.name}: ${Object.keys(config.types).join(", ")}`);
 ```
+<!-- /embed:codehighlight -->
 
 It takes `siteDir`, `configFile` and `logger`, like `buildSite`. Besides the config file, its folder and its settings, it gives `themeDir`: the folder of the theme named in the config file's `theme`, or `undefined` for the default theme. The config helpers it uses are exported too: `findConfigFile` (which file would be used), `readConfigFile` (its raw settings) and `parseConfig` (check settings and fill in defaults; give it plugin objects, as it doesn't load packages).
 
@@ -130,12 +134,14 @@ It takes `siteDir`, `configFile` and `logger`, like `buildSite`. Besides the con
 
 `@lvl99dotcom/edaha.md/theme` has helpers for [themes](/docs/05-templating/#using-another-theme), e.g. for tools that manage them:
 
+<!-- embed:codehighlight -->
 ```ts
 import { readThemeInfo, resolveTheme, THEME_DIR } from "@lvl99dotcom/edaha.md";
 
 const themeDir = await resolveTheme("../themes/my-theme", "my-site");
 const { name, version, authors, isPackage } = await readThemeInfo(themeDir);
 ```
+<!-- /embed:codehighlight -->
 
 | Export | Description |
 | --- | --- |
@@ -155,6 +161,7 @@ The embed API (`EmbedPlugin`, `EmbedResolver`, `EMBED_PAGE_PARTS`, `embedBlock`,
 
 `runCli` runs the `edaha` command with its arguments, and resolves with its exit code. It takes the folder, environment and output to use, so it can run inside another tool:
 
+<!-- embed:codehighlight -->
 ```ts
 import { runCli } from "@lvl99dotcom/edaha.md";
 
@@ -165,11 +172,13 @@ const code = await runCli(["build", "--dir", "my-site"], {
   error: console.error,
 });
 ```
+<!-- /embed:codehighlight -->
 
 ## Editor
 
 `startEditor`, from the editor package, starts the [article editor](/docs/09-wysiwyg-editor/) on this computer, as `edaha editor` does:
 
+<!-- embed:codehighlight -->
 ```ts
 import { startEditor } from "@lvl99dotcom/edaha-editor";
 
@@ -178,6 +187,7 @@ console.log(`Open ${editor.url}`);
 // Later
 await editor.close();
 ```
+<!-- /embed:codehighlight -->
 
 It only listens on `127.0.0.1`: never deploy it, as it reads and writes the site's files.
 
@@ -204,6 +214,7 @@ It only listens on `127.0.0.1`: never deploy it, as it reads and writes the site
 
 `createEditorServer` gives the editor as a [Hono](https://hono.dev) app instead, without listening, e.g. to serve it with your own server or test it:
 
+<!-- embed:codehighlight -->
 ```ts
 import { createEditorServer } from "@lvl99dotcom/edaha-editor";
 
@@ -211,5 +222,6 @@ const app = await createEditorServer({ siteDir: "my-site" });
 const response = await app.request("/api/articles");
 console.log(await response.json());
 ```
+<!-- /embed:codehighlight -->
 
 Its API only accepts changes from the editor page's own address (`http://127.0.0.1:<port>`), so serve it there.
