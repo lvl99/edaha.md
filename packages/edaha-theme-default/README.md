@@ -8,3 +8,7 @@ A theme is a folder with:
 - `static/`: files copied as they are into the built site (`base.css`).
 
 A site's own `templates/` and `static/` folders override the theme's files one by one: copy a file to the same path in your site and edit it. See [Templating](https://edaha.md/docs/05-templating/).
+
+To make your own theme, copy this package's `templates/` and `static/` folders into a new folder, give it an `edahatheme.yml` (its name, description, version and authors), and name the folder in your config file's `theme` setting. See [Using another theme](https://edaha.md/docs/05-templating/#using-another-theme).
+
+Licensed under the [Apache License 2.0](LICENSE).

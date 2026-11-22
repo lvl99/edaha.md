@@ -36,8 +36,8 @@ Headings nest by level: a heading goes under the nearest heading before it with 
 | `number-depth` | its parent's marker, then its number, e.g. 1.1. or b.2. |
 | `alpha`        | a. b. c.                                                |
 | `number-roman` | i. ii. iii.                                             |
-| `circle`       | ∙                                                       |
-| `disc`         | ◦                                                       |
+| `disc`         | •                                                       |
+| `circle`       | ◦                                                       |
 | `square`       | ▪                                                       |
 | `diamond`      | ⬩                                                       |
 
