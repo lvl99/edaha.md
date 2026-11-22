@@ -332,8 +332,19 @@ export class EdahaEditor extends LitElement {
   }
 
   /**
+   * Whether the open article has unsaved changes, e.g. for an app showing the editor to ask before closing it (see
+   * leaveForm).
+   */
+  get dirty(): boolean {
+    return this.form()?.dirty ?? false;
+  }
+
+  /**
    * Whether the form can be left: it has no unsaved changes, or the user chose to save them (and they were saved) or
-   * not to.
+   * not to. An app showing the editor calls it before closing the editor or showing another site's.
+   *
+   * @example
+   * if (await editor.leaveForm()) editor.remove();
    */
   async leaveForm(): Promise<boolean> {
     const form = this.form();

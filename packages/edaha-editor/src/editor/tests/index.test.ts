@@ -172,6 +172,32 @@ describe("startEditor", () => {
     await expect(editor.close()).rejects.toThrow("not running");
   });
 
+  it("should answer requests without the network, checking where changes come from", async () => {
+    const { siteDir, clientDir } = await setup();
+    const editor = await startEditor({ siteDir, clientDir, port: 51803 });
+    try {
+      const types = await editor.fetch(new Request(`${editor.url}/api/types`));
+      expect(await types.json()).toEqual({
+        article: { labelSingle: "Article", labelPlural: "Articles" },
+      });
+      const change = (origin?: string) =>
+        editor.fetch(
+          new Request(`${editor.url}/api/convert/html`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(origin ? { Origin: origin } : {}),
+            },
+            body: JSON.stringify({ markdown: "Hi" }),
+          }),
+        );
+      expect((await change()).status).toBe(403);
+      expect((await change(editor.url)).status).toBe(200);
+    } finally {
+      await editor.close();
+    }
+  });
+
   it("should fail when the port is taken", async () => {
     const { siteDir, clientDir } = await setup();
     const first = await startEditor({ siteDir, clientDir, port: 51801 });

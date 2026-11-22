@@ -58,6 +58,12 @@ export interface EditorServerOptions extends SiteConfigOptions {
 export interface EditorServer {
   /** The editor's address, e.g. "http://127.0.0.1:5180" */
   url: string;
+  /**
+   * Answer a request to the editor's server without the network, e.g. for an app that shows `<edaha-editor>` and
+   * passes its requests on (see EditorApi's `fetch`). Requests other than GET need an `Origin` header of the editor's
+   * address, as from the editor's page.
+   */
+  fetch: (request: Request) => Promise<Response>;
   /** Stop the server */
   close: () => Promise<void>;
 }
@@ -205,6 +211,7 @@ export const startEditor = async (
       () =>
         resolve({
           url: editorUrl(port),
+          fetch: async (request) => app.fetch(request),
           close: () => {
             store.close();
             return new Promise((done, fail) =>
