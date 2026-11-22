@@ -40,7 +40,7 @@ Searches and the article browser include changes made outside the editor straigh
 1. Choose **New article**, or open an existing one.
 2. Give it a **Title**.
 3. Write in the **Body**. The toolbar's buttons format your text. Each shows an icon; point at it to see its name:
-   - **Bold**, **Italic**, **Small** and **Big** text;
+   - **Bold**, **Italic**, **Underline**, **Strikethrough**, **Small** and **Big** text;
    - **Link**, **Heading** and **Subheading**;
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
@@ -89,7 +89,7 @@ When the editor opens, **Needs attention** on the welcome prompt lists articles 
 Three tabs above the body change what you see. Move between them with the arrow keys, and press Enter or Space to show one.
 
 - **WYSIWYG**: the rich text editor.
-- **Markdown**: the body as Markdown, if you'd like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.
+- **Markdown**: the body as Markdown, if you'd like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (underlined, small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.
 - **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred.
 
 ## Managing files

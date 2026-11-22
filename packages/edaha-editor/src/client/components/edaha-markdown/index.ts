@@ -99,6 +99,9 @@ export class EdahaMarkdown extends LitElement {
   private readonly actions: MarkdownAction[] = [
     { label: "Bold", run: (e) => wrapInline(e, "**", "**") },
     { label: "Italic", run: (e) => wrapInline(e, "_", "_") },
+    // Markdown has no underline, so it is written as HTML
+    { label: "Underline", run: (e) => wrapInline(e, "<u>", "</u>") },
+    { label: "Strikethrough", run: (e) => wrapInline(e, "~~", "~~") },
     { label: "Small", run: (e) => wrapInline(e, "<small>", "</small>") },
     { label: "Big", run: (e) => wrapInline(e, "<big>", "</big>") },
     {

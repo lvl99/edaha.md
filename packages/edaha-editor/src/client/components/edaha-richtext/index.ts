@@ -165,6 +165,16 @@ export class EdahaRichtext extends LitElement {
       active: (e) => e.isActive("italic"),
     },
     {
+      label: "Underline",
+      run: (e) => e.chain().focus().toggleUnderline().run(),
+      active: (e) => e.isActive("underline"),
+    },
+    {
+      label: "Strikethrough",
+      run: (e) => e.chain().focus().toggleStrike().run(),
+      active: (e) => e.isActive("strike"),
+    },
+    {
       label: "Small",
       run: (e) => e.chain().focus().toggleMark("small").run(),
       active: (e) => e.isActive("small"),
