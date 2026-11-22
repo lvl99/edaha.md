@@ -15,8 +15,8 @@ export const LIST_STYLES = {
   "number-depth": "Number with its parents' (1.1.)",
   alpha: "Letter (a.)",
   "number-roman": "Roman numeral (i.)",
-  circle: "Circle (∙)",
-  disc: "Disc (◦)",
+  disc: "Disc (•)",
+  circle: "Circle (◦)",
   square: "Square (▪)",
   diamond: "Diamond (⬩)",
 } as const;
@@ -24,10 +24,10 @@ export const LIST_STYLES = {
 /** A list style (see LIST_STYLES) */
 export type ListStyle = keyof typeof LIST_STYLES;
 
-/** The marks of the list styles that aren't counted */
+/** The marks of the list styles that aren't counted: disc, circle and square as browsers mark nested bulleted lists */
 const BULLETS: Partial<Record<ListStyle, string>> = {
-  circle: "∙",
-  disc: "◦",
+  disc: "•",
+  circle: "◦",
   square: "▪",
   diamond: "⬩",
 };
@@ -91,7 +91,7 @@ export const romanNumber = (position: number): string => {
 /** A heading in the table of contents, with its marker and the headings under it */
 export interface TocItem {
   heading: EmbedHeading;
-  /** What it is marked with, e.g. "b.1." or "∙" */
+  /** What it is marked with, e.g. "b.1." or "◦" */
   marker: string;
   /** Whether the marker is only decoration (a bullet), so screen readers skip it */
   bullet: boolean;
@@ -106,7 +106,7 @@ export interface TocItem {
  *
  * @example
  * tocMarker("number-depth", 2, "b"); // { marker: "b.2.", bullet: false, prefix: "b.2" }
- * tocMarker("circle", 2, "b"); // { marker: "∙", bullet: true, prefix: "b" }
+ * tocMarker("circle", 2, "b"); // { marker: "◦", bullet: true, prefix: "b" }
  */
 export const tocMarker = (
   style: ListStyle,

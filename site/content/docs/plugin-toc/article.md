@@ -73,8 +73,8 @@ Each level of headings, from `<h1>` (`level1`) to `<h6>` (`level6`), is marked i
 | `number-depth` | its parent's marker, then its own number, e.g. 1.1. 1.2., or b.1. under b. |
 | `alpha`        | a. b. c.                                                                   |
 | `number-roman` | i. ii. iii.                                                                |
-| `circle`       | ∙                                                                          |
-| `disc`         | ◦                                                                          |
+| `disc`         | •                                                                          |
+| `circle`       | ◦                                                                          |
 | `square`       | ▪                                                                          |
 | `diamond`      | ⬩                                                                          |
 

@@ -123,11 +123,11 @@ describe("tocMarker", () => {
 
   it("should mark bullets as decoration, passing on their parent's prefix", () => {
     expect(
-      (["circle", "disc", "square", "diamond"] as const).map((style) =>
+      (["disc", "circle", "square", "diamond"] as const).map((style) =>
         tocMarker(style, 2, "b"),
       ),
     ).toEqual(
-      ["∙", "◦", "▪", "⬩"].map((marker) => ({
+      ["•", "◦", "▪", "⬩"].map((marker) => ({
         marker,
         bullet: true,
         prefix: "b",
@@ -155,7 +155,7 @@ describe("tocTree", () => {
       "1. A",
       [
         "1.1. B",
-        ["1.1.1. C", ["a. D", ["i. E", ["∙ F", "∙ G"], "ii. H"]], "1.1.2. I"],
+        ["1.1.1. C", ["a. D", ["i. E", ["◦ F", "◦ G"], "ii. H"]], "1.1.2. I"],
         "1.2. J",
       ],
       "2. K",
@@ -184,7 +184,7 @@ describe("tocTree", () => {
           ["number", "circle", "number-depth"],
         ),
       ),
-    ).toEqual(["1. A", ["∙ B", ["1.1. C"]]]);
+    ).toEqual(["1. A", ["◦ B", ["1.1. C"]]]);
     expect(outline(tocTree([h(2, "A")], []))).toEqual(["1. A"]);
     expect(tocTree([], DEFAULT_LIST_STYLES)).toEqual([]);
   });
@@ -200,7 +200,7 @@ describe("tocList", () => {
         ),
       ),
     ).toBe(
-      '<ol role="list"><li><span class="toc-marker">1.</span> <a href="#fish-chips">Fish &amp; chips</a><ol role="list"><li><span class="toc-marker" aria-hidden="true">∙</span> <a href="#a&quot;b">&lt;b&gt;</a></li></ol></li></ol>',
+      '<ol role="list"><li><span class="toc-marker">1.</span> <a href="#fish-chips">Fish &amp; chips</a><ol role="list"><li><span class="toc-marker" aria-hidden="true">◦</span> <a href="#a&quot;b">&lt;b&gt;</a></li></ol></li></ol>',
     );
     expect(tocList([])).toBe("");
   });
