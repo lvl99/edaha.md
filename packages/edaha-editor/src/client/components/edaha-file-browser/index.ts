@@ -9,9 +9,10 @@ import type {
   FileSort,
   FileSummary,
 } from "../../../server/types/index.ts";
-import type { EditorApi } from "../../editorApi/index.ts";
+import type { ArticleLocation, EditorApi } from "../../editorApi/index.ts";
 import { icon } from "../../icons/index.ts";
 import { nextSort, sortHeading } from "../../sortTable/index.ts";
+import { ARTICLE_CHOOSE_EVENT } from "../edaha-article-browser/index.ts";
 import { defineElement } from "../define/index.ts";
 
 /** The kinds of files, as the file browser names them */
@@ -94,7 +95,8 @@ const articles = (count: number) =>
  * The file browser: a dialog listing the files in the articles' folders, 50 at a time, found by name and filtered by
  * kind and article type, in a table whose column headings sort it. Each file can be opened, its website path copied,
  * replaced with another file, or deleted; replacing and deleting update references to it in every article, and fire
- * `files-changed` (detail: {@link FilesChanged}). Rendered in the light DOM.
+ * `files-changed` (detail: {@link FilesChanged}). A file's location (its article) closes the browser and fires
+ * `article-choose` (detail: the article's location), unless clicked with a modifier key. Rendered in the light DOM.
  *
  * Opened with `pick`, it also lets the user choose a file (e.g. to insert into an article), and gives the chosen file.
  *
@@ -252,6 +254,30 @@ export class EdahaFileBrowser extends LitElement {
   private chooseFile(file: FileSummary): void {
     this.finishPicking(file);
     this.close();
+  }
+
+  /**
+   * Open a file's article in the editor, closing the browser, when its location is clicked; a click with a modifier
+   * key (or another button) is left to the browser, e.g. to open it in a new tab.
+   */
+  private onLocationClick(event: MouseEvent, { type, slug }: FileSummary) {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    event.preventDefault();
+    this.finishPicking();
+    this.close();
+    this.dispatchEvent(
+      new CustomEvent<ArticleLocation>(ARTICLE_CHOOSE_EVENT, {
+        detail: { type, slug },
+        bubbles: true,
+      }),
+    );
   }
 
   /** Close the browser */
@@ -496,7 +522,10 @@ export class EdahaFileBrowser extends LitElement {
             <td>${kindLabels[file.kind]}</td>
             <td>${formatFileSize(file.size)}</td>
             <td>
-              <a href=${this.api.url(`/#${location}`)} target="_blank"
+              <a
+                href=${this.api.url(`/#${location}`)}
+                target="_blank"
+                @click=${(event: MouseEvent) => this.onLocationClick(event, file)}
                 >${location}</a
               >
             </td>

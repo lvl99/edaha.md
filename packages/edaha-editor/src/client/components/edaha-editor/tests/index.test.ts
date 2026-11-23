@@ -305,6 +305,18 @@ describe("edaha-editor", () => {
     expect(api.read).toHaveBeenCalledWith({ type: "page", slug: "broken" });
   });
 
+  it("should open the article chosen from a file's location in the file browser", async () => {
+    const { element, api } = await setup();
+    find(element, "edaha-file-browser").dispatchEvent(
+      new CustomEvent("article-choose", {
+        detail: { type: "page", slug: "broken" },
+        bubbles: true,
+      }),
+    );
+    await settle(element);
+    expect(api.read).toHaveBeenCalledWith({ type: "page", slug: "broken" });
+  });
+
   it("should search titles as you type, showing the first matches in place of the groups", async () => {
     const { element, api } = await setup();
     element.searchDelay = 0;

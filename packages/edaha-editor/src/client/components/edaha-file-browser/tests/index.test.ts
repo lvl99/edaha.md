@@ -527,6 +527,38 @@ describe("edaha-file-browser", () => {
     expect(find(element, "h2").textContent?.trim()).toBe("Files");
   });
 
+  it("should open a file's article in the editor from its location, closing, unless clicked with a modifier key", async () => {
+    const { element } = await setup();
+    const chosen = vi.fn();
+    element.addEventListener("article-choose", chosen);
+    const location = () =>
+      find(element, "tbody tr").querySelectorAll("a")[1] as HTMLAnchorElement;
+    const click = (init: MouseEventInit) => {
+      const event = new MouseEvent("click", { cancelable: true, ...init });
+      location().dispatchEvent(event);
+      return event;
+    };
+    // Left to the browser, e.g. to open in a new tab
+    for (const init of [
+      { metaKey: true },
+      { ctrlKey: true },
+      { shiftKey: true },
+      { altKey: true },
+      { button: 1 },
+    ])
+      expect(click(init).defaultPrevented).toBe(false);
+    expect(chosen).not.toHaveBeenCalled();
+    const picked = element.pick();
+    await element.updateComplete;
+    expect(click({}).defaultPrevented).toBe(true);
+    expect(await picked).toBeUndefined();
+    expect(element.open).toBe(false);
+    expect((chosen.mock.calls[0]![0] as CustomEvent).detail).toEqual({
+      type: "news",
+      slug: "hello",
+    });
+  });
+
   it("should give no file when closed or opened again without choosing", async () => {
     const { element, api } = await setup();
     const closed = element.pick();

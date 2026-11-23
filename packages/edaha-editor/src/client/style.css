@@ -312,6 +312,9 @@ select {
 /* Three columns that fill the window and scroll on their own: the article list, the title and body, and the
    article's buttons and settings (the last two are inside edaha-article) */
 edaha-editor {
+  /* Its overlays (the compact layout's article list and panels, dialogs and toasts) are placed within it, so it can be
+     shown in part of a page; on its own page it fills the window, so they cover the window */
+  contain: layout;
   display: grid;
   grid-template-columns: 16rem minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
