@@ -248,13 +248,15 @@ export class EdahaMetadataField extends LitElement {
     const options = fieldOptions(this.schema.$edahaField as never);
     const choices = fieldChoices(this.schema);
     const multiple = options.multiple === true;
+    // A "none" choice ("—") for one value, unless a choice with an empty value is the "none" choice
+    const blank = !multiple && !choices.some((choice) => choice.value === "");
     const selected = multiple
       ? ((this.value as unknown[] | undefined) ?? []).map(String)
       : [String(this.value ?? "")];
     return html`<select
       id=${id}
       ?multiple=${multiple}
-      size=${options.list === true ? choices.length + (multiple ? 0 : 1) : nothing}
+      size=${options.list === true ? choices.length + (blank ? 1 : 0) : nothing}
       ?required=${this.required}
       aria-invalid=${problemsAt(this.problems, this.path).length ? "true" : "false"}
       aria-describedby=${this.describedBy(id) || nothing}
@@ -269,7 +271,7 @@ export class EdahaMetadataField extends LitElement {
         );
       }}
     >
-      ${multiple ? nothing : html`<option value="">—</option>`}
+      ${blank ? html`<option value="">—</option>` : nothing}
       ${choices.map(
         (choice, i) =>
           html`<option

@@ -24,6 +24,7 @@
   "files": [
     "templates",
     "static",
+    "edahatheme.yml",
     "README.md",
     "LICENSE"
   ],

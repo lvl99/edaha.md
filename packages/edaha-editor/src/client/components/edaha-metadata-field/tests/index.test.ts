@@ -217,6 +217,24 @@ describe("edaha-metadata-field", () => {
     });
     expect(find<HTMLSelectElement>(list, "select").size).toBe(3);
 
+    // A choice with an empty value is the "none" choice, in place of "—"
+    const { element: named } = await setup("letter", {
+      type: "string",
+      $edahaField: {
+        select: {
+          list: true,
+          options: [{ value: "", title: "None" }, { value: "a" }],
+        },
+      },
+    });
+    const namedSelect = find<HTMLSelectElement>(named, "select");
+    expect([...namedSelect.options].map((o) => o.textContent?.trim())).toEqual([
+      "None",
+      "a",
+    ]);
+    expect(namedSelect.value).toBe("");
+    expect(namedSelect.size).toBe(2);
+
     const several = await setup(
       "letters",
       {

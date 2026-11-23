@@ -373,15 +373,15 @@ types:
 
 `$edahaField` has an optional `title`, `description` and `info` (shown under the label), and exactly one field kind, set to `true` or to its options:
 
-| Field kind                                                               | Shows                                                                                                                              |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `text`, `email`, `url`, `tel`, `color`, `date`, `time`, `datetime-local` | An input of that type.                                                                                                             |
-| `number`, `range`                                                        | A number input or slider, e.g. with `step`.                                                                                        |
-| `textarea`                                                               | A multi-line text box, e.g. with `rows`.                                                                                           |
-| `select`                                                                 | A dropdown of `options` (each a `value` and `title`, or the schema's `enum`); `list: true` shows it as a list.                     |
-| `checkbox`                                                               | A checkbox, for `type: boolean` (`true` or `false`). With `{ value: ... }`, it saves that value when checked and nothing when not. |
-| `radio`                                                                  | Radio buttons for `options` (each with an optional `description`), or the schema's `enum`.                                         |
-| `file`                                                                   | A file chooser that uploads into the article's folder (e.g. with `accept`).                                                        |
+| Field kind                                                               | Shows                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `text`, `email`, `url`, `tel`, `color`, `date`, `time`, `datetime-local` | An input of that type.                                                                                                                                                                                             |
+| `number`, `range`                                                        | A number input or slider, e.g. with `step`.                                                                                                                                                                        |
+| `textarea`                                                               | A multi-line text box, e.g. with `rows`.                                                                                                                                                                           |
+| `select`                                                                 | A dropdown of `options` (each a `value` and `title`, or the schema's `enum`), starting with "—" for none, unless an option's `value` is `""`, which is the "none" choice instead; `list: true` shows it as a list. |
+| `checkbox`                                                               | A checkbox, for `type: boolean` (`true` or `false`). With `{ value: ... }`, it saves that value when checked and nothing when not.                                                                                 |
+| `radio`                                                                  | Radio buttons for `options` (each with an optional `description`), or the schema's `enum`.                                                                                                                         |
+| `file`                                                                   | A file chooser that uploads into the article's folder (e.g. with `accept`).                                                                                                                                        |
 
 A `color` field keeps a value written without its `#` (e.g. `0687f5`) that way.
 
