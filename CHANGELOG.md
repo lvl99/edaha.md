@@ -2,6 +2,17 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
+## @lvl99dotcom/edaha.md 0.4.1, @lvl99dotcom/edaha-editor 0.4.1 (2026-11-23)
+
+Change a site's config file from code, and build settings forms from schemas.
+
+### Added
+
+- `updateConfigFile(file, changes)` changes a config file's top-level settings (`undefined` removes one), keeping YAML files' comments and layout and JSON files' indentation. The changed settings are checked as `loadSiteConfig` checks them before the file is written, and it's written to a temporary file and renamed. JavaScript config files aren't changed. `changeConfigText` gives the changed text without reading or writing the file.
+- `CONFIG_FORM_SCHEMA`: the main settings (`name`, `description`, `siteUrl` and `theme`) as a JSON Schema with `$edahaField`s, for apps' settings forms, with `configFormProblems` (each field's problems in plain words) and `configFormChanges` (the form's values as changes for `updateConfigFile`).
+- `@lvl99dotcom/edaha-editor/client` exports `<edaha-metadata-field>` (`EdahaMetadataField`), the field the editor builds from a schema, for apps' own forms.
+- Docs for changing the config file and building forms with `<edaha-metadata-field>`.
+
 ## 0.4.0 (2026-11-22)
 
 Themes: the default theme is its own package, and sites can use another theme. The editor can also be shown in other apps' pages, as the `<edaha-editor>` web component.
