@@ -16,7 +16,7 @@ When you build, edaha.md loads each article, works out its lists, and renders:
 
 - each article with its type's `single` template (or the one its `template` setting names);
 - each page of each list with its type's `list` template;
-- each RSS feed with `layouts/rssfeed.njk`.
+- each RSS feed with `layouts/rssfeed.xml.njk`.
 
 Templates are looked for in your site's templates folder first (`templates/`, or the [`templatesDir`](/docs/03-configuration/#templatesdir) setting), then in the default theme's. So to change one, copy it from the theme into your `templates/` folder at the same path and edit it. The theme is the `@lvl99dotcom/edaha-theme-default` package, installed with edaha.md; its files are in its `templates/` folder (e.g. `node_modules/@lvl99dotcom/edaha-theme-default/templates/`):
 
@@ -24,7 +24,7 @@ Templates are looked for in your site's templates folder first (`templates/`, or
 templates/
   layouts/
     html.njk          # The HTML page every other template extends
-    rssfeed.njk       # RSS feeds
+    rssfeed.xml.njk   # RSS feeds
   article/
     single.njk        # An article's page
     list.njk          # A list's pages
@@ -32,6 +32,25 @@ templates/
     single.njk        # Pages: a "last updated" date, without author or tags
     home.njk          # The home page
 ```
+
+## Output file types
+
+A template's file name can say what type of file it outputs, with an extension before `.njk`: `single.json.njk` outputs JSON, and `rssfeed.xml.njk` XML. Templates without one output HTML (`single.njk`), apart from the feed's (`rssfeed.njk` outputs XML). The extension can be any letters and numbers.
+
+Every template of a name is rendered, each to its own file. So with `article/single.njk` and `article/single.json.njk`, each article gets its page and a JSON version:
+
+| Template                   | Outputs                                                |
+| -------------------------- | ------------------------------------------------------ |
+| `article/single.njk`       | `news/hello/index.html` (the article's page)           |
+| `article/single.json.njk`  | `news/hello/index.json`                                |
+| `article/list.json.njk`    | `news/index.json`, `news/2.json`, … (each list page)   |
+| `layouts/rssfeed.json.njk` | `news/feed.json` (each list's feed, beside `feed.xml`) |
+
+An article's `template` setting names the template without extensions (e.g. `home` for `page/home.njk` and `page/home.json.njk`). A list's `feedUrl` links to its XML feed, or its only feed if it has no XML one.
+
+Your own template overrides the theme's that outputs the same type of file, whatever its name: a site's `layouts/rssfeed.njk` replaces the theme's `layouts/rssfeed.xml.njk`. Two templates in one folder can't output the same type of file (e.g. `single.njk` and `single.html.njk`): the build stops and names them.
+
+Templates escape values for HTML unless you mark them safe, so output other types of file with filters such as `json`, e.g. `{{ article.title | json | safe }}`.
 
 Your site's static files folder (`static/`, or [`staticDir`](/docs/03-configuration/#staticdir)) works the same way: its files are copied to the website's root over the theme's, so a `static/site.css` replaces the theme's stylesheet.
 
@@ -45,7 +64,7 @@ theme: ../themes/my-theme
 
 A theme is a folder with:
 
-- `templates/`: its templates. It needs `layouts/html.njk`, `layouts/rssfeed.njk`, `article/single.njk` and `article/list.njk`, unless your site has them.
+- `templates/`: its templates. It needs `layouts/html.njk`, `layouts/rssfeed.njk`, `article/single.njk` and `article/list.njk` (the last three with any [output extension](#output-file-types), e.g. `layouts/rssfeed.xml.njk`), unless your site has them.
 - `static/`: files copied to the website's root.
 - `edahatheme.yml` (optional): its name, description, version and authors.
 

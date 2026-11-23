@@ -40,7 +40,7 @@ Each list has an RSS feed next to its first page, e.g. `/news/feed.xml` or `/new
 
 Feeds need the website's absolute URL for their links: set `siteUrl` in the [config file](/docs/03-configuration/#siteurl), the `SITE_URL` environment variable or the `--site-url` option.
 
-The feeds are rendered with `layouts/rssfeed.njk`, which you can [override](/docs/05-templating/) like any other template.
+The feeds are rendered with `layouts/rssfeed.xml.njk`, which you can [override](/docs/05-templating/) like any other template (with `layouts/rssfeed.njk` or `layouts/rssfeed.xml.njk`). Feeds of other types sit beside it, e.g. `layouts/rssfeed.json.njk` for a `feed.json` (see [output file types](/docs/05-templating/#output-file-types)).
 
 ## Choosing what is built
 

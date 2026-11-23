@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   REQUIRED_TEMPLATES,
   Templates,
+  templateFileName,
   absoluteUrl,
   absoluteUrls,
   contains,
@@ -26,6 +27,12 @@ const templatesDir = async (files: Record<string, string>) => {
 const REQUIRED = Object.fromEntries(
   REQUIRED_TEMPLATES.map((file) => [file, file]),
 );
+
+/** The required templates, without some */
+const without = (...files: string[]) =>
+  Object.fromEntries(
+    Object.entries(REQUIRED).filter(([file]) => !files.includes(file)),
+  );
 
 describe("absoluteUrl", () => {
   it("should add the website's origin to root-relative URLs, which already start with its base URL", () => {
@@ -201,7 +208,7 @@ describe("Templates", () => {
       warn: vi.fn(),
     });
     expect(() => templates.resolve("page", "missing")).toThrow(
-      /^Template "missing" not found: looked for page\/missing\.njk and article\/missing\.njk in \/.+$/,
+      /^Template "missing" not found: looked for page\/missing\.njk and article\/missing\.njk \(or with an output extension, e\.g\. missing\.json\.njk\) in \/.+$/,
     );
   });
 
@@ -209,7 +216,9 @@ describe("Templates", () => {
     const dir = await templatesDir({
       ...REQUIRED,
       "page/home.njk": "",
+      "page/home.json.njk": "",
       "page/list.njk": "",
+      "page/list.json.njk": "",
       "page/notes.txt": "",
     });
     const templates = new Templates(dir, { warn: vi.fn() });
@@ -314,5 +323,117 @@ describe("Templates", () => {
     expect(() => templates.render("@theme/missing.njk", {} as never)).toThrow(
       "template not found: @theme/missing.njk",
     );
+  });
+
+  describe("output extensions", () => {
+    it("should render every template of a name, each to its own extension (HTML unless given)", async () => {
+      const dir = await templatesDir({
+        ...REQUIRED,
+        "article/single.json.njk": "{}",
+        "article/single.txt.njk": "",
+        "article/singles.njk": "",
+      });
+      const templates = new Templates(dir, { warn: vi.fn() });
+      expect(templates.outputs("news", "single")).toEqual([
+        { file: "article/single.json.njk", extension: "json" },
+        { file: "article/single.njk", extension: "html" },
+        { file: "article/single.txt.njk", extension: "txt" },
+      ]);
+      // A preview uses the HTML one
+      expect(templates.resolve("news", "single")).toBe("article/single.njk");
+    });
+
+    it("should use a name's first template when none outputs HTML, and accept required templates with any extension", async () => {
+      const dir = await templatesDir({
+        ...without("article/single.njk"),
+        "article/single.json.njk": "{}",
+      });
+      const templates = new Templates(dir, { warn: vi.fn() });
+      expect(templates.resolve("news", "single")).toBe(
+        "article/single.json.njk",
+      );
+    });
+
+    it("should let an earlier folder's template override a later one's that outputs the same extension", async () => {
+      const theme = await templatesDir({
+        ...REQUIRED,
+        "article/single.html.njk": "theme html",
+        "article/single.json.njk": "theme json",
+      });
+      // The theme's single.njk and single.html.njk both output HTML: found as soon as the templates are loaded
+      expect(
+        () =>
+          new Templates([theme], {
+            warn: vi.fn(),
+          }),
+      ).toThrow(
+        /^article\/single\.html\.njk and article\/single\.njk in .+ both output single's \.html file; rename or remove one of them$/,
+      );
+      const site = await templatesDir({
+        "article/single.njk": "site html",
+        "layouts/rssfeed.njk": "site feed",
+      });
+      const themeOnly = await templatesDir({
+        ...without("article/single.njk", "layouts/rssfeed.njk"),
+        "article/single.html.njk": "theme html",
+        "article/single.json.njk": "theme json",
+        "layouts/rssfeed.xml.njk": "theme feed",
+      });
+      const templates = new Templates([site, themeOnly], { warn: vi.fn() });
+      expect(templates.outputs("news", "single")).toEqual([
+        { file: "article/single.njk", extension: "html" },
+        { file: "article/single.json.njk", extension: "json" },
+      ]);
+      expect(templates.render("article/single.njk", {} as never)).toBe(
+        "site html",
+      );
+      // A site's rssfeed.njk (XML) overrides the theme's rssfeed.xml.njk
+      expect(templates.feedOutputs()).toEqual([
+        { file: "layouts/rssfeed.njk", extension: "xml" },
+      ]);
+    });
+
+    it("should give the feed's templates, XML unless given", async () => {
+      const dir = await templatesDir({
+        ...REQUIRED,
+        "layouts/rssfeed.json.njk": "{}",
+      });
+      expect(new Templates(dir, { warn: vi.fn() }).feedOutputs()).toEqual([
+        { file: "layouts/rssfeed.json.njk", extension: "json" },
+        { file: "layouts/rssfeed.njk", extension: "xml" },
+      ]);
+    });
+
+    it("should warn once about a type's missing template, naming all of article's", async () => {
+      const dir = await templatesDir({
+        ...REQUIRED,
+        "article/list.json.njk": "{}",
+        "page/single.njk": "page",
+      });
+      const logger = { warn: vi.fn() };
+      const templates = new Templates(dir, logger);
+      expect(templates.outputs("page", "list")).toHaveLength(2);
+      expect(logger.warn).toHaveBeenCalledWith(
+        "Template page/list.njk not found; using article/list.json.njk and article/list.njk",
+      );
+    });
+  });
+});
+
+describe("templateFileName", () => {
+  it("should split a template file's name into its name and output extension", () => {
+    expect(templateFileName("single.json.njk")).toEqual({
+      name: "single",
+      extension: "json",
+    });
+    expect(templateFileName("single.njk")).toEqual({
+      name: "single",
+      extension: undefined,
+    });
+    expect(templateFileName("my.page.xml.njk")).toEqual({
+      name: "my.page",
+      extension: "xml",
+    });
+    expect(templateFileName("notes.txt")).toBeUndefined();
   });
 });

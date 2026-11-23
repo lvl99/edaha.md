@@ -144,17 +144,18 @@ export const collectLists = (
 };
 
 /**
- * The output file name of a list page.
+ * The output file name of a list page, with the extension its template outputs (HTML unless given).
  *
  * @example
  * pageFile(1); // "index.html"
- * pageFile(2); // "2.html"
+ * pageFile(2, "json"); // "2.json"
  */
-export const pageFile = (index: number): string =>
-  index === 1 ? "index.html" : `${index}.html`;
+export const pageFile = (index: number, extension = "html"): string =>
+  `${index === 1 ? "index" : index}.${extension}`;
 
 /**
- * Split a list into pages of template data (at least one page, even when empty).
+ * Split a list into pages of template data (at least one page, even when empty). `feedFile` is the list's feed's file
+ * name, for its `feedUrl` (`feed.xml` unless its template outputs another extension).
  *
  * @example
  * paginate(list).map((page) => page.pagination.page.url); // ["/news/", "/news/2"]
@@ -162,6 +163,7 @@ export const pageFile = (index: number): string =>
 export const paginate = (
   list: ListDefinition,
   pageSize = PAGE_SIZE,
+  feedFile = "feed.xml",
 ): TemplateDataList[] => {
   const count = Math.max(1, Math.ceil(list.articles.length / pageSize));
   const pageUrl = (index: number) =>
@@ -177,7 +179,7 @@ export const paginate = (
       type: list.type,
       kind: list.kind,
       url: list.url,
-      feedUrl: `${list.url}feed.xml`,
+      feedUrl: `${list.url}${feedFile}`,
       hasFeed: list.feed,
       articles: list.articles.slice(i * pageSize, (i + 1) * pageSize),
       pagination: {

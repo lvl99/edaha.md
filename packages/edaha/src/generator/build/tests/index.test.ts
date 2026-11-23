@@ -489,6 +489,83 @@ describe("buildSite", () => {
     expect(await read("site.css")).toBe("site");
   });
 
+  it("should render every template of a name to a file with its output extension", async () => {
+    const space = await workspace();
+    await writeSiteFile(
+      space,
+      "templates/article/single.json.njk",
+      '{"title": {{ article.title | json | safe }}, "url": "{{ article.url }}"}',
+    );
+    await writeSiteFile(
+      space,
+      "templates/article/list.json.njk",
+      '{"page": {{ list.pagination.page.index }}, "feed": "{{ list.feedUrl }}"}',
+    );
+    await writeSiteFile(
+      space,
+      "templates/layouts/rssfeed.json.njk",
+      '{"articles": {{ list.articles | length }}}',
+    );
+    const { result, read } = await build(space, "https://example.com");
+    expect(
+      result.files.filter((file) =>
+        /^news\/(first\/)?(index|feed)\./.test(file),
+      ),
+    ).toEqual([
+      "news/feed.json",
+      "news/feed.xml",
+      "news/first/index.html",
+      "news/first/index.json",
+      "news/index.html",
+      "news/index.json",
+    ]);
+    expect(JSON.parse(await read("news/first/index.json"))).toEqual({
+      title: "First article",
+      url: "/news/first/",
+    });
+    // Lists link to the XML feed when there is one
+    expect(JSON.parse(await read("news/index.json"))).toEqual({
+      page: 1,
+      feed: "/news/feed.xml",
+    });
+    expect(JSON.parse(await read("news/feed.json"))).toHaveProperty("articles");
+    expect(await read("news/first/index.html")).toContain("<title>");
+  });
+
+  it("should link lists to the feed's only output, whatever its extension", async () => {
+    const space = await workspace();
+    await writeSiteFile(
+      space,
+      "templates/article/list.njk",
+      "{{ list.feedUrl }}",
+    );
+    // Without the theme's XML feed: a theme folder of its own, with a JSON feed only
+    const theme = join(space.root, "theme");
+    await cp(join(THEME_DIR, "templates"), join(theme, "templates"), {
+      recursive: true,
+    });
+    await rm(join(theme, "templates", "layouts", "rssfeed.xml.njk"));
+    await writeFile(
+      join(theme, "templates", "layouts", "rssfeed.json.njk"),
+      "{}",
+    );
+    const result = await buildSite({
+      siteDir: space.siteDir,
+      siteUrl: "https://example.com",
+      themeDir: theme,
+      logger: { warn: vi.fn() },
+      fetch: vi.fn() as unknown as typeof globalThis.fetch,
+    });
+    expect(result.files).toContain("news/feed.json");
+    expect(result.files).not.toContain("news/feed.xml");
+    expect(
+      await readFile(
+        join(result.publishDir as string, "news/index.html"),
+        "utf8",
+      ),
+    ).toBe("/news/feed.json");
+  });
+
   it("should give templates the page's type and whether it is an article or a list", async () => {
     const space = await workspace();
     const flags =

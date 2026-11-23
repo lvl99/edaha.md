@@ -164,7 +164,7 @@ When defining article types in the [config](https://edaha.md/docs/03-configurati
 
 edaha.md's neutral default theme is the `@lvl99dotcom/edaha-theme-default` package, installed with `@lvl99dotcom/edaha.md`: Nunjucks templates in `templates/` and a stylesheet in `static/base.css`.
 
-A site's own templates folder (`templates/`, or `templatesDir`) overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` must exist in one of the two. They are the defaults for every type.
+A site's own templates folder (`templates/`, or `templatesDir`) overrides the theme's templates file by file. `article/single.njk`, `article/list.njk`, `layouts/html.njk` and `layouts/rssfeed.njk` (or `layouts/rssfeed.xml.njk`) must exist in one of the two. A template's file name can give the type of file it outputs before `.njk` (e.g. `single.json.njk` outputs `index.json`; without one, HTML, or XML for the feed), and every template of a name is rendered. They are the defaults for every type.
 
 A type's own folder (e.g. `templates/page/`) overrides them, and an article's `template` metadata picks another one (e.g. `page/home.njk`).
 

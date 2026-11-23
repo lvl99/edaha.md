@@ -138,6 +138,8 @@ describe("paginate", () => {
   it("should name pages index.html, 2.html, ...", () => {
     expect(pageFile(1)).toBe("index.html");
     expect(pageFile(3)).toBe("3.html");
+    expect(pageFile(1, "json")).toBe("index.json");
+    expect(pageFile(2, "json")).toBe("2.json");
   });
 
   it("should give an empty list one page", () => {
@@ -156,6 +158,12 @@ describe("paginate", () => {
       feedUrl: "/news/feed.xml",
       hasFeed: false,
     });
+    const [jsonFeed] = paginate(
+      collectLists([], site, new Set(["news"]))[0]!,
+      10,
+      "feed.json",
+    );
+    expect(jsonFeed!.feedUrl).toBe("/news/feed.json");
   });
 
   it("should split articles into pages with previous and next pages", () => {
