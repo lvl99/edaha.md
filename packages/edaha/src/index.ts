@@ -28,7 +28,11 @@ export {
   configFormChanges,
   configFormProblems,
 } from "./generator/configSchema/index.ts";
-export { REQUIRED_TEMPLATES } from "./generator/templates/index.ts";
+export {
+  REQUIRED_TEMPLATES,
+  templateFileName,
+  type TemplateOutput,
+} from "./generator/templates/index.ts";
 export type * from "./generator/types/index.ts";
 export {
   EMBED_BLOCK,

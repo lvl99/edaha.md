@@ -5,13 +5,44 @@ import nunjucks from "nunjucks";
 import { formatDate, formatRfc822 } from "../format/index.ts";
 import type { Logger, TemplateData } from "../types/index.ts";
 
-/** Templates that must exist for the build to run */
+/**
+ * Templates that must exist for the build to run. Each of them but the HTML layout can have an output extension before
+ * `.njk` (e.g. `article/single.json.njk`), see `templateFileName`.
+ */
 export const REQUIRED_TEMPLATES = [
   "layouts/html.njk",
   "layouts/rssfeed.njk",
   "article/single.njk",
   "article/list.njk",
 ];
+
+/** What a page template outputs when its file name gives no extension */
+export const DEFAULT_OUTPUT_EXTENSION = "html";
+
+/** What the feed template (`layouts/rssfeed.njk`) outputs when its file name gives no extension */
+export const FEED_OUTPUT_EXTENSION = "xml";
+
+/** A template file, and the extension of the file it outputs, e.g. `{ file: "article/single.json.njk", extension: "json" }` */
+export interface TemplateOutput {
+  file: string;
+  extension: string;
+}
+
+/**
+ * A template file's name split into the template's name and the extension of the file it outputs, given before `.njk`
+ * (letters and numbers only), or undefined if it gives none. Undefined for a file that isn't a template.
+ *
+ * @example
+ * templateFileName("single.json.njk"); // { name: "single", extension: "json" }
+ * templateFileName("single.njk"); // { name: "single", extension: undefined }
+ * templateFileName("notes.txt"); // undefined
+ */
+export const templateFileName = (
+  file: string,
+): { name: string; extension?: string | undefined } | undefined => {
+  const match = /^(.+?)(?:\.([a-z0-9]+))?\.njk$/i.exec(file);
+  return match ? { name: match[1] as string, extension: match[2] } : undefined;
+};
 
 /**
  * Template names starting with this always load from the last template folder (the default theme's), e.g.
@@ -188,7 +219,12 @@ export class Templates {
    */
   constructor(dirs: string | string[], logger: Logger) {
     this.dirs = typeof dirs === "string" ? [dirs] : dirs;
-    const missing = REQUIRED_TEMPLATES.filter((file) => !this.exists(file));
+    const missing = REQUIRED_TEMPLATES.filter(
+      (file) =>
+        !(file === "layouts/html.njk"
+          ? this.exists(file)
+          : this.find(file.slice(0, -4), DEFAULT_OUTPUT_EXTENSION).length),
+    );
     if (missing.length)
       throw new Error(
         `Missing required templates in ${this.dirs.join(", ")}: ${missing.join(", ")}`,
@@ -228,30 +264,101 @@ export class Templates {
   }
 
   /**
-   * The template file for an article type's template name (e.g. "single", "list" or "home"). Types without their own
-   * templates folder use `templates/article/`; a type folder without the template falls back to `templates/article/`
-   * with a warning (once per file). Throws if the template exists in neither.
+   * The templates for a template's path without `.njk` (e.g. "article/single"), with the extension of each one's output:
+   * `single.njk` outputs `defaultExtension`, and `single.json.njk` outputs `json`. A template in an earlier template
+   * folder (e.g. the site's) overrides one in a later folder (e.g. the theme's) that outputs the same extension, whatever
+   * its file name (e.g. a site's `rssfeed.njk` over a theme's `rssfeed.xml.njk`). Throws if two in one folder output the
+   * same extension (e.g. `single.njk` and `single.html.njk`).
    *
    * @example
-   * templates.resolve("page", "home"); // "page/home.njk" if it exists, otherwise "article/home.njk"
+   * templates.find("article/single", "html");
+   * // [{ file: "article/single.njk", extension: "html" }, { file: "article/single.json.njk", extension: "json" }]
    */
-  resolve(type: string, name: string): string {
-    const file = `${type}/${name}.njk`;
-    if (this.exists(file)) return file;
-    const fallback = `article/${name}.njk`;
-    if (!this.exists(fallback))
+  private find(path: string, defaultExtension: string): TemplateOutput[] {
+    const slash = path.lastIndexOf("/");
+    const [folder, name] = [path.slice(0, slash), path.slice(slash + 1)];
+    const outputs = new Map<string, TemplateOutput>();
+    for (const dir of this.dirs) {
+      const own = new Map<string, TemplateOutput>();
+      let files: string[] = [];
+      try {
+        files = readdirSync(join(dir, folder)).sort();
+      } catch {
+        // A template folder without this folder
+      }
+      for (const file of files) {
+        const parsed = templateFileName(file);
+        if (parsed?.name !== name) continue;
+        const extension = parsed.extension ?? defaultExtension;
+        const clash = own.get(extension);
+        if (clash)
+          throw new Error(
+            `${clash.file} and ${folder}/${file} in ${dir} both output ${name}'s .${extension} file; rename or remove one of them`,
+          );
+        own.set(extension, { file: `${folder}/${file}`, extension });
+      }
+      for (const [extension, output] of own)
+        if (!outputs.has(extension)) outputs.set(extension, output);
+    }
+    return [...outputs.values()];
+  }
+
+  /**
+   * The template files for an article type's template name (e.g. "single", "list" or "home"), with the extension of the
+   * file each one outputs (see `templateFileName`): e.g. `single.njk` outputs HTML and `single.json.njk` JSON, and each
+   * is rendered. Types without their own templates folder use `templates/article/`; a type folder without the template
+   * falls back to `templates/article/` with a warning (once per name). Throws if the template exists in neither.
+   *
+   * @example
+   * templates.outputs("page", "home"); // [{ file: "page/home.njk", extension: "html" }] if it exists, else article/'s
+   */
+  outputs(type: string, name: string): TemplateOutput[] {
+    const own = this.find(`${type}/${name}`, DEFAULT_OUTPUT_EXTENSION);
+    if (own.length) return own;
+    const fallback = this.find(`article/${name}`, DEFAULT_OUTPUT_EXTENSION);
+    if (!fallback.length)
       throw new Error(
-        `Template "${name}" not found: looked for ${file} and ${fallback} in ${this.dirs.join(" and ")}`,
+        `Template "${name}" not found: looked for ${type}/${name}.njk and article/${name}.njk (or with an output extension, e.g. ${name}.json.njk) in ${this.dirs.join(" and ")}`,
       );
+    const file = `${type}/${name}.njk`;
     if (this.exists(type) && !this.warned.has(file)) {
       this.warned.add(file);
-      this.logger.warn(`Template ${file} not found; using ${fallback}`);
+      this.logger.warn(
+        `Template ${file} not found; using ${fallback.map((output) => output.file).join(" and ")}`,
+      );
     }
     return fallback;
   }
 
   /**
-   * The template names an article of a type can use (its own and the default ones, except "list"), sorted.
+   * The template file for an article type's template name that outputs HTML (or else its first), e.g. for a preview of
+   * the page (see `outputs`).
+   *
+   * @example
+   * templates.resolve("page", "home"); // "page/home.njk" if it exists, otherwise "article/home.njk"
+   */
+  resolve(type: string, name: string): string {
+    const outputs = this.outputs(type, name);
+    return (
+      outputs.find(({ extension }) => extension === DEFAULT_OUTPUT_EXTENSION) ??
+      (outputs[0] as TemplateOutput)
+    ).file;
+  }
+
+  /**
+   * The feed's templates (`layouts/rssfeed.njk`, which outputs XML, or with an output extension, e.g.
+   * `layouts/rssfeed.json.njk`), with the extension of the file each one outputs.
+   *
+   * @example
+   * templates.feedOutputs(); // [{ file: "layouts/rssfeed.njk", extension: "xml" }]
+   */
+  feedOutputs(): TemplateOutput[] {
+    return this.find("layouts/rssfeed", FEED_OUTPUT_EXTENSION);
+  }
+
+  /**
+   * The template names an article of a type can use (its own and the default ones, except "list"), sorted. A name
+   * with several outputs (e.g. `single.njk` and `single.json.njk`) is listed once.
    *
    * @example
    * templates.names("page"); // ["home", "single"]
@@ -261,9 +368,10 @@ export class Templates {
     for (const dir of this.dirs)
       for (const folder of ["article", type]) {
         try {
-          for (const file of readdirSync(join(dir, folder)))
-            if (file.endsWith(".njk") && file !== "list.njk")
-              names.add(file.slice(0, -4));
+          for (const file of readdirSync(join(dir, folder))) {
+            const name = templateFileName(file)?.name;
+            if (name && name !== "list") names.add(name);
+          }
         } catch {
           // A type without its own templates folder
         }

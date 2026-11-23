@@ -36,7 +36,7 @@ import { collectLists, PAGE_SIZE, pageFile, paginate } from "../lists/index.ts";
 import { createMarkdown, renderMarkdown } from "../markdown/index.ts";
 import { isSlug } from "../slug/index.ts";
 import { THEME_DIR } from "../../theme/index.ts";
-import { Templates } from "../templates/index.ts";
+import { Templates, type TemplateOutput } from "../templates/index.ts";
 import type {
   Logger,
   TemplateData,
@@ -478,36 +478,44 @@ export const buildSite = async (
       templates.render(template, { ...data, embeds: EMBED_PAGE_PARTS }),
       url,
     );
+  // Each template outputs a file with its extension (see Templates.outputs); lists link to the XML feed, if there is one
+  const feedOutputs = templates.feedOutputs();
+  const feedFile = `feed.${
+    (
+      feedOutputs.find(({ extension }) => extension === "xml") ??
+      (feedOutputs[0] as TemplateOutput)
+    ).extension
+  }`;
   const firstPages = new Map<string, TemplateDataList>();
   for (const list of lists) {
-    const pages = paginate(list);
+    const pages = paginate(list, PAGE_SIZE, feedFile);
     if (list.kind === "type")
       firstPages.set(list.type, pages[0] as TemplateDataList);
-    if (list.pages) {
-      const listTemplate = templates.resolve(list.type, "list");
-      for (const page of pages)
+    if (list.pages)
+      for (const { file, extension } of templates.outputs(list.type, "list"))
+        for (const page of pages)
+          await write(
+            list.dir + pageFile(page.pagination.page.index, extension),
+            await renderPage(
+              file,
+              listPageData(site, page),
+              page.pagination.page.url,
+            ),
+          );
+    if (list.feed)
+      for (const { file, extension } of feedOutputs)
         await write(
-          list.dir + pageFile(page.pagination.page.index),
+          `${list.dir}feed.${extension}`,
           await renderPage(
-            listTemplate,
-            listPageData(site, page),
-            page.pagination.page.url,
+            file,
+            // The feed has the newest articles that can be in feeds
+            listPageData(site, {
+              ...(pages[0] as TemplateDataList),
+              articles: list.feedArticles.slice(0, PAGE_SIZE),
+            }),
+            `${list.dir}feed.${extension}`,
           ),
         );
-    }
-    if (list.feed)
-      await write(
-        `${list.dir}feed.xml`,
-        await renderPage(
-          "layouts/rssfeed.njk",
-          // The feed has the newest articles that can be in feeds
-          listPageData(site, {
-            ...(pages[0] as TemplateDataList),
-            articles: list.feedArticles.slice(0, PAGE_SIZE),
-          }),
-          `${list.dir}feed.xml`,
-        ),
-      );
   }
 
   // Article pages with their assets; index articles also get their type's list
@@ -518,14 +526,18 @@ export const buildSite = async (
     });
     const list =
       article.slug === "index" ? firstPages.get(article.type) : undefined;
-    await write(
-      `${folder}index.html`,
-      await renderPage(
-        templates.resolve(article.type, article.template),
-        articlePageData(site, article, list),
-        article.url,
-      ),
-    );
+    for (const { file, extension } of templates.outputs(
+      article.type,
+      article.template,
+    ))
+      await write(
+        `${folder}index.${extension}`,
+        await renderPage(
+          file,
+          articlePageData(site, article, list),
+          article.url,
+        ),
+      );
   }
 
   // Static files (stylesheet, fonts) at the website's root, beside the articles

@@ -29,7 +29,7 @@ describe("THEME_DIR", () => {
   it("should hold the theme's required templates and stylesheet", async () => {
     for (const file of [
       "templates/layouts/html.njk",
-      "templates/layouts/rssfeed.njk",
+      "templates/layouts/rssfeed.xml.njk",
       "templates/article/single.njk",
       "templates/article/list.njk",
       "static/base.css",
