@@ -239,10 +239,16 @@ describe("readThemeInfo", () => {
     });
   });
 
-  it("should read the default theme as a package", async () => {
+  it("should read the default theme as a package, named by its settings file", async () => {
     const info = await readThemeInfo(THEME_DIR);
-    expect(info.name).toBe("@lvl99dotcom/edaha-theme-default");
-    expect(info.isPackage).toBe(true);
+    expect(info).toMatchObject({
+      name: "Default",
+      description:
+        "edaha.md's default theme, with neutral templates and a stylesheet.",
+      authors: [{ name: "Matt Scheurich" }],
+      isPackage: true,
+    });
+    expect(info.version).toMatch(/^\d+\.\d+\.\d+$/);
   });
 
   it("should name a package without a name after its folder", async () => {
@@ -257,11 +263,36 @@ describe("readThemeInfo", () => {
     });
   });
 
-  it("should prefer package.json over the settings file", async () => {
+  it("should prefer the settings file in a package, with package.json filling in what it leaves out", async () => {
     const dir = await tempDir();
-    await write(join(dir, "package.json"), '{ "name": "from-package" }');
+    await write(
+      join(dir, "package.json"),
+      JSON.stringify({
+        name: "from-package",
+        description: "Package",
+        version: "2.0.0",
+        author: "Matt",
+      }),
+    );
     await write(join(dir, THEME_FILE), "name: From settings\n");
-    expect((await readThemeInfo(dir)).name).toBe("from-package");
+    expect(await readThemeInfo(dir)).toEqual({
+      name: "From settings",
+      description: "Package",
+      version: "2.0.0",
+      authors: [{ name: "Matt", email: undefined, url: undefined }],
+      isPackage: true,
+    });
+    await write(
+      join(dir, THEME_FILE),
+      "name: From settings\ndescription: Settings\nversion: 1.0.0\nauthors:\n  - Sam\n",
+    );
+    expect(await readThemeInfo(dir)).toEqual({
+      name: "From settings",
+      description: "Settings",
+      version: "1.0.0",
+      authors: [{ name: "Sam" }],
+      isPackage: true,
+    });
   });
 
   it("should name an invalid package.json in errors", async () => {

@@ -6,6 +6,7 @@ A theme is a folder with:
 
 - `templates/`: the Nunjucks templates (`layouts/`, `article/` and `page/`).
 - `static/`: files copied as they are into the built site (`base.css`).
+- `edahatheme.yml`: its name ("Default") and description, for tools that list themes.
 
 A site's own `templates/` and `static/` folders override the theme's files one by one: copy a file to the same path in your site and edit it. See [Templating](https://edaha.md/docs/05-templating/).
 

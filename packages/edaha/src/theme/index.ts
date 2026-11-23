@@ -229,26 +229,35 @@ const readText = (path: string): Promise<string | undefined> =>
   readFile(path, "utf8").catch(() => undefined);
 
 /**
- * Read a theme's info: from its package.json if it is a package, else from its settings file (THEME_FILE), else just
- * its folder's name. Throws, naming the file, if the file is invalid.
+ * Read a theme's info: from its settings file (THEME_FILE), with a package's package.json filling in what it leaves
+ * out (or giving it all, without one), else just its folder's name. A theme with a package.json is a package
+ * (`isPackage`). Throws, naming the file, if a file is invalid.
  *
  * @example
  * await readThemeInfo("themes/blog"); // { name: "Blog", version: "1.0.0", authors: [...], isPackage: false, ... }
  */
 export const readThemeInfo = async (themeDir: string): Promise<ThemeInfo> => {
-  const packageJson = await readText(join(themeDir, "package.json"));
-  if (packageJson !== undefined) {
+  const [packageJson, settings] = await Promise.all([
+    readText(join(themeDir, "package.json")),
+    readText(join(themeDir, THEME_FILE)),
+  ]);
+  let fromPackage: ThemeInfo | undefined;
+  if (packageJson !== undefined)
     try {
-      return packageThemeInfo(JSON.parse(packageJson), themeDir);
+      fromPackage = packageThemeInfo(JSON.parse(packageJson), themeDir);
     } catch (error) {
       throw new Error(`package.json: ${(error as Error).message}`, {
         cause: error,
       });
     }
-  }
-  const settings = await readText(join(themeDir, THEME_FILE));
   if (settings === undefined)
-    return { name: basename(resolve(themeDir)), authors: [], isPackage: false };
+    return (
+      fromPackage ?? {
+        name: basename(resolve(themeDir)),
+        authors: [],
+        isPackage: false,
+      }
+    );
   let data: unknown;
   try {
     data = parse(settings);
@@ -257,5 +266,16 @@ export const readThemeInfo = async (themeDir: string): Promise<ThemeInfo> => {
       cause: error,
     });
   }
-  return parseThemeInfo(data);
+  const fromSettings = parseThemeInfo(data);
+  if (!fromPackage) return fromSettings;
+  // The theme's own settings win; its package.json fills in what they leave out
+  return {
+    name: fromSettings.name,
+    description: fromSettings.description ?? fromPackage.description,
+    version: fromSettings.version ?? fromPackage.version,
+    authors: fromSettings.authors.length
+      ? fromSettings.authors
+      : fromPackage.authors,
+    isPackage: true,
+  };
 };
