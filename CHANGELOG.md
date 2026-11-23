@@ -2,6 +2,19 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
+## @lvl99dotcom/edaha.md 0.4.2, @lvl99dotcom/edaha-editor 0.4.2, @lvl99dotcom/edaha-theme-default 0.4.1 (2026-11-23)
+
+Themes are named by their own settings file, and select fields can name their empty choice.
+
+### Added
+
+- `@lvl99dotcom/edaha-theme-default` has an `edahatheme.yml`, naming it "edaha.md".
+- In `<edaha-metadata-field>` selects, an option whose `value` is `""` is the "none" choice, in place of "—".
+
+### Changed
+
+- `readThemeInfo` reads a theme's `edahatheme.yml` even when it's a package, with its `package.json` filling in what it leaves out (`isPackage` is still `true` for packages).
+
 ## @lvl99dotcom/edaha.md 0.4.1, @lvl99dotcom/edaha-editor 0.4.1 (2026-11-23)
 
 Change a site's config file from code, and build settings forms from schemas.
