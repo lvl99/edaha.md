@@ -72,7 +72,7 @@ authors:
 | `version`     | No       | Its version, e.g. `1.0.0`.                                                                                                               |
 | `authors`     | No       | Its authors: names, or maps with a `name` and optionally an `email` and `url`, like a site's [`author`](/docs/03-configuration/#author). |
 
-A theme that is a package (it has a `package.json`) can have an `edahatheme.yml` too, e.g. for a shorter name than its package's: the settings it leaves out come from its `package.json` (`name`, `description`, `version`, and `author` and `contributors`). Without one, they all come from its `package.json`. The default theme's `edahatheme.yml` names it "Default". Installed packages shouldn't be edited: to change one, copy its folder and delete the copy's `package.json` (keeping or adding an `edahatheme.yml`).
+A theme that is a package (it has a `package.json`) can have an `edahatheme.yml` too, e.g. for a shorter name than its package's: the settings it leaves out come from its `package.json` (`name`, `description`, `version`, and `author` and `contributors`). Without one, they all come from its `package.json`. The default theme's `edahatheme.yml` names it "edaha.md". Installed packages shouldn't be edited: to change one, copy its folder and delete the copy's `package.json` (keeping or adding an `edahatheme.yml`).
 
 The easiest way to start a theme is to copy the default theme's `templates/` and `static/` folders.
 

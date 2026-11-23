@@ -242,7 +242,7 @@ describe("readThemeInfo", () => {
   it("should read the default theme as a package, named by its settings file", async () => {
     const info = await readThemeInfo(THEME_DIR);
     expect(info).toMatchObject({
-      name: "Default",
+      name: "edaha.md",
       description:
         "edaha.md's default theme, with neutral templates and a stylesheet.",
       authors: [{ name: "Matt Scheurich" }],
