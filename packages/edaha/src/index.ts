@@ -13,13 +13,21 @@ export {
   type GenerateConfig,
 } from "./generator/config/index.ts";
 export {
+  changeConfigText,
   CONFIG_FILES,
   findConfigFile,
   loadSiteConfig,
   readConfigFile,
+  updateConfigFile,
+  type ConfigChanges,
   type SiteConfig,
   type SiteConfigOptions,
 } from "./generator/configFile/index.ts";
+export {
+  CONFIG_FORM_SCHEMA,
+  configFormChanges,
+  configFormProblems,
+} from "./generator/configSchema/index.ts";
 export { REQUIRED_TEMPLATES } from "./generator/templates/index.ts";
 export type * from "./generator/types/index.ts";
 export {
