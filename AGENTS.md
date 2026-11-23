@@ -50,6 +50,8 @@ Example:
 
 After each action taken, commit work using the response's applicable line as the commit message (collaboration project briefs and responses won't be included in git repo). If action line is longer than 1 sentence, summarise it to 1 sentence for the commit message.
 
+If anything comes up during the collaboration/conversation with human and agent, mark future plans and tasks in a [collaboration/FUTURES.md] file. This will hold any points that were raised during the collaboration that need later work to either plan, design, or complete. This file will be used to plan out future collaborations, as well as keep track of what needs to be done for a more optimal time in the future.
+
 ## Coding standards
 
 Performant, clean, readable Typescript code:
@@ -136,6 +138,8 @@ For each version release, collate and summarise relevant actions undertaken sinc
 ## Development, testing, release workflow
 
 Human will create collaboration project brief and prompt agent to review, or can prompt tasks directly in conversation.
+
+Any new tasks that fall outside scope of current project can be recorded in the [collaboration/FUTURES.md] file. Prompt human if this is necessary, as human might want to include in current project's scope.
 
 When agent has work ready for UAT (after lint and unit tests have passed 100%), human will test locally first.
 
