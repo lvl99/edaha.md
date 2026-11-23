@@ -926,6 +926,8 @@ export class EdahaEditor extends LitElement {
         .types=${this.types}
         @files-changed=${(event: CustomEvent<FilesChanged>) =>
           void this.onFilesChanged(event.detail)}
+        @article-choose=${(event: CustomEvent<ArticleLocation>) =>
+          void this.open(event.detail)}
       ></edaha-file-browser>
       ${this.renderUnsaved()}
       <edaha-toasts></edaha-toasts>

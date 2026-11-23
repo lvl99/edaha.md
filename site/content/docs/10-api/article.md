@@ -284,6 +284,8 @@ document.body.append(editor);
 
 The stylesheet styles the editor and has edaha.md's design tokens as CSS variables on `:root` (e.g. `--colour-text`, `--colour-link`, `--border-radius`), in light and dark, so the app's page can use them too. Inside a shadow root, add the stylesheet to the shadow root as well, as `:root` rules don't apply there (the variables still do).
 
+The editor is as tall as the window unless the app's page gives it another height, e.g. to show it under the app's own bar. Its overlays (the narrow layout's article list and article settings, dialogs and messages) stay within it.
+
 | `EditorApi` option | Type     | Description                                                                                                                                                                                              | Default                     |
 | ------------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
 | `baseUrl`          | String   | The editor server's address, e.g. `http://127.0.0.1:5180`. Requests, articles' files and images, and preview pages use it.                                                                               | `""`: the page's own server |

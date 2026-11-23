@@ -62,15 +62,15 @@ The settings are in groups you can open and close: **Info** (type, status, slug,
 
 What the settings do:
 
-| Setting | What it does |
-| --- | --- |
-| **Type** | The kind of article, e.g. News or Page. |
-| **Template** | How the article is laid out, if your website has more than one layout for it. |
-| **Status** | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website). |
-| **Slug** | The last part of the article's address. Left empty, it is made from the title. |
-| **Publication date** | The article's date. |
-| **Excerpt** | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
-| **Thumbnail** | An image shown in lists. |
+| Setting              | What it does                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| **Type**             | The kind of article, e.g. News or Page.                                                          |
+| **Template**         | How the article is laid out, if your website has more than one layout for it.                    |
+| **Status**           | **Published** (listed), **Unlisted** (its own page only) or **Draft** (not on the website).      |
+| **Slug**             | The last part of the article's address. Left empty, it is made from the title.                   |
+| **Publication date** | The article's date.                                                                              |
+| **Excerpt**          | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
+| **Thumbnail**        | An image shown in lists.                                                                         |
 
 The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file**, chosen with **Choose existing file…**, or linked by address. Uploads need the article to be saved first. The thumbnail can also be chosen with **Choose existing file…**.
 
@@ -94,7 +94,7 @@ Three tabs above the body change what you see. Move between them with the arrow 
 
 ## Managing files
 
-Choose **Files** (beside **All articles**) to see every file in your articles' folders. Search their names, filter by **Type** (image, document, archive, video, audio or other) and **Article type**, and choose a column's heading to sort by it, as in the article browser. **Name** opens the file, and **Location** opens its article in a new tab.
+Choose **Files** (beside **All articles**) to see every file in your articles' folders. Search their names, filter by **Type** (image, document, archive, video, audio or other) and **Article type**, and choose a column's heading to sort by it, as in the article browser. **Name** opens the file in a new tab, and **Location** opens its article in the editor (or in a new tab, if you hold cmd or ctrl as you choose it).
 
 Each file has three buttons:
 
@@ -121,9 +121,11 @@ If you open another article or start a new one with changes that aren't saved, t
 The editor is in its own package, `@lvl99dotcom/edaha-editor`. Install it next to `@lvl99dotcom/edaha.md` (see [Quick start](/docs/02-quick-start/)), then:
 
 <!-- embed:codehighlight -->
+
 ```sh
 npx edaha editor
 ```
+
 <!-- /embed:codehighlight -->
 
 Without the editor package, `edaha editor` stops and says how to install it.
@@ -145,6 +147,7 @@ The editor reads the config file again each time, so you can add or change an em
 ### Starting it from code
 
 <!-- embed:codehighlight -->
+
 ```ts
 import { startEditor } from "@lvl99dotcom/edaha-editor";
 
@@ -156,6 +159,7 @@ const editor = await startEditor({
 });
 console.log(`Open ${editor.url}`);
 ```
+
 <!-- /embed:codehighlight -->
 
 To show the editor in your own app's page instead, as the `<edaha-editor>` web component, see [Showing the editor in your own app](/docs/10-api/#showing-the-editor-in-your-own-app).
@@ -163,6 +167,7 @@ To show the editor in your own app's page instead, as the `<edaha-editor>` web c
 An app that shows the editor in its own window can hide the "edaha.md" title (**Home** still goes back to the welcome prompt) and the light/dark theme switcher (the device's light or dark setting is used instead):
 
 <!-- embed:codehighlight -->
+
 ```ts
 const editor = await startEditor({
   siteDir: "my-site",
@@ -170,4 +175,5 @@ const editor = await startEditor({
   hideThemeSwitcher: true,
 });
 ```
+
 <!-- /embed:codehighlight -->
