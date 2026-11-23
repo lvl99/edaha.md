@@ -2,6 +2,27 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
+## 0.5.0 (2026-11-23)
+
+Templates can output any type of file, and the editor fits better in other apps' pages.
+
+### Added
+
+- A template's file name can give the type of file it outputs, with an extension before `.njk`: e.g. `article/single.json.njk` outputs each article's `index.json`, `article/list.json.njk` each list page's `index.json`, `2.json`, …, and `layouts/rssfeed.json.njk` each list's `feed.json`. Templates without one output HTML (the feed's, XML), and every template of a name is rendered. A list's `feedUrl` links to its XML feed, or its only feed.
+- `Templates.outputs(type, name)` and `Templates.feedOutputs()` give a name's templates with the extension each outputs; `templateFileName` and `TemplateOutput` are exported.
+- Docs: [output file types](https://edaha.md/docs/05-templating/#output-file-types).
+
+### Changed
+
+- The default theme's feed template is now `layouts/rssfeed.xml.njk`. A site's own `layouts/rssfeed.njk` still overrides it; a template that extends `@theme/layouts/rssfeed.njk` needs the new name.
+- A site's template overrides the theme's template that outputs the same type of file, whatever its file name, and two templates in one folder that output the same type of file stop the build, naming them.
+- The required templates (`article/single.njk`, `article/list.njk`, `layouts/rssfeed.njk`) can have any output extension.
+- In the editor's file browser, a file's **Location** opens its article in the same editor instead of a new tab (cmd-, ctrl-, shift- and alt-clicks still open a new tab).
+
+### Fixed
+
+- The editor's overlays (the narrow layout's article list and article settings, dialogs and toasts) stay within `<edaha-editor>` when it's shown in part of an app's page, instead of covering the rest of the page.
+
 ## @lvl99dotcom/edaha.md 0.4.2, @lvl99dotcom/edaha-editor 0.4.2, @lvl99dotcom/edaha-theme-default 0.4.1 (2026-11-23)
 
 Themes are named by their own settings file, and select fields can name their empty choice.
