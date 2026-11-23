@@ -150,7 +150,7 @@ PRs will be submitted, reviewed, and hopefully merged into `main`.
 Releases will be made via `pnpm` (ensure human has logged in first), and only from the `main` branch, when human signals to prepare a release:
 
 1. Update [CHANGELOG.md] for the new version and commit it to `main`.
-2. Create a news article at `site/news/release-v<version-kebab-case>/article.md` (e.g. `site/news/release-v0-3-0`) and for each item in the changelog write it as one short sentence (refer to previous release news articles for content and style reference).
+2. Create a news article at `site/content/news/release-v<version-kebab-case>/article.md` (e.g. `site/content/news/release-v0-3-0`) and for each item in the changelog write it as one short sentence (refer to previous release news articles for content and style reference).
 3. Bump the versions without committing:
    - Major or minor release, every package: `pnpm -r --filter "./packages/*" version <minor|major>`.
    - Patch release, only the changed packages: `pnpm -r --filter <package name> --filter <package name> version patch`.
