@@ -110,4 +110,4 @@ echo "Hello world!"
 ```
 <!-- /embed:codehighlight -->
 
-![My image](/files/article/article-styling-reference/lvl99-logo.png)
+![My image](lvl99-logo.png)
