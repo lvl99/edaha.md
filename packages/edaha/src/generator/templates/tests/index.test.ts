@@ -330,11 +330,48 @@ describe("Templates", () => {
   });
 
   describe("output extensions", () => {
+    it("should load a template by its name without its output extension, the earlier folder's first", async () => {
+      const theme = await templatesDir({
+        ...without("layouts/rssfeed.njk", "article/single.njk"),
+        "layouts/rssfeed.xml.njk": "theme feed",
+        "layouts/rssfeed.json.njk": "theme json feed",
+        "article/single.njk": "theme single",
+        "partials/notes.txt": "theme notes",
+        "root.html.njk": "theme root",
+      });
+      const site = await templatesDir({
+        "article/single.html.njk":
+          '{% include "@theme/layouts/rssfeed.njk" %}, {% include "@theme/article/single.html.njk" %}',
+        "layouts/feed.njk": '{% extends "layouts/rssfeed.njk" %}',
+      });
+      const templates = new Templates([site, theme], { warn: vi.fn() });
+      // The site's single.html.njk comes before the theme's single.njk, both outputting HTML
+      expect(templates.render("article/single.njk", {} as never)).toBe(
+        "theme feed, theme single",
+      );
+      expect(templates.render("layouts/feed.njk", {} as never)).toBe(
+        "theme feed",
+      );
+      expect(templates.render("partials/notes.txt", {} as never)).toBe(
+        "theme notes",
+      );
+      expect(templates.render("root.njk", {} as never)).toBe("theme root");
+      expect(templates.render("@theme/root.njk", {} as never)).toBe(
+        "theme root",
+      );
+      expect(templates.render("layouts/rssfeed.json.njk", {} as never)).toBe(
+        "theme json feed",
+      );
+      expect(() =>
+        templates.render("article/single.txt.njk", {} as never),
+      ).toThrow("template not found: article/single.txt.njk");
+    });
+
     it("should escape values only in templates that output HTML or XML", async () => {
       const dir = await templatesDir({
         ...REQUIRED,
         "article/single.json.njk": "{{ site.name | json }}|{{ site.name }}",
-        "article/single.svg.njk": "{{ site.name }}",
+        "article/single.SVG.njk": "{{ site.name }}",
         "article/single.txt.njk": '{% include "partials/name.njk" %}',
         "partials/name.njk": "{{ site.name }}",
         "layouts/rssfeed.json.njk": "{{ site.name }}",
@@ -344,7 +381,7 @@ describe("Templates", () => {
       expect(templates.render("article/single.json.njk", data)).toBe(
         '"A \\"<b>\\" & B"|A "<b>" & B',
       );
-      expect(templates.render("article/single.svg.njk", data)).toBe(
+      expect(templates.render("article/single.SVG.njk", data)).toBe(
         "A &quot;&lt;b&gt;&quot; &amp; B",
       );
       // A partial is escaped or not as the template that includes it
@@ -456,7 +493,7 @@ describe("Templates", () => {
 describe("outputExtension", () => {
   it("should give a template's output extension, or else XML for the feed and HTML for the rest", () => {
     expect(outputExtension("article/single.json.njk")).toBe("json");
-    expect(outputExtension("article/single.JSON.njk")).toBe("json");
+    expect(outputExtension("article/single.JSON.njk")).toBe("JSON");
     expect(outputExtension("article/single.njk")).toBe("html");
     expect(outputExtension("layouts/rssfeed.njk")).toBe("xml");
     expect(outputExtension("@theme/layouts/rssfeed.njk")).toBe("xml");

@@ -65,7 +65,7 @@ export const templateFileName = (
  * outputExtension("@theme/layouts/rssfeed.njk"); // "xml"
  */
 export const outputExtension = (file: string): string =>
-  templateFileName(basename(file))?.extension?.toLowerCase() ??
+  templateFileName(basename(file))?.extension ??
   (/(^|\/)layouts\/rssfeed\.njk$/.test(file)
     ? FEED_OUTPUT_EXTENSION
     : DEFAULT_OUTPUT_EXTENSION);
@@ -77,20 +77,96 @@ export const outputExtension = (file: string): string =>
 export const THEME_PREFIX = "@theme/";
 
 /**
- * A Nunjucks loader for template names starting with THEME_PREFIX, from one folder. Other names are left to the next
- * loader.
+ * The templates in the given folders for a template's path without `.njk` (e.g. "article/single"), with the extension
+ * of each one's output: `single.njk` outputs `defaultExtension`, and `single.json.njk` outputs `json`. A template in an
+ * earlier folder (e.g. the site's) overrides one in a later folder (e.g. the theme's) that outputs the same extension,
+ * whatever its file name (e.g. a site's `rssfeed.njk` over a theme's `rssfeed.xml.njk`). Throws if two in one folder
+ * output the same extension (e.g. `single.njk` and `single.html.njk`).
  *
  * @example
- * themeLoader("/theme/templates").getSource("@theme/article/single.njk"); // the theme's article/single.njk
+ * findTemplates(["site/templates", "theme/templates"], "article/single", "html");
+ * // [{ file: "article/single.njk", extension: "html" }, { file: "article/single.json.njk", extension: "json" }]
  */
-export const themeLoader = (dir: string): nunjucks.ILoader => {
-  const files = new nunjucks.FileSystemLoader(dir);
+export const findTemplates = (
+  dirs: readonly string[],
+  path: string,
+  defaultExtension: string,
+): TemplateOutput[] => {
+  const slash = path.lastIndexOf("/");
+  const folder = path.slice(0, Math.max(slash, 0));
+  const name = path.slice(slash + 1);
+  const outputs = new Map<string, TemplateOutput>();
+  for (const dir of dirs) {
+    const own = new Map<string, TemplateOutput>();
+    let files: string[] = [];
+    try {
+      files = readdirSync(join(dir, folder)).sort();
+    } catch {
+      // A template folder without this folder
+    }
+    for (const file of files) {
+      const parsed = templateFileName(file);
+      if (parsed?.name !== name) continue;
+      const extension = parsed.extension ?? defaultExtension;
+      const relative = folder ? `${folder}/${file}` : file;
+      const clash = own.get(extension);
+      if (clash)
+        throw new Error(
+          `${clash.file} and ${relative} in ${dir} both output ${name}'s .${extension} file; rename or remove one of them`,
+        );
+      own.set(extension, { file: relative, extension });
+    }
+    for (const [extension, output] of own)
+      if (!outputs.has(extension)) outputs.set(extension, output);
+  }
+  return [...outputs.values()];
+};
+
+/**
+ * The template file a template name loads from the given folders: the first folder's template that outputs the same
+ * extension (see outputExtension), whatever its file name. So `layouts/rssfeed.njk` loads `layouts/rssfeed.xml.njk`,
+ * and `article/single.njk` a site's `article/single.html.njk` over a theme's `article/single.njk`. Other names, and
+ * names no template outputs, are given back as they are.
+ *
+ * @example
+ * resolveTemplateName(["theme/templates"], "layouts/rssfeed.njk"); // "layouts/rssfeed.xml.njk"
+ * resolveTemplateName(["theme/templates"], "partials/notes.txt"); // "partials/notes.txt"
+ */
+export const resolveTemplateName = (
+  dirs: readonly string[],
+  name: string,
+): string => {
+  const slash = name.lastIndexOf("/");
+  const parsed = templateFileName(name.slice(slash + 1));
+  if (!parsed) return name;
+  const path = name.slice(0, slash + 1) + parsed.name;
+  const extension = outputExtension(name);
+  return (
+    findTemplates(dirs, path, outputExtension(`${path}.njk`)).find(
+      (output) => output.extension === extension,
+    )?.file ?? name
+  );
+};
+
+/**
+ * A Nunjucks loader for the template folders, where an earlier folder's file overrides a later one's (see
+ * resolveTemplateName). Names starting with THEME_PREFIX load from the last folder only (the theme's).
+ *
+ * @example
+ * templateLoader(["site/templates", "theme/templates"]).getSource("@theme/layouts/rssfeed.njk");
+ * // the theme's layouts/rssfeed.xml.njk
+ */
+export const templateLoader = (dirs: readonly string[]): nunjucks.ILoader => {
+  const themeDirs = dirs.slice(-1);
+  const files = new nunjucks.FileSystemLoader([...dirs]);
+  const themeFiles = new nunjucks.FileSystemLoader(themeDirs);
   return {
     getSource: (name) =>
       name.startsWith(THEME_PREFIX)
-        ? files.getSource(name.slice(THEME_PREFIX.length))
-        : // Nunjucks' loaders answer null for templates they don't have
-          (null as unknown as nunjucks.LoaderSource),
+        ? themeFiles.getSource(
+            resolveTemplateName(themeDirs, name.slice(THEME_PREFIX.length)),
+          )
+        : files.getSource(resolveTemplateName(dirs, name)),
   };
 };
 
@@ -268,18 +344,12 @@ export class Templates {
    * not. Each has its own loaders, as Nunjucks keeps compiled templates (bound to their environment) in them.
    */
   private environment(autoescape: boolean): nunjucks.Environment {
-    const env = new nunjucks.Environment(
-      [
-        themeLoader(this.dirs.at(-1) as string),
-        new nunjucks.FileSystemLoader(this.dirs),
-      ],
-      {
-        autoescape,
-        // Keep the generated HTML free of blank lines left by template tags
-        trimBlocks: true,
-        lstripBlocks: true,
-      },
-    );
+    const env = new nunjucks.Environment(templateLoader(this.dirs), {
+      autoescape,
+      // Keep the generated HTML free of blank lines left by template tags
+      trimBlocks: true,
+      lstripBlocks: true,
+    });
     env.addFilter("date", formatDate);
     env.addFilter("rfc822", formatRfc822);
     env.addFilter("absoluteUrl", absoluteUrl);
@@ -303,43 +373,13 @@ export class Templates {
   }
 
   /**
-   * The templates for a template's path without `.njk` (e.g. "article/single"), with the extension of each one's output:
-   * `single.njk` outputs `defaultExtension`, and `single.json.njk` outputs `json`. A template in an earlier template
-   * folder (e.g. the site's) overrides one in a later folder (e.g. the theme's) that outputs the same extension, whatever
-   * its file name (e.g. a site's `rssfeed.njk` over a theme's `rssfeed.xml.njk`). Throws if two in one folder output the
-   * same extension (e.g. `single.njk` and `single.html.njk`).
+   * The templates for a template's path without `.njk` in the template folders (see findTemplates).
    *
    * @example
-   * templates.find("article/single", "html");
-   * // [{ file: "article/single.njk", extension: "html" }, { file: "article/single.json.njk", extension: "json" }]
+   * templates.find("article/single", "html"); // [{ file: "article/single.njk", extension: "html" }, ...]
    */
   private find(path: string, defaultExtension: string): TemplateOutput[] {
-    const slash = path.lastIndexOf("/");
-    const [folder, name] = [path.slice(0, slash), path.slice(slash + 1)];
-    const outputs = new Map<string, TemplateOutput>();
-    for (const dir of this.dirs) {
-      const own = new Map<string, TemplateOutput>();
-      let files: string[] = [];
-      try {
-        files = readdirSync(join(dir, folder)).sort();
-      } catch {
-        // A template folder without this folder
-      }
-      for (const file of files) {
-        const parsed = templateFileName(file);
-        if (parsed?.name !== name) continue;
-        const extension = parsed.extension ?? defaultExtension;
-        const clash = own.get(extension);
-        if (clash)
-          throw new Error(
-            `${clash.file} and ${folder}/${file} in ${dir} both output ${name}'s .${extension} file; rename or remove one of them`,
-          );
-        own.set(extension, { file: `${folder}/${file}`, extension });
-      }
-      for (const [extension, output] of own)
-        if (!outputs.has(extension)) outputs.set(extension, output);
-    }
-    return [...outputs.values()];
+    return findTemplates(this.dirs, path, defaultExtension);
   }
 
   /**
@@ -428,7 +468,7 @@ export class Templates {
    */
   render(file: string, data: TemplateData): string {
     return (
-      ESCAPED_EXTENSIONS.includes(outputExtension(file))
+      ESCAPED_EXTENSIONS.includes(outputExtension(file).toLowerCase())
         ? this.escaped
         : this.unescaped
     ).render(file, data);
