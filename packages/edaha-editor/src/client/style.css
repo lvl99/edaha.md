@@ -52,7 +52,6 @@
   --font-size-h6: 1rem;
 
   /** Borders */
-  /* Corner radii, by size: buttons and inputs use the one of their size (e.g. .btn-s and settings inputs -s) */
   --border-radius-base: 5px;
   --border-radius-xs: 2px;
   --border-radius-s: 3px;
@@ -735,6 +734,12 @@ edaha-article form {
 edaha-article-data-field {
   display: block;
   margin-block: 0.5rem;
+}
+
+/* Choose or upload file: the file browser's icon, sized to the button's text */
+.btn-choose-file .icon svg {
+  width: 1.25em;
+  height: 1.25em;
 }
 
 /* Labels sit above their fields, including file fields' buttons, which aren't full width */

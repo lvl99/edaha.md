@@ -77,6 +77,7 @@ describe("edaha-markdown", () => {
       "Numbered list",
       "Quote",
       "Code",
+      "Horizontal rule",
       "Details",
       "Image URL",
       "Table",
@@ -116,6 +117,7 @@ describe("edaha-markdown", () => {
       ],
       ["Raw", "<!-- raw -->\nHello world\n<!-- /raw -->"],
       ["Read more", "Hello \n\n<!-- readmore -->"],
+      ["Horizontal rule", "Hello world\n\n---"],
     ];
     for (const [label, expected] of cases) {
       const element = await setup();

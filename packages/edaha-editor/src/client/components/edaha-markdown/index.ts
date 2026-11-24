@@ -28,6 +28,7 @@ import {
   toggleBulletList,
   toggleHeading,
   toggleNumberedList,
+  insertHorizontalRule,
   toggleQuote,
   toggleReadmore,
   wrapInline,
@@ -121,6 +122,7 @@ export class EdahaMarkdown extends LitElement {
     { label: "Numbered list", run: toggleNumberedList },
     { label: "Quote", run: toggleQuote },
     { label: "Code", run: (e) => wrapLines(e, "```", "```") },
+    { label: "Horizontal rule", run: insertHorizontalRule },
     {
       label: "Details",
       // A collapsible block, written as HTML with its content as Markdown

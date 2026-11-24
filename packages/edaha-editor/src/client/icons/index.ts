@@ -23,6 +23,7 @@ import driveFileRename from "@material-symbols/svg-400/outlined/drive_file_renam
 import findReplace from "@material-symbols/svg-400/outlined/find_replace.svg?raw";
 import folderOpen from "@material-symbols/svg-400/outlined/folder_open.svg?raw";
 import fullscreen from "@material-symbols/svg-400/outlined/fullscreen.svg?raw";
+import horizontalRule from "@material-symbols/svg-400/outlined/horizontal_rule.svg?raw";
 import fullscreenExit from "@material-symbols/svg-400/outlined/fullscreen_exit.svg?raw";
 import formatBold from "@material-symbols/svg-400/outlined/format_bold.svg?raw";
 import formatH1 from "@material-symbols/svg-400/outlined/format_h1.svg?raw";
@@ -82,6 +83,7 @@ export const ICONS = {
   format_quote: formatQuote,
   format_underlined: formatUnderlined,
   fullscreen,
+  horizontal_rule: horizontalRule,
   fullscreen_exit: fullscreenExit,
   image,
   link,
@@ -122,6 +124,7 @@ export const TOOLBAR_ICONS: Record<string, IconName> = {
   "Numbered list": "format_list_numbered",
   Quote: "format_quote",
   Code: "code_blocks",
+  "Horizontal rule": "horizontal_rule",
   Details: "expand_circle_down",
   "Image URL": "image",
   Table: "table",

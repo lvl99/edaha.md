@@ -21,6 +21,8 @@ import {
   toggleNumberedList,
   toggleQuote,
   toggleReadmore,
+  insertHorizontalRule,
+  HORIZONTAL_RULE,
   wrapInline,
   wrapLines,
   type TextEdit,
@@ -245,6 +247,14 @@ describe("embeds and read more", () => {
     );
     expect(mark(toggleReadmore(marked(`a\n\n«${READMORE}»\n\nb`)))).toBe(
       "a\n\n‸\n\nb",
+    );
+  });
+
+  it("should insert a horizontal rule on its own line after the selection, keeping it", () => {
+    expect(HORIZONTAL_RULE).toBe("---");
+    expect(mark(insertHorizontalRule(marked("Intro‸")))).toBe("Intro\n\n---‸");
+    expect(mark(insertHorizontalRule(marked("«Intro»\nMore")))).toBe(
+      "Intro\n\n---‸\n\nMore",
     );
   });
 });

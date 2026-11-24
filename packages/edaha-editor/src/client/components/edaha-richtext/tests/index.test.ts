@@ -92,6 +92,13 @@ describe("edaha-richtext", () => {
       await fresh.updateComplete;
       expect(fresh.value, label).toContain(tag);
     }
+
+    // A horizontal rule goes after the selection, keeping the selected text
+    const ruled = await setup();
+    selectAll(ruled);
+    button(ruled, "Horizontal rule").click();
+    await ruled.updateComplete;
+    expect(ruled.value).toMatch(/^<p>Hello world<\/p><hr>/);
   });
 
   it("should format selected text from the floating toolbar, which keeps the selection", async () => {

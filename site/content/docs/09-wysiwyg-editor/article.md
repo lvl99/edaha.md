@@ -42,7 +42,7 @@ Searches and the article browser include changes made outside the editor straigh
 3. Write in the **Body**. The toolbar's buttons format your text. Each shows an icon; point at it to see its name:
    - **Bold**, **Italic**, **Underline**, **Strikethrough**, **Small** and **Big** text;
    - **Link**, **Main heading** (H1), **Heading** (H2) and **Subheading** (H3);
-   - **Bullet list**, **Numbered list**, **Quote** and **Code**;
+   - **Bullet list**, **Numbered list**, **Quote**, **Code** and **Horizontal rule** (a line across the page, written as `---`, after the selection);
    - **Details**: a block readers can open and close;
    - **Image URL**, **Upload image**, **Choose file** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
    - a button for each of the site's [embeds](/docs/07-embeds/), e.g. **YouTube video** or **MermaidJS diagram**: paste or write its content (e.g. a video's address; some embeds, e.g. a table of contents, can be added without any), and set its options, if it has any (e.g. the Bandcamp player's layout), below the content. Options show their defaults, and options that don't apply to the others' values are hidden. If the content or options aren't right for that kind of embed, the dialog says why before adding it. The body shows the embed as the website will; its **Edit** button (or its kind's toolbar button, while it is selected) changes it. An embed that isn't valid lists why in the body, and the website leaves it out. An embed's kind can't be changed: remove it and add another. One whose kind the site has no plugin for can only be removed, or changed in the **Markdown** tab;

@@ -362,7 +362,12 @@ describe("edaha-metadata-field", () => {
       undefined,
       { chooseFile },
     );
-    const choose = button(element, "Choose or upload file for Featured");
+    const choose = find<HTMLButtonElement>(element, ".btn-choose-file");
+    expect(choose.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Choose or upload file for Featured",
+    );
+    // With the file browser's icon
+    expect(choose.firstElementChild!.classList).toContain("icon-folder_open");
     choose.click();
     await vi.waitFor(() =>
       expect(changes).toEqual([

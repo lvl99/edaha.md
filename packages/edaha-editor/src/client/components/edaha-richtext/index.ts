@@ -231,6 +231,17 @@ export class EdahaRichtext extends LitElement {
       active: (e) => e.isActive("codeBlock"),
     },
     {
+      label: "Horizontal rule",
+      // After the selection, keeping it
+      run: (e) =>
+        e
+          .chain()
+          .focus()
+          .setTextSelection(e.state.selection.to)
+          .setHorizontalRule()
+          .run(),
+    },
+    {
       label: "Details",
       // Wraps the selected blocks in a collapsible block, or unwraps it
       run: (e) =>

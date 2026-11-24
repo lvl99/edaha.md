@@ -19,6 +19,7 @@ import {
 } from "../../metadataForm/index.ts";
 import { fieldOptions } from "@lvl99dotcom/edaha.md/generator/metadata";
 import { defineElement } from "../define/index.ts";
+import { icon } from "../../icons/index.ts";
 import { acceptedKind, type FileChooser } from "../edaha-file-browser/index.ts";
 
 /** Detail of the `metadata-change` event: the changed value's path (e.g. "credit/name") and its new value */
@@ -345,7 +346,8 @@ export class EdahaMetadataField extends LitElement {
             aria-describedby=${this.describedBy(id) || nothing}
             @click=${() => void this.chooseExisting()}
           >
-            Choose or upload file${hidden(` for ${this.fieldTitle}`)}
+            ${icon("folder_open")} Choose or upload
+            file${hidden(` for ${this.fieldTitle}`)}
           </button>`
         : nothing
     }`;

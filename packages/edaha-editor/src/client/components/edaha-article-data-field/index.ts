@@ -1,5 +1,6 @@
 import { html, LitElement, nothing } from "lit";
 import { defineElement } from "../define/index.ts";
+import { icon } from "../../icons/index.ts";
 import "../edaha-markdown/index.ts";
 import "../edaha-richtext/index.ts";
 import type { ImageUploader } from "../edaha-richtext/index.ts";
@@ -246,7 +247,9 @@ export class EdahaArticleDataField extends LitElement {
               ?disabled=${this.disabled}
               @click=${() => void this.chooseExisting()}
             >
-              Choose or upload file<span class="visually-hidden">
+              ${icon("folder_open")} Choose or upload file<span
+                class="visually-hidden"
+              >
                 for ${this.label}</span
               >
             </button>`
