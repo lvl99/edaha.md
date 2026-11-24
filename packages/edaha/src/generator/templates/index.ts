@@ -303,6 +303,39 @@ for (const [tag, part] of Object.entries(EMBED_TAGS))
       new nunjucks.runtime.SafeString(context.ctx.embeds?.[part] ?? ""),
   });
 
+/** Options for reading templates, the same for rendering and checking them */
+export const TEMPLATE_OPTIONS = {
+  // Keep the generated HTML free of blank lines left by template tags
+  trimBlocks: true,
+  lstripBlocks: true,
+} as const;
+
+/** Template tags added to Nunjucks, by name (see EmbedTags) */
+export const TEMPLATE_EXTENSIONS: Readonly<Record<string, nunjucks.Extension>> =
+  { embeds: new EmbedTags() };
+
+/**
+ * Add edaha.md's filters and tags to a Nunjucks environment.
+ *
+ * @example
+ * addTemplateTools(new nunjucks.Environment()).getFilter("rfc822");
+ */
+export const addTemplateTools = (
+  env: nunjucks.Environment,
+): nunjucks.Environment => {
+  env.addFilter("date", formatDate);
+  env.addFilter("rfc822", formatRfc822);
+  env.addFilter("absoluteUrl", absoluteUrl);
+  env.addFilter("absoluteUrls", absoluteUrls);
+  env.addFilter("json", toJson);
+  env.addFilter("parseJson", parseJson);
+  env.addFilter("contains", contains);
+  env.addFilter("where", where);
+  for (const [name, extension] of Object.entries(TEMPLATE_EXTENSIONS))
+    env.addExtension(name, extension);
+  return env;
+};
+
 /**
  * Loads and renders the site's Nunjucks templates from one or more folders. A file in an earlier folder overrides the
  * same file in later ones (e.g. a site's templates over the default theme's). Falls back to the `article` templates
@@ -349,20 +382,9 @@ export class Templates {
   private environment(autoescape: boolean): nunjucks.Environment {
     const env = new nunjucks.Environment(templateLoader(this.dirs), {
       autoescape,
-      // Keep the generated HTML free of blank lines left by template tags
-      trimBlocks: true,
-      lstripBlocks: true,
+      ...TEMPLATE_OPTIONS,
     });
-    env.addFilter("date", formatDate);
-    env.addFilter("rfc822", formatRfc822);
-    env.addFilter("absoluteUrl", absoluteUrl);
-    env.addFilter("absoluteUrls", absoluteUrls);
-    env.addFilter("json", toJson);
-    env.addFilter("parseJson", parseJson);
-    env.addFilter("contains", contains);
-    env.addFilter("where", where);
-    env.addExtension("embeds", new EmbedTags());
-    return env;
+    return addTemplateTools(env);
   }
 
   /**

@@ -2,6 +2,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { buildSite } from "../generator/build/index.ts";
+import {
+  checkSite,
+  formatProblem,
+  type CheckOptions,
+  type TemplateProblem,
+} from "../generator/check/index.ts";
 import type { BuildOptions, BuildResult } from "../generator/build/index.ts";
 
 /** The package with the article editor, which `edaha editor` loads when it is installed */
@@ -36,6 +42,7 @@ export const USAGE = `Usage: edaha <command> [options]
 
 Commands:
   build    Build the site into the config file's outputDir (and copy it into publishDir, if set)
+  check    Check the site's and theme's templates for problems, by file and line, without building
   editor   Run the local article editor (only reachable from this computer)
 
 Options:
@@ -60,6 +67,8 @@ export interface CliContext {
   error: (message: string) => void;
   /** Builds the site (default: buildSite) */
   build?: (options: BuildOptions) => Promise<BuildResult>;
+  /** Checks the site's templates (default: checkSite) */
+  check?: (options: CheckOptions) => Promise<TemplateProblem[]>;
   /** Starts the editor (default: the editor package's startEditor, see loadEditor) */
   editor?: StartEditor;
 }
@@ -171,6 +180,23 @@ export const runCli = async (
             ? ` and copied them into ${result.publishDir}`
             : ""),
       );
+      return 0;
+    }
+    if (command === "check") {
+      const problems = await (context.check ?? checkSite)({
+        siteDir,
+        configFile,
+        logger: { warn: context.error },
+      });
+      for (const problem of problems)
+        context.error(formatProblem(problem, context.cwd));
+      if (problems.length) {
+        context.error(
+          `Found ${problems.length} ${problems.length === 1 ? "problem" : "problems"} in the templates`,
+        );
+        return 1;
+      }
+      context.log("No problems found in the templates");
       return 0;
     }
     if (command === "editor") {
