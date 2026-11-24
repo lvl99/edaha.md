@@ -1049,7 +1049,7 @@ export class EdahaArticle extends LitElement {
     return this.site.author;
   }
 
-  /** Render the author fields, with a choice of no author at all */
+  /** Render the author fields, with a choice of no author at all, which hides them */
   private renderAuthor() {
     const noAuthor = this.data.author === false;
     const author = noAuthor
@@ -1057,14 +1057,12 @@ export class EdahaArticle extends LitElement {
       : (this.data.author as EditorAuthor | undefined);
     const fallback = this.defaultAuthor();
     // The default's details apply only when the article has no author of its own
-    const shown = author || noAuthor ? undefined : fallback;
-    const namePlaceholder = noAuthor
-      ? ""
-      : !this.site
-        ? "Defaults to the site name"
-        : fallback
-          ? `Defaults to ${fallback.name}`
-          : "No author unless you name one";
+    const shown = author ? undefined : fallback;
+    const namePlaceholder = !this.site
+      ? "Defaults to the site name"
+      : fallback
+        ? `Defaults to ${fallback.name}`
+        : "No author unless you name one";
     return html`<edaha-article-data-group
       name="author"
       label="Author"
@@ -1075,6 +1073,7 @@ export class EdahaArticle extends LitElement {
       <label class="no-author">
         <input
           type="checkbox"
+          role="switch"
           .checked=${noAuthor}
           @change=${(event: Event) =>
             (this.data = {
@@ -1086,29 +1085,30 @@ export class EdahaArticle extends LitElement {
         />
         No author
       </label>
-      <edaha-article-data-field
-        name="author[name]"
-        label="Name"
-        placeholder=${namePlaceholder}
-        ?disabled=${noAuthor}
-        .value=${author?.name ?? ""}
-      ></edaha-article-data-field>
-      <edaha-article-data-field
-        name="author[email]"
-        type="email"
-        label="Email address"
-        placeholder=${shown?.email ?? ""}
-        ?disabled=${noAuthor}
-        .value=${author?.email ?? ""}
-      ></edaha-article-data-field>
-      <edaha-article-data-field
-        name="author[url]"
-        type="url"
-        label="Homepage"
-        placeholder=${shown?.url ?? "https://example.com"}
-        ?disabled=${noAuthor}
-        .value=${author?.url ?? ""}
-      ></edaha-article-data-field>
+      ${
+        noAuthor
+          ? nothing
+          : html`<edaha-article-data-field
+                name="author[name]"
+                label="Name"
+                placeholder=${namePlaceholder}
+                .value=${author?.name ?? ""}
+              ></edaha-article-data-field>
+              <edaha-article-data-field
+                name="author[email]"
+                type="email"
+                label="Email address"
+                placeholder=${shown?.email ?? ""}
+                .value=${author?.email ?? ""}
+              ></edaha-article-data-field>
+              <edaha-article-data-field
+                name="author[url]"
+                type="url"
+                label="Homepage"
+                placeholder=${shown?.url ?? "https://example.com"}
+                .value=${author?.url ?? ""}
+              ></edaha-article-data-field>`
+      }
     </edaha-article-data-group>`;
   }
 

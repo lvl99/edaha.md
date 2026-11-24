@@ -363,6 +363,7 @@ export class EdahaMetadataField extends LitElement {
       const { checked, unchecked } = checkboxValues(this.schema);
       return html`<input
         type="checkbox"
+        role="switch"
         id=${id}
         .checked=${live(this.value === checked)}
         aria-invalid=${invalid}

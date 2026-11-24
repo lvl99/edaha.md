@@ -193,6 +193,11 @@ describe("applyFieldChange", () => {
       name: "",
       email: "a@b.c",
     });
+    // A field set after "no author" starts a new author
+    expect(
+      applyFieldChange({ ...data, author: false }, "author[email]", "a@b.c")
+        .author,
+    ).toEqual({ name: "", email: "a@b.c" });
   });
 
   it("should set tags and attachment fields by index", () => {
@@ -1904,7 +1909,7 @@ describe("edaha-article default author", () => {
     expect(placeholders(element)[0]).toBe("No author unless you name one");
   });
 
-  it("should choose no author, disabling the author's fields, and type one to have an author again", async () => {
+  it("should choose no author, hiding the author's fields, and show them again when unchosen", async () => {
     const { element, api } = await setupAuthors();
     const noAuthor = find<HTMLInputElement>(element, ".no-author input");
     expect(noAuthor.checked).toBe(false);
@@ -1912,20 +1917,18 @@ describe("edaha-article default author", () => {
     noAuthor.dispatchEvent(new Event("change"));
     await settle(element);
     expect(element.data.author).toBe(false);
-    expect(placeholders(element)).toEqual(["", "", "https://example.com"]);
-    expect(field(element, "author[name]").disabled).toBe(true);
+    expect(noAuthor.getAttribute("role")).toBe("switch");
+    expect(element.querySelector('[name^="author["]')).toBeNull();
     await element.save();
     expect(api.save.mock.calls[0]![1]).toMatchObject({ author: false });
     noAuthor.checked = false;
     noAuthor.dispatchEvent(new Event("change"));
     await settle(element);
     expect(element.data.author).toBeUndefined();
-    // Typing an author after "no author" starts a new one
-    element.data = { ...element.data, author: false };
-    input(
-      find<HTMLInputElement>(field(element, "author[email]"), "input"),
-      "a@b.c",
-    );
-    expect(element.data.author).toEqual({ name: "", email: "a@b.c" });
+    expect(placeholders(element)).toEqual([
+      "Defaults to Matt",
+      "matt@example.com",
+      "https://matt.example",
+    ]);
   });
 });
