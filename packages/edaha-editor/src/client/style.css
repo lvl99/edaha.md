@@ -24,17 +24,18 @@
 
   /** Fonts */
   --font-family-base: Arial, sans-serif;
+
   /* Button heights */
-  --button-size-base: 36px; /* Toolbar and edaha-article-controls buttons */
+  --button-size-base: 36px;
   --button-size-xs: 24px;
-  --button-size-s: 28px; /* Settings (metadata) buttons */
+  --button-size-s: 28px;
   --button-size-l: 42px;
   --button-size-xl: 42px;
 
   /* One-line input heights (not textareas) */
-  --input-size-base: 36px; /* Most inputs */
+  --input-size-base: 36px;
   --input-size-xs: 24px;
-  --input-size-s: 28px; /* Settings (metadata) inputs */
+  --input-size-s: 28px;
   --input-size-l: 36px;
   --input-size-xl: 42px;
 
@@ -199,6 +200,12 @@ code {
   color: var(--colour-muted);
   font-size: var(--font-size-s);
   padding: 0.2em;
+}
+
+blockquote {
+  margin-left: 0;
+  border-left: solid 6px var(--colour-muted);
+  padding-left: 1em;
 }
 
 /* Room for the theme switcher, which sits beside the title, when the title is hidden */
