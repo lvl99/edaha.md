@@ -312,6 +312,11 @@ export interface ArticleContext {
   setEmbedHeadings?(html: string, headings: readonly EmbedHeading[]): void;
   /** The article's custom metadata fields, to validate its values and give them to templates. Default: none */
   metadata?: MetadataContext | undefined;
+  /**
+   * Optional; the shared files folder on disk, and the website path articles use for its files (without the website's
+   * base URL, e.g. "/files/"). Without it, articles can't use shared files.
+   */
+  sharedFiles?: { dir: string; path: string } | undefined;
 }
 
 /** What an article's custom metadata is read with */
@@ -380,27 +385,38 @@ export const tagData = (name: string, typeUrl: string): TemplateDataTag => {
 
 /**
  * Resolve a URL from an article's config: relative URLs must be files in the article's folder and become
- * root-relative URLs. Returns the URL and, for local files, the file size.
+ * root-relative URLs, and URLs under the shared files' website path (e.g. "/files/photo.png") must be files in the shared
+ * files folder and get its URL (`site.files.url`). Returns the URL and, for local files, the file size.
  */
 const resolveFile = async (
   url: string,
   articleUrl: string,
   context: ArticleContext,
 ): Promise<{ url: string; size?: number }> => {
-  if (!isRelativeUrl(url)) return { url };
-  const file = join(
-    context.dir,
-    decodeURIComponent(url.split(/[?#]/)[0] as string),
-  );
+  const shared =
+    context.sharedFiles && url.startsWith(context.sharedFiles.path)
+      ? url.slice(context.sharedFiles.path.length)
+      : undefined;
+  if (shared === undefined && !isRelativeUrl(url)) return { url };
+  const [dir, name, prefix, where] =
+    shared === undefined
+      ? [context.dir, url, articleUrl, "the article's folder"]
+      : [
+          (context.sharedFiles as { dir: string }).dir,
+          shared,
+          context.site.files.url,
+          "the shared files folder",
+        ];
+  const file = join(dir, decodeURIComponent(name.split(/[?#]/)[0] as string));
   try {
+    // A shared file's path can't leave its folder with ".."
+    if (shared !== undefined && !file.startsWith(join(dir, "/")))
+      throw new Error();
     const info = await stat(file);
     if (!info.isFile()) throw new Error();
-    return { url: articleUrl + url, size: info.size };
+    return { url: prefix + name, size: info.size };
   } catch {
-    return fail(
-      context.source,
-      `"${url}" was not found in the article's folder`,
-    );
+    return fail(context.source, `"${url}" was not found in ${where}`);
   }
 };
 

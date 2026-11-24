@@ -1,3 +1,4 @@
+import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -513,6 +514,49 @@ Intro ![pic](thumb.png). <!-- readmore -->Rest.
         context(),
       ),
     ).rejects.toThrow('"../first" was not found');
+  });
+
+  it("should use files in the shared files folder, at their URL, and reject missing ones", async () => {
+    const shared = context({
+      site: {
+        ...site,
+        files: { url: "https://static.example.com/", path: "/files/" },
+      },
+      sharedFiles: { dir: dirname(FIRST_DIR), path: "/files/" },
+    });
+    const article = await loadArticle(
+      `<!--yaml\ndate: ${DATE}\nthumbnail: /files/first/thumb.png\nattachments:\n  - url: /files/first/guide.pdf\n-->\n# T`,
+      "article",
+      shared,
+    );
+    expect(article!.thumbnail).toBe(
+      "https://static.example.com/first/thumb.png",
+    );
+    expect(article!.attachments[0]).toMatchObject({
+      url: "https://static.example.com/first/guide.pdf",
+      name: "guide.pdf",
+      mimeType: "application/pdf",
+    });
+    expect(article!.attachments[0]!.size).toBeGreaterThan(0);
+    for (const url of [
+      "/files/first/missing.png",
+      "/files/../../edahaconfig.yml",
+    ])
+      await expect(
+        loadArticle(
+          `<!--yaml\ndate: ${DATE}\nthumbnail: ${url}\n-->\n# T`,
+          "article",
+          shared,
+        ),
+      ).rejects.toThrow(`"${url}" was not found in the shared files folder`);
+    // Without a shared files folder, its path is like any other root-relative URL
+    expect(
+      (await loadArticle(
+        `<!--yaml\ndate: ${DATE}\nthumbnail: /files/first/thumb.png\n-->\n# T`,
+        "article",
+        context(),
+      ))!.thumbnail,
+    ).toBe("/files/first/thumb.png");
   });
 
   it("should use an absolute thumbnail as is and default unknown mime types", async () => {

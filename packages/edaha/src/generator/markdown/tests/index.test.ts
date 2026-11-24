@@ -30,6 +30,19 @@ describe("renderMarkdown", () => {
     expect(html).toContain('src="/edaha.md/logo.png"');
   });
 
+  it("should give shared files hosted elsewhere their URL there", () => {
+    const html = renderMarkdown(
+      markdown,
+      "![pic](/files/2026/11/a.png) [about](/about) [doc](/filesystem/)",
+      "/edaha.md/news/hello/",
+      "/edaha.md",
+      { path: "/files/", url: "https://static.example.com/" },
+    );
+    expect(html).toContain('src="https://static.example.com/2026/11/a.png"');
+    expect(html).toContain('href="/edaha.md/about"');
+    expect(html).toContain('href="/edaha.md/filesystem/"');
+  });
+
   it("should give headings IDs from their text, without formatting or HTML", () => {
     const html = renderMarkdown(
       createMarkdown(),

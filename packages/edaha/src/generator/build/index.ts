@@ -395,6 +395,14 @@ export const buildSite = async (
     checkTypePaths(config.path, typeConfigs, config.reservedPaths),
   );
   const site = siteData(config, typeConfigs, siteUrl || DEFAULT_SITE_URL);
+  // Articles can use the shared files folder's files, at their website path or, when hosted elsewhere, their URL there
+  const sharedFiles = {
+    dir: join(siteDir, config.files.dir),
+    path: `/${config.files.path}/`,
+  };
+  const hostedFiles = config.files.url
+    ? { path: sharedFiles.path, url: config.files.url }
+    : undefined;
 
   const markdown = createMarkdown();
   const embeds = new EmbedResolver({
@@ -465,7 +473,8 @@ export const buildSite = async (
         setEmbedHeadings: (html, headings) =>
           embeds.setHeadings(html, headings),
         renderMarkdown: (md, baseUrl) =>
-          renderMarkdown(markdown, md, baseUrl, site.baseUrl),
+          renderMarkdown(markdown, md, baseUrl, site.baseUrl, hostedFiles),
+        sharedFiles,
         metadata: {
           validator,
           keys: typeMetadataKeys(config.metadata, typeConfigs[type]?.metadata),
