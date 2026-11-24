@@ -307,6 +307,10 @@ export class EdahaEditor extends LitElement {
       this.querySelector<HTMLElement>(".nav-toggle")?.focus();
   }
 
+  /** Let the user choose an article with the article browser (e.g. to move a file to) */
+  private readonly pickArticle = () =>
+    (this.querySelector("edaha-article-browser") as EdahaArticleBrowser).pick();
+
   /** Let the user choose an existing file in the file browser, for the article form */
   private readonly pickFile = (kind?: FileKind) =>
     (this.querySelector("edaha-file-browser") as EdahaFileBrowser).pick(kind);
@@ -924,6 +928,9 @@ export class EdahaEditor extends LitElement {
       <edaha-file-browser
         .api=${this.api}
         .types=${this.types}
+        .uploadTo=${this.site?.uploadTo ?? "article"}
+        .article=${this.editing ? this.selected : undefined}
+        .pickArticle=${this.pickArticle}
         @files-changed=${(event: CustomEvent<FilesChanged>) =>
           void this.onFilesChanged(event.detail)}
         @article-choose=${(event: CustomEvent<ArticleLocation>) =>

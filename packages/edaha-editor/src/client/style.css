@@ -1614,6 +1614,19 @@ edaha-metadata-field {
   cursor: pointer;
 }
 
+/* The file browser's header: Upload file beside Close */
+.file-browser-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.file-browser-header-actions .btn {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
 /* The file conflict dialog: the incoming file, an arrow, then the existing file (stacked on narrow screens) */
 .file-conflict {
   width: min(44rem, calc(100vw - 2rem));

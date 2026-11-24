@@ -1,15 +1,24 @@
 import { html, LitElement, nothing } from "lit";
-import type {
-  ArticleOrder,
-  ArticleTypeLabels,
-  FileChange,
-  FileFilters,
-  FileKind,
-  FilePage,
-  FileSort,
-  FileSummary,
+import type { FilesUploadTo } from "@lvl99dotcom/edaha.md/generator/config";
+import {
+  fileFolderName,
+  isShared,
+  SHARED_FILES_TYPE,
+  type ArticleOrder,
+  type ArticleTypeLabels,
+  type FileChange,
+  type FileFilters,
+  type FileKind,
+  type FilePage,
+  type FileSort,
+  type FileSummary,
+  type UploadResult,
 } from "../../../server/types/index.ts";
-import type { ArticleLocation, EditorApi } from "../../editorApi/index.ts";
+import type {
+  ArticleLocation,
+  EditorApi,
+  FileLocation,
+} from "../../editorApi/index.ts";
 import { icon } from "../../icons/index.ts";
 import {
   FILE_KIND_ICONS,
@@ -19,6 +28,11 @@ import {
 import { nextSort, sortHeading } from "../../sortTable/index.ts";
 import { ARTICLE_CHOOSE_EVENT } from "../edaha-article-browser/index.ts";
 import { defineElement } from "../define/index.ts";
+import "../edaha-file-conflict/index.ts";
+import {
+  saveResolvingConflicts,
+  type EdahaFileConflict,
+} from "../edaha-file-conflict/index.ts";
 
 export { FILE_KIND_ICONS, FILE_KINDS, formatFileSize };
 
@@ -30,14 +44,17 @@ export const FILE_COLUMNS: readonly { sort: FileSort; label: string }[] = [
   { sort: "location", label: "Location" },
 ];
 
-/** The event fired after a file is replaced or deleted (detail: the file and what changed) */
+/** The event fired after files are uploaded, moved, replaced or deleted (detail: the file and what changed) */
 export const FILES_CHANGED_EVENT = "files-changed";
 
 /** Detail of the `files-changed` event */
 export interface FilesChanged extends FileChange {
-  /** The file that was replaced or deleted */
-  file: FileSummary;
+  /** The file that was replaced, deleted or moved, or the folder files were uploaded to (as an uploaded file) */
+  file: FileLocation;
 }
+
+/** Lets the user choose an article (e.g. to upload or move a file to); undefined if none was chosen */
+export type ArticleChooser = () => Promise<ArticleLocation | undefined>;
 
 /** A file chosen for an article: how the article refers to it, its name, and its kind */
 export interface ChosenFile {
@@ -70,8 +87,12 @@ const articles = (count: number) =>
  * The file browser: a dialog listing the files in the articles' folders, 50 at a time, found by name and filtered by
  * kind and article type, in a table whose column headings sort it. Each file can be opened, its website path copied,
  * replaced with another file, or deleted; replacing and deleting update references to it in every article, and fire
- * `files-changed` (detail: {@link FilesChanged}). A file's location (its article) closes the browser and fires
- * `article-choose` (detail: the article's location), unless clicked with a modifier key. Rendered in the light DOM.
+ * `files-changed` (detail: {@link FilesChanged}). Files in the articles' folders can be moved to the shared files
+ * folder, and any file into an article's folder (chosen with `pickArticle`). Upload file uploads files where the
+ * config file's `files.uploadTo` says: the shared files folder, or the open `article`'s folder (or one chosen). A file
+ * with the same name where a file goes is resolved with the file conflict dialog. A file's location (its article)
+ * closes the browser and fires `article-choose` (detail: the article's location), unless clicked with a modifier key.
+ * Rendered in the light DOM.
  *
  * Opened with `pick`, it also lets the user choose a file (e.g. to insert into an article), and gives the chosen file.
  *
@@ -84,6 +105,9 @@ export class EdahaFileBrowser extends LitElement {
   static override properties = {
     api: { attribute: false },
     types: { attribute: false },
+    uploadTo: { attribute: false },
+    article: { attribute: false },
+    pickArticle: { attribute: false },
     search: { state: true },
     kind: { state: true },
     type: { state: true },
@@ -101,6 +125,12 @@ export class EdahaFileBrowser extends LitElement {
   declare api: EditorApi;
   /** The configured article types' labels */
   declare types: Record<string, ArticleTypeLabels>;
+  /** Where uploads go (the config file's `files.uploadTo`) */
+  declare uploadTo: FilesUploadTo;
+  /** The article open in the editor, which uploads go to when they go to articles' folders */
+  declare article?: ArticleLocation | undefined;
+  /** Lets the user choose an article to move a file or upload files to (moving to articles needs it) */
+  declare pickArticle?: ArticleChooser | undefined;
 
   declare search: string;
   declare kind: string;
@@ -159,6 +189,7 @@ export class EdahaFileBrowser extends LitElement {
   constructor() {
     super();
     this.types = {};
+    this.uploadTo = "article";
     this.search = "";
     this.kind = "";
     this.type = "";
@@ -176,6 +207,11 @@ export class EdahaFileBrowser extends LitElement {
   /** The dialog, once rendered */
   private get dialog(): HTMLDialogElement | null {
     return this.querySelector("dialog");
+  }
+
+  /** The file conflict dialog, once rendered */
+  private get conflictDialog(): EdahaFileConflict {
+    return this.querySelector("edaha-file-conflict") as EdahaFileConflict;
   }
 
   /** Whether the browser is open */
@@ -355,8 +391,8 @@ export class EdahaFileBrowser extends LitElement {
     input?.click();
   }
 
-  /** Tell the editor a file was replaced or deleted, and show the files again */
-  private async changed(file: FileSummary, change: FileChange) {
+  /** Tell the editor files changed (see `FilesChanged`), and show the files again */
+  private async changed(file: FileLocation, change: FileChange) {
     this.dispatchEvent(
       new CustomEvent<FilesChanged>(FILES_CHANGED_EVENT, {
         detail: { file, ...change },
@@ -375,7 +411,7 @@ export class EdahaFileBrowser extends LitElement {
       const references = await this.api.fileReferences(file);
       if (
         !this.confirm(
-          `Replace ${file.name} in ${file.type}/${file.slug} with ${replacement.name}?${references.length ? ` ${articles(references.length)} will refer to the new file if its name differs.` : ""}`,
+          `Replace ${file.name} in ${fileFolderName(file)} with ${replacement.name}?${references.length ? ` ${articles(references.length)} will refer to the new file if its name differs.` : ""}`,
         )
       )
         return;
@@ -399,7 +435,7 @@ export class EdahaFileBrowser extends LitElement {
       const references = await this.api.fileReferences(file);
       if (
         !this.confirm(
-          `Delete ${file.name} from ${file.type}/${file.slug}?${references.length ? ` It will also be removed from ${articles(references.length)}.` : ""}`,
+          `Delete ${file.name} from ${fileFolderName(file)}?${references.length ? ` It will also be removed from ${articles(references.length)}.` : ""}`,
         )
       )
         return;
@@ -411,6 +447,107 @@ export class EdahaFileBrowser extends LitElement {
     } catch (error) {
       this.report("", (error as Error).message);
     }
+  }
+
+  /** The conflict dialog's options for a file being moved or uploaded */
+  private conflictOptions(action: "move" | "upload", incomingUrl?: string) {
+    return {
+      action,
+      incomingUrl,
+      address: (url: string) => this.api.url(url),
+      // Renaming the existing file changed its references
+      onExistingRenamed: (
+        existing: FileLocation,
+        { articles }: { articles: ArticleLocation[] },
+      ) => void this.changed(existing, { articles }),
+    };
+  }
+
+  /**
+   * Choose files to upload: the file chooser opens at once (browsers only allow that straight after a click), and the
+   * files are uploaded once chosen (see `upload`).
+   */
+  private chooseUploads() {
+    this.querySelector<HTMLInputElement>("#file-browser-upload")?.click();
+  }
+
+  /**
+   * Upload files where the config file says: the shared files folder, or the open article's folder (or, without one,
+   * an article the user chooses). A file with the name of one already there is resolved with the conflict dialog.
+   */
+  async upload(files: File[]): Promise<void> {
+    let article: ArticleLocation | undefined;
+    if (this.uploadTo === "article") {
+      article = this.article ?? (await this.pickArticle?.());
+      if (!article) return;
+    }
+    const uploaded: UploadResult[] = [];
+    let failure = "";
+    try {
+      for (const file of files) {
+        const incomingUrl = file.type.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : undefined;
+        try {
+          const result = await saveResolvingConflicts(
+            this.conflictDialog,
+            this.api,
+            (options) => this.api.upload(article, file, options),
+            this.conflictOptions("upload", incomingUrl),
+          );
+          if (result) uploaded.push(result);
+        } finally {
+          if (incomingUrl) URL.revokeObjectURL(incomingUrl);
+        }
+      }
+    } catch (error) {
+      failure = (error as Error).message;
+    }
+    const [first] = uploaded;
+    // The files shown again first, so what happened is reported after
+    if (first) await this.changed(first, { articles: [] });
+    if (failure) this.report("", failure);
+    else if (first)
+      this.report(
+        uploaded.length === 1
+          ? `Uploaded ${first.name} to ${fileFolderName(first)}`
+          : `Uploaded ${uploaded.length} files to ${fileFolderName(first)}`,
+      );
+  }
+
+  /**
+   * Move a file into an article's folder or the shared files folder (`{ type: "@shared", slug: "" }`), updating
+   * references to it. A file with its name there is resolved with the conflict dialog.
+   */
+  async move(file: FileSummary, to: ArticleLocation): Promise<void> {
+    try {
+      const moved = await saveResolvingConflicts(
+        this.conflictDialog,
+        this.api,
+        (options) => this.api.moveFile(file, to, options),
+        this.conflictOptions("move"),
+      );
+      if (!moved) return;
+      const count = moved.articles.length;
+      this.report(
+        `Moved ${file.name} to ${fileFolderName(moved)}${moved.name === file.name ? "" : ` as ${moved.name}`}${count ? `, updating ${articles(count)}` : ""}`,
+      );
+      // The article it went into has another file
+      await this.changed(file, {
+        name: moved.name,
+        articles: isShared(moved)
+          ? moved.articles
+          : [...moved.articles, { type: moved.type, slug: moved.slug }],
+      });
+    } catch (error) {
+      this.report("", (error as Error).message);
+    }
+  }
+
+  /** Move a file into the folder of an article the user chooses */
+  private async moveToArticle(file: FileSummary) {
+    const article = await this.pickArticle?.();
+    if (article) await this.move(file, article);
   }
 
   /** Render a select filter with an "any" choice first */
@@ -486,9 +623,13 @@ export class EdahaFileBrowser extends LitElement {
       </thead>
       <tbody>
         ${result.files.map((file) => {
+          const shared = isShared(file);
           const location = `${file.type}/${file.slug}`;
+          // Shared files are shown at their path on the website
           const fileUrl = this.api.url(
-            `/files/${location}/${encodeURIComponent(file.name)}`,
+            shared
+              ? file.url
+              : `/files/${location}/${encodeURIComponent(file.name)}`,
           );
           return html`<tr>
             <td class="file-browser-thumbnail">
@@ -513,12 +654,17 @@ export class EdahaFileBrowser extends LitElement {
             <td>${kindLabels[file.kind]}</td>
             <td>${formatFileSize(file.size)}</td>
             <td>
-              <a
-                href=${this.api.url(`/#${location}`)}
-                target="_blank"
-                @click=${(event: MouseEvent) => this.onLocationClick(event, file)}
-                >${location}</a
-              >
+              ${
+                shared
+                  ? fileFolderName(file)
+                  : html`<a
+                      href=${this.api.url(`/#${location}`)}
+                      target="_blank"
+                      @click=${(event: MouseEvent) =>
+                        this.onLocationClick(event, file)}
+                      >${location}</a
+                    >`
+              }
             </td>
             <td class="file-browser-operations">
               ${
@@ -537,6 +683,28 @@ export class EdahaFileBrowser extends LitElement {
                 "content_copy",
                 () => void this.copyUrl(file),
               )}
+              ${
+                shared
+                  ? nothing
+                  : this.renderOperation(
+                      `Move ${file.name} to shared files`,
+                      "drive_file_move",
+                      () =>
+                        void this.move(file, {
+                          type: SHARED_FILES_TYPE,
+                          slug: "",
+                        }),
+                    )
+              }
+              ${
+                this.pickArticle
+                  ? this.renderOperation(
+                      `Move ${file.name} to an article…`,
+                      "folder_open",
+                      () => void this.moveToArticle(file),
+                    )
+                  : nothing
+              }
               ${this.renderOperation(
                 `Replace ${file.name}…`,
                 "find_replace",
@@ -594,7 +762,10 @@ export class EdahaFileBrowser extends LitElement {
     );
     const types = this.filters.types.map((value) => ({
       value,
-      label: this.types[value]?.labelPlural ?? value,
+      label:
+        value === SHARED_FILES_TYPE
+          ? "Shared files"
+          : (this.types[value]?.labelPlural ?? value),
     }));
     return html`<dialog
       class="article-browser file-browser"
@@ -608,14 +779,23 @@ export class EdahaFileBrowser extends LitElement {
         <h2 id="file-browser-title">
           ${this.picking ? "Choose a file" : "Files"}
         </h2>
-        <button
-          type="button"
-          class="btn-icon"
-          title="Close"
-          @click=${() => this.close()}
-        >
-          ${icon("close")}<span class="visually-hidden">Close</span>
-        </button>
+        <div class="file-browser-header-actions">
+          <button
+            type="button"
+            class="btn"
+            @click=${() => this.chooseUploads()}
+          >
+            ${icon("upload_file")} Upload file
+          </button>
+          <button
+            type="button"
+            class="btn-icon"
+            title="Close"
+            @click=${() => this.close()}
+          >
+            ${icon("close")}<span class="visually-hidden">Close</span>
+          </button>
+        </div>
       </div>
       <div class="article-browser-controls" role="search">
         <div class="article-browser-field article-browser-search">
@@ -640,6 +820,21 @@ export class EdahaFileBrowser extends LitElement {
       <div class="article-browser-results file-browser-results">
         ${this.renderResults()} ${this.renderPages()}
       </div>
+      <!-- Chooses the files to upload -->
+      <input
+        type="file"
+        id="file-browser-upload"
+        class="visually-hidden"
+        tabindex="-1"
+        aria-hidden="true"
+        multiple
+        @change=${(event: Event) => {
+          const input = event.target as HTMLInputElement;
+          const files = [...(input.files as FileList)];
+          input.value = "";
+          if (files.length) void this.upload(files);
+        }}
+      />
       <!-- Chooses the replacement for the file being replaced -->
       <input
         type="file"
@@ -656,6 +851,7 @@ export class EdahaFileBrowser extends LitElement {
           if (file && replacement) void this.replace(file, replacement);
         }}
       />
+      <edaha-file-conflict></edaha-file-conflict>
     </dialog>`;
   }
 }
