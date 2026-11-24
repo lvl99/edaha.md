@@ -24,7 +24,7 @@ On a wider window, **Focus mode** (the button at the top right of the title) hid
 
 ## Finding articles
 
-When the editor opens (or you choose **Home** or **edaha.md** at the top of the list), the welcome prompt in the middle offers to **Write a new article** or **Edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Open article browser** opens the article browser.
+When the editor opens (or you choose **Home** or **edaha.md** at the top of the list), the welcome prompt in the middle offers to **Write a new article** or **Edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Show all** opens the article browser.
 
 The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, **Show all** opens them all in the article browser.
 

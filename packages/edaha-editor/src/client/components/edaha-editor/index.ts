@@ -621,10 +621,13 @@ export class EdahaEditor extends LitElement {
           welcome && welcome.total > welcome.articles.length
             ? html`<button
                 type="button"
-                class="btn btn-link btn-browse"
+                class="btn btn-link btn-show-all btn-browse"
                 @click=${() => void this.openBrowser()}
               >
-                Open article browser
+                ${icon("manage_search")} Show all<span class="visually-hidden">
+                  articles</span
+                >
+                (${welcome.total})
               </button>`
             : nothing
         }

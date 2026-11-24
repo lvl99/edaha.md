@@ -190,7 +190,18 @@ describe("edaha-editor", () => {
     expect(
       element.querySelectorAll(".welcome-prompt-box > .welcome-prompt-list li"),
     ).toHaveLength(2);
-    button(element, "Open article browser").click();
+    // Like the article list's "Show all", with the article browser's icon
+    const showAll = find<HTMLButtonElement>(
+      element,
+      ".welcome-prompt-box > .btn-show-all",
+    );
+    expect(showAll.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Show all articles (9)",
+    );
+    expect(showAll.firstElementChild!.classList).toContain(
+      "icon-manage_search",
+    );
+    showAll.click();
     expect(show).toHaveBeenCalledWith({});
   });
 
