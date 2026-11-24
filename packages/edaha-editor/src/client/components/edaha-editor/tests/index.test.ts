@@ -148,7 +148,7 @@ describe("edaha-editor", () => {
         .querySelector(".welcome-prompt-box")!
         .firstElementChild!.textContent?.replace(/\s+/g, " ")
         .trim(),
-    ).toBe("Write a new article or edit an existing one...");
+    ).toBe("Write a new article or Edit an existing one");
     const list = find(welcome, ".welcome-prompt-list");
     expect(list.getAttribute("aria-label")).toBe("Recently changed articles");
     expect(
@@ -163,7 +163,16 @@ describe("edaha-editor", () => {
       [...welcome.querySelectorAll(".welcome-prompt-message button")].map((b) =>
         b.textContent?.trim(),
       ),
-    ).toEqual(["Write a new article", "edit an existing one"]);
+    ).toEqual(["Write a new article", "Edit an existing one"]);
+    // Large buttons, each with an icon on its left
+    expect(
+      [...welcome.querySelectorAll(".welcome-prompt-message button")].map(
+        (b) => [b.classList.contains("btn-xl"), b.firstElementChild?.className],
+      ),
+    ).toEqual([
+      [true, "icon icon-post_add"],
+      [true, "icon icon-edit_document"],
+    ]);
 
     find<HTMLAnchorElement>(list, "a").click();
     await settle(element);
@@ -185,11 +194,11 @@ describe("edaha-editor", () => {
     expect(show).toHaveBeenCalledWith({});
   });
 
-  it('should start a new article from "Write a new article", and open the article browser from "edit an existing one"', async () => {
+  it('should start a new article from "Write a new article", and open the article browser from "Edit an existing one"', async () => {
     const { element } = await setup();
     const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
     const show = vi.spyOn(browser, "show").mockResolvedValue();
-    button(element, "edit an existing one").click();
+    button(element, "Edit an existing one").click();
     expect(show).toHaveBeenCalledWith({});
     button(element, "Write a new article").click();
     await settle(element);
@@ -263,7 +272,7 @@ describe("edaha-editor", () => {
       find(element, ".welcome-prompt-message")
         .textContent?.replace(/\s+/g, " ")
         .trim(),
-    ).toBe("Write a new article or edit an existing one...");
+    ).toBe("Write a new article or Edit an existing one");
   });
 
   it("should label the groups, linking to all of a type's articles when it has more", async () => {

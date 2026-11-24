@@ -7,6 +7,8 @@ import arrowForward from "@material-symbols/svg-400/outlined/arrow_forward.svg?r
 import audioFile from "@material-symbols/svg-400/outlined/audio_file.svg?raw";
 import description from "@material-symbols/svg-400/outlined/description.svg?raw";
 import draft from "@material-symbols/svg-400/outlined/draft.svg?raw";
+import editDocument from "@material-symbols/svg-400/outlined/edit_document.svg?raw";
+import postAdd from "@material-symbols/svg-400/outlined/post_add.svg?raw";
 import folderZip from "@material-symbols/svg-400/outlined/folder_zip.svg?raw";
 import uploadFile from "@material-symbols/svg-400/outlined/upload_file.svg?raw";
 import videoFile from "@material-symbols/svg-400/outlined/video_file.svg?raw";
@@ -55,6 +57,8 @@ export const ICONS = {
   audio_file: audioFile,
   description: description,
   draft: draft,
+  edit_document: editDocument,
+  post_add: postAdd,
   folder_zip: folderZip,
   upload_file: uploadFile,
   video_file: videoFile,

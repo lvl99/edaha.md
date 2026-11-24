@@ -573,23 +573,23 @@ export class EdahaEditor extends LitElement {
     const welcome = this.welcome;
     return html`<div class="welcome-prompt">
       <div class="welcome-prompt-box">
-        <!-- "Write a new article" starts a new article; "edit an existing one" opens the article browser -->
+        <!-- "Write a new article" starts a new article; "Edit an existing one" opens the article browser -->
         <p class="welcome-prompt-message">
           <button
             type="button"
-            class="btn btn-link btn-new-article"
+            class="btn btn-xl btn-new-article"
             @click=${() => void this.create()}
           >
-            Write a new article
+            ${icon("post_add")} Write a new article
           </button>
-          or
+          <span>or</span>
           <button
             type="button"
-            class="btn btn-link btn-edit-existing"
+            class="btn btn-xl btn-edit-existing"
             @click=${() => void this.openBrowser()}
           >
-            edit an existing one</button
-          >...
+            ${icon("edit_document")} Edit an existing one
+          </button>
         </p>
         ${
           welcome?.articles.length
