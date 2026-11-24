@@ -10,6 +10,20 @@ A config file tells edaha.md about your website, where its files are, and what t
 
 <!-- readmore -->
 
+<!-- embed:toc -->
+<!--yaml
+level1: number
+level2: number-depth
+level3: number-depth
+level4: alpha
+level5: number-roman
+level6: circle
+-->
+
+## Contents
+
+<!-- /embed:toc -->
+
 You can use it to structure, build and edit your site in a way that fits you and your project. Only the website's `name` and `description` are required; everything else has a default.
 
 A typical project looks like this:
@@ -93,30 +107,30 @@ The folder that holds the config file is the **site folder**. Every folder in th
 
 ## Settings
 
-| Setting                             | Required | Description                                                                             |
-| ----------------------------------- | -------- | --------------------------------------------------------------------------------------- |
-| [`name`](#name)                     | Yes      | The website's name.                                                                     |
-| [`description`](#description)       | Yes      | The website's description.                                                              |
-| [`path`](#path)                     | No       | A URL path that every article type's URLs start with.                                   |
-| [`articlesDir`](#articlesdir)       | No       | The folder that holds the articles.                                                     |
-| [`templatesDir`](#templatesdir)     | No       | The folder that holds your own templates.                                               |
-| [`staticDir`](#staticdir)           | No       | The folder that holds your own static files.                                            |
-| [`theme`](#theme)                   | No       | The theme your templates and static files override: a folder or a package.              |
-| [`outputDir`](#outputdir)           | No       | The folder the website is built into.                                                   |
-| [`publishDir`](#publishdir)         | No       | A folder outside the site folder that the built website is copied into.                 |
-| [`siteUrl`](#siteurl)               | No       | The website's absolute URL, for links in RSS feeds.                                     |
-| [`reservedPaths`](#reservedpaths)   | No       | Paths at the website's root that articles and article types can't use.                  |
-| [`types`](#types)                   | No       | Settings for each article type: URL path, labels and what is built.                     |
-| [`plugins`](#plugins)               | No       | Embed plugins: their package names, or (JavaScript config only) the plugins themselves. |
-| [`metadata`](#metadata)             | No       | Custom settings for articles, with how the editor shows them.                           |
-| [`metadataGroups`](#metadatagroups) | No       | Groups of settings in the editor, besides the built-in ones.                            |
-| [`author`](#author)                 | No       | The author of articles that don't name one.                                             |
+| Setting          | Required | Description                                                                             |
+| ---------------- | -------- | --------------------------------------------------------------------------------------- |
+| `name`           | Yes      | The website's name.                                                                     |
+| `description`    | Yes      | The website's description.                                                              |
+| `path`           | No       | A URL path that every article type's URLs start with.                                   |
+| `articlesDir`    | No       | The folder that holds the articles.                                                     |
+| `templatesDir`   | No       | The folder that holds your own templates.                                               |
+| `staticDir`      | No       | The folder that holds your own static files.                                            |
+| `theme`          | No       | The theme your templates and static files override: a folder or a package.              |
+| `outputDir`      | No       | The folder the website is built into.                                                   |
+| `publishDir`     | No       | A folder outside the site folder that the built website is copied into.                 |
+| `siteUrl`        | No       | The website's absolute URL, for links in RSS feeds.                                     |
+| `reservedPaths`  | No       | Paths at the website's root that articles and article types can't use.                  |
+| `types`          | No       | Settings for each article type: URL path, labels and what is built.                     |
+| `plugins`        | No       | Embed plugins: their package names, or (JavaScript config only) the plugins themselves. |
+| `metadata`       | No       | Custom settings for articles, with how the editor shows them.                           |
+| `metadataGroups` | No       | Groups of settings in the editor, besides the built-in ones.                            |
+| `author`         | No       | The author of articles that don't name one.                                             |
 
 Unknown settings stop the build, so a typo doesn't go unnoticed.
 
 ### `name`
 
-The website's name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don't name one, unless [`author`](#author) is set.
+The website's name, shown in page titles, the header and footer, and RSS feeds. It is also the author of articles that don't name one, unless `author` is set.
 
 ```yaml
 name: My Site
@@ -128,6 +142,19 @@ The website's description, used in the pages' `<meta name="description">` when a
 
 ```yaml
 description: News and notes.
+```
+
+### `siteUrl`
+
+The website's absolute URL. RSS feeds need it, because their links must be absolute. The `SITE_URL` environment variable and the `--site-url` option of `edaha build` take its place when they are set.
+
+If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at `https://example.github.io/my-site`, every URL in its pages starts with that path (`/my-site/`), which templates get as `site.baseUrl`. The built files stay at the same places in the output folder, so publish its contents to that sub-folder.
+
+- **Accepted values:** an `http://` or `https://` URL.
+- **Default:** `http://localhost`, with a warning.
+
+```yaml
+siteUrl: https://example.com
 ```
 
 ### `path`
@@ -183,23 +210,6 @@ staticDir: site/static
 outputDir: site/build
 ```
 
-### `theme`
-
-The [theme](/docs/05-templating/#using-another-theme) that your own templates and static files override, instead of edaha.md's default theme. It's either a folder (with `templates/` and `static/`) or the name of an installed theme package.
-
-- **Accepted values:** a folder path starting with `.` (relative to the site folder) or an absolute path, which can be outside the site folder; or a package name, found from the site folder like a plugin.
-- **Default:** edaha.md's default theme (`@lvl99dotcom/edaha-theme-default`)
-
-```yaml
-theme: ../themes/my-theme
-```
-
-```yaml
-theme: "@my-org/edaha-theme-blog"
-```
-
-The build stops if the folder or package isn't found.
-
 ### `outputDir`
 
 The folder the website is built into, relative to the site folder. It is **emptied on every build**, so keep nothing else in it.
@@ -224,19 +234,6 @@ Before copying, the files that the previous build published there are removed. T
 publishDir: ../app/dist
 ```
 
-### `siteUrl`
-
-The website's absolute URL. RSS feeds need it, because their links must be absolute. The `SITE_URL` environment variable and the `--site-url` option of `edaha build` take its place when they are set.
-
-If the website lives in a sub-folder of its domain, e.g. a GitHub Pages project site at `https://example.github.io/my-site`, every URL in its pages starts with that path (`/my-site/`), which templates get as [`site.baseUrl`](/docs/05-templating/#template-data). The built files stay at the same places in the output folder, so publish its contents to that sub-folder.
-
-- **Accepted values:** an `http://` or `https://` URL.
-- **Default:** `http://localhost`, with a warning.
-
-```yaml
-siteUrl: https://example.com
-```
-
 ### `reservedPaths`
 
 Paths at the website's root that articles and article types can't use, e.g. the routes of another app that shares the website. They only matter when `path` is `""`.
@@ -247,6 +244,23 @@ Paths at the website's root that articles and article types can't use, e.g. the 
 ```yaml
 reservedPaths: [app, api, jwks.json]
 ```
+
+### `theme`
+
+The [theme](/docs/05-templating/#using-another-theme) that your own templates and static files override, instead of edaha.md's default theme. It's either a folder (with `templates/` and `static/`) or the name of an installed theme package.
+
+- **Accepted values:** a folder path starting with `.` (relative to the site folder) or an absolute path, which can be outside the site folder; or a package name, found from the site folder like a plugin.
+- **Default:** edaha.md's default theme (`@lvl99dotcom/edaha-theme-default`)
+
+```yaml
+theme: ../themes/my-theme
+```
+
+```yaml
+theme: "@my-org/edaha-theme-blog"
+```
+
+The build stops if the folder or package isn't found.
 
 ### `types`
 
@@ -259,7 +273,7 @@ Settings for each article type, by its folder name. Each type can set:
 | `labelPlural` | The label for several articles, e.g. "Articles".                                                      | `labelSingle` followed by "s" |
 | `generate`    | What is built for the type (see below), or `false` to build nothing.                                  | Everything                    |
 | `metadata`    | The [custom settings](#metadata) the type uses, or `false` for none.                                  | All of them                   |
-| `author`      | The author of the type's articles that don't name one, or `false` for none ([see `author`](#author)). | The site's `author`           |
+| `author`      | The author of the type's articles that don't name one, or `false` for none ([see](#author) `author`). | The site's `author`           |
 
 `generate` has these settings, all `true` by default:
 
@@ -322,8 +336,8 @@ No two plugins can have the same key. See [Embeds](/docs/07-embeds/) for the plu
 
 The author of articles that don't name one (unless their type has its own `author`): their author lists and feeds use it, and the editor shows it in the author fields. `false` means no author: those articles have none, and aren't in any author's list.
 
-- **Accepted values:** a name, `{ name, email, url }` like an article's [`author`](/docs/04-articles/#settings), or `false`.
-- **Default:** the website's [`name`](#name)
+- **Accepted values:** a name, `{ name, email, url }` like an article's `author`, or `false`.
+- **Default:** the website's `name`
 
 ```yaml
 author:
@@ -413,7 +427,7 @@ metadata:
     maxItems: 5
 ```
 
-Each custom setting appears in a group of the editor's settings: `$edahaField.group` names the group (see [`metadataGroups`](#metadatagroups)), or is `{ key, after }` to come after a given setting in it. Without one, it's in the **Custom** group. A map's or list's `$edahaField` may set only its group.
+Each custom setting appears in a group of the editor's settings: `$edahaField.group` names the group (see `metadataGroups`), or is `{ key, after }` to come after a given setting in it. Without one, it's in the **Custom** group. A map's or list's `$edahaField` may set only its group.
 
 ```yaml
 metadata:
@@ -481,10 +495,12 @@ The editor shows articles' settings in groups that open and close. These are bui
 `metadataGroups` adds groups of your own, for [custom settings](#metadata) to be in.
 
 - **Accepted values:** a map of keys (a letter, then letters, digits, `_` and `-`; not a built-in group's key) to a group's settings:
+
   - `title` (required): the group's heading.
   - `description`: shown above its settings.
   - `after`: the group it comes after. Without it, groups go at the end.
   - `openedByDefault`: whether it starts open (`true`) or closed (`false`, the default).
+
 - **Default:** none
 
 ```yaml

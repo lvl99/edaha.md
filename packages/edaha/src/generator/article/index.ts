@@ -60,6 +60,7 @@ export interface AttachmentConfig {
   thumbnail?: string | undefined;
   mimeType?: string | undefined;
   name?: string | undefined;
+  description?: string | undefined;
 }
 
 /** An author as written in an article's config */
@@ -226,6 +227,7 @@ export const parseArticleConfig = (
       thumbnail: optionalString(fields, "thumbnail", source),
       mimeType: optionalString(fields, "mimeType", source),
       name: optionalString(fields, "name", source),
+      description: optionalString(fields, "description", source),
     };
   });
 

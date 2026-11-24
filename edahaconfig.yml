@@ -1,11 +1,11 @@
 name: edaha.md
 description: Static site generator powered by TypeScript and markdown
-path: ""
 articlesDir: site/content
 templatesDir: site/templates
 staticDir: site/static
 outputDir: build
 siteUrl: https://edaha.md
+path: ""
 plugins:
   - "@lvl99dotcom/edaha-plugin-youtube"
   - "@lvl99dotcom/edaha-plugin-bandcamp"
