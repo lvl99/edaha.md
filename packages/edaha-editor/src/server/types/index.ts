@@ -216,6 +216,7 @@ export interface EditorAttachment {
   thumbnail?: string | undefined;
   mimeType?: string | undefined;
   name?: string | undefined;
+  description?: string | undefined;
 }
 
 /** An article's editable data, as saved by the editor */
