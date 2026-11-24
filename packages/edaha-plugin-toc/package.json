@@ -1,6 +1,6 @@
 {
   "name": "@lvl99dotcom/edaha-plugin-toc",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Tables of contents of articles' headings in edaha.md sites.",
   "keywords": [
     "edaha.md",
