@@ -1267,6 +1267,24 @@ edaha-editor[focus-mode] .edaha-article-main {
   color: var(--colour-link-hover);
 }
 
+/* "Show all" under a type's articles, and "See all results": muted, with the article browser's icon on the left */
+.btn-show-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--colour-muted);
+  text-decoration: none;
+}
+
+.btn-show-all:hover {
+  color: var(--colour-text);
+}
+
+.btn-show-all .icon svg {
+  width: 1.25em;
+  height: 1.25em;
+}
+
 /* The article browser: a dialog over the page, its results scrolling under its search and filters */
 .article-browser {
   width: min(60rem, calc(100vw - 2rem));

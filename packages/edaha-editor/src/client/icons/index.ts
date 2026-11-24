@@ -108,6 +108,7 @@ export const TOOLBAR_ICONS: Record<string, IconName> = {
   Small: "text_decrease",
   Big: "text_increase",
   Link: "link",
+  "Main heading": "format_h1",
   Heading: "format_h2",
   Subheading: "format_h3",
   "Heading 1": "format_h1",

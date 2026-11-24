@@ -704,7 +704,7 @@ export class EdahaEditor extends LitElement {
                 void this.openBrowser({ search: this.searchText.trim() });
               }}
             >
-              See all results
+              ${icon("manage_search")} See all results
             </button>`
           : nothing
       }
@@ -730,7 +730,11 @@ export class EdahaEditor extends LitElement {
                     void this.openBrowser({ type: group.type });
                   }}
                 >
-                  Show all<span class="visually-hidden"> ${group.label}</span>
+                  ${icon("manage_search")} Show all<span
+                    class="visually-hidden"
+                  >
+                    ${group.label}</span
+                  >
                   (${group.total})
                 </button>`
               : nothing

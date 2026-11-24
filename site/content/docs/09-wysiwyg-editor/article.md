@@ -41,7 +41,7 @@ Searches and the article browser include changes made outside the editor straigh
 2. Give it a **Title**.
 3. Write in the **Body**. The toolbar's buttons format your text. Each shows an icon; point at it to see its name:
    - **Bold**, **Italic**, **Underline**, **Strikethrough**, **Small** and **Big** text;
-   - **Link**, **Heading** and **Subheading**;
+   - **Link**, **Main heading** (H1), **Heading** (H2) and **Subheading** (H3);
    - **Bullet list**, **Numbered list**, **Quote** and **Code**;
    - **Details**: a block readers can open and close;
    - **Image URL**, **Upload image**, **Choose file** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;

@@ -71,6 +71,7 @@ describe("edaha-richtext", () => {
     );
 
     const blocks: [string, string][] = [
+      ["Main heading", "<h1>"],
       ["Heading", "<h2>"],
       ["Subheading", "<h3>"],
       ["Bullet list", "<ul>"],

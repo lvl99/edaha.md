@@ -196,6 +196,11 @@ export class EdahaRichtext extends LitElement {
       active: (e) => e.isActive("link"),
     },
     {
+      label: "Main heading",
+      run: (e) => e.chain().focus().toggleHeading({ level: 1 }).run(),
+      active: (e) => e.isActive("heading", { level: 1 }),
+    },
+    {
       label: "Heading",
       run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run(),
       active: (e) => e.isActive("heading", { level: 2 }),

@@ -114,6 +114,7 @@ export class EdahaMarkdown extends LitElement {
         return url === null ? undefined : setLink(e, url.trim());
       },
     },
+    { label: "Main heading", run: (e) => toggleHeading(e, 1) },
     { label: "Heading", run: (e) => toggleHeading(e, 2) },
     { label: "Subheading", run: (e) => toggleHeading(e, 3) },
     { label: "Bullet list", run: toggleBulletList },

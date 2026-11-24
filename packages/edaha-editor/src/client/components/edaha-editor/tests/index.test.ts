@@ -283,6 +283,10 @@ describe("edaha-editor", () => {
       ["Articles", "Show all Articles (7)"],
       ["page", undefined],
     ]);
+    // With the article browser's icon on its left
+    expect(
+      groups[0]!.querySelector(".btn-show-all")!.firstElementChild!.classList,
+    ).toContain("icon-manage_search");
     (groups[0]!.querySelector(".btn-show-all") as HTMLButtonElement).click();
     expect(show).toHaveBeenCalledWith({ type: "article" });
     expect(browser.types).toBe(element.types);
