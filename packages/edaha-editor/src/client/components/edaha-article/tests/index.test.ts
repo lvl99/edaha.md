@@ -596,6 +596,18 @@ describe("edaha-article", () => {
     expect(
       find<EdahaRichtext>(element, "edaha-richtext").uploadImage,
     ).toBeUndefined();
+    // Nor with an uploader kept from a saved article, once a new one is open
+    const { element: saved, api } = await setup();
+    const uploadImage = find<EdahaRichtext>(
+      saved,
+      "edaha-richtext",
+    ).uploadImage!;
+    saved.article = undefined;
+    await settle(saved);
+    await expect(uploadImage(new File(["x"], "a.png"))).rejects.toThrow(
+      "Upload failed",
+    );
+    expect(api.upload).not.toHaveBeenCalled();
   });
 
   it("should add and remove tags, attachments and the author", async () => {
