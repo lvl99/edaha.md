@@ -72,13 +72,13 @@ What the settings do:
 | **Excerpt**          | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
 | **Thumbnail**        | An image shown in lists.                                                                         |
 
-The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file**, chosen with **Choose existing file…**, or linked by address. Uploads into the article's folder need the article to be saved first. The thumbnail can also be chosen with **Choose existing file…**.
+The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, chosen or uploaded with **Choose or upload file**, or linked by address. The thumbnail is chosen or uploaded the same way. Uploads into the article's folder need the article to be saved first.
 
 Changing an article's type or slug moves it, with all its files.
 
 ## Custom settings
 
-If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields upload where uploads go (see [Where uploads go](#where-uploads-go)), or choose an existing file with **Choose existing file…**.
+If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields are set with **Choose or upload file**, which opens the file browser to choose a file or upload one where uploads go (see [Where uploads go](#where-uploads-go)).
 
 When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren't valid. The article can't be saved until they are fixed. Settings the article's type doesn't use, or that nobody defined (e.g. after a custom setting was removed from the config file), are listed in **Custom**, marked ⚠️. They are kept in the article unless you choose **Remove** beside one and save.
 
@@ -108,7 +108,7 @@ Each file has these buttons:
 
 Moving a file changes every article that uses it: the article it moves into refers to it by its name, and the others by its new address on your website (keeping the website's full address, or the shared files' `files.url`, where they used one).
 
-When you choose an existing file for an article, the file browser opens as **Choose a file**, with a **Choose** button beside each file; fields that only take images show images first. A file in the article's own folder is referred to by its name, and any other file by its address on your website.
+When you choose a file for an article (e.g. with a file field's **Choose or upload file**), the file browser opens as **Choose a file**, with a **Choose** button beside each file; fields that only take images show images first. **Upload file** uploads a new file there, to then choose it. A file in the article's own folder is referred to by its name, and any other file by its address on your website.
 
 The editor finds a file's uses in article bodies, thumbnails, attachments and custom settings: by its name in its own article, and by its address in any article.
 

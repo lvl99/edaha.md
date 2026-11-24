@@ -4,27 +4,17 @@ import "..";
 import type { EdahaArticleDataField, FieldChange } from "..";
 import type { EdahaRichtext } from "../../edaha-richtext";
 import type { EdahaMarkdown } from "../../edaha-markdown";
-import {
-  button,
-  chooseFile,
-  find,
-  input,
-  mount,
-} from "../../../../shared/tests/helpers";
+import { button, find, input, mount } from "../../../../shared/tests/helpers";
 
 afterEach(() => document.body.replaceChildren());
 
-/** Record field-change and field-file events */
+/** Record field-change events */
 const record = (element: HTMLElement) => {
   const changes: FieldChange[] = [];
-  const files: File[] = [];
   element.addEventListener("field-change", (e) =>
     changes.push((e as CustomEvent<FieldChange>).detail),
   );
-  element.addEventListener("field-file", (e) =>
-    files.push((e as CustomEvent<File>).detail),
-  );
-  return { changes, files };
+  return { changes };
 };
 
 describe("edaha-article-data-field", () => {
@@ -153,23 +143,25 @@ describe("edaha-article-data-field", () => {
     document.body.removeEventListener("richtext-change", outer);
   });
 
-  it("should offer a file chooser for empty file fields", async () => {
+  it("should offer a button choosing or uploading a file, and no file input, for empty file fields", async () => {
     const field = await mount<EdahaArticleDataField>(
       "edaha-article-data-field",
       {
         name: "thumbnail",
         type: "file",
+        label: "Thumbnail",
         accept: "image/png",
+        chooseFile: vi.fn(),
+        disabled: true,
       },
     );
-    const { files } = record(field);
-    const chooser = find<HTMLInputElement>(field, "input[type=file]");
-    expect(chooser.accept).toBe("image/png");
+    expect(field.querySelector("input")).toBeNull();
     expect(field.querySelector(".file-current")).toBeNull();
-    const file = new File(["x"], "a.png");
-    chooseFile(chooser, file);
-    chooseFile(chooser);
-    expect(files).toEqual([file]);
+    const choose = find<HTMLButtonElement>(field, "button.btn.btn-choose-file");
+    expect(choose.id).not.toBe("");
+    expect(choose.disabled).toBe(true);
+    // The label isn't tied to the button, which its own text names
+    expect(find<HTMLLabelElement>(field, "label").htmlFor).toBe("");
   });
 
   it("should give rich text and Markdown fields the file chooser and embed tools", async () => {
@@ -219,7 +211,7 @@ describe("edaha-article-data-field", () => {
     const { changes } = record(field);
     const choose = find<HTMLButtonElement>(field, ".btn-choose-file");
     expect(choose.textContent?.replace(/\s+/g, " ").trim()).toBe(
-      "Choose existing file… for Thumbnail",
+      "Choose or upload file for Thumbnail",
     );
     choose.click();
     await vi.waitFor(() =>
@@ -260,7 +252,9 @@ describe("edaha-article-data-field", () => {
       find(field, ".file-current img").classList.contains("checkerboard"),
     ).toBe(true);
     // Without allowchange, a set file can't be replaced
-    expect(field.querySelector("input[type=file]")).toBeNull();
+    field.chooseFile = vi.fn();
+    await field.updateComplete;
+    expect(field.querySelector(".btn-choose-file")).toBeNull();
   });
 
   it("should only preview images, and allow changing files", async () => {
@@ -273,10 +267,11 @@ describe("edaha-article-data-field", () => {
         preview: true,
         previewUrl: "/files/article/a/guide.pdf",
         allowchange: true,
+        chooseFile: vi.fn(),
       },
     );
     expect(field.querySelector("img")).toBeNull();
-    expect(field.querySelector("input[type=file]")).not.toBeNull();
+    expect(field.querySelector(".btn-choose-file")).not.toBeNull();
   });
 
   it("should clear the value", async () => {

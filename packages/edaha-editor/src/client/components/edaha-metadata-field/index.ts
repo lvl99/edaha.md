@@ -27,9 +27,6 @@ export interface MetadataChange {
   value: unknown;
 }
 
-/** Uploads a file into the article's folder and returns its name */
-export type FileUploader = (file: File) => Promise<string>;
-
 /** Text read by screen readers only, e.g. which item a Delete button deletes */
 const hidden = (text: string) =>
   html`<span class="visually-hidden">${text}</span>`;
@@ -57,7 +54,6 @@ export class EdahaMetadataField extends LitElement {
     problems: { attribute: false },
     hiddenFields: { attribute: false },
     required: { type: Boolean },
-    uploadFile: { attribute: false },
     chooseFile: { attribute: false },
     fileUrl: { attribute: false },
   };
@@ -73,9 +69,7 @@ export class EdahaMetadataField extends LitElement {
   /** The paths (in dot notation, e.g. "credit.name") of fields hidden by their conditions, which aren't shown */
   declare hiddenFields: ReadonlySet<string>;
   declare required: boolean;
-  /** Uploads files for file fields; without it they can't be chosen */
-  declare uploadFile?: FileUploader | undefined;
-  /** Lets the user choose an existing file for file fields */
+  /** Lets the user choose a file, or upload one, in the file browser, for file fields; without it they can't be set */
   declare chooseFile?: FileChooser | undefined;
   /** The URL a file name is shown at, for file fields */
   declare fileUrl?: ((name: string) => string | undefined) | undefined;
@@ -168,7 +162,6 @@ export class EdahaMetadataField extends LitElement {
       .problems=${this.problems}
       .hiddenFields=${this.hiddenFields}
       ?required=${options.required ?? false}
-      .uploadFile=${this.uploadFile}
       .chooseFile=${this.chooseFile}
       .fileUrl=${this.fileUrl}
     ></edaha-metadata-field>`;
@@ -315,7 +308,7 @@ export class EdahaMetadataField extends LitElement {
     </fieldset>`;
   }
 
-  /** Let the user choose an existing file (of the kind the field accepts), and set the value to it */
+  /** Let the user choose a file, or upload one, in the file browser (showing the kind the field accepts), and set the value to it */
   private async chooseExisting() {
     const file = await this.chooseFile?.(
       acceptedKind(inputAttributes(this.schema).accept),
@@ -324,55 +317,38 @@ export class EdahaMetadataField extends LitElement {
   }
 
   /**
-   * Render a file field: the file's name (linked), a chooser that uploads it, a button choosing an existing file, and
-   * a button that clears it.
+   * Render a file field: the file's name (linked) with a button that clears it, and a button opening the file browser
+   * to choose a file or upload one.
    */
   private renderFile(id: string) {
     const name = typeof this.value === "string" ? this.value : "";
     const url = name ? this.fileUrl?.(name) : undefined;
     return html`${
-        name
-          ? html`<p class="metadata-file">
-              ${url ? html`<a href=${url} target="_blank">${name}</a>` : name}
-              <button
-                type="button"
-                class="btn btn-xs"
-                @click=${() => this.change(this.path, undefined)}
-              >
-                Clear${hidden(` ${this.fieldTitle}`)}
-              </button>
-            </p>`
-          : nothing
-      }<input
-        type="file"
-        id=${id}
-        ?disabled=${!this.uploadFile}
-        ?required=${this.required && !name}
-        aria-invalid=${problemsAt(this.problems, this.path).length ? "true" : "false"}
-        aria-describedby=${this.describedBy(id) || nothing}
-        accept=${inputAttributes(this.schema).accept ?? nothing}
-        @change=${async (event: Event) => {
-          const input = event.target as HTMLInputElement;
-          const file = input.files?.[0];
-          input.value = "";
-          if (!file || !this.uploadFile) return;
-          try {
-            this.change(this.path, await this.uploadFile(file));
-          } catch {
-            // The uploader reports its own errors
-          }
-        }}
-      />${
-        this.chooseFile
-          ? html`<button
+      name
+        ? html`<p class="metadata-file">
+            ${url ? html`<a href=${url} target="_blank">${name}</a>` : name}
+            <button
               type="button"
-              class="btn btn-choose-file"
-              @click=${() => void this.chooseExisting()}
+              class="btn btn-xs"
+              @click=${() => this.change(this.path, undefined)}
             >
-              Choose existing file…${hidden(` for ${this.fieldTitle}`)}
-            </button>`
-          : nothing
-      }`;
+              Clear${hidden(` ${this.fieldTitle}`)}
+            </button>
+          </p>`
+        : nothing
+    }${
+      this.chooseFile
+        ? html`<button
+            type="button"
+            id=${id}
+            class="btn btn-choose-file"
+            aria-describedby=${this.describedBy(id) || nothing}
+            @click=${() => void this.chooseExisting()}
+          >
+            Choose or upload file${hidden(` for ${this.fieldTitle}`)}
+          </button>`
+        : nothing
+    }`;
   }
 
   /** Render the input for a single value's field kind (the other kinds are an `<input>` of the same type) */
@@ -471,7 +447,8 @@ export class EdahaMetadataField extends LitElement {
       return html`<div @focusout=${onFocusOut}>${this.renderList(id)}</div>`;
     if (kind === "radio")
       return html`<div @focusout=${onFocusOut}>${this.renderRadio(id)}</div>`;
-    const label = html`<label for=${id}
+    // A file field's button is named by its own text, which a label would replace
+    const label = html`<label for=${kind === "file" ? nothing : id}
       >${this.fieldTitle}${
         this.required
           ? html`<span class="required" aria-hidden="true"> *</span>`

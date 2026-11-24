@@ -798,13 +798,6 @@ export class EdahaArticle extends LitElement {
     return this.dirty;
   }
 
-  /** Upload a file chosen in a file field and set the field to its name */
-  private async onFieldFile(event: CustomEvent<File>) {
-    const field = (event.target as HTMLElement & { name: string }).name;
-    const name = await this.upload(event.detail);
-    if (name) this.data = applyFieldChange(this.data, field, name);
-  }
-
   /**
    * Bring the body's HTML up to date with its Markdown, when it is edited in Markdown mode. Returns whether it is up to
    * date (false if converting failed, which shows the error).
@@ -1153,7 +1146,6 @@ export class EdahaArticle extends LitElement {
 
   /** Render the attachment fields */
   private renderAttachments() {
-    const noUploads = !this.canUpload;
     return html`<edaha-article-data-group
       name="attachments"
       label="Attachments"
@@ -1171,14 +1163,13 @@ export class EdahaArticle extends LitElement {
             <edaha-article-data-field
               name="attachments[${i}][url]"
               type="file"
-              label="Upload file"
+              label="File"
               accept="image/png, image/jpeg, image/gif, application/zip, application/pdf"
               .value=${attachment.url}
               preview
               .previewUrl=${this.fileAddress(attachment.url)}
               .chooseFile=${this.choosers().file}
               allowchange
-              ?disabled=${noUploads}
             ></edaha-article-data-field>
             <edaha-article-data-field
               name="attachments[${i}][url]"
@@ -1463,7 +1454,6 @@ export class EdahaArticle extends LitElement {
           .chooseFile=${this.choosers().file}
           allowchange
           allowclear
-          ?disabled=${!this.canUpload}
         ></edaha-article-data-field>`;
       case "attachments":
         return this.renderAttachments();
@@ -1496,7 +1486,6 @@ export class EdahaArticle extends LitElement {
       .value=${values[key]}
       .problems=${this.metaProblems}
       .hiddenFields=${hidden}
-      .uploadFile=${this.canUpload ? this.uploadMarkdownImage : undefined}
       .chooseFile=${this.choosers().file}
       .fileUrl=${(name: string) => this.fileAddress(name)}
     ></edaha-metadata-field>`;
@@ -1603,7 +1592,6 @@ export class EdahaArticle extends LitElement {
         @field-change=${this.onFieldChange}
         @metadata-change=${this.onMetadataChange}
         @metadata-blur=${this.onMetadataBlur}
-        @field-file=${(event: CustomEvent<File>) => void this.onFieldFile(event)}
         @submit=${(event: Event) => {
           event.preventDefault();
           void this.save();

@@ -268,12 +268,11 @@ describe("edaha-article", () => {
     expect(button(element, "Delete…")).toBeDefined();
   });
 
-  it("should start a new article empty, with uploads disabled until saved", async () => {
+  it("should start a new article empty, with uploads into its folder disabled until saved", async () => {
     const { element } = await setup(undefined);
     expect(field(element, "title").value).toBe("");
     expect(field(element, "status").value).toBe("draft");
     expect(field(element, "slug").placeholder).toBe("title-converted-to-slug");
-    expect(field(element, "thumbnail").disabled).toBe(true);
     expect(
       find<EdahaRichtext>(element, "edaha-richtext").uploadImage,
     ).toBeUndefined();
@@ -339,43 +338,32 @@ describe("edaha-article", () => {
     expect(element.message).toBe("");
   });
 
-  it("should upload a thumbnail and set the field to its name", async () => {
+  it("should list files uploaded into the article's folder once", async () => {
     const { element, api } = await setup();
-    field(element, "thumbnail").dispatchEvent(
-      new CustomEvent("field-file", {
-        detail: new File(["x"], "New.png"),
-        bubbles: true,
-      }),
-    );
-    await settle(element);
+    const uploadImage = find<EdahaRichtext>(
+      element,
+      "edaha-richtext",
+    ).uploadImage!;
+    await uploadImage(new File(["x"], "New.png"));
     expect(api.upload).toHaveBeenCalledWith(
       { type: "article", slug: "hello" },
       expect.any(File),
       {},
     );
-    expect(element.data.thumbnail).toBe("new.png");
     expect(element.files).toEqual(["guide.pdf", "new.png", "thumb.png"]);
+    // Uploading the same name again doesn't list it twice
+    await uploadImage(new File(["x"], "New.png"));
+    expect(element.files).toEqual(["guide.pdf", "new.png", "thumb.png"]);
+  });
 
-    // Uploading the same name again doesn't list it twice; a failed upload changes nothing
+  it("should give file fields only the file browser, to choose or upload files, even before the article is saved", async () => {
+    const { element } = await setup(undefined);
+    element.pickFile = vi.fn();
     await element.updateComplete;
-    field(element, "thumbnail").dispatchEvent(
-      new CustomEvent("field-file", {
-        detail: new File(["x"], "New.png"),
-        bubbles: true,
-      }),
-    );
-    await settle(element);
-    expect(element.files).toEqual(["guide.pdf", "new.png", "thumb.png"]);
-    api.upload.mockRejectedValueOnce(new Error("Disk full"));
-    field(element, "thumbnail").dispatchEvent(
-      new CustomEvent("field-file", {
-        detail: new File(["x"], "Other.png"),
-        bubbles: true,
-      }),
-    );
-    await settle(element);
-    expect(element.data.thumbnail).toBe("new.png");
-    expect(toasts).toContainEqual({ kind: "error", message: "Disk full" });
+    const thumbnail = field(element, "thumbnail");
+    expect(thumbnail.querySelector('input[type="file"]')).toBeNull();
+    expect(thumbnail.querySelector(".btn-choose-file")).not.toBeNull();
+    expect(thumbnail.disabled).toBe(false);
   });
 
   it("should upload images for the body and report failures", async () => {
@@ -604,15 +592,10 @@ describe("edaha-article", () => {
   });
 
   it("should not upload before the article is saved", async () => {
-    const { element, api } = await setup(undefined);
-    field(element, "thumbnail").dispatchEvent(
-      new CustomEvent("field-file", {
-        detail: new File(["x"], "a.png"),
-        bubbles: true,
-      }),
-    );
-    await settle(element);
-    expect(api.upload).not.toHaveBeenCalled();
+    const { element } = await setup(undefined);
+    expect(
+      find<EdahaRichtext>(element, "edaha-richtext").uploadImage,
+    ).toBeUndefined();
   });
 
   it("should add and remove tags, attachments and the author", async () => {
@@ -1697,21 +1680,16 @@ describe("edaha-article custom settings", () => {
     expect(element.metaProblems).toEqual([]);
   });
 
-  it("should upload files for file fields once saved, showing them from the article's folder", async () => {
+  it("should give file fields the file browser, showing their files from the article's folder", async () => {
     const { element } = await setupMetadata({ hero: "a.png" });
+    element.pickFile = vi.fn();
+    await element.updateComplete;
     const hero = find<EdahaMetadataField>(
       element,
       'edaha-metadata-field[path="hero"]',
     );
-    expect(await hero.uploadFile!(new File(["x"], "B.png"))).toBe("b.png");
+    expect(hero.chooseFile).toBeTypeOf("function");
     expect(hero.fileUrl!("a.png")).toBe("/files/article/hello/a.png");
-    const { element: unsaved } = await setup(undefined);
-    unsaved.metadata = structuredClone(METADATA) as never;
-    await settle(unsaved);
-    expect(
-      find<EdahaMetadataField>(unsaved, 'edaha-metadata-field[path="hero"]')
-        .uploadFile,
-    ).toBeUndefined();
   });
 });
 

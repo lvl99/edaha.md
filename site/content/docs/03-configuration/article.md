@@ -427,7 +427,7 @@ types:
 | `select`                                                                 | A dropdown of `options` (each a `value` and `title`, or the schema's `enum`), starting with "—" for none, unless an option's `value` is `""`, which is the "none" choice instead; `list: true` shows it as a list. |
 | `checkbox`                                                               | A checkbox, for `type: boolean` (`true` or `false`). With `{ value: ... }`, it saves that value when checked and nothing when not.                                                                                 |
 | `radio`                                                                  | Radio buttons for `options` (each with an optional `description`), or the schema's `enum`.                                                                                                                         |
-| `file`                                                                   | A file chooser that uploads into the article's folder (e.g. with `accept`).                                                                                                                                        |
+| `file`                                                                   | A button opening the editor's file browser, to choose a file or upload one (e.g. with `accept`, the kind shown first).                                                                                             |
 
 A `color` field keeps a value written without its `#` (e.g. `0687f5`) that way.
 

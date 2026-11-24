@@ -38,9 +38,8 @@ const IMAGE = /\.(png|jpe?g|gif|webp|svg)$/i;
  * One article data field: a label and an input of the given type. Rendered in the light DOM. A `changed` field's label
  * ends with an asterisk, to show it isn't saved yet.
  *
- * Fires `field-change` (detail: {@link FieldChange}) when the value changes, and for file fields `field-file`
- * (detail: the chosen File) so the article can upload it and set the value to the saved file name. With `chooseFile`,
- * a file field can also be set to an existing file.
+ * Fires `field-change` (detail: {@link FieldChange}) when the value changes. A file field is set with `chooseFile`,
+ * which opens the file browser to choose a file or upload one.
  *
  * @example
  * html`<edaha-article-data-field name="title" type="text" label="Title" .value=${title}></edaha-article-data-field>`
@@ -82,7 +81,7 @@ export class EdahaArticleDataField extends LitElement {
   declare previewUrl?: string | undefined;
   /** For rich text and Markdown fields: uploads images inserted into the text */
   declare uploadImage?: ImageUploader | undefined;
-  /** For file, rich text and Markdown fields: lets the user choose an existing file */
+  /** For file, rich text and Markdown fields: lets the user choose a file, or upload one, in the file browser */
   declare chooseFile?: FileChooser | undefined;
   /** For rich text and Markdown fields: the site's embeds, the embed dialog, and embed blocks' frames */
   declare embedTools?: EmbedTools | undefined;
@@ -90,7 +89,7 @@ export class EdahaArticleDataField extends LitElement {
   declare fileAddress?: FileAddress | undefined;
   /** For file fields: show an image preview */
   declare preview: boolean;
-  /** For file fields: allow choosing a new file when one is set */
+  /** For file fields: allow choosing another file when one is set */
   declare allowchange: boolean;
   /** Show a button that clears the value */
   declare allowclear: boolean;
@@ -208,13 +207,16 @@ export class EdahaArticleDataField extends LitElement {
     }
   }
 
-  /** Let the user choose an existing file (of the kind the field accepts), and set the value to it */
+  /** Let the user choose a file, or upload one, in the file browser (showing the kind the field accepts), and set the value to it */
   private async chooseExisting() {
     const file = await this.chooseFile?.(acceptedKind(this.accept));
     if (file) this.change(file.url);
   }
 
-  /** Render a file field: the current file (with a preview), a file chooser, and a button choosing an existing file */
+  /**
+   * Render a file field: the current file (with a preview), and a button opening the file browser to choose a file or
+   * upload one (with `chooseFile`)
+   */
   private renderFile() {
     const showChooser = !this.value || this.allowchange;
     return html`
@@ -236,37 +238,18 @@ export class EdahaArticleDataField extends LitElement {
           : nothing
       }
       ${
-        showChooser
-          ? html`<input
-                id=${this.inputId}
-                type="file"
-                accept=${this.accept}
-                ?disabled=${this.disabled}
-                @change=${(event: Event) => {
-                  const input = event.target as HTMLInputElement;
-                  const file = input.files?.[0];
-                  input.value = "";
-                  if (file)
-                    this.dispatchEvent(
-                      new CustomEvent<File>("field-file", {
-                        detail: file,
-                        bubbles: true,
-                      }),
-                    );
-                }}
-              />${
-                this.chooseFile
-                  ? html`<button
-                      type="button"
-                      class="btn btn-choose-file"
-                      @click=${() => void this.chooseExisting()}
-                    >
-                      Choose existing file…<span class="visually-hidden">
-                        for ${this.label}</span
-                      >
-                    </button>`
-                  : nothing
-              }`
+        showChooser && this.chooseFile
+          ? html`<button
+              type="button"
+              id=${this.inputId}
+              class="btn btn-choose-file"
+              ?disabled=${this.disabled}
+              @click=${() => void this.chooseExisting()}
+            >
+              Choose or upload file<span class="visually-hidden">
+                for ${this.label}</span
+              >
+            </button>`
           : nothing
       }
     `;
@@ -276,7 +259,11 @@ export class EdahaArticleDataField extends LitElement {
     return html`
       ${
         this.label
-          ? html`<label for=${this.inputId}
+          ? html`<label
+              for=${
+                // A file field's button is named by its own text, which a label would replace
+                this.type === "file" ? nothing : this.inputId
+              }
               >${this.label}${
                 this.changed
                   ? html`<span
