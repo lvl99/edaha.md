@@ -9,6 +9,7 @@ import {
   absoluteUrl,
   absoluteUrls,
   contains,
+  outputExtension,
   parseJson,
   toJson,
   where,
@@ -329,6 +330,35 @@ describe("Templates", () => {
   });
 
   describe("output extensions", () => {
+    it("should escape values only in templates that output HTML or XML", async () => {
+      const dir = await templatesDir({
+        ...REQUIRED,
+        "article/single.json.njk": "{{ site.name | json }}|{{ site.name }}",
+        "article/single.svg.njk": "{{ site.name }}",
+        "article/single.txt.njk": '{% include "partials/name.njk" %}',
+        "partials/name.njk": "{{ site.name }}",
+        "layouts/rssfeed.json.njk": "{{ site.name }}",
+      });
+      const templates = new Templates(dir, { warn: vi.fn() });
+      const data = { site: { name: 'A "<b>" & B' } } as never;
+      expect(templates.render("article/single.json.njk", data)).toBe(
+        '"A \\"<b>\\" & B"|A "<b>" & B',
+      );
+      expect(templates.render("article/single.svg.njk", data)).toBe(
+        "A &quot;&lt;b&gt;&quot; &amp; B",
+      );
+      // A partial is escaped or not as the template that includes it
+      expect(templates.render("article/single.txt.njk", data)).toBe(
+        'A "<b>" & B',
+      );
+      expect(templates.render("partials/name.njk", data)).toBe(
+        "A &quot;&lt;b&gt;&quot; &amp; B",
+      );
+      expect(templates.render("layouts/rssfeed.json.njk", data)).toBe(
+        'A "<b>" & B',
+      );
+    });
+
     it("should render every template of a name, each to its own extension (HTML unless given)", async () => {
       const dir = await templatesDir({
         ...REQUIRED,
@@ -420,6 +450,18 @@ describe("Templates", () => {
         "Template page/list.njk not found; using article/list.json.njk and article/list.njk",
       );
     });
+  });
+});
+
+describe("outputExtension", () => {
+  it("should give a template's output extension, or else XML for the feed and HTML for the rest", () => {
+    expect(outputExtension("article/single.json.njk")).toBe("json");
+    expect(outputExtension("article/single.JSON.njk")).toBe("json");
+    expect(outputExtension("article/single.njk")).toBe("html");
+    expect(outputExtension("layouts/rssfeed.njk")).toBe("xml");
+    expect(outputExtension("@theme/layouts/rssfeed.njk")).toBe("xml");
+    expect(outputExtension("layouts/rssfeed.json.njk")).toBe("json");
+    expect(outputExtension("partials/rssfeed.njk")).toBe("html");
   });
 });
 

@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import get from "lodash/get.js";
 import nunjucks from "nunjucks";
 import { formatDate, formatRfc822 } from "../format/index.ts";
@@ -22,6 +22,17 @@ export const DEFAULT_OUTPUT_EXTENSION = "html";
 /** What the feed template (`layouts/rssfeed.njk`) outputs when its file name gives no extension */
 export const FEED_OUTPUT_EXTENSION = "xml";
 
+/** Output extensions whose templates escape values for HTML; other outputs (e.g. JSON, text) are written as they are */
+export const ESCAPED_EXTENSIONS: readonly string[] = [
+  "html",
+  "htm",
+  "xhtml",
+  "xml",
+  "svg",
+  "rss",
+  "atom",
+];
+
 /** A template file, and the extension of the file it outputs, e.g. `{ file: "article/single.json.njk", extension: "json" }` */
 export interface TemplateOutput {
   file: string;
@@ -43,6 +54,21 @@ export const templateFileName = (
   const match = /^(.+?)(?:\.([a-z0-9]+))?\.njk$/i.exec(file);
   return match ? { name: match[1] as string, extension: match[2] } : undefined;
 };
+
+/**
+ * The extension of the file a template outputs: the one in its file name, or else `xml` for the feed template
+ * (`layouts/rssfeed.njk`) and `html` for the rest.
+ *
+ * @example
+ * outputExtension("article/single.json.njk"); // "json"
+ * outputExtension("article/single.njk"); // "html"
+ * outputExtension("@theme/layouts/rssfeed.njk"); // "xml"
+ */
+export const outputExtension = (file: string): string =>
+  templateFileName(basename(file))?.extension?.toLowerCase() ??
+  (/(^|\/)layouts\/rssfeed\.njk$/.test(file)
+    ? FEED_OUTPUT_EXTENSION
+    : DEFAULT_OUTPUT_EXTENSION);
 
 /**
  * Template names starting with this always load from the last template folder (the default theme's), e.g.
@@ -211,7 +237,10 @@ for (const [tag, part] of Object.entries(EMBED_TAGS))
 export class Templates {
   private readonly dirs: string[];
   private readonly logger: Logger;
-  private readonly env: nunjucks.Environment;
+  /** Renders templates that output HTML or XML (see ESCAPED_EXTENSIONS) */
+  private readonly escaped: nunjucks.Environment;
+  /** Renders templates that output anything else, e.g. JSON */
+  private readonly unescaped: nunjucks.Environment;
   private readonly warned = new Set<string>();
 
   /**
@@ -230,27 +259,37 @@ export class Templates {
         `Missing required templates in ${this.dirs.join(", ")}: ${missing.join(", ")}`,
       );
     this.logger = logger;
-    this.env = new nunjucks.Environment(
+    this.escaped = this.environment(true);
+    this.unescaped = this.environment(false);
+  }
+
+  /**
+   * A Nunjucks environment for the template folders, with edaha.md's filters and tags, that escapes values for HTML or
+   * not. Each has its own loaders, as Nunjucks keeps compiled templates (bound to their environment) in them.
+   */
+  private environment(autoescape: boolean): nunjucks.Environment {
+    const env = new nunjucks.Environment(
       [
         themeLoader(this.dirs.at(-1) as string),
         new nunjucks.FileSystemLoader(this.dirs),
       ],
       {
-        autoescape: true,
+        autoescape,
         // Keep the generated HTML free of blank lines left by template tags
         trimBlocks: true,
         lstripBlocks: true,
       },
     );
-    this.env.addFilter("date", formatDate);
-    this.env.addFilter("rfc822", formatRfc822);
-    this.env.addFilter("absoluteUrl", absoluteUrl);
-    this.env.addFilter("absoluteUrls", absoluteUrls);
-    this.env.addFilter("json", toJson);
-    this.env.addFilter("parseJson", parseJson);
-    this.env.addFilter("contains", contains);
-    this.env.addFilter("where", where);
-    this.env.addExtension("embeds", new EmbedTags());
+    env.addFilter("date", formatDate);
+    env.addFilter("rfc822", formatRfc822);
+    env.addFilter("absoluteUrl", absoluteUrl);
+    env.addFilter("absoluteUrls", absoluteUrls);
+    env.addFilter("json", toJson);
+    env.addFilter("parseJson", parseJson);
+    env.addFilter("contains", contains);
+    env.addFilter("where", where);
+    env.addExtension("embeds", new EmbedTags());
+    return env;
   }
 
   /**
@@ -380,9 +419,18 @@ export class Templates {
   }
 
   /**
-   * Render a template with the given data.
+   * Render a template with the given data. Values are escaped for HTML only in templates that output HTML or XML (see
+   * ESCAPED_EXTENSIONS and outputExtension), so e.g. a JSON template writes `{{ article.title | json }}` as it is.
+   *
+   * @example
+   * templates.render("article/single.njk", data); // HTML, with values escaped
+   * templates.render("article/single.json.njk", data); // JSON, with values as they are
    */
   render(file: string, data: TemplateData): string {
-    return this.env.render(file, data);
+    return (
+      ESCAPED_EXTENSIONS.includes(outputExtension(file))
+        ? this.escaped
+        : this.unescaped
+    ).render(file, data);
   }
 }
