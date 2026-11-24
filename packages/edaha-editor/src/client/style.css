@@ -7,6 +7,9 @@
   --colour-surface: #f4f4f6;
   --colour-border: #d8d8de;
   --colour-table-outline: #c0c0c6;
+  /* The checkerboard behind images, so transparent parts show */
+  --colour-checker-light: #ffffff;
+  --colour-checker-dark: #d8d8de;
   --colour-link: #3b9a04;
   --colour-link-hover: #2b6f04;
   --colour-focus: #3b9a04;
@@ -57,6 +60,8 @@
   --colour-surface: #1f1f23;
   --colour-border: #38383f;
   --colour-table-outline: #8a8a92;
+  --colour-checker-light: #2a2a2f;
+  --colour-checker-dark: #46464e;
   --colour-link: #dc6d2c;
   --colour-link-hover: #fda26d;
   --colour-focus: #fda26d;
@@ -85,6 +90,8 @@
     --colour-surface: #1f1f23;
     --colour-border: #38383f;
     --colour-table-outline: #8a8a92;
+    --colour-checker-light: #2a2a2f;
+    --colour-checker-dark: #46464e;
     --colour-link: #dc6d2c;
     --colour-link-hover: #fda26d;
     --colour-focus: #fda26d;
@@ -1339,14 +1346,50 @@ edaha-editor[focus-mode] .edaha-article-main {
   }
 }
 
-/* The file browser's operations: icon buttons in a row */
-.file-browser-operations {
+/* A checkerboard behind images, so their transparent parts can be told apart from the page */
+.checkerboard {
+  background-color: var(--colour-checker-light);
+  background-image: conic-gradient(
+    var(--colour-checker-dark) 25%,
+    transparent 0 50%,
+    var(--colour-checker-dark) 0 75%,
+    transparent 0
+  );
+  background-size: 16px 16px;
+}
+
+/* The file browser's thumbnails: images on the checkerboard, and other kinds of files as their icon */
+.file-browser-thumbnail {
+  width: 3.5rem;
+}
+
+/* The name comes after the thumbnail, and is shown like the article browser's first column */
+.file-browser-table td:nth-child(2) {
+  color: inherit;
+  font-size: 1rem;
+  white-space: normal;
+}
+
+.file-browser-thumbnail img,
+.file-browser-thumbnail .file-browser-icon {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border: 1px solid var(--colour-border);
+  border-radius: 0.25rem;
+  color: var(--colour-muted);
+  object-fit: contain;
+}
+
+/* The file browser's operations: icon buttons in a row (the cell stays a table cell, so it lines up with its row) */
+.file-browser-operations {
+  white-space: nowrap;
 }
 
 .file-browser-operations .btn-icon {
+  margin-inline-end: 0.25rem;
   min-width: 2.25rem;
   min-height: 2.25rem;
   color: var(--colour-text);

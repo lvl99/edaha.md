@@ -174,6 +174,8 @@ describe("edaha-file-browser", () => {
         th.hasAttribute("aria-sort"),
       ]),
     ).toEqual([
+      // Not sortable
+      ["Thumbnail", false],
       ["Name", true],
       ["Type", true],
       ["Size", true],
@@ -182,7 +184,18 @@ describe("edaha-file-browser", () => {
       ["Operations", false],
     ]);
     const row = find(element, "tbody tr");
-    const cells = [...row.querySelectorAll("td")];
+    const [thumbnail, ...cells] = [...row.querySelectorAll("td")];
+    // Images are shown on a checkerboard, so their transparent parts show
+    const image = find<HTMLImageElement>(thumbnail!, "img");
+    expect(image.getAttribute("src")).toBe("/files/news/hello/photo.png");
+    expect(image.alt).toBe("");
+    expect(image.classList.contains("checkerboard")).toBe(true);
+    // Other kinds of files are shown as their kind's icon
+    const other = element.querySelectorAll("tbody tr")[1]!;
+    expect(other.querySelector("td img")).toBeNull();
+    expect(
+      other.querySelector("td .file-browser-icon .icon-description"),
+    ).not.toBeNull();
     expect(cells.slice(0, 4).map((td) => td.textContent?.trim())).toEqual([
       "photo.png",
       "Image",

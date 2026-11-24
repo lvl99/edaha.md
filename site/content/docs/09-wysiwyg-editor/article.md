@@ -90,11 +90,11 @@ Three tabs above the body change what you see. Move between them with the arrow 
 
 - **WYSIWYG**: the rich text editor.
 - **Markdown**: the body as Markdown, if you'd like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (underlined, small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.
-- **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred.
+- **Preview**: the article as your website will show it, with its own template (see **Template** in its settings), layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred. When the article's template outputs other files too (e.g. `single.json.njk` beside `single.njk`, see [Templating](/docs/05-templating/)), **Output** shows each of them: HTML, or e.g. JSON as text, always at full width.
 
 ## Managing files
 
-Choose **Files** (beside **All articles**) to see every file in your articles' folders. Search their names, filter by **Type** (image, document, archive, video, audio or other) and **Article type**, and choose a column's heading to sort by it, as in the article browser. **Name** opens the file in a new tab, and **Location** opens its article in the editor (or in a new tab, if you hold cmd or ctrl as you choose it).
+Choose **Files** (beside **All articles**) to see every file in your articles' folders, each with a thumbnail: images are shown on a checkerboard, so their transparent parts show, and other files as an icon for their type. Search their names, filter by **Type** (image, document, archive, video, audio or other) and **Article type**, and choose a column's heading to sort by it, as in the article browser. **Name** opens the file in a new tab, and **Location** opens its article in the editor (or in a new tab, if you hold cmd or ctrl as you choose it).
 
 Each file has three buttons:
 

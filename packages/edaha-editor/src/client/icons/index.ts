@@ -3,6 +3,11 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import addColumnRight from "@material-symbols/svg-400/outlined/add_column_right.svg?raw";
 import addPhotoAlternate from "@material-symbols/svg-400/outlined/add_photo_alternate.svg?raw";
 import addRowBelow from "@material-symbols/svg-400/outlined/add_row_below.svg?raw";
+import audioFile from "@material-symbols/svg-400/outlined/audio_file.svg?raw";
+import description from "@material-symbols/svg-400/outlined/description.svg?raw";
+import draft from "@material-symbols/svg-400/outlined/draft.svg?raw";
+import folderZip from "@material-symbols/svg-400/outlined/folder_zip.svg?raw";
+import videoFile from "@material-symbols/svg-400/outlined/video_file.svg?raw";
 import close from "@material-symbols/svg-400/outlined/close.svg?raw";
 import codeBlocks from "@material-symbols/svg-400/outlined/code_blocks.svg?raw";
 import deleteSweep from "@material-symbols/svg-400/outlined/delete_sweep.svg?raw";
@@ -42,6 +47,11 @@ export const ICONS = {
   add_column_right: addColumnRight,
   add_photo_alternate: addPhotoAlternate,
   add_row_below: addRowBelow,
+  audio_file: audioFile,
+  description: description,
+  draft: draft,
+  folder_zip: folderZip,
+  video_file: videoFile,
   close,
   content_copy: contentCopy,
   delete: deleteIcon,

@@ -255,6 +255,10 @@ describe("edaha-article-data-field", () => {
     expect(
       find<HTMLImageElement>(field, ".file-current img").getAttribute("src"),
     ).toBe("/files/article/a/thumb.png");
+    // On a checkerboard, so transparent parts show
+    expect(
+      find(field, ".file-current img").classList.contains("checkerboard"),
+    ).toBe(true);
     // Without allowchange, a set file can't be replaced
     expect(field.querySelector("input[type=file]")).toBeNull();
   });

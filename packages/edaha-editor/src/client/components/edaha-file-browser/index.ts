@@ -10,7 +10,7 @@ import type {
   FileSummary,
 } from "../../../server/types/index.ts";
 import type { ArticleLocation, EditorApi } from "../../editorApi/index.ts";
-import { icon } from "../../icons/index.ts";
+import { icon, type IconName } from "../../icons/index.ts";
 import { nextSort, sortHeading } from "../../sortTable/index.ts";
 import { ARTICLE_CHOOSE_EVENT } from "../edaha-article-browser/index.ts";
 import { defineElement } from "../define/index.ts";
@@ -24,6 +24,15 @@ export const FILE_KINDS: readonly { value: FileKind; label: string }[] = [
   { value: "audio", label: "Audio" },
   { value: "other", label: "Other" },
 ];
+
+/** The icon shown for each kind of file that isn't an image, in place of its thumbnail */
+export const FILE_KIND_ICONS: Record<Exclude<FileKind, "image">, IconName> = {
+  document: "description",
+  archive: "folder_zip",
+  video: "video_file",
+  audio: "audio_file",
+  other: "draft",
+};
 
 /** The results' sortable columns (Operations isn't sortable) */
 export const FILE_COLUMNS: readonly { sort: FileSort; label: string }[] = [
@@ -495,6 +504,9 @@ export class EdahaFileBrowser extends LitElement {
     return html`<table class="article-browser-table file-browser-table">
       <thead>
         <tr>
+          <th scope="col" class="file-browser-thumbnail">
+            <span class="visually-hidden">Thumbnail</span>
+          </th>
           ${FILE_COLUMNS.map(({ sort, label }) =>
             sortHeading(
               sort,
@@ -509,15 +521,28 @@ export class EdahaFileBrowser extends LitElement {
       <tbody>
         ${result.files.map((file) => {
           const location = `${file.type}/${file.slug}`;
+          const fileUrl = this.api.url(
+            `/files/${location}/${encodeURIComponent(file.name)}`,
+          );
           return html`<tr>
+            <td class="file-browser-thumbnail">
+              ${
+                file.kind === "image"
+                  ? html`<img
+                      class="checkerboard"
+                      src=${fileUrl}
+                      alt=""
+                      loading="lazy"
+                      width="48"
+                      height="48"
+                    />`
+                  : html`<span class="file-browser-icon"
+                      >${icon(FILE_KIND_ICONS[file.kind])}</span
+                    >`
+              }
+            </td>
             <td>
-              <a
-                href=${this.api.url(
-                  `/files/${location}/${encodeURIComponent(file.name)}`,
-                )}
-                target="_blank"
-                >${file.name}</a
-              >
+              <a href=${fileUrl} target="_blank">${file.name}</a>
             </td>
             <td>${kindLabels[file.kind]}</td>
             <td>${formatFileSize(file.size)}</td>

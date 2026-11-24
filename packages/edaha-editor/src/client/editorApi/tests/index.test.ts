@@ -147,7 +147,7 @@ describe("EditorApi", () => {
             path.endsWith("markdown")
               ? { markdown: "**Hi**" }
               : path.endsWith("preview")
-                ? { url: "/preview/x/" }
+                ? { url: "/preview/x/", outputs: ["html"] }
                 : { html: "<p>Hi</p>" },
           ),
         ),
@@ -156,7 +156,10 @@ describe("EditorApi", () => {
     const data = { title: "Hi" } as never;
     expect(await api.toMarkdown("<p>x</p>", LOCATION)).toBe("**Hi**");
     expect(await api.toHtml("x")).toBe("<p>Hi</p>");
-    expect(await api.preview(data, LOCATION)).toBe("/preview/x/");
+    expect(await api.preview(data, LOCATION)).toEqual({
+      url: "/preview/x/",
+      outputs: ["html"],
+    });
     const calls = fetch.mock.calls as unknown as [string, RequestInit][];
     expect(calls.map(([path, init]) => [path, init.method, init.body])).toEqual(
       [
