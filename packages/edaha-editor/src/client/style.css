@@ -149,13 +149,6 @@ a:hover {
   color: var(--colour-link-hover);
 }
 
-a:focus-visible,
-button:focus-visible,
-.button:focus-visible {
-  outline: 3px solid var(--colour-focus);
-  outline-offset: 2px;
-}
-
 h1 {
   font-size: var(--font-size-h1);
 }
@@ -392,6 +385,11 @@ edaha-editor {
   overflow-y: auto;
 }
 
+/* The article list's links aren't underlined */
+.edaha-editor-nav a {
+  text-decoration: none;
+}
+
 .edaha-editor-new button {
   width: 100%;
 }
@@ -474,6 +472,12 @@ edaha-editor {
   margin: 0 0 1rem;
   font-size: var(--font-size-l);
   text-align: center;
+}
+
+/* The welcome prompt's links and link-like buttons aren't underlined */
+.welcome-prompt a,
+.welcome-prompt .btn-link {
+  text-decoration: none;
 }
 
 /* Its links are part of the sentence, so they keep its size */
@@ -1639,11 +1643,6 @@ edaha-metadata-field {
   }
 }
 
-.settings-group > summary:focus-visible {
-  outline: 3px solid var(--colour-focus);
-  outline-offset: 2px;
-}
-
 .settings-group[open] > summary {
   margin-bottom: 0.25rem;
 }
@@ -1835,4 +1834,11 @@ edaha-metadata-field {
     margin: 0;
     transform: rotate(90deg);
   }
+}
+
+/* Everything focused from the keyboard (links, buttons, inputs, selects, the bodies' editors, …) has the same thick
+   outline in the focus colour. Last, so it shows over other outlines, e.g. a field with problems. */
+:focus-visible {
+  outline: 3px solid var(--colour-focus);
+  outline-offset: 2px;
 }
