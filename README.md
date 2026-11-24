@@ -51,6 +51,7 @@ my-site/
         photo.jpg
   templates/   # optional; overrides the default theme's templates
   static/      # optional; overrides and adds to the default theme's static files
+  files/       # optional; shared files any article can use, e.g. /files/logo.png
 ```
 
 ```yaml
@@ -177,6 +178,8 @@ theme: ../themes/my-theme
 ```
 
 A site's own static files folder (`static/`, or `staticDir`) is copied to the website's root, over the theme's static files. A static file with the same path as an article's file stops the build.
+
+The shared files folder (`files/`, or `files.dir`) holds files any article can use by their path, e.g. `/files/2026/11/photo.jpg`. It is copied to that path, or, with `files.url`, into its own folder to upload to another host. `files.uploadTo` says where the editor puts uploads: the article's folder (`article`, the default), the shared folder (`files`), or its year and month folder (`files-by-date`).
 
 > For more information, see [Templating](https://edaha.md/docs/05-templating/).
 

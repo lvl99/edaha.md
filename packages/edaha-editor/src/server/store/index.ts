@@ -85,10 +85,7 @@ import {
   type ReferenceChange,
 } from "../files/index.ts";
 import { folderPath, folderUrl } from "@lvl99dotcom/edaha.md/generator/urls";
-import {
-  fileFolderName,
-  sharedFolderName,
-} from "../types/index.ts";
+import { fileFolderName, sharedFolderName } from "../types/index.ts";
 import {
   isSafeSharedPath,
   isShared,

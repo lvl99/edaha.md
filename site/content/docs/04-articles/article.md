@@ -76,7 +76,7 @@ The header is never written into the built pages.
 | `author`      | The author's name, `{ name, email, url }`, or `false` for no author.                                                      | The type's or the config's [`author`](/docs/03-configuration/#author), or the website's name |
 | `tags`        | A list of tag names, e.g. `[News, Release notes]`.                                                                        | None                                                                                         |
 | `excerpt`     | The excerpt shown in lists and feeds, in Markdown.                                                                        | See [Excerpts](#excerpts)                                                                    |
-| `thumbnail`   | An image for lists: a file in the article's folder, or an absolute URL.                                                   | None                                                                                         |
+| `thumbnail`   | An image for lists: a file in the article's folder, a [shared file](#shared-files) by its path, or an absolute URL.       | None                                                                                         |
 | `attachments` | A list of files to download: `{ url, name, thumbnail, mimeType }`, where only `url` is required.                          | None                                                                                         |
 | `template`    | The template to render the article with, e.g. `home`. See [Templating](/docs/05-templating/).                             | `single`                                                                                     |
 | `type`        | The article's type. It must match its type folder.                                                                        | The type folder                                                                              |
@@ -92,7 +92,7 @@ author:
   url: https://jo.example.com # linked from the article page
 ```
 
-Attachments get their file size and type when they are files in the article's folder:
+Attachments get their file size and type when they are files in the article's folder or [shared files](#shared-files):
 
 ```yaml
 attachments:
@@ -109,10 +109,28 @@ After the header comes the article in Markdown:
 
 - **The title** is the first `# Title` heading, unless the header sets `title`. It is taken out of the body, as templates show it on its own.
 - **Images and links** to files in the article's folder are written relative to it, e.g. `![A photo](photo.jpg)`. Links to other pages of the website can start at its root, e.g. `[Configuration](/docs/03-configuration/)`; for a website in a sub-folder (see [`siteUrl`](/docs/03-configuration/#siteurl)), they are put under it when built. Links in raw HTML are left as they are.
+- **Shared files** are written by their path, e.g. `![A photo](/files/2026/11/photo.jpg)`. See [Shared files](#shared-files).
 - **Headings** get IDs from their text, so they can be linked to: `## Getting started` can be linked as `#getting-started`.
 - **Embeds** turn a URL into a video or player. See [Embeds](/docs/07-embeds/).
 - **Raw content** is shown exactly as it is written. See [Raw content](#raw-content).
 - **Extra HTML:** `<small>`, `<big>`, `<u>` (underlined) and `<details><summary>…</summary>…</details>` can be used. Leave a blank line after `</summary>` and before `</details>`, so the content between them is read as Markdown.
+
+## Shared files
+
+Besides its own folder, an article can use files in the website's shared files folder (`files/` by default; see [`files`](/docs/03-configuration/#files)), which any article can use. They are referred to by their path on the website, which starts with the folder's path (`/files/` by default), in settings and in the body:
+
+```md
+<!--yaml
+date: 2026-11-24T09:00:00Z
+thumbnail: /files/2026/11/photo.jpg
+-->
+
+# Hello world
+
+![A photo](/files/2026/11/photo.jpg) [Our logo](/files/logo.png)
+```
+
+A setting such as `thumbnail` that refers to a shared file that doesn't exist stops the build. If the shared files are hosted at another address (`files.url`), built pages refer to them there, e.g. `https://static.example.com/2026/11/photo.jpg`.
 
 ## Raw content
 

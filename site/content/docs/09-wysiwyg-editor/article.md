@@ -52,7 +52,7 @@ Searches and the article browser include changes made outside the editor straigh
 
 Selecting text also shows a small toolbar just above it, with **Bold**, **Italic**, **Underline**, **Strikethrough**, **Link**, **Heading 1**, **Heading 2** and **Heading 3**. It doesn't show for code or raw text, which can't be formatted. From the keyboard, press Tab to move from the selected text into it, and Escape to go back to the text. Underlined text is saved as HTML (`<u>`), as Markdown has none, and struck-through text as `~~text~~`. The article's title is its page's main heading, so use **Heading 1** in the body sparingly.
 
-**Upload image** saves the image into the article's folder, so it needs the article to be saved first.
+**Upload image** saves the image where your website's [`files.uploadTo`](/docs/03-configuration/#files) says: into the article's folder (which needs the article to be saved first), or into the shared files folder (at any time). See [Where uploads go](#where-uploads-go).
 
 **Choose file** opens the file browser (see [Managing files](#managing-files)) to choose a file you have already uploaded, in any article. An image is shown in the body; any other file is linked, from the text you selected or named after the file.
 
@@ -72,13 +72,13 @@ What the settings do:
 | **Excerpt**          | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
 | **Thumbnail**        | An image shown in lists.                                                                         |
 
-The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file**, chosen with **Choose existing file…**, or linked by address. Uploads need the article to be saved first. The thumbnail can also be chosen with **Choose existing file…**.
+The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file**, chosen with **Choose existing file…**, or linked by address. Uploads into the article's folder need the article to be saved first. The thumbnail can also be chosen with **Choose existing file…**.
 
 Changing an article's type or slug moves it, with all its files.
 
 ## Custom settings
 
-If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields upload into the article's folder (once it's saved), or choose an existing file with **Choose existing file…**.
+If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields upload where uploads go (see [Where uploads go](#where-uploads-go)), or choose an existing file with **Choose existing file…**.
 
 When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren't valid. The article can't be saved until they are fixed. Settings the article's type doesn't use, or that nobody defined (e.g. after a custom setting was removed from the config file), are listed in **Custom**, marked ⚠️. They are kept in the article unless you choose **Remove** beside one and save.
 
@@ -94,17 +94,44 @@ Three tabs above the body change what you see. Move between them with the arrow 
 
 ## Managing files
 
-Choose **Files** (beside **All articles**) to see every file in your articles' folders, each with a thumbnail: images are shown on a checkerboard, so their transparent parts show, and other files as an icon for their type. Search their names, filter by **Type** (image, document, archive, video, audio or other) and **Article type**, and choose a column's heading to sort by it, as in the article browser. **Name** opens the file in a new tab, and **Location** opens its article in the editor (or in a new tab, if you hold cmd or ctrl as you choose it).
+Choose **Files** (beside **All articles**) to see every file in your articles' folders and the [shared files folder](/docs/04-articles/#shared-files), each with a thumbnail: images are shown on a checkerboard, so their transparent parts show, and other files as an icon for their type. Search their names, filter by **Type** (image, document, archive, video, audio or other) and **Article type** (**Shared files** for the shared files folder), and choose a column's heading to sort by it, as in the article browser. **Name** opens the file in a new tab, and **Location** opens its article in the editor (or in a new tab, if you hold cmd or ctrl as you choose it); shared files show their folder, e.g. `Shared files/2026/11`.
 
-Each file has three buttons:
+**Upload file** uploads files where uploads go (see [Where uploads go](#where-uploads-go)). When they go into articles' folders, they go into the open article's folder; if no article is open, choose one in the article browser first.
 
-- **Copy URL** copies the file's address on your website, e.g. `/news/welcome/photo.jpg`, to paste into an article.
+Each file has these buttons:
+
+- **Copy URL** copies the file's address on your website, e.g. `/news/welcome/photo.jpg` or `/files/2026/11/photo.jpg`, to paste into an article.
+- **Move to shared files** (for a file in an article's folder) moves it to the top of the shared files folder.
+- **Move to an article…** moves the file into the folder of an article you choose in the article browser.
 - **Replace…** swaps the file for another you choose. If the new file has another name, every article that shows or links to the old file is changed to use the new one.
 - **Delete…** deletes the file after asking you. Articles that show it no longer do, links to it keep their text, and it is removed from thumbnails and attachments.
 
-When you choose an existing file for an article, the file browser opens as **Choose a file**, with a **Choose** button beside each file; fields that only take images show images first. A file in the article's own folder is referred to by its name, and a file from another article by its address on your website.
+Moving a file changes every article that uses it: the article it moves into refers to it by its name, and the others by its new address on your website (keeping the website's full address, or the shared files' `files.url`, where they used one).
 
-The editor finds a file's uses in article bodies, thumbnails and attachments: by its name in its own article, and by its address in any article.
+When you choose an existing file for an article, the file browser opens as **Choose a file**, with a **Choose** button beside each file; fields that only take images show images first. A file in the article's own folder is referred to by its name, and any other file by its address on your website.
+
+The editor finds a file's uses in article bodies, thumbnails, attachments and custom settings: by its name in its own article, and by its address in any article.
+
+### Where uploads go
+
+Your website's [`files.uploadTo`](/docs/03-configuration/#files) says where uploads go:
+
+- `article` (the default): the article's own folder, once the article is saved.
+- `files`: the top of the shared files folder.
+- `files-by-date`: the shared files folder's folder for the year and month of the upload, e.g. `files/2026/11/`.
+
+Articles refer to a file uploaded into their own folder by its name, and to a shared file by its address, e.g. `/files/2026/11/photo.jpg`.
+
+### File conflicts
+
+If a file you upload or move has the same name as a file already where it's going, **Resolve file conflict** shows both: the incoming file, an arrow, and the existing file, each with a preview, its name in a text box, its type and its size. You can:
+
+- **Rename** the incoming file: type another name in its box and choose **Rename** under it.
+- **Rename** the existing file: type another name in its box and choose **Rename** under it. Articles that use it are changed to its new name, then the incoming file is saved.
+- **Overwrite…** the existing file with the incoming one, after you confirm with **Yes, overwrite** (or **No, cancel**).
+- **Cancel** to leave both files as they are.
+
+If the new name is taken too, the dialog shows that conflict next.
 
 ## Saving, resetting and deleting
 
