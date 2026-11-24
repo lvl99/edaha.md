@@ -317,6 +317,30 @@ export const RESET_QUESTION =
   "Reset this article to how it was last saved? Your changes will be lost.";
 
 /**
+ * Point the rich text body's addresses of an article's files (e.g. `/files/news/hello/a.png`) at the article's new
+ * folder, once it has moved (its type or slug changed). Other addresses are left as they are.
+ *
+ * @example
+ * moveFileAddresses('<img src="/files/article/hi/a.png">', { type: "article", slug: "hi" }, { type: "page", slug: "hi" });
+ * // '<img src="/files/page/hi/a.png">'
+ */
+export const moveFileAddresses = (
+  html: string,
+  from: ArticleLocation,
+  to: ArticleLocation,
+): string => {
+  if (from.type === to.type && from.slug === to.slug) return html;
+  const prefix = `/files/${from.type}/${from.slug}/`;
+  return html.replace(
+    /(\s(?:src|href)=")([^"]*)/g,
+    (match, attribute: string, address: string) =>
+      address.startsWith(prefix)
+        ? `${attribute}/files/${to.type}/${to.slug}/${address.slice(prefix.length)}`
+        : match,
+  );
+};
+
+/**
  * The article form: title and body, with its configuration (type, status, slug, date, author, excerpt, thumbnail, tags
  * and attachments) beside it. The body can be edited as rich text ("WYSIWYG") or Markdown, or previewed as the website
  * would show the article with its type's "single" template. Saving a changed type or slug moves the article's folder.
@@ -871,8 +895,12 @@ export class EdahaArticle extends LitElement {
       from ? this.api.save(from, data) : this.api.create(data),
     );
     if (!location) return false;
-    this.data = data;
-    this.savedData = structuredClone(data);
+    // A moved article's files moved with it, so the body shows them from their new folder
+    const saved = from
+      ? { ...data, bodyHtml: moveFileAddresses(data.bodyHtml, from, location) }
+      : data;
+    this.data = saved;
+    this.savedData = structuredClone(saved);
     this.savedProblems = [];
     this.metaProblems = [];
     this.location = location;
@@ -880,7 +908,7 @@ export class EdahaArticle extends LitElement {
     showToast(this, { kind: "success", message: this.message });
     this.bodyChanged = false;
     void this.rememberBody(
-      data.bodyHtml,
+      saved.bodyHtml,
       this.mode === "markdown" ? this.bodyMarkdown : undefined,
     );
     this.dispatchEvent(

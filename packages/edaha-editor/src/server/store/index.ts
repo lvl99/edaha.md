@@ -656,12 +656,14 @@ export class ArticleStore {
 
   /**
    * Change references to a file in every article (see `changeArticleReferences`), or only find them with `dryRun`.
-   * The change can depend on the article. Returns the articles that refer to it.
+   * The change can depend on the article. `extraReferences` are other ways articles may refer to it. Returns the
+   * articles that refer to it.
    */
   private async changeReferences(
     file: ArticleLocation & { name: string },
     change: ReferenceChange | ((article: ArticleLocation) => ReferenceChange),
     dryRun = false,
+    extraReferences: string[] = [],
   ): Promise<ArticleLocation[]> {
     const index = await this.index();
     const { siteUrl } = await this.articleUrls();
@@ -682,6 +684,7 @@ export class ArticleStore {
           type === file.type && slug === file.slug,
         ),
         ...hosted,
+        ...extraReferences,
       ];
       let source: string;
       let next: string | undefined;
@@ -956,7 +959,45 @@ export class ArticleStore {
     const index = await this.index();
     if (from && moving) index.delete(from.type, from.slug);
     await index.update(data.type, data.slug);
+    if (from && moving)
+      await this.moveArticleReferences(from, {
+        type: data.type,
+        slug: data.slug,
+      });
     return { type: data.type, slug: data.slug };
+  }
+
+  /**
+   * After an article moved (its type or slug changed), point references to its files at their new addresses: in the
+   * article itself by their names, and in other articles at their new paths on the website (or full addresses, if they
+   * used one). The article's own references at its files' old editor addresses (e.g. `/files/article/hello/a.png`)
+   * become their names too.
+   */
+  private async moveArticleReferences(
+    from: ArticleLocation,
+    to: ArticleLocation,
+  ): Promise<void> {
+    const { siteUrl } = await this.articleUrls();
+    const fileUrl = await this.fileUrls();
+    const names = (await readdir(this.dir(to.type, to.slug))).filter(
+      (name) => name !== "article.md",
+    );
+    for (const name of names) {
+      const url = fileUrl({ ...to, name });
+      await this.changeReferences(
+        { ...from, name },
+        (article) => ({
+          move: (reference) =>
+            article.type === to.type && article.slug === to.slug
+              ? name
+              : siteUrl && reference.startsWith(`${siteUrl}/`)
+                ? siteUrl + url
+                : url,
+        }),
+        false,
+        [filesUrl(from.type, from.slug) + name],
+      );
+    }
   }
 
   /**

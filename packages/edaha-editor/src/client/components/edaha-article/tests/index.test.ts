@@ -13,6 +13,7 @@ import {
   applyFieldChange,
   changedFields,
   cleanArticleData,
+  moveFileAddresses,
   nextTabIndex,
   RESET_QUESTION,
   newArticleData,
@@ -137,6 +138,25 @@ const field = (element: HTMLElement, name: string) =>
     element,
     `edaha-article-data-field[name="${name}"]`,
   );
+
+describe("moveFileAddresses", () => {
+  it("should point a moved article's file addresses at its new folder, leaving others", () => {
+    const from = { type: "article", slug: "hi" };
+    const to = { type: "page", slug: "hi-there" };
+    expect(
+      moveFileAddresses(
+        '<img src="/files/article/hi/a.png" alt="/files/article/hi/"><a href="/files/article/hi/b.pdf">/files/article/hi/b.pdf</a><img src="/files/article/other/c.png"><a href="https://x.com/files/article/hi/d.pdf">D</a>',
+        from,
+        to,
+      ),
+    ).toBe(
+      '<img src="/files/page/hi-there/a.png" alt="/files/article/hi/"><a href="/files/page/hi-there/b.pdf">/files/article/hi/b.pdf</a><img src="/files/article/other/c.png"><a href="https://x.com/files/article/hi/d.pdf">D</a>',
+    );
+    // Not moved: as it is
+    const html = '<img src="/files/article/hi/a.png">';
+    expect(moveFileAddresses(html, from, from)).toBe(html);
+  });
+});
 
 describe("applyFieldChange", () => {
   const data = newArticleData(new Date(DATE));
@@ -320,6 +340,31 @@ describe("edaha-article", () => {
     // Now saved, uploads are possible
     expect(field(element, "thumbnail").disabled).toBe(false);
     expect(element.querySelector(".unsaved-notice")).toBeNull();
+  });
+
+  it("should show a moved article's files from its new folder once saved, so they stay relative when saved again", async () => {
+    const { element, api } = await setup();
+    element.data = {
+      ...element.data,
+      type: "page",
+      bodyHtml:
+        '<p><img src="/files/article/hello/a.png"><a href="/files/article/hello/b.pdf">B</a></p>',
+    };
+    await element.save();
+    expect(api.save.mock.calls[0]![0]).toEqual({
+      type: "article",
+      slug: "hello",
+    });
+    expect(element.data.bodyHtml).toBe(
+      '<p><img src="/files/page/hello/a.png"><a href="/files/page/hello/b.pdf">B</a></p>',
+    );
+    // Not changed since it was saved
+    expect(element.savedData.bodyHtml).toBe(element.data.bodyHtml);
+    await element.save();
+    expect(api.save.mock.calls[1]![0]).toEqual({ type: "page", slug: "hello" });
+    expect(api.save.mock.calls[1]![1].bodyHtml).toContain(
+      "/files/page/hello/a.png",
+    );
   });
 
   it("should save an existing article to its location and show errors", async () => {

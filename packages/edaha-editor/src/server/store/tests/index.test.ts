@@ -1200,6 +1200,56 @@ describe("ArticleStore", () => {
     expect(source).toContain("![an image](thumb.png)");
   });
 
+  it("should point references to a moved article's files at their new addresses, in it and in other articles", async () => {
+    const { dir, store } = await copySite();
+    // With the website's address, so references can use it
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `siteUrl: https://example.com\n${await readFile(join(dir, "edahaconfig.yml"), "utf8")}`,
+    );
+    const firstFile = join(dir, "articles/article/first/article.md");
+    const aboutFile = join(dir, "articles/page/about-us/article.md");
+    // The article refers to its files by name, at their path on the website, and at the editor's old address
+    await writeFile(
+      firstFile,
+      (await readFile(firstFile, "utf8")) +
+        "\n\n[Guide](/news/first/guide.pdf) ![Old](/files/article/first/thumb.png)\n",
+    );
+    // Another article refers to them at their path on the website, in its body and its settings
+    await writeFile(
+      aboutFile,
+      (await readFile(aboutFile, "utf8")).replace(
+        "<!--yaml\n",
+        "<!--yaml\nthumbnail: /news/first/thumb.png\n",
+      ) +
+        "\n\n![Thumb](/news/first/thumb.png) [Full](https://example.com/news/first/guide.pdf) [Elsewhere](/news/second/x.pdf)\n",
+    );
+    const article = await store.read("article", "first");
+    await store.save(
+      { ...article, type: "page", slug: "first" },
+      { type: "article", slug: "first" },
+    );
+    const moved = await readFile(
+      join(dir, "articles/page/first/article.md"),
+      "utf8",
+    );
+    expect(moved).toContain("![an image](thumb.png)");
+    expect(moved).toContain("[Guide](guide.pdf)");
+    expect(moved).toContain("![Old](thumb.png)");
+    expect(moved).not.toContain("/files/article/");
+    const about = await readFile(aboutFile, "utf8");
+    expect(about).toContain("![Thumb](/page/first/thumb.png)");
+    expect(about).toContain("thumbnail: /page/first/thumb.png");
+    // A full address keeps the website's address
+    expect(about).toContain("[Full](https://example.com/page/first/guide.pdf)");
+    // References to other articles' files are left alone
+    expect(about).toContain("[Elsewhere](/news/second/x.pdf)");
+    // And the moved article opens with its files at its new folder's addresses
+    expect((await store.read("page", "first")).bodyHtml).toContain(
+      'src="/files/page/first/thumb.png"',
+    );
+  });
+
   it("should not move onto an existing article or from a missing one", async () => {
     const { store } = await copySite();
     const article = await store.read("article", "first");
