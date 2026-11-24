@@ -75,6 +75,19 @@ export const PREVIEW_WIDTHS = [
   { value: "320", label: "320px", width: "320px" },
 ] as const;
 
+/** The output the preview shows by default: the web page */
+export const DEFAULT_PREVIEW_OUTPUT = "html";
+
+/**
+ * The URL of a preview's output: the page itself for HTML, otherwise its `index.<extension>` file.
+ *
+ * @example
+ * previewOutputUrl("/preview/1/", "html"); // "/preview/1/"
+ * previewOutputUrl("/preview/1/", "json"); // "/preview/1/index.json"
+ */
+export const previewOutputUrl = (url: string, extension: string): string =>
+  extension === DEFAULT_PREVIEW_OUTPUT ? url : `${url}index.${extension}`;
+
 /** A width the preview can be shown at */
 export type PreviewWidth = (typeof PREVIEW_WIDTHS)[number]["value"];
 
@@ -324,6 +337,8 @@ export class EdahaArticle extends LitElement {
     bodyMarkdown: { state: true },
     previewUrl: { state: true },
     previewWidth: { state: true },
+    previewOutputs: { state: true },
+    previewOutput: { state: true },
     metadataOpen: { state: true },
     savedData: { state: true },
     bodyChanged: { state: true },
@@ -361,6 +376,10 @@ export class EdahaArticle extends LitElement {
   declare previewUrl: string;
   /** The width the preview is shown at */
   declare previewWidth: PreviewWidth;
+  /** The extensions of the files the article's template outputs, HTML first, in Preview mode */
+  declare previewOutputs: string[];
+  /** The extension of the output the preview shows, e.g. "html" or "json" */
+  declare previewOutput: string;
   /** Whether the article's settings are open full screen (in the compact layout) */
   declare metadataOpen: boolean;
   /** The data as last saved (or loaded; empty for a new article), which changes are found against */
@@ -429,6 +448,8 @@ export class EdahaArticle extends LitElement {
     this.bodyMarkdown = "";
     this.previewUrl = "";
     this.previewWidth = "full";
+    this.previewOutputs = [];
+    this.previewOutput = DEFAULT_PREVIEW_OUTPUT;
     this.metadataOpen = false;
     // A copy, so both have the same date
     this.savedData = structuredClone(this.data);
@@ -762,11 +783,15 @@ export class EdahaArticle extends LitElement {
       if (markdown === undefined) return;
       this.bodyMarkdown = markdown;
     } else if (mode === "preview") {
-      const url = await this.run(() =>
+      const page = await this.run(() =>
         this.api.preview(cleanArticleData(this.data), this.location),
       );
-      if (url === undefined) return;
-      this.previewUrl = url;
+      if (page === undefined) return;
+      this.previewUrl = page.url;
+      this.previewOutputs = page.outputs;
+      // The output shown stays, while the template still has it
+      if (!page.outputs.includes(this.previewOutput))
+        this.previewOutput = page.outputs[0] ?? DEFAULT_PREVIEW_OUTPUT;
     }
     this.mode = mode;
   }
@@ -1155,9 +1180,32 @@ export class EdahaArticle extends LitElement {
       // the previews' own origin (`previewAddress`), which keeps it, and the embeds' scripts in it, from using the
       // editor's API; its Content Security Policy sandboxes it too (`previewCsp`)
       body = html`<div class="preview-controls">
+          ${
+            this.previewOutputs.length > 1
+              ? html`<label for="preview-output">Output</label>
+                  <select
+                    id="preview-output"
+                    @change=${(event: Event) =>
+                      (this.previewOutput = (
+                        event.target as HTMLSelectElement
+                      ).value)}
+                  >
+                    ${this.previewOutputs.map(
+                      (extension) =>
+                        html`<option
+                          value=${extension}
+                          ?selected=${this.previewOutput === extension}
+                        >
+                          ${extension.toUpperCase()}
+                        </option>`,
+                    )}
+                  </select>`
+              : nothing
+          }
           <label for="preview-width">Width</label>
           <select
             id="preview-width"
+            ?disabled=${this.previewOutput !== DEFAULT_PREVIEW_OUTPUT}
             @change=${(event: Event) =>
               (this.previewWidth = (event.target as HTMLSelectElement)
                 .value as PreviewWidth)}
@@ -1177,12 +1225,17 @@ export class EdahaArticle extends LitElement {
           <iframe
             class="preview"
             title="Preview"
-            src=${this.api.previewUrl(this.previewUrl)}
+            src=${this.api.previewUrl(
+              previewOutputUrl(this.previewUrl, this.previewOutput),
+            )}
             style=${styleMap({
               // Only the frame's width changes: the page isn't rendered again
-              width: PREVIEW_WIDTHS.find(
-                ({ value }) => value === this.previewWidth,
-              )?.width,
+              width:
+                this.previewOutput === DEFAULT_PREVIEW_OUTPUT
+                  ? PREVIEW_WIDTHS.find(
+                      ({ value }) => value === this.previewWidth,
+                    )?.width
+                  : "100%",
             })}
           ></iframe>
         </div>`;

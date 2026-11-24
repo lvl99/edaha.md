@@ -69,6 +69,12 @@ export const searchParams = (query: object): string => {
 const fileRoute = ({ type, slug, name }: FileLocation) =>
   `/api/files/${type}/${slug}/${encodeURIComponent(name)}`;
 
+/** A preview page: its URL, and the extensions of the files its article's template outputs, HTML first */
+export interface PreviewPage {
+  url: string;
+  outputs: string[];
+}
+
 /**
  * Talks to the editor's local server (see src/server/app.ts): the page's own, or another at `baseUrl`.
  *
@@ -292,19 +298,21 @@ export class EditorApi {
   }
 
   /**
-   * Render unsaved article data as the website would, with its type's "single" template, as a temporary page on the
-   * preview server. Returns the page's URL.
+   * Render unsaved article data as the website would, with its own template, as a temporary page on the preview server.
+   * Gives the page's URL and the extensions of the files its template outputs, HTML first; the output with another
+   * extension is at `index.<extension>` under the URL.
+   *
+   * @example
+   * await api.preview(data); // { url: "/preview/<id>/", outputs: ["html", "json"] }, and /preview/<id>/index.json
    */
   async preview(
     data: EditorArticleData,
     location?: ArticleLocation,
-  ): Promise<string> {
-    return (
-      await this.send<{ url: string }>("POST", "/api/preview", {
-        data,
-        location,
-      })
-    ).url;
+  ): Promise<PreviewPage> {
+    return this.send<PreviewPage>("POST", "/api/preview", {
+      data,
+      location,
+    });
   }
 
   /** Upload a file into an article's folder */

@@ -43,7 +43,10 @@ import {
   createMarkdown,
   renderMarkdown,
 } from "@lvl99dotcom/edaha.md/generator/markdown";
-import { Templates } from "@lvl99dotcom/edaha.md/generator/templates";
+import {
+  DEFAULT_OUTPUT_EXTENSION,
+  Templates,
+} from "@lvl99dotcom/edaha.md/generator/templates";
 import { THEME_DIR } from "@lvl99dotcom/edaha.md/theme";
 import type {
   TemplateDataArticle,
@@ -251,6 +254,30 @@ export const serializeArticle = (
       ? `${JSON.stringify(config, null, 2)}\n`
       : stringify(config);
   return `<!--${format}\n${header}-->\n\n# ${data.title.trim()}\n\n${body}\n`;
+};
+
+/**
+ * The template file of an article's template that outputs files with an extension. Throws a 404 EditorError if there
+ * is none.
+ *
+ * @example
+ * previewOutput(templates, "news", "single", "json"); // "article/single.json.njk"
+ */
+const previewOutput = (
+  templates: Templates,
+  type: string,
+  name: string,
+  extension: string,
+): string => {
+  const output = templates
+    .outputs(type, name)
+    .find((candidate) => candidate.extension === extension);
+  if (!output)
+    throw new EditorError(
+      404,
+      `The "${name}" template has no ${extension} output`,
+    );
+  return output.file;
 };
 
 /**
@@ -788,11 +815,13 @@ export class ArticleStore {
    * the article's folder).
    *
    * @param embeds - renders embed blocks
+   * @param extension - the extension of the template's output to render (e.g. "json"); default: its HTML output
    */
   async preview(
     data: EditorArticleData,
     location: { type: string; slug: string } | undefined,
     embeds: EmbedResolver,
+    extension?: string,
   ): Promise<string> {
     if (!isSlug(data.type))
       throw new EditorError(
@@ -837,14 +866,42 @@ export class ArticleStore {
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
       return await embeds.renderPage(
-        templates.render(templates.resolve(data.type, article.template), {
-          ...articlePageData(site, article),
-          embeds: EMBED_PAGE_PARTS,
-        }),
+        templates.render(
+          extension
+            ? previewOutput(templates, data.type, article.template, extension)
+            : templates.resolve(data.type, article.template),
+          {
+            ...articlePageData(site, article),
+            embeds: EMBED_PAGE_PARTS,
+          },
+        ),
         name,
       );
     } catch (error) {
+      if (error instanceof EditorError) throw error;
       throw new EditorError(400, (error as Error).message);
+    }
+  }
+
+  /**
+   * The extensions of the files an article's template outputs (see `Templates.outputs`), HTML first, for the editor to
+   * offer a preview of each. Gives none if the template isn't found (the preview reports that).
+   *
+   * @example
+   * await store.previewOutputs(data); // ["html", "json"] with article/single.njk and article/single.json.njk
+   */
+  previewOutputs(data: EditorArticleData): string[] {
+    try {
+      return this.loadTemplates()
+        .outputs(data.type, data.template || "single")
+        .map(({ extension }) => extension)
+        .sort(
+          (a, b) =>
+            Number(b === DEFAULT_OUTPUT_EXTENSION) -
+            Number(a === DEFAULT_OUTPUT_EXTENSION),
+        );
+    } catch {
+      return [];
     }
   }
 
@@ -922,15 +979,20 @@ export class ArticleStore {
   }
 
   /**
-   * Render a remembered preview as the website would (see `preview`), so changes to templates show when it reloads.
-   * Throws a 404 EditorError if there is no preview with that ID (e.g. after the editor restarted).
+   * Render a remembered preview as the website would (see `preview`), so changes to templates show when it reloads:
+   * its HTML output, or the output with another extension. Throws a 404 EditorError if there is no preview with that
+   * ID (e.g. after the editor restarted), or its template has no output with that extension.
    *
    * @param embeds - renders embed blocks
    */
-  async renderPreview(id: string, embeds: EmbedResolver): Promise<string> {
+  async renderPreview(
+    id: string,
+    embeds: EmbedResolver,
+    extension?: string,
+  ): Promise<string> {
     const preview = this.previews.get(id);
     if (!preview) throw new EditorError(404, "Preview not found");
-    return this.preview(preview.data, preview.location, embeds);
+    return this.preview(preview.data, preview.location, embeds, extension);
   }
 
   /**

@@ -75,9 +75,10 @@ const fakeApi = () =>
       html.replace(/<\/?p>/g, "").trim(),
     ),
     toHtml: vi.fn(async (markdown: string) => `<p>${markdown}</p>`),
-    preview: vi.fn(
-      async (data: EditorArticleData) => `/preview/${data.title}/`,
-    ),
+    preview: vi.fn(async (data: EditorArticleData) => ({
+      url: `/preview/${data.title}/`,
+      outputs: ["html"],
+    })),
     embeds: vi.fn(async () => [{ key: "youtube", name: "YouTube video" }]),
     embedFrame: vi.fn(async () => ({
       url: "/embed-frame/x/",
@@ -861,6 +862,55 @@ describe("edaha-article body modes", () => {
     expect(find<HTMLSelectElement>(element, "select#preview-width").value).toBe(
       "320",
     );
+  });
+
+  it("should offer each of the template's outputs, when it has more than one", async () => {
+    const { api, element } = await setup();
+    await switchTo(element, "preview");
+    expect(element.querySelector("select#preview-output")).toBeNull();
+
+    api.preview.mockResolvedValue({
+      url: "/preview/x/",
+      outputs: ["html", "json"],
+    });
+    await switchTo(element, "wysiwyg");
+    await switchTo(element, "preview");
+    const frame = () => find<HTMLIFrameElement>(element, "iframe.preview");
+    const output = find<HTMLSelectElement>(element, "select#preview-output");
+    const width = find<HTMLSelectElement>(element, "select#preview-width");
+    expect(find(element, 'label[for="preview-output"]').textContent).toBe(
+      "Output",
+    );
+    expect([...output.options].map((o) => [o.value, o.text.trim()])).toEqual([
+      ["html", "HTML"],
+      ["json", "JSON"],
+    ]);
+    input(width, "320", "change");
+    await settle(element);
+    expect(frame().style.width).toBe("320px");
+
+    // Other outputs are shown at full width, without rendering again
+    input(output, "json", "change");
+    await settle(element);
+    expect(frame().getAttribute("src")).toBe("/preview/x/index.json");
+    expect(frame().style.width).toBe("100%");
+    expect(
+      find<HTMLSelectElement>(element, "select#preview-width").disabled,
+    ).toBe(true);
+    expect(api.preview).toHaveBeenCalledTimes(2);
+
+    // The output shown stays while the template has it, otherwise it's the first
+    await switchTo(element, "wysiwyg");
+    await switchTo(element, "preview");
+    expect(frame().getAttribute("src")).toBe("/preview/x/index.json");
+    api.preview.mockResolvedValue({ url: "/preview/y/", outputs: ["html"] });
+    await switchTo(element, "wysiwyg");
+    await switchTo(element, "preview");
+    expect(frame().getAttribute("src")).toBe("/preview/y/");
+    expect(element.querySelector("select#preview-output")).toBeNull();
+    expect(
+      find<HTMLSelectElement>(element, "select#preview-width").disabled,
+    ).toBe(false);
   });
 
   it("should stay in the current mode, showing the error, when converting or rendering fails", async () => {

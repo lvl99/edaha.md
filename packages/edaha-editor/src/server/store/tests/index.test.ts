@@ -1118,6 +1118,21 @@ describe("ArticleStore previews", () => {
     expect(await store.renderPreview(id, embeds)).toBe("Changed: First");
   });
 
+  it("should give a template's outputs, HTML first, and render each of them", async () => {
+    const { dir, store, embeds } = await previewSite();
+    await mkdir(join(dir, "templates/article"), { recursive: true });
+    await writeFile(join(dir, "templates/article/single.atom.njk"), "Atom");
+    expect(store.previewOutputs(data({}))).toEqual(["html", "atom"]);
+    expect(store.previewOutputs(data({ template: "missing" }))).toEqual([]);
+    const id = store.rememberPreview(data({ title: "First" }), undefined);
+    expect(await store.renderPreview(id, embeds, "atom")).toBe("Atom");
+    await rejectsWith(
+      store.renderPreview(id, embeds, "json"),
+      404,
+      'The "single" template has no json output',
+    );
+  });
+
   it(`should remember only the newest ${MAX_PREVIEWS} previews`, async () => {
     const { store, embeds } = await previewSite();
     const ids = Array.from({ length: MAX_PREVIEWS + 1 }, (_, i) =>

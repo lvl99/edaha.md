@@ -290,8 +290,10 @@ ${FRAME_HEIGHT_SCRIPT}
  * - `POST /api/convert/markdown` and `POST /api/convert/html`: convert an article body between editor HTML and Markdown
  *   (`{ html | markdown, location? }`, where `location` is the saved article's, which relative URLs are relative to)
  * - `POST /api/preview`: remember unsaved article data (`{ data, location? }`) for a preview page, and give its URL
- *   (`{ url }`); answers 400 if it can't be rendered
- * - `GET /preview/:id/`: render a remembered preview with its type's "single" template, and `GET /<path>`: one of the
+ *   and the extensions of the files its template outputs, HTML first (`{ url, outputs }`); answers 400 if it can't be
+ *   rendered
+ * - `GET /preview/:id/`: render a remembered preview with its own template (its HTML output), `GET /preview/:id/index.<extension>`
+ *   its output with another extension (e.g. `index.json`), and `GET /<path>`: one of the
  *   site's static files (e.g. `/site.css`) or an article's file at its path on the website (e.g.
  *   `/news/welcome/photo.png`), all sandboxed by their Content Security Policy (`previewCsp`)
  *
@@ -521,6 +523,7 @@ export const createEditorApp = (
     await store.preview(data, location, embeds);
     return c.json({
       url: `/preview/${store.rememberPreview(data, location)}/`,
+      outputs: store.previewOutputs(data),
     });
   });
 
@@ -584,6 +587,21 @@ export const createEditorApp = (
       await embedResolver(QUIET),
     );
     return c.html(html, 200, {
+      "Cache-Control": "no-store",
+      "Content-Security-Policy": await csp(c.req.url),
+    });
+  });
+
+  // A remembered preview's output with another extension (e.g. index.json), rendered now
+  app.get("/preview/:id/:file{index\\.[a-z0-9]+}", async (c) => {
+    const file = c.req.param("file");
+    const body = await store.renderPreview(
+      c.req.param("id"),
+      await embedResolver(QUIET),
+      file.slice("index.".length),
+    );
+    return c.body(body, 200, {
+      "Content-Type": mime.contentType(file) || "text/plain; charset=utf-8",
       "Cache-Control": "no-store",
       "Content-Security-Policy": await csp(c.req.url),
     });

@@ -586,6 +586,32 @@ describe("createEditorApp", () => {
     expect(missing.status).toBe(400);
   });
 
+  it("should give a preview's outputs, and render each of them with its content type", async () => {
+    const { app, dir } = await setup();
+    await mkdir(join(dir, "templates/article"), { recursive: true });
+    await writeFile(
+      join(dir, "templates/article/single.json.njk"),
+      '{ "title": {{ article.title | json | safe }} }',
+    );
+    const response = await app.request(
+      "/api/preview",
+      json("POST", { data: { ...ARTICLE, title: "Both" } }),
+    );
+    const { url, outputs } = (await response.json()) as {
+      url: string;
+      outputs: string[];
+    };
+    expect(outputs).toEqual(["html", "json"]);
+    const page = await app.request(`${url}index.json`);
+    expect(page.headers.get("content-type")).toMatch(/^application\/json/);
+    expect(page.headers.get("content-security-policy")).toBe(
+      previewCsp([], "http://localhost", [ORIGIN]),
+    );
+    expect(await page.json()).toEqual({ title: "Both" });
+    expect((await app.request(`${url}index.xml`)).status).toBe(404);
+    expect((await app.request("/preview/nope/index.json")).status).toBe(404);
+  });
+
   it("should serve the files previews share at the root, sandboxed like them", async () => {
     const { app, dir } = await setup();
     await mkdir(join(dir, "static"), { recursive: true });
