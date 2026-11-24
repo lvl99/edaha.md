@@ -51,7 +51,12 @@
   --font-size-h6: 1rem;
 
   /** Borders */
-  --border-radius: 5px;
+  /* Corner radii, by size: buttons and inputs use the one of their size (e.g. .btn-s and settings inputs -s) */
+  --border-radius-base: 5px;
+  --border-radius-xs: 2px;
+  --border-radius-s: 3px;
+  --border-radius-l: 8px;
+  --border-radius-xl: 10px;
 }
 
 :root[data-theme="light"] {
@@ -240,7 +245,7 @@ textarea,
 select {
   background: var(--colour-background);
   border: solid 1px var(--colour-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
   color: var(--colour-text);
   padding: 0.25rem 0.5rem;
   font-family: var(--font-family-base);
@@ -338,6 +343,12 @@ input[type="checkbox"]:disabled {
   }
 }
 
+/* Fieldsets have the inputs' border colour and the base corner radius */
+fieldset {
+  border: 1px solid var(--colour-border);
+  border-radius: var(--border-radius-base);
+}
+
 /** Buttons */
 .btn {
   display: inline-flex;
@@ -348,7 +359,7 @@ input[type="checkbox"]:disabled {
   padding: 0 1rem;
   background-color: var(--colour-surface);
   border: solid 1px var(--colour-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
   color: var(--colour-text);
   font-family: var(--font-family-base);
   font-size: var(--font-size-base);
@@ -365,24 +376,28 @@ input[type="checkbox"]:disabled {
 
 .btn-xs {
   min-height: var(--button-size-xs);
+  border-radius: var(--border-radius-xs);
   padding: 0 0.5rem;
   font-size: var(--font-size-xs);
 }
 
 .btn-s {
   min-height: var(--button-size-s);
+  border-radius: var(--border-radius-s);
   padding: 0 0.75rem;
   font-size: var(--font-size-s);
 }
 
 .btn-l {
   min-height: var(--button-size-l);
+  border-radius: var(--border-radius-l);
   padding: 0 1.25rem;
   font-size: var(--font-size-l);
 }
 
 .btn-xl {
   min-height: var(--button-size-xl);
+  border-radius: var(--border-radius-xl);
   padding: 0 1.5rem;
   font-size: var(--font-size-xl);
 }
@@ -497,7 +512,7 @@ edaha-editor {
   color: var(--colour-background);
   padding: 0.25rem 0.5rem;
   text-decoration: none;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
 }
 
 .edaha-editor-article-group-item-meta {
@@ -608,7 +623,7 @@ edaha-article form {
   margin-bottom: -1px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--border-radius) var(--border-radius) 0 0;
+  border-radius: var(--border-radius-base) var(--border-radius-base) 0 0;
   color: var(--colour-muted);
   font-size: 1rem;
 }
@@ -681,7 +696,7 @@ edaha-article form {
   min-height: 0;
   overflow-y: auto;
   border: 1px solid var(--colour-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
 }
 
 .body-panel .richtext-content .ProseMirror {
@@ -756,7 +771,7 @@ edaha-article-data-field textarea {
   padding: 0.5rem 0.5rem 0.5rem 1rem;
   background: var(--toast-background);
   border: 1px solid var(--toast-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
   box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
   color: var(--toast-text);
 }
@@ -769,7 +784,7 @@ edaha-article-data-field textarea {
   padding: 0.25rem 0.5rem;
   background: transparent;
   border: 1px solid var(--toast-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
   color: inherit;
   font: inherit;
   cursor: pointer;
@@ -1068,7 +1083,7 @@ edaha-article .preview {
   padding: 0.25rem;
   background: var(--colour-surface);
   border: 1px solid var(--colour-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
   color: var(--colour-text);
   cursor: pointer;
 }
@@ -1098,7 +1113,7 @@ edaha-article .preview {
   padding: 0.25rem;
   background: var(--colour-background);
   border: 1px solid var(--colour-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
   box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
 }
 
@@ -1139,7 +1154,7 @@ edaha-article .preview {
   padding: 0;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
   color: var(--colour-text);
   cursor: pointer;
 }
@@ -1358,7 +1373,7 @@ edaha-editor[focus-mode] .edaha-article-main {
   padding: 0;
   background: var(--colour-background);
   border: 1px solid var(--colour-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
   color: var(--colour-text);
 }
 
@@ -1569,6 +1584,7 @@ edaha-metadata-field {
    Markdown and rich text settings) keep their own size. */
 .edaha-article-metadata-fields .btn:not(.btn-toolbar, .btn-icon, .btn-link) {
   min-height: var(--button-size-s);
+  border-radius: var(--border-radius-s);
   padding: 0 0.75rem;
   font-size: var(--font-size-base);
 }
@@ -1579,6 +1595,7 @@ edaha-metadata-field {
     select:not([multiple], [size])
   ) {
   height: var(--input-size-s);
+  border-radius: var(--border-radius-s);
   font-size: var(--font-size-base);
 }
 
@@ -1587,7 +1604,7 @@ edaha-metadata-field {
   margin: 0;
   padding: 0.5rem;
   border: 1px solid var(--colour-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
 }
 
 .metadata-item {
@@ -1837,7 +1854,7 @@ edaha-metadata-field {
   justify-content: center;
   height: 10rem;
   border: 1px solid var(--colour-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
   overflow: hidden;
 }
 
@@ -1891,7 +1908,7 @@ edaha-metadata-field {
   gap: 0.5rem;
   padding: 0.75rem;
   border: 1px solid var(--colour-error);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-base);
 }
 
 .file-conflict-error {

@@ -2,6 +2,12 @@
   display: block;
 }
 
+/* Like the editor's other fieldsets (see style.css, which doesn't reach inside this element) */
+fieldset {
+  border: 1px solid var(--colour-border);
+  border-radius: var(--border-radius-base);
+}
+
 /* Its buttons are in the settings, so they are like the settings' other buttons (see .btn in the editor's style.css,
    which doesn't reach inside this element) */
 .btn {
@@ -12,7 +18,7 @@
   padding: 0 0.75rem;
   background-color: var(--colour-surface);
   border: solid 1px var(--colour-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-s);
   color: var(--colour-text);
   font-family: var(--font-family-base);
   font-size: var(--font-size-base);
