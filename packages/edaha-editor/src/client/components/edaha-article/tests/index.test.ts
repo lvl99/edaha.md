@@ -68,8 +68,11 @@ const fakeApi = () =>
       type === "page" ? ["home", "single"] : ["single"],
     ),
     upload: vi.fn(async (_location: unknown, file: File) => ({
+      type: "article",
+      slug: "hello",
       name: file.name.toLowerCase(),
       url: `/files/article/hello/${file.name.toLowerCase()}`,
+      reference: file.name.toLowerCase(),
     })),
     toMarkdown: vi.fn(async (html: string) =>
       html.replace(/<\/?p>/g, "").trim(),
@@ -386,6 +389,34 @@ describe("edaha-article", () => {
     await expect(uploadImage(new File(["x"], "Pic.png"))).rejects.toThrow(
       "Upload failed",
     );
+  });
+
+  it("should upload into the shared files folder when the website says so, even before the article is saved", async () => {
+    const { element, api } = await setup(undefined);
+    element.site = {
+      name: "Test News",
+      uploadTo: "files-by-date",
+      types: {},
+    };
+    api.upload.mockResolvedValueOnce({
+      type: "@shared",
+      slug: "2026/11",
+      name: "pic.png",
+      url: "/files/2026/11/pic.png",
+      reference: "/files/2026/11/pic.png",
+    });
+    await settle(element);
+    expect(field(element, "thumbnail").disabled).toBe(false);
+    expect(element.querySelector(".unsaved-notice")).toBeNull();
+    const uploadImage = find<EdahaRichtext>(
+      element,
+      "edaha-richtext",
+    ).uploadImage!;
+    expect(await uploadImage(new File(["x"], "Pic.png"))).toBe(
+      "/files/2026/11/pic.png",
+    );
+    expect(api.upload).toHaveBeenCalledWith(undefined, expect.any(File));
+    expect(element.files).toEqual([]);
   });
 
   it("should upload images for the body's Markdown, referring to them by file name", async () => {
@@ -1774,6 +1805,7 @@ describe("edaha-article default author", () => {
     const result = await setup({ ...ARTICLE, author: undefined });
     result.element.site = {
       name: "Test News",
+      uploadTo: "article",
       author: {
         name: "Matt",
         email: "matt@example.com",

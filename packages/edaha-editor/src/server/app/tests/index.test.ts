@@ -111,6 +111,7 @@ describe("createEditorApp", () => {
     ]);
     expect(await (await app.request("/api/site")).json()).toEqual({
       name: "Test News",
+      uploadTo: "article",
       author: { name: "Test News" },
       types: {},
     });
@@ -351,8 +352,11 @@ describe("createEditorApp", () => {
     });
     expect(uploaded.status).toBe(201);
     expect(await uploaded.json()).toEqual({
+      type: "article",
+      slug: "first",
       name: "photo.png",
       url: "/files/article/first/photo.png",
+      reference: "photo.png",
     });
 
     const file = await app.request("/files/article/first/photo.png");
@@ -362,6 +366,78 @@ describe("createEditorApp", () => {
 
     const unknown = await app.request("/files/article/first/guide.pdf");
     expect(unknown.headers.get("content-type")).toBe("application/pdf");
+  });
+
+  it("should answer an upload with a file's name with the conflict, and upload it renamed or overwriting it", async () => {
+    const { app, dir } = await setup();
+    const upload = (fields: Record<string, string> = {}) => {
+      const body = new FormData();
+      body.append("file", new File([new Uint8Array([1, 2])], "thumb.png"));
+      for (const [name, value] of Object.entries(fields))
+        body.append(name, value);
+      return app.request("/api/articles/article/first/files", {
+        method: "POST",
+        headers: { Origin: ORIGIN },
+        body,
+      });
+    };
+    const conflict = await upload();
+    expect(conflict.status).toBe(409);
+    expect(await conflict.json()).toMatchObject({
+      error: "A file called thumb.png is already in article/first",
+      conflict: {
+        incoming: { name: "thumb.png", kind: "image", size: 2 },
+        existing: { name: "thumb.png", url: "/news/first/thumb.png" },
+      },
+    });
+    expect(await (await upload({ name: "Thumb 2.png" })).json()).toMatchObject({
+      name: "thumb-2.png",
+    });
+    expect((await upload({ overwrite: "true" })).status).toBe(201);
+    expect([
+      ...(await readFile(join(dir, "articles/article/first/thumb.png"))),
+    ]).toEqual([1, 2]);
+
+    const body = new FormData();
+    body.append("file", new File(["x"], "notes.txt"));
+    const noArticle = await app.request("/api/files", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body,
+    });
+    expect(noArticle.status).toBe(400);
+    expect(await noArticle.json()).toEqual({
+      error: "Choose an article to upload the file to",
+    });
+  });
+
+  it("should upload files to the shared files folder when the config file says so", async () => {
+    const { dir } = await setup();
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `${await readFile(join(dir, "edahaconfig.yml"), "utf8")}files:\n  uploadTo: files\n`,
+    );
+    const shared = createEditorApp(
+      new ArticleStore(await loadSiteConfig({ siteDir: dir }), undefined, {
+        watch: false,
+      }),
+      { allowedOrigins: [ORIGIN] },
+    );
+    const body = new FormData();
+    body.append("file", new File(["x"], "notes.txt"));
+    const uploaded = await shared.request("/api/files", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body,
+    });
+    expect(await uploaded.json()).toEqual({
+      type: "@shared",
+      slug: "",
+      name: "notes.txt",
+      url: "/files/notes.txt",
+      reference: "/files/notes.txt",
+    });
+    expect(await readFile(join(dir, "files/notes.txt"), "utf8")).toBe("x");
   });
 
   it("should serve files without a known type as binary", async () => {

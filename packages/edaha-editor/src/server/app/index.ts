@@ -18,6 +18,7 @@ import {
 import {
   bodyBaseUrl,
   EditorError,
+  FileConflictError,
   type ArticleStore,
   type EmbedFrameData,
 } from "../store/index.ts";
@@ -296,6 +297,29 @@ const uploadedFile = async (c: Context): Promise<File> => {
 };
 
 /**
+ * Answer an upload request: save the file in its multipart "file" field where `files.uploadTo` says (see
+ * `ArticleStore.upload`), under the name in its "name" field if it has one, overwriting a file with that name when its
+ * "overwrite" field is "true".
+ */
+const uploadFile = async (
+  c: Context,
+  store: ArticleStore,
+  article?: ArticleLocation,
+): Promise<Response> => {
+  const file = await uploadedFile(c);
+  const body = await c.req.parseBody();
+  return c.json(
+    await store.upload(
+      article,
+      typeof body.name === "string" && body.name ? body.name : file.name,
+      new Uint8Array(await file.arrayBuffer()),
+      body.overwrite === "true",
+    ),
+    201,
+  );
+};
+
+/**
  * Create the article editor's local API. Requests that change files must come from the editor's own page (checked
  * with the Origin header), so other websites open in the same browser can't write articles.
  *
@@ -305,7 +329,9 @@ const uploadedFile = async (c: Context): Promise<File> => {
  * - `GET /api/templates/:type`: the template names an article of a type can use
  * - `POST /api/articles`: create an article
  * - `GET|PUT|DELETE /api/articles/:type/:slug`: load, save (and move) or delete an article
- * - `POST /api/articles/:type/:slug/files`: upload a file (multipart field "file")
+ * - `POST /api/articles/:type/:slug/files` and `POST /api/files`: upload a file (multipart field "file", with "name"
+ *   and "overwrite" fields) where `files.uploadTo` says, for an article or not; a file with its name answers 409 with
+ *   the `conflict` (`FileConflict`)
  * - `GET /files/:type/:slug/:name`: an article's file, for previews in the editor
  * - `GET /api/shared-files/references?path=`, `PUT /api/shared-files?path=` and `DELETE /api/shared-files?path=`: the
  *   articles that refer to a file in the shared files folder, replacing it, and deleting it (as `/api/files/…` does)
@@ -375,6 +401,9 @@ export const createEditorApp = (
           {
             error: error.message,
             ...(error.problems ? { problems: error.problems } : {}),
+            ...(error instanceof FileConflictError
+              ? { conflict: error.conflict }
+              : {}),
           },
           error.status as 400,
         )
@@ -600,21 +629,14 @@ export const createEditorApp = (
     return c.body(null, 204);
   });
 
-  app.post("/api/articles/:type/:slug/files", async (c) => {
-    const body = await c.req.parseBody();
-    const file = body.file;
-    if (!(file instanceof File))
-      throw new EditorError(400, 'Expected a file in the "file" field');
-    return c.json(
-      await store.upload(
-        c.req.param("type"),
-        c.req.param("slug"),
-        file.name,
-        new Uint8Array(await file.arrayBuffer()),
-      ),
-      201,
-    );
-  });
+  app.post("/api/articles/:type/:slug/files", async (c) =>
+    uploadFile(c, store, {
+      type: c.req.param("type"),
+      slug: c.req.param("slug"),
+    }),
+  );
+
+  app.post("/api/files", async (c) => uploadFile(c, store));
 
   app.get("/files/:type/:slug/:name", async (c) => {
     const name = c.req.param("name");

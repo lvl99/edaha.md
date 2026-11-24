@@ -2,17 +2,14 @@ import { readdir, stat } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 import type { FilesUploadTo } from "@lvl99dotcom/edaha.md/generator/config";
 import { fileKind } from "../files/index.ts";
-import type { IndexedFile } from "../types/index.ts";
+import {
+  isShared,
+  SHARED_FILES_TYPE,
+  sharedFilePath,
+  type IndexedFile,
+} from "../types/index.ts";
 
-/**
- * The `type` the editor gives files in the shared files folder (their `slug` is their sub-folder, "" at its top). It
- * isn't a valid article type, so it can't be mistaken for one.
- */
-export const SHARED_FILES_TYPE = "@shared";
-
-/** Whether a file is in the shared files folder (rather than an article's) */
-export const isShared = (file: { type: string }): boolean =>
-  file.type === SHARED_FILES_TYPE;
+export { isShared, SHARED_FILES_TYPE, sharedFilePath };
 
 /**
  * Whether a path in the shared files folder is safe: folders and a name, with no empty, hidden or parent ("..") parts.
@@ -23,21 +20,6 @@ export const isShared = (file: { type: string }): boolean =>
  */
 export const isSafeSharedPath = (path: string): boolean =>
   path.split("/").every((part) => part !== "" && !part.startsWith("."));
-
-/**
- * A shared file's path in its folder: its sub-folder (if any) and name.
- *
- * @example
- * sharedFilePath({ slug: "2026/11", name: "photo.png" }); // "2026/11/photo.png"
- * sharedFilePath({ slug: "", name: "logo.png" }); // "logo.png"
- */
-export const sharedFilePath = ({
-  slug,
-  name,
-}: {
-  slug: string;
-  name: string;
-}): string => (slug ? `${slug}/${name}` : name);
 
 /**
  * List the files in the shared files folder, with their sub-folders as their `slug`, leaving out hidden files and

@@ -542,6 +542,45 @@ describe("ArticleStore", () => {
       );
     });
 
+    it("should upload files to the top of the shared files folder, or to the year and month's folder", async () => {
+      const { dir, store } = await sharedSite("  uploadTo: files\n");
+      expect(
+        await store.upload(undefined, "Logo 2.png", new Uint8Array([1])),
+      ).toEqual({
+        type: SHARED_FILES_TYPE,
+        slug: "",
+        name: "logo-2.png",
+        url: "/files/logo-2.png",
+        reference: "/files/logo-2.png",
+      });
+      await expect(
+        store.upload(
+          { type: "page", slug: "about-us" },
+          "logo.png",
+          new Uint8Array([1]),
+        ),
+      ).rejects.toMatchObject({
+        status: 409,
+        message: "A file called logo.png is already in Shared files",
+        conflict: { existing: { slug: "", url: "/files/logo.png", size: 4 } },
+      });
+
+      const byDate = await sharedSite("  uploadTo: files-by-date\n");
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2027, 0, 5));
+      try {
+        expect(
+          await byDate.store.upload(undefined, "new.png", new Uint8Array([1])),
+        ).toMatchObject({ slug: "2027/01", url: "/files/2027/01/new.png" });
+      } finally {
+        vi.useRealTimers();
+      }
+      expect(await readdir(join(byDate.dir, "files/2027/01"))).toEqual([
+        "new.png",
+      ]);
+      expect(await readdir(join(dir, "files"))).toContain("logo-2.png");
+    });
+
     it("should replace and delete them, changing references in every article, at their other address too", async () => {
       const { dir, store } = await sharedSite(
         "  url: https://static.example.com/\n",
@@ -775,6 +814,7 @@ describe("ArticleStore", () => {
     const { dir, store } = await copySite();
     expect(await store.site()).toEqual({
       name: "Test News",
+      uploadTo: "article",
       author: { name: "Test News" },
       types: {},
     });
@@ -785,6 +825,7 @@ describe("ArticleStore", () => {
     );
     expect(await store.site()).toEqual({
       name: "Test News",
+      uploadTo: "article",
       author: { name: "Matt" },
       types: { article: false },
     });
@@ -1065,25 +1106,58 @@ describe("ArticleStore", () => {
 
   it("should upload and read files", async () => {
     const { store } = await copySite();
+    const first = { type: "article", slug: "first" };
     expect(
-      await store.upload(
-        "article",
-        "first",
-        "My Pic.PNG",
-        new Uint8Array([1, 2]),
-      ),
+      await store.upload(first, "My Pic.PNG", new Uint8Array([1, 2])),
     ).toEqual({
+      type: "article",
+      slug: "first",
       name: "my-pic.png",
       url: "/files/article/first/my-pic.png",
+      reference: "my-pic.png",
     });
     expect([...(await store.file("article", "first", "my-pic.png"))]).toEqual([
       1, 2,
     ]);
     await rejectsWith(
-      store.upload("article", "missing", "a.png", new Uint8Array()),
+      store.upload(
+        { type: "article", slug: "missing" },
+        "a.png",
+        new Uint8Array(),
+      ),
       404,
       "not found",
     );
+    await rejectsWith(
+      store.upload(undefined, "a.png", new Uint8Array()),
+      400,
+      "Choose an article to upload the file to",
+    );
+  });
+
+  it("should refuse to upload over a file with the same name, unless overwriting it", async () => {
+    const { store } = await copySite();
+    const first = { type: "article", slug: "first" };
+    await expect(
+      store.upload(first, "Thumb.png", new Uint8Array([1, 2, 3])),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "A file called thumb.png is already in article/first",
+      conflict: {
+        incoming: { name: "thumb.png", kind: "image", size: 3 },
+        existing: expect.objectContaining({
+          type: "article",
+          slug: "first",
+          name: "thumb.png",
+          kind: "image",
+          url: "/news/first/thumb.png",
+        }),
+      },
+    });
+    await store.upload(first, "Thumb.png", new Uint8Array([1, 2, 3]), true);
+    expect([...(await store.file("article", "first", "thumb.png"))]).toEqual([
+      1, 2, 3,
+    ]);
   });
 
   it("should only serve plain file names other than article.md", async () => {

@@ -87,12 +87,20 @@ describe("EditorApi", () => {
       new File(["x"], "b.png"),
     );
     await api.deleteFile({ ...LOCATION, name: "a.png" });
+    const shared = { type: "@shared", slug: "2026/11", name: "a b.png" };
+    await api.fileReferences(shared);
+    await api.replaceFile(shared, new File(["x"], "b.png"));
+    await api.deleteFile({ ...shared, slug: "" });
     await api.types();
     await api.templates("page");
     await api.read(LOCATION);
     await api.create(data);
     await api.save(LOCATION, data);
     await api.upload(LOCATION, new File(["x"], "a.png"));
+    await api.upload(undefined, new File(["x"], "a.png"), {
+      name: "b.png",
+      overwrite: true,
+    });
     await api.embeds();
     await api.embedFrame("youtube", "https://youtu.be/x");
     await api.validateEmbed("youtube", "x", { size: 1 });
@@ -112,31 +120,42 @@ describe("EditorApi", () => {
       "GET /api/files/article/hello/my%20photo.png/references",
       "PUT /api/files/article/hello/a.png",
       "DELETE /api/files/article/hello/a.png",
+      "GET /api/shared-files/references?path=2026%2F11%2Fa%20b.png",
+      "PUT /api/shared-files?path=2026%2F11%2Fa%20b.png",
+      "DELETE /api/shared-files?path=a%20b.png",
       "GET /api/types",
       "GET /api/templates/page",
       "GET /api/articles/article/hello",
       "POST /api/articles",
       "PUT /api/articles/article/hello",
       "POST /api/articles/article/hello/files",
+      "POST /api/files",
       "GET /api/embeds",
       "POST /api/embed-frames",
       "POST /api/embed-validations",
     ]);
+    // An upload's other name and overwriting are sent with the file
+    const upload = calls[21]![1]!.body as FormData;
+    expect([upload.get("name"), upload.get("overwrite")]).toEqual([
+      "b.png",
+      "true",
+    ]);
+    expect((calls[20]![1]!.body as FormData).has("name")).toBe(false);
     // Without options, none are sent
-    expect(calls[19]![1]!.body).toBe(
+    expect(calls[23]![1]!.body).toBe(
       '{"key":"youtube","content":"https://youtu.be/x","options":{}}',
     );
-    expect(calls[20]![1]!.body).toBe(
+    expect(calls[24]![1]!.body).toBe(
       '{"key":"youtube","content":"x","options":{"size":1}}',
     );
     expect(
       (calls[10]![1]!.body as FormData).get("file") as File,
     ).toHaveProperty("name", "b.png");
-    expect(calls[15]![1]).toMatchObject({
+    expect(calls[18]![1]).toMatchObject({
       headers: { "Content-Type": "application/json" },
       body: '{"title":"Hi"}',
     });
-    expect((calls[17]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
+    expect((calls[20]![1]!.body as FormData).get("file")).toBeInstanceOf(File);
   });
 
   it("should convert bodies and render previews, returning their result", async () => {
@@ -186,6 +205,19 @@ describe("EditorApi", () => {
         {} as never,
       ),
     ).rejects.toMatchObject({ message: "Not valid", problems });
+  });
+
+  it("should give the two files when a file couldn't be saved because another has its name", async () => {
+    const conflict = {
+      incoming: { name: "a.png", kind: "image", size: 1 },
+      existing: { type: "news", slug: "hello", name: "a.png" },
+    };
+    await expect(
+      new EditorApi(answer(409, { error: "Exists", conflict })).upload(
+        LOCATION,
+        new File(["x"], "a.png"),
+      ),
+    ).rejects.toMatchObject({ message: "Exists", conflict });
   });
 
   it("should throw the server's error message, or the status", async () => {

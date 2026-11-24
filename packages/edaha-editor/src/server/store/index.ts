@@ -79,6 +79,7 @@ import {
 import {
   changeArticleReferences,
   fileFilters,
+  fileKind,
   fileReferences,
   queryFiles,
   type ReferenceChange,
@@ -89,6 +90,8 @@ import {
   isShared,
   listSharedFiles,
   sharedFilePath,
+  SHARED_FILES_TYPE,
+  uploadFolder,
 } from "../sharedFiles/index.ts";
 import type {
   ArticleFilters,
@@ -96,7 +99,9 @@ import type {
   ArticlePage,
   ArticleQuery,
   FileChange,
+  FileConflict,
   FileFilters,
+  FileSummary,
   FilePage,
   FileQuery,
   IndexedFile,
@@ -121,6 +126,16 @@ export class EditorError extends Error {
     super(message);
     this.status = status;
     this.problems = problems;
+  }
+}
+
+/** A file can't be saved because another in its folder has the same name: both, for the file conflict dialog */
+export class FileConflictError extends EditorError {
+  readonly conflict: FileConflict;
+
+  constructor(message: string, conflict: FileConflict) {
+    super(409, message);
+    this.conflict = conflict;
   }
 }
 
@@ -288,6 +303,19 @@ const previewOutput = (
 };
 
 /**
+ * How the editor names the folder a file is in, e.g. in errors: its article's type and slug, or its folder in the
+ * shared files folder.
+ *
+ * @example
+ * fileFolderName({ type: "news", slug: "hello" }); // "news/hello"
+ * fileFolderName({ type: "@shared", slug: "2026/11" }); // "Shared files/2026/11"
+ */
+export const fileFolderName = (location: ArticleLocation): string =>
+  isShared(location)
+    ? sharedFolderName(location.slug)
+    : `${location.type}/${location.slug}`;
+
+/**
  * How the editor names a folder in the shared files folder, e.g. in errors.
  *
  * @example
@@ -398,6 +426,7 @@ export class ArticleStore {
     const config = await this.config();
     return {
       name: config.name,
+      uploadTo: config.files.uploadTo,
       author:
         config.author === false
           ? undefined
@@ -608,7 +637,7 @@ export class ArticleStore {
   private async fileUrls() {
     const { articleUrl } = await this.articleUrls();
     const { webPath } = await this.sharedFiles();
-    return (file: IndexedFile) =>
+    return (file: ArticleLocation & { name: string }) =>
       isShared(file)
         ? webPath + sharedFilePath(file)
         : articleUrl(file.type, file.slug) + file.name;
@@ -654,12 +683,7 @@ export class ArticleStore {
   ): Promise<ArticleLocation[]> {
     const index = await this.index();
     const { siteUrl } = await this.articleUrls();
-    const url = (await this.fileUrls())({
-      ...file,
-      kind: "other",
-      size: 0,
-      updated: "",
-    });
+    const url = (await this.fileUrls())(file);
     // A shared file hosted elsewhere can also be referred to at its address there
     const { url: hostedUrl, webPath } = await this.sharedFiles();
     const hosted =
@@ -726,7 +750,7 @@ export class ArticleStore {
     if (newName !== name && (await exists(newPath)))
       throw new EditorError(
         409,
-        `A file called ${newName} is already in ${isShared({ type }) ? sharedFolderName(slug) : `${type}/${slug}`}`,
+        `A file called ${newName} is already in ${fileFolderName({ type, slug })}`,
       );
     await writeFile(newPath, contents);
     const articles: ArticleLocation[] = [];
@@ -997,18 +1021,69 @@ export class ArticleStore {
   }
 
   /**
-   * Save an uploaded file into an article's folder (replacing a file with the same name).
+   * Save an uploaded file where `files.uploadTo` says: the article's folder (which must be given), or the shared files
+   * folder (at its top, or in the year and month's folder). Throws a `FileConflictError` if a file there already has
+   * its name, unless it is to be overwritten.
+   *
+   * @example
+   * await store.upload({ type: "news", slug: "hello" }, "Photo.PNG", contents);
+   * // { type: "news", slug: "hello", name: "photo.png", url: "/files/news/hello/photo.png", reference: "photo.png" }
+   * // or with `files.uploadTo: files-by-date`, in November 2026:
+   * // { type: "@shared", slug: "2026/11", name: "photo.png", url: "/files/2026/11/photo.png", reference: "/files/2026/11/photo.png" }
    */
   async upload(
-    type: string,
-    slug: string,
+    article: ArticleLocation | undefined,
     fileName: string,
     contents: Uint8Array,
+    overwrite = false,
   ): Promise<UploadResult> {
-    await this.source(type, slug);
+    const { uploadTo } = await this.sharedFiles();
+    let location: ArticleLocation;
+    if (uploadTo !== "article")
+      location = {
+        type: SHARED_FILES_TYPE,
+        slug: uploadFolder(uploadTo, new Date()),
+      };
+    else if (article) {
+      await this.source(article.type, article.slug);
+      location = article;
+    } else
+      throw new EditorError(400, "Choose an article to upload the file to");
     const name = safeFileName(fileName);
-    await writeFile(join(this.dir(type, slug), name), contents);
-    return { name, url: filesUrl(type, slug) + name };
+    const dir = await this.fileDir(location);
+    const path = join(dir, name);
+    if (!overwrite && (await exists(path)))
+      throw new FileConflictError(
+        `A file called ${name} is already in ${fileFolderName(location)}`,
+        {
+          incoming: { name, kind: fileKind(name), size: contents.length },
+          existing: await this.fileSummary({ ...location, name }),
+        },
+      );
+    await mkdir(dir, { recursive: true });
+    await writeFile(path, contents);
+    await this.fileChanged(location);
+    const shared = isShared(location);
+    const url = shared
+      ? (await this.fileUrls())({ ...location, name })
+      : filesUrl(location.type, location.slug) + name;
+    return { ...location, name, url, reference: shared ? url : name };
+  }
+
+  /** A file as the file browser shows it, from its location */
+  private async fileSummary(
+    file: ArticleLocation & { name: string },
+  ): Promise<FileSummary> {
+    const info = await stat(
+      await this.filePath(file.type, file.slug, file.name),
+    );
+    return {
+      ...file,
+      kind: fileKind(file.name),
+      size: info.size,
+      updated: info.mtime.toISOString(),
+      url: (await this.fileUrls())(file),
+    };
   }
 
   /**

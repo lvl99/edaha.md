@@ -12,5 +12,6 @@ export {
   EditorApi,
   type ArticleLocation,
   type EditorApiOptions,
+  type UploadOptions,
   type PreviewPage,
 } from "./editorApi/index.ts";
