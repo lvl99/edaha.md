@@ -33,7 +33,13 @@ import {
   type FilesConfig,
 } from "../config/index.ts";
 import { loadSiteConfig } from "../configFile/index.ts";
-import { collectLists, PAGE_SIZE, pageFile, paginate } from "../lists/index.ts";
+import {
+  alternateData,
+  collectLists,
+  PAGE_SIZE,
+  pageFile,
+  paginate,
+} from "../lists/index.ts";
 import { createMarkdown, renderMarkdown } from "../markdown/index.ts";
 import { isSlug } from "../slug/index.ts";
 import { THEME_DIR } from "../../theme/index.ts";
@@ -47,6 +53,7 @@ import type {
   TemplateData,
   TemplateDataArticle,
   TemplateDataArticleType,
+  TemplateDataAlternate,
   TemplateDataList,
   TemplateDataFiles,
   TemplateDataSite,
@@ -294,6 +301,30 @@ export const articlePageData = (
 });
 
 /**
+ * The extensions of templates' outputs.
+ *
+ * @example
+ * outputExtensions(templates.outputs("news", "single")); // ["html", "json"]
+ */
+const outputExtensions = (outputs: TemplateOutput[]): string[] =>
+  outputs.map(({ extension }) => extension);
+
+/**
+ * An article page's other outputs than HTML (see TemplateDataAlternate), from the extensions its templates output.
+ *
+ * @example
+ * articleAlternates("/news/hello/", ["html", "json"]);
+ * // [{ extension: "json", type: "application/json", url: "/news/hello/index.json" }]
+ */
+export const articleAlternates = (
+  url: string,
+  extensions: string[],
+): TemplateDataAlternate[] =>
+  extensions
+    .filter((extension) => extension !== "html")
+    .map((extension) => alternateData(extension, `${url}index.${extension}`));
+
+/**
  * The template data for a list's page or feed.
  *
  * @example
@@ -510,7 +541,13 @@ export const buildSite = async (
           warn: (message) => logger.warn(message),
         },
       });
-      if (article && built) articles.push({ article, dir, folder });
+      if (article && built) {
+        article.alternates = articleAlternates(
+          article.url,
+          outputExtensions(templates.outputs(type, article.template)),
+        );
+        articles.push({ article, dir, folder });
+      }
     }
   }
 
@@ -536,19 +573,17 @@ export const buildSite = async (
     );
   // Each template outputs a file with its extension (see Templates.outputs); lists link to the XML feed, if there is one
   const feedOutputs = templates.feedOutputs();
-  const feedFile = `feed.${
-    (
-      feedOutputs.find(({ extension }) => extension === "xml") ??
-      (feedOutputs[0] as TemplateOutput)
-    ).extension
-  }`;
   const firstPages = new Map<string, TemplateDataList>();
   for (const list of lists) {
-    const pages = paginate(list, PAGE_SIZE, feedFile);
+    const listOutputs = list.pages ? templates.outputs(list.type, "list") : [];
+    const pages = paginate(list, PAGE_SIZE, {
+      pages: outputExtensions(listOutputs),
+      feeds: outputExtensions(feedOutputs),
+    });
     if (list.kind === "type")
       firstPages.set(list.type, pages[0] as TemplateDataList);
     if (list.pages)
-      for (const { file, extension } of templates.outputs(list.type, "list"))
+      for (const { file, extension } of listOutputs)
         for (const page of pages)
           await write(
             list.dir + pageFile(page.pagination.page.index, extension),

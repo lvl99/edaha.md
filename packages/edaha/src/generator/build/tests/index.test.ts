@@ -634,6 +634,51 @@ describe("buildSite", () => {
     });
     expect(JSON.parse(await read("news/feed.json"))).toHaveProperty("articles");
     expect(await read("news/first/index.html")).toContain("<title>");
+    // The theme's pages link to their other outputs, and lists to their feeds
+    expect(await read("news/first/index.html")).toContain(
+      '<link rel="alternate" type="application/json" href="/news/first/index.json" />',
+    );
+    const list = await read("news/index.html");
+    expect(list).toContain(
+      '<link rel="alternate" type="application/json" href="/news/index.json" />',
+    );
+    expect(list).toContain(
+      '<link rel="alternate" type="application/json" title="Articles | Test News" href="/news/feed.json" />',
+    );
+    expect(list).toContain(
+      '<link rel="alternate" type="application/rss+xml" title="Articles | Test News" href="/news/feed.xml" />',
+    );
+  });
+
+  it("should give templates the other outputs of articles and list pages, and lists' feeds", async () => {
+    const space = await workspace();
+    await writeSiteFile(
+      space,
+      "templates/article/single.json.njk",
+      "{{ article.alternates | json }}",
+    );
+    await writeSiteFile(
+      space,
+      "templates/article/list.json.njk",
+      "{{ list.alternates | json }}",
+    );
+    await writeSiteFile(
+      space,
+      "templates/layouts/rssfeed.txt.njk",
+      "{{ list.feeds | json }}",
+    );
+    const { read } = await build(space, "https://example.com");
+    const json = { extension: "json", type: "application/json" };
+    expect(JSON.parse(await read("news/first/index.json"))).toEqual([
+      { ...json, url: "/news/first/index.json" },
+    ]);
+    expect(JSON.parse(await read("news/index.json"))).toEqual([
+      { ...json, url: "/news/index.json" },
+    ]);
+    expect(JSON.parse(await read("news/feed.txt"))).toEqual([
+      { extension: "txt", type: "text/plain", url: "/news/feed.txt" },
+      { extension: "xml", type: "application/rss+xml", url: "/news/feed.xml" },
+    ]);
   });
 
   it("should link lists to the feed's only output, whatever its extension", async () => {

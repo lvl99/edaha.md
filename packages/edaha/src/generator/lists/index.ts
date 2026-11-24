@@ -1,5 +1,7 @@
+import mime from "mime-types";
 import type {
   ListKind,
+  TemplateDataAlternate,
   TemplateDataArticle,
   TemplateDataArticleType,
   TemplateDataSite,
@@ -154,20 +156,58 @@ export const pageFile = (index: number, extension = "html"): string =>
   `${index === 1 ? "index" : index}.${extension}`;
 
 /**
- * Split a list into pages of template data (at least one page, even when empty). `feedFile` is the list's feed's file
- * name, for its `feedUrl` (`feed.xml` unless its template outputs another extension).
+ * Another output of a page (see TemplateDataAlternate), with the MIME type of its extension. XML feeds are RSS.
+ *
+ * @example
+ * alternateData("json", "/news/hello/index.json"); // { extension: "json", type: "application/json", url: ... }
+ * alternateData("xml", "/news/feed.xml", true); // { extension: "xml", type: "application/rss+xml", url: ... }
+ */
+export const alternateData = (
+  extension: string,
+  url: string,
+  feed = false,
+): TemplateDataAlternate => ({
+  extension,
+  type:
+    feed && extension.toLowerCase() === "xml"
+      ? "application/rss+xml"
+      : mime.lookup(extension) || "application/octet-stream",
+  url,
+});
+
+/** The extensions a list's page and feed templates output */
+export interface ListOutputs {
+  /** The list page's, e.g. ["html", "json"] */
+  pages: string[];
+  /** The feed's, e.g. ["xml"] */
+  feeds: string[];
+}
+
+/**
+ * Split a list into pages of template data (at least one page, even when empty). `outputs` are the extensions its page
+ * and feed templates output, for each page's `alternates`, and the list's `feeds` and `feedUrl` (`feed.xml` unless the
+ * feed has no XML output).
  *
  * @example
  * paginate(list).map((page) => page.pagination.page.url); // ["/news/", "/news/2"]
+ * paginate(list, 20, { pages: ["html", "json"], feeds: ["xml"] })[1].alternates; // [{ url: "/news/2.json", ... }]
  */
 export const paginate = (
   list: ListDefinition,
   pageSize = PAGE_SIZE,
-  feedFile = "feed.xml",
+  outputs: ListOutputs = { pages: ["html"], feeds: ["xml"] },
 ): TemplateDataList[] => {
   const count = Math.max(1, Math.ceil(list.articles.length / pageSize));
   const pageUrl = (index: number) =>
     index === 1 ? list.url : `${list.url}${index}`;
+  const feedExtension = outputs.feeds.includes("xml")
+    ? "xml"
+    : (outputs.feeds[0] ?? "xml");
+  const feeds = list.feed
+    ? outputs.feeds.map((extension) =>
+        alternateData(extension, `${list.url}feed.${extension}`, true),
+      )
+    : [];
   return Array.from({ length: count }, (_, i) => {
     const pages: TemplateDataPaginationPage[] = Array.from(
       { length: count },
@@ -179,8 +219,14 @@ export const paginate = (
       type: list.type,
       kind: list.kind,
       url: list.url,
-      feedUrl: `${list.url}${feedFile}`,
+      feedUrl: `${list.url}feed.${feedExtension}`,
       hasFeed: list.feed,
+      feeds,
+      alternates: outputs.pages
+        .filter((extension) => extension !== "html")
+        .map((extension) =>
+          alternateData(extension, list.url + pageFile(i + 1, extension)),
+        ),
       articles: list.articles.slice(i * pageSize, (i + 1) * pageSize),
       pagination: {
         pages,

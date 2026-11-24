@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { defaultTypeConfig, type GenerateConfig } from "../../config";
-import { collectLists, pageFile, paginate, sortArticles } from "..";
+import {
+  alternateData,
+  collectLists,
+  pageFile,
+  paginate,
+  sortArticles,
+} from "..";
 import type { TemplateDataArticle, TemplateDataSite } from "../../types";
 
 const site: TemplateDataSite = {
@@ -46,6 +52,23 @@ const article = (
   }) as TemplateDataArticle;
 
 const NONE = new Set<string>();
+
+describe("alternateData", () => {
+  it("should give an output's MIME type, RSS for XML feeds and a binary type for unknown extensions", () => {
+    expect(alternateData("json", "/a/index.json")).toEqual({
+      extension: "json",
+      type: "application/json",
+      url: "/a/index.json",
+    });
+    expect(alternateData("xml", "/a/index.xml").type).toBe("application/xml");
+    expect(alternateData("XML", "/a/feed.XML", true).type).toBe(
+      "application/rss+xml",
+    );
+    expect(alternateData("zzz", "/a/index.zzz").type).toBe(
+      "application/octet-stream",
+    );
+  });
+});
 
 describe("sortArticles", () => {
   it("should sort newest first, then by type and slug", () => {
@@ -158,13 +181,49 @@ describe("paginate", () => {
       type: "news",
       feedUrl: "/news/feed.xml",
       hasFeed: false,
+      feeds: [],
+      alternates: [],
     });
     const [jsonFeed] = paginate(
       collectLists([], site, new Set(["news"]))[0]!,
       10,
-      "feed.json",
+      { pages: ["html"], feeds: ["json"] },
     );
     expect(jsonFeed!.feedUrl).toBe("/news/feed.json");
+  });
+
+  it("should give each page its other outputs, and the list its feeds", () => {
+    const list = collectLists(
+      [article("a", "2026-03-01"), article("b", "2026-02-01")],
+      site,
+      NONE,
+    )[0]!;
+    const pages = paginate(list, 1, {
+      pages: ["html", "json"],
+      feeds: ["json", "xml"],
+    });
+    expect(pages.map((page) => page.alternates)).toEqual([
+      [
+        {
+          extension: "json",
+          type: "application/json",
+          url: "/news/index.json",
+        },
+      ],
+      [{ extension: "json", type: "application/json", url: "/news/2.json" }],
+    ]);
+    // The XML feed is RSS, and the one feedUrl links to
+    expect(pages[0]!.feedUrl).toBe("/news/feed.xml");
+    expect(pages[0]!.feeds).toEqual([
+      { extension: "json", type: "application/json", url: "/news/feed.json" },
+      { extension: "xml", type: "application/rss+xml", url: "/news/feed.xml" },
+    ]);
+    // Without an HTML page, every output is an alternate
+    expect(
+      paginate(list, 2, { pages: ["txt"], feeds: [] })[0]!.alternates,
+    ).toEqual([
+      { extension: "txt", type: "text/plain", url: "/news/index.txt" },
+    ]);
   });
 
   it("should split articles into pages with previous and next pages", () => {
