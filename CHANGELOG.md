@@ -2,6 +2,28 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
+## 0.6.0 (2026-11-24)
+
+A shared files folder that any article can use, moving files between articles, and an editor that resolves file name clashes.
+
+### Added
+
+- The shared files folder (`files/`, or the new `files` setting's `dir`): files any article can use by their website path, e.g. `/files/2026/11/photo.jpg`, in settings such as `thumbnail` and `attachments` and in the body. The build copies it to its `path` (`/files/` by default), or, with `files.url`, into `files.outputDir` (`build-files` by default) to upload to another host, where built pages then refer to them. A setting that refers to a missing shared file, or a shared file with the same path as an article's or a static file, stops the build.
+- `files.uploadTo` says where the editor puts uploads: the article's folder (`article`, the default), the top of the shared files folder (`files`), or its year and month folder (`files-by-date`).
+- Templates get the shared files folder's address as `site.files.url` and `site.files.path`. `FilesConfig`, `FILES_UPLOAD_TO` and `DEFAULT_FILES_CONFIG` are exported.
+- Attachments can have a `description`.
+- The editor:
+  - The file browser lists shared files (filtered as **Shared files**), uploads files with **Upload file**, and moves files between articles' folders and the shared files folder with **Move to shared files** and **Move to an article…**, changing every article that uses them.
+  - The **Resolve file conflict** dialog: when an uploaded or moved file has the same name as a file already there, rename either file, overwrite the existing one after confirming, or cancel.
+  - The file browser has a thumbnail column, and images are shown on a checkerboard so their transparent parts show.
+  - When an article's template outputs other files too (e.g. `single.json.njk`), the preview's **Output** select shows each of them.
+  - `EditorApi` exports the `UploadOptions` and `PreviewPage` types.
+- Docs: [shared files](https://edaha.md/docs/04-articles/#shared-files), the [`files` setting](https://edaha.md/docs/03-configuration/#files), and [where uploads go and file conflicts](https://edaha.md/docs/09-wysiwyg-editor/#where-uploads-go) in the editor.
+
+### Changed
+
+- The editor's preview uses the article's own template, instead of always `single`.
+
 ## 0.5.0 (2026-11-23)
 
 Templates can output any type of file, and the editor fits better in other apps' pages.
