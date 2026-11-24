@@ -203,7 +203,7 @@ describe("edaha-richtext", () => {
 
   it("should have a button for each of the site's embeds, once they are known, that adds one from the embed dialog", async () => {
     const element = await setup("<p>Hi</p>");
-    expect(element.querySelector(".toolbar-embed")).toBeNull();
+    expect(element.querySelector(".btn-embed")).toBeNull();
     const tools = embedTools([
       undefined,
       { key: "youtube", content: "https://youtu.be/x", options: {} },

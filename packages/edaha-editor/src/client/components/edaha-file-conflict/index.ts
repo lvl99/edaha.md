@@ -311,7 +311,7 @@ export class EdahaFileConflict extends LitElement {
       <div class="file-conflict-actions">
         <button
           type="button"
-          class="btn"
+          class="btn btn-rename"
           ?disabled=${this.busy || !name.trim() || name === file.name}
           @click=${() => void this.choose({ rename: side, name: name.trim() })}
         >
@@ -321,7 +321,7 @@ export class EdahaFileConflict extends LitElement {
           side === "incoming"
             ? html`<button
                 type="button"
-                class="btn"
+                class="btn btn-overwrite"
                 id="file-conflict-overwrite"
                 ?disabled=${this.busy}
                 aria-expanded=${this.confirming ? "true" : "false"}
@@ -353,7 +353,7 @@ export class EdahaFileConflict extends LitElement {
       <div class="file-conflict-actions">
         <button
           type="button"
-          class="btn"
+          class="btn btn-confirm-overwrite"
           ?disabled=${this.busy}
           @click=${() => void this.choose({ overwrite: true })}
         >
@@ -361,7 +361,7 @@ export class EdahaFileConflict extends LitElement {
         </button>
         <button
           type="button"
-          class="btn"
+          class="btn btn-cancel"
           id="file-conflict-keep"
           @click=${() => void this.keep()}
         >
@@ -383,7 +383,7 @@ export class EdahaFileConflict extends LitElement {
         <h2 id="file-conflict-title">Resolve file conflict</h2>
         <button
           type="button"
-          class="btn-icon"
+          class="btn btn-icon btn-close"
           title="Close"
           @click=${() => this.close()}
         >
@@ -407,7 +407,11 @@ export class EdahaFileConflict extends LitElement {
         <p class="file-conflict-error" role="alert">${this.error}</p>
       </div>
       <div class="file-conflict-footer">
-        <button type="button" class="btn" @click=${() => this.close()}>
+        <button
+          type="button"
+          class="btn btn-cancel"
+          @click=${() => this.close()}
+        >
           Cancel
         </button>
       </div>

@@ -62,7 +62,7 @@
   content: "🍃";
 }
 
-:root[data-theme="light"] .theme-switcher::after {
+:root[data-theme="light"] .btn-theme-switcher::after {
   content: "🌚";
 }
 
@@ -91,7 +91,7 @@
   content: "🍂";
 }
 
-:root[data-theme="dark"] .theme-switcher::after {
+:root[data-theme="dark"] .btn-theme-switcher::after {
   content: "🌝";
 }
 
@@ -121,7 +121,7 @@
     content: "🍂";
   }
 
-  :root:not([data-theme="light"]) .theme-switcher::after {
+  :root:not([data-theme="light"]) .btn-theme-switcher::after {
     content: "🌝";
   }
 }
@@ -196,15 +196,6 @@ code {
   color: var(--colour-muted);
   font-size: var(--font-size-s);
   padding: 0.2em;
-}
-
-.theme-switcher {
-  background: transparent;
-  border: 0;
-  appearance: unset;
-  position: absolute;
-  right: 1rem;
-  top: 1rem;
 }
 
 /* Room for the theme switcher, which sits beside the title, when the title is hidden */
@@ -314,7 +305,8 @@ select {
   cursor: pointer;
 }
 
-.btn:hover {
+/* Low specificity, so buttons with their own look (e.g. .btn-link, .btn-icon) keep it on hover */
+:where(.btn):hover {
   background-color: var(--colour-background);
   color: var(--colour-text);
   border-color: var(--colour-muted);
@@ -342,6 +334,17 @@ select {
   min-height: var(--button-size-xl);
   padding: 0 1.5rem;
   font-size: var(--font-size-xl);
+}
+
+.btn-theme-switcher {
+  background: transparent;
+  border: 0;
+  appearance: unset;
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  min-height: 0;
+  padding: 0;
 }
 
 .btn-none {
@@ -498,7 +501,7 @@ edaha-editor {
   font-size: var(--font-size-s);
 }
 
-.welcome-prompt-browse {
+.btn-browse {
   display: block;
   margin: 0.75rem auto 0;
 }
@@ -902,7 +905,7 @@ edaha-article .preview {
 }
 
 /* Each kind of embed's toolbar button shows its icon at the toolbar's size */
-.toolbar-embed .embed-icon svg {
+.btn-embed .embed-icon svg {
   width: 1.5rem;
   height: 1.5rem;
 }
@@ -985,7 +988,7 @@ edaha-article .preview {
   padding-block: 0.25rem 0.5rem;
 }
 
-.toolbar-button {
+.btn-toolbar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1000,18 +1003,18 @@ edaha-article .preview {
   cursor: pointer;
 }
 
-.toolbar-button:hover {
+.btn-toolbar:hover {
   border-color: var(--colour-muted);
 }
 
-.toolbar-button[aria-pressed="true"] {
+.btn-toolbar[aria-pressed="true"] {
   background: var(--colour-link);
   border-color: var(--colour-link);
   color: var(--colour-background);
 }
 
-.toolbar-button:disabled,
-.toolbar-button[data-disabled] {
+.btn-toolbar:disabled,
+.btn-toolbar[data-disabled] {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -1030,7 +1033,7 @@ edaha-article .preview {
 }
 
 /* The upload button is a label for its hidden file input, so it shows the input's focus */
-.toolbar-upload:focus-within {
+.btn-upload:focus-within {
   outline: 3px solid var(--colour-focus);
   outline-offset: 2px;
 }
@@ -1079,7 +1082,7 @@ edaha-article .preview {
    the settings full screen */
 .edaha-editor-bar,
 .nav-backdrop,
-.nav-close,
+.btn-nav-close,
 .btn-metadata-toggle {
   display: none;
 }
@@ -1128,14 +1131,14 @@ edaha-editor[compact] .edaha-editor-nav.open {
     visibility 0s;
 }
 
-edaha-editor[compact] .nav-close {
+edaha-editor[compact] .btn-nav-close {
   display: inline-flex;
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
 }
 
-edaha-editor[compact] .edaha-editor-nav .theme-switcher {
+edaha-editor[compact] .edaha-editor-nav .btn-theme-switcher {
   top: 0.5rem;
   right: 3.75rem;
   min-width: 2.75rem;
@@ -1244,6 +1247,8 @@ edaha-editor[focus-mode] .edaha-article-main {
 
 /* Buttons that look like links, e.g. "Show all" under a type's articles */
 .btn-link {
+  display: inline;
+  min-height: 0;
   padding: 0.25rem 0;
   background: none;
   border: 0;
@@ -1362,7 +1367,7 @@ edaha-editor[focus-mode] .edaha-article-main {
 }
 
 /* Column headers are buttons that sort by their column */
-.sort-heading {
+.btn-sort {
   display: inline-flex;
   gap: 0.25rem;
   align-items: center;
@@ -1377,7 +1382,7 @@ edaha-editor[focus-mode] .edaha-article-main {
   cursor: pointer;
 }
 
-.sort-heading:hover {
+.btn-sort:hover {
   color: var(--colour-link);
 }
 
@@ -1474,7 +1479,7 @@ edaha-metadata-field {
 
 /* In the settings, buttons and one-line inputs are the same height, with the base font size. Formatting toolbars (in
    Markdown and rich text settings) keep their own size. */
-.edaha-article-metadata-fields .btn:not(.toolbar-button, .btn-icon, .btn-link) {
+.edaha-article-metadata-fields .btn:not(.btn-toolbar, .btn-icon, .btn-link) {
   min-height: var(--button-size-s);
   padding: 0 0.75rem;
   font-size: var(--font-size-base);
@@ -1680,7 +1685,9 @@ edaha-metadata-field {
 }
 
 /* The title goes back to the welcome prompt, but looks like the title, not a button or link */
-.edaha-title-button {
+.btn-title {
+  display: inline;
+  min-height: 0;
   padding: 0;
   margin: 0;
   background: none;

@@ -1,3 +1,31 @@
 :host {
   display: block;
 }
+
+/* Its buttons are in the settings, so they are like the settings' other buttons (see .btn in the editor's style.css,
+   which doesn't reach inside this element) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--button-size-s);
+  padding: 0 0.75rem;
+  background-color: var(--colour-surface);
+  border: solid 1px var(--colour-border);
+  border-radius: var(--border-radius);
+  color: var(--colour-text);
+  font-family: var(--font-family-base);
+  font-size: var(--font-size-base);
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.btn:hover {
+  background-color: var(--colour-background);
+  border-color: var(--colour-muted);
+}
+
+.btn:focus-visible {
+  outline: 3px solid var(--colour-focus);
+  outline-offset: 2px;
+}

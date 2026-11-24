@@ -287,6 +287,6 @@ describe("edaha-article-data-field", () => {
     button(field, "Clear").click();
     await field.updateComplete;
     expect(changes).toEqual([{ name: "excerpt", value: "" }]);
-    expect(field.querySelector("button.clear")).toBeNull();
+    expect(field.querySelector("button.btn-clear")).toBeNull();
   });
 });

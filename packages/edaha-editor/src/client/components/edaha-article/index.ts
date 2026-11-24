@@ -1130,7 +1130,7 @@ export class EdahaArticle extends LitElement {
             ></edaha-article-data-field>
             <button
               type="button"
-              class="remove"
+              class="btn btn-remove"
               @click=${() =>
                 (this.data = {
                   ...this.data,
@@ -1187,7 +1187,7 @@ export class EdahaArticle extends LitElement {
             ></edaha-article-data-field>
             <button
               type="button"
-              class="remove"
+              class="btn btn-remove"
               @click=${() =>
                 (this.data = {
                   ...this.data,
@@ -1301,6 +1301,7 @@ export class EdahaArticle extends LitElement {
           ({ mode, label }) =>
             html`<button
               type="button"
+              class="btn btn-tab"
               role="tab"
               id=${bodyTabId(mode)}
               data-mode=${mode}
@@ -1565,7 +1566,7 @@ export class EdahaArticle extends LitElement {
                       >
                       <button
                         type="button"
-                        class="btn btn-xs"
+                        class="btn btn-remove"
                         @click=${() => this.removeSetting(path)}
                       >
                         Remove${hiddenText(` "${path}"`)}
@@ -1610,7 +1611,7 @@ export class EdahaArticle extends LitElement {
             <!-- Only on wide screens: narrow screens always have the compact layout focus mode gives -->
             <button
               type="button"
-              class="btn-icon btn-focus-mode"
+              class="btn btn-icon btn-focus-mode"
               title="Focus mode"
               aria-pressed=${this.focusMode ? "true" : "false"}
               @click=${() => this.toggleFocusMode()}

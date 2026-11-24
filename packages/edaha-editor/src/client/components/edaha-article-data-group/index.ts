@@ -71,7 +71,7 @@ export class EdahaArticleDataGroup extends LitElement {
         this.multiple
           ? html`<button
               type="button"
-              class="add"
+              class="btn btn-add"
               @click=${() => this.fire("group-add")}
             >
               Add
@@ -82,7 +82,7 @@ export class EdahaArticleDataGroup extends LitElement {
         this.allowclear
           ? html`<button
               type="button"
-              class="clear"
+              class="btn btn-clear"
               @click=${() => this.fire("group-clear")}
             >
               Clear

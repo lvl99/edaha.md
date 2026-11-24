@@ -80,7 +80,7 @@ export const embedButton = (
 ): TemplateResult =>
   html`<button
     type="button"
-    class="toolbar-button toolbar-embed"
+    class="btn btn-toolbar btn-embed"
     data-embed=${embed.key}
     title=${embed.name}
     aria-pressed=${String(pressed)}

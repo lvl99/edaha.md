@@ -216,7 +216,7 @@ export class EdahaEmbedDialog extends LitElement {
           </h2>
           <button
             type="button"
-            class="btn-icon"
+            class="btn btn-icon btn-close"
             title="Close"
             @click=${() => this.close()}
           >
@@ -266,12 +266,16 @@ export class EdahaEmbedDialog extends LitElement {
         <div class="embed-dialog-actions">
           <button
             type="submit"
-            class="btn"
+            class="btn btn-save"
             aria-disabled=${this.checking ? "true" : "false"}
           >
             ${this.checking ? "Checking…" : this.changing ? "Save" : "Add"}
           </button>
-          <button type="button" class="btn" @click=${() => this.close()}>
+          <button
+            type="button"
+            class="btn btn-cancel"
+            @click=${() => this.close()}
+          >
             Cancel
           </button>
         </div>

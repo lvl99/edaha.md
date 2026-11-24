@@ -85,7 +85,11 @@ export class EdahaToasts extends LitElement {
             role=${toast.kind === "error" ? "alert" : "status"}
           >
             <span>${toast.message}</span>
-            <button type="button" @click=${() => this.dismiss(toast.id)}>
+            <button
+              type="button"
+              class="btn btn-dismiss"
+              @click=${() => this.dismiss(toast.id)}
+            >
               Dismiss
             </button>
           </div>`,

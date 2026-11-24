@@ -523,7 +523,7 @@ describe("edaha-file-browser", () => {
     const { element, api } = await setup();
     // Not picking: no Choose buttons
     expect(find(element, "h2").textContent?.trim()).toBe("Files");
-    expect(element.querySelectorAll("tbody .btn").length).toBe(0);
+    expect(element.querySelectorAll("tbody .btn-choose").length).toBe(0);
 
     const chosen = element.pick("image");
     await settle(element);
@@ -592,7 +592,7 @@ describe("edaha-file-browser", () => {
     await element.show();
     expect(await replaced).toBeUndefined();
     await settle(element);
-    expect(element.querySelectorAll("tbody .btn").length).toBe(0);
+    expect(element.querySelectorAll("tbody .btn-choose").length).toBe(0);
 
     const picked = element.pick();
     const again = element.pick("document");

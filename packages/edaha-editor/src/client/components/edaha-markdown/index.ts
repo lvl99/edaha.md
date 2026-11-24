@@ -249,7 +249,7 @@ export class EdahaMarkdown extends LitElement {
           (action) =>
             html`<button
               type="button"
-              class="toolbar-button"
+              class="btn btn-toolbar"
               data-action=${action.label}
               title=${action.label}
               ?disabled=${action.enabled ? !action.enabled(selection) : false}
@@ -266,7 +266,7 @@ export class EdahaMarkdown extends LitElement {
           }),
         )}
         <label
-          class="toolbar-button toolbar-upload"
+          class="btn btn-toolbar btn-upload"
           title="Upload image"
           ?data-disabled=${!this.uploadImage}
         >
@@ -281,7 +281,7 @@ export class EdahaMarkdown extends LitElement {
         </label>
         <button
           type="button"
-          class="toolbar-button"
+          class="btn btn-toolbar"
           data-action="Choose file"
           title="Choose file"
           ?disabled=${!this.chooseFile}

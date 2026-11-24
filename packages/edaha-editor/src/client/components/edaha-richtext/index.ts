@@ -46,7 +46,7 @@ const headingAction = (level: 1 | 2 | 3): ToolbarAction => ({
 const actionButton = (action: ToolbarAction, editor: Editor | undefined) =>
   html`<button
     type="button"
-    class="toolbar-button"
+    class="btn btn-toolbar"
     data-action=${action.label}
     title=${action.label}
     ?disabled=${!editor || (action.enabled ? !action.enabled(editor) : false)}
@@ -440,7 +440,7 @@ export class EdahaRichtext extends LitElement {
           }),
         )}
         <label
-          class="toolbar-button toolbar-upload"
+          class="btn btn-toolbar btn-upload"
           title="Upload image"
           ?data-disabled=${!editor || !this.uploadImage}
         >
@@ -455,7 +455,7 @@ export class EdahaRichtext extends LitElement {
         </label>
         <button
           type="button"
-          class="toolbar-button"
+          class="btn btn-toolbar"
           data-action="Choose file"
           title="Choose file"
           ?disabled=${!editor || !this.chooseFile}

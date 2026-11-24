@@ -90,6 +90,8 @@ export const blockView = (
   for (const { text, onClick } of [...buttons, remove]) {
     const button = document.createElement("button");
     button.type = "button";
+    // e.g. "btn btn-s btn-remove"
+    button.className = `btn btn-s btn-${text.toLowerCase().replace(/\W+/g, "-")}`;
     button.textContent = text;
     button.addEventListener("click", () => {
       // The block may have been removed meanwhile

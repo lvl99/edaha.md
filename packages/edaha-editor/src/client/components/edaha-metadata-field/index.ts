@@ -214,7 +214,7 @@ export class EdahaMetadataField extends LitElement {
             )}
             <button
               type="button"
-              class="btn btn-xs"
+              class="btn btn-delete"
               @click=${() =>
                 this.change(
                   this.path,
@@ -227,7 +227,7 @@ export class EdahaMetadataField extends LitElement {
       )}
       <button
         type="button"
-        class="btn btn-xs"
+        class="btn btn-add"
         ?disabled=${full}
         @click=${() => this.change(this.path, [...items, undefined])}
       >
@@ -329,7 +329,7 @@ export class EdahaMetadataField extends LitElement {
             ${url ? html`<a href=${url} target="_blank">${name}</a>` : name}
             <button
               type="button"
-              class="btn btn-xs"
+              class="btn btn-clear"
               @click=${() => this.change(this.path, undefined)}
             >
               Clear${hidden(` ${this.fieldTitle}`)}

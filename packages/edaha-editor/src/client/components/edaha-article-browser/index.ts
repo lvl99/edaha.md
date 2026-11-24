@@ -404,7 +404,7 @@ export class EdahaArticleBrowser extends LitElement {
     return html`<nav class="article-browser-pages" aria-label="Pages">
       <button
         type="button"
-        class="btn"
+        class="btn btn-previous"
         ?disabled=${result.page <= 1}
         @click=${() => void this.goTo(result.page - 1)}
       >
@@ -413,7 +413,7 @@ export class EdahaArticleBrowser extends LitElement {
       <span>Page ${result.page} of ${result.pages}</span>
       <button
         type="button"
-        class="btn"
+        class="btn btn-next"
         ?disabled=${result.page >= result.pages}
         @click=${() => void this.goTo(result.page + 1)}
       >
@@ -451,7 +451,7 @@ export class EdahaArticleBrowser extends LitElement {
         </h2>
         <button
           type="button"
-          class="btn-icon"
+          class="btn btn-icon btn-close"
           title="Close"
           @click=${() => this.close()}
         >
