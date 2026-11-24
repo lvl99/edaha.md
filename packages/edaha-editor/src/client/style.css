@@ -280,6 +280,64 @@ select {
   background-repeat: no-repeat;
 }
 
+/* Checkboxes are on/off switches: a track, with a knob at its start when off and at its end (on the link colour)
+   when on. Screen readers announce them as switches (role="switch"). */
+input[type="checkbox"] {
+  --switch-width: 2.25rem;
+  --switch-height: 1.25rem;
+  --switch-knob: calc(var(--switch-height) - 6px);
+  appearance: none;
+  position: relative;
+  flex: none;
+  width: var(--switch-width);
+  height: var(--switch-height);
+  margin: 0;
+  background: var(--colour-surface);
+  border: 1px solid var(--colour-muted);
+  border-radius: calc(var(--switch-height) / 2);
+  vertical-align: middle;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+}
+
+input[type="checkbox"]::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  inset-inline-start: 2px;
+  width: var(--switch-knob);
+  height: var(--switch-knob);
+  background: var(--colour-muted);
+  border-radius: 50%;
+  transition:
+    inset-inline-start 0.15s,
+    background-color 0.15s;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--colour-link);
+  border-color: var(--colour-link);
+}
+
+input[type="checkbox"]:checked::before {
+  inset-inline-start: calc(100% - var(--switch-knob) - 2px);
+  background: var(--colour-background);
+}
+
+input[type="checkbox"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  input[type="checkbox"],
+  input[type="checkbox"]::before {
+    transition: none;
+  }
+}
+
 /** Buttons */
 .btn {
   display: inline-flex;
@@ -659,6 +717,11 @@ edaha-article form {
 edaha-article-data-field {
   display: block;
   margin-block: 0.5rem;
+}
+
+/* Labels sit above their fields, including file fields' buttons, which aren't full width */
+edaha-article-data-field > label {
+  display: block;
 }
 
 edaha-article-data-field input,
@@ -1544,13 +1607,12 @@ edaha-metadata-field {
 .metadata-check,
 .metadata-choice {
   display: grid;
-  grid-template-columns: 1rem 1fr;
+  grid-template-columns: auto 1fr;
   column-gap: 0.5rem;
   align-items: center;
   margin-block: 0.25rem;
 }
 
-.metadata-check input,
 .metadata-choice input {
   width: 1rem;
   height: 1rem;
@@ -1562,8 +1624,9 @@ edaha-metadata-field {
   color: var(--colour-muted);
 }
 
+/* Lined up with the switch's label (the switch's width and the gap) */
 .metadata-checkbox > :not(.metadata-check) {
-  margin-inline-start: 1.5rem;
+  margin-inline-start: 2.75rem;
 }
 
 .metadata-description,
