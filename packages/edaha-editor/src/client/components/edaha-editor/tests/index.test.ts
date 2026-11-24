@@ -525,8 +525,9 @@ describe("edaha-editor files", () => {
     element: EdahaEditor,
     file: { type: string; slug: string },
     articles: { type: string; slug: string }[] = [],
+    from = "edaha-file-browser",
   ) => {
-    find(element, "edaha-file-browser").dispatchEvent(
+    find(element, from).dispatchEvent(
       new CustomEvent("files-changed", {
         detail: { file: { ...file, name: "a.png" }, articles },
         bubbles: true,
@@ -604,6 +605,14 @@ describe("edaha-editor files", () => {
       { type: "article", slug: "hello" },
     ]);
     expect(api.read).toHaveBeenCalledTimes(reads + 2);
+    // A file renamed by the open article's upload
+    await filesChanged(
+      element,
+      { type: "page", slug: "broken" },
+      [{ type: "article", slug: "hello" }],
+      "edaha-article",
+    );
+    expect(api.read).toHaveBeenCalledTimes(reads + 3);
   });
 
   it("should warn instead when the touched article has unsaved changes, and do nothing with none open", async () => {

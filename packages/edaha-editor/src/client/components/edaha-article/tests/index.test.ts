@@ -24,6 +24,7 @@ import type { EdahaArticleDataGroup } from "../../edaha-article-data-group";
 import type { EdahaMarkdown } from "../../edaha-markdown";
 import type { EdahaRichtext } from "../../edaha-richtext";
 import type { EdahaEmbedDialog } from "../../edaha-embed-dialog";
+import type { EdahaFileConflict } from "../../edaha-file-conflict";
 import type { ToastMessage } from "../../edaha-toasts";
 import {
   button,
@@ -350,6 +351,7 @@ describe("edaha-article", () => {
     expect(api.upload).toHaveBeenCalledWith(
       { type: "article", slug: "hello" },
       expect.any(File),
+      {},
     );
     expect(element.data.thumbnail).toBe("new.png");
     expect(element.files).toEqual(["guide.pdf", "new.png", "thumb.png"]);
@@ -415,8 +417,64 @@ describe("edaha-article", () => {
     expect(await uploadImage(new File(["x"], "Pic.png"))).toBe(
       "/files/2026/11/pic.png",
     );
-    expect(api.upload).toHaveBeenCalledWith(undefined, expect.any(File));
+    expect(api.upload).toHaveBeenCalledWith(undefined, expect.any(File), {});
     expect(element.files).toEqual([]);
+  });
+
+  it("should resolve an upload's name clash with the conflict dialog, telling the editor when the existing file is renamed", async () => {
+    HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    };
+    HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+      this.removeAttribute("open");
+      this.dispatchEvent(new Event("close"));
+    };
+    const { element, api } = await setup();
+    const existing = {
+      type: "article",
+      slug: "hello",
+      name: "pic.png",
+      kind: "image" as const,
+      size: 4,
+      updated: DATE,
+      url: "/news/hello/pic.png",
+    };
+    (api as unknown as { moveFile: unknown }).moveFile = vi.fn(async () => ({
+      ...existing,
+      name: "old.png",
+      articles: [{ type: "news", slug: "other" }],
+    }));
+    api.upload.mockRejectedValueOnce(
+      new ApiError("A file called pic.png is already in article/hello", [], {
+        incoming: { name: "pic.png", kind: "image", size: 1 },
+        existing,
+      }),
+    );
+    URL.createObjectURL = vi.fn(() => "blob:pic");
+    URL.revokeObjectURL = vi.fn();
+    const changed = vi.fn();
+    element.addEventListener("files-changed", changed);
+    const uploadImage = find<EdahaRichtext>(
+      element,
+      "edaha-richtext",
+    ).uploadImage!;
+    const uploading = uploadImage(
+      new File(["x"], "Pic.png", { type: "image/png" }),
+    );
+    await settle(element);
+    const dialog = find<EdahaFileConflict>(element, "edaha-file-conflict");
+    expect(dialog.open).toBe(true);
+    expect(find<HTMLImageElement>(dialog, "img").src).toBe("blob:pic");
+    expect(
+      [...dialog.querySelectorAll<HTMLImageElement>("img")][1]!.src,
+    ).toContain("/news/hello/pic.png");
+    await dialog.choose({ rename: "existing", name: "old.png" });
+    expect(await uploading).toBe("/files/article/hello/pic.png");
+    expect(changed.mock.calls[0]![0].detail).toEqual({
+      file: existing,
+      articles: [{ type: "news", slug: "other" }],
+    });
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:pic");
   });
 
   it("should upload images for the body's Markdown, referring to them by file name", async () => {

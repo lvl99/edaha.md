@@ -29,6 +29,15 @@ import type {
 } from "../edaha-article-data-field/index.ts";
 import { showToast } from "../edaha-toasts/index.ts";
 import "../edaha-embed-dialog/index.ts";
+import "../edaha-file-conflict/index.ts";
+import {
+  saveResolvingConflicts,
+  type EdahaFileConflict,
+} from "../edaha-file-conflict/index.ts";
+import {
+  FILES_CHANGED_EVENT,
+  type FilesChanged,
+} from "../edaha-file-browser/index.ts";
 import type { EdahaEmbedDialog } from "../edaha-embed-dialog/index.ts";
 import type { EmbedTools } from "../../embeds/index.ts";
 import "../edaha-metadata-field/index.ts";
@@ -596,12 +605,36 @@ export class EdahaArticle extends LitElement {
   }
 
   /**
-   * Upload a file where the config file says (the article's folder, or the shared files folder). Returns how the
-   * article refers to it: its name in the article's folder, or its path on the website.
+   * Upload a file where the config file says (the article's folder, or the shared files folder), resolving a clash
+   * with a file of its name with the file conflict dialog. Returns how the article refers to it: its name in the
+   * article's folder, or its path on the website (undefined if it failed or the conflict was cancelled).
    */
   private async upload(file: File): Promise<string | undefined> {
     if (!this.canUpload) return undefined;
-    const result = await this.run(() => this.api.upload(this.location, file));
+    const incomingUrl = file.type.startsWith("image/")
+      ? URL.createObjectURL(file)
+      : undefined;
+    const result = await this.run(() =>
+      saveResolvingConflicts(
+        this.querySelector("edaha-file-conflict") as EdahaFileConflict,
+        this.api,
+        (options) => this.api.upload(this.location, file, options),
+        {
+          action: "upload",
+          incomingUrl,
+          address: (url) => this.api.url(url),
+          // Renaming the existing file changed its references, which the editor may be showing
+          onExistingRenamed: (existing, { articles }) =>
+            this.dispatchEvent(
+              new CustomEvent<FilesChanged>(FILES_CHANGED_EVENT, {
+                detail: { file: existing, articles },
+                bubbles: true,
+              }),
+            ),
+        },
+      ),
+    );
+    if (incomingUrl) URL.revokeObjectURL(incomingUrl);
     if (!result) return undefined;
     // Files uploaded into the article's own folder are listed with it
     if (
@@ -1668,8 +1701,9 @@ export class EdahaArticle extends LitElement {
           </div>
         </aside>
       </form>
-      <!-- Outside the form, as it has its own -->
-      <edaha-embed-dialog></edaha-embed-dialog>`;
+      <!-- Outside the form, as they have their own -->
+      <edaha-embed-dialog></edaha-embed-dialog>
+      <edaha-file-conflict></edaha-file-conflict>`;
   }
 }
 

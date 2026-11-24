@@ -914,6 +914,8 @@ export class EdahaEditor extends LitElement {
                     (this.focusMode = event.detail)}
                   @article-saved=${(event: CustomEvent<ArticleLocation>) => void this.onSaved(event)}
                   @article-deleted=${() => void this.onDeleted()}
+                  @files-changed=${(event: CustomEvent<FilesChanged>) =>
+                    void this.onFilesChanged(event.detail)}
                 ></edaha-article>`,
               )
             : this.renderWelcome()
