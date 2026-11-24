@@ -215,7 +215,7 @@ outputDir: site/build
 
 The folder the website is built into, relative to the site folder. It is **emptied on every build**, so keep nothing else in it.
 
-- **Accepted values:** a folder inside the site folder, apart from the articles, templates and static files folders.
+- **Accepted values:** a folder inside the site folder, apart from the articles, templates, static files and shared files folders.
 - **Default:** `build`
 
 ```yaml
@@ -248,15 +248,15 @@ reservedPaths: [app, api, jwks.json]
 
 ### `files`
 
-The shared files folder: images and other files that any article can use, besides the files in its own folder. Articles refer to a shared file by its website path, e.g. `/files/2026/11/photo.jpg`, in their settings (such as `thumbnail`) and their body. The build copies the folder to that path, and stops if one of its files has the same path as an article's or a static file.
+The shared files folder: images and other files that any article can use, besides the files in its own folder. Articles refer to a shared file by its website path, e.g. `/files/2026/11/photo.jpg`, in their settings (such as `thumbnail`) and their body. The build copies the folder to that path, and stops if one of its files has the same path as an article's or a static file. While the folder has files, the first folder of its path (e.g. `files`) is reserved at the website's root, like [`reservedPaths`](#reservedpaths).
 
-| Setting     | Description                                                                                                                   | Default       |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `dir`       | The folder, inside the site folder and apart from the articles, templates and static files folders. It doesn't have to exist. | `files`       |
-| `path`      | The website path articles use for shared files (lowercase folders).                                                           | `/files/`     |
-| `url`       | The absolute URL the files are hosted at, e.g. on another server. Built pages use it instead of `path`.                       | none          |
-| `outputDir` | With `url`, the folder the build copies the files into (instead of the website), so you can upload them there.                | `build-files` |
-| `uploadTo`  | Where the editor puts new uploads (see below).                                                                                | `article`     |
+| Setting     | Description                                                                                                                                                    | Default       |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `dir`       | The folder, inside the site folder and apart from the articles, templates and static files folders. It doesn't have to exist.                                  | `files`       |
+| `path`      | The website path articles use for shared files (lowercase folders).                                                                                            | `/files/`     |
+| `url`       | The absolute URL the files are hosted at, e.g. on another server. Built pages use it instead of `path`.                                                        | none          |
+| `outputDir` | With `url`, the folder the build copies the files into (instead of the website), so you can upload them there. Like `outputDir`, it is emptied on every build. | `build-files` |
+| `uploadTo`  | Where the editor puts new uploads (see below).                                                                                                                 | `article`     |
 
 `uploadTo` only changes where new uploads go. Articles can always use files in their own folder and in the shared folder.
 
