@@ -45,6 +45,7 @@ import {
 } from "@lvl99dotcom/edaha.md/generator/markdown";
 import {
   DEFAULT_OUTPUT_EXTENSION,
+  outputExtension,
   Templates,
 } from "@lvl99dotcom/edaha.md/generator/templates";
 import { THEME_DIR } from "@lvl99dotcom/edaha.md/theme";
@@ -1023,17 +1024,17 @@ export class ArticleStore {
         },
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
+      const template = extension
+        ? previewOutput(templates, data.type, article.template, extension)
+        : templates.resolve(data.type, article.template);
       return await embeds.renderPage(
-        templates.render(
-          extension
-            ? previewOutput(templates, data.type, article.template, extension)
-            : templates.resolve(data.type, article.template),
-          {
-            ...articlePageData(site, article),
-            embeds: EMBED_PAGE_PARTS,
-          },
-        ),
+        templates.render(template, {
+          ...articlePageData(site, article),
+          embeds: EMBED_PAGE_PARTS,
+        }),
         name,
+        "build",
+        outputExtension(template),
       );
     } catch (error) {
       if (error instanceof EditorError) throw error;

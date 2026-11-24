@@ -150,6 +150,8 @@ describe("Templates", () => {
       ...REQUIRED,
       "test.njk":
         "{% embedHead %}|{% embedFoot %}|{% embedRenderHead() %}|{% embedRenderFoot() %}",
+      "test.json.njk": "{% embedHead %}|{% embedFoot %}|{{ embeds | json }}",
+      "test.xml.njk": "{% embedHead %}|{% embedFoot %}",
     });
     const templates = new Templates(dir, { warn: vi.fn() });
     const site = {
@@ -180,6 +182,11 @@ describe("Templates", () => {
         isList: false,
       }),
     ).toBe("|||");
+    // Files that aren't HTML have no <head> or <body> for them
+    const embeds = { head: "<style></style>", foot: "<script></script>" };
+    const data = { site, type: "news", isArticle: true, isList: false, embeds };
+    expect(templates.render("test.json.njk", data)).toBe("||");
+    expect(templates.render("test.xml.njk", data)).toBe("|");
   });
 
   it("should use a type's own template or fall back to article's with one warning", async () => {

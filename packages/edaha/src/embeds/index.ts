@@ -56,6 +56,29 @@ export const EMBED_PAGE_PARTS: EmbedPageParts = {
   foot: "<!--edaha-embeds-foot-->",
 };
 
+/**
+ * An embed's HTML for its placeholder in a page (see EMBED_PLACEHOLDER): escaped where the placeholder was (e.g. in a
+ * feed's descriptions), written as JSON text in a JSON file (where it is inside a string, from the `json` filter), or
+ * as it is.
+ *
+ * @param open - how the placeholder opened: "<", or "&lt;" when a template escaped it
+ * @param extension - the extension of the file the page is, e.g. "html" or "json"
+ * @example
+ * encodeEmbed('<a href="/">', "<", "html"); // '<a href="/">'
+ * encodeEmbed('<a href="/">', "&lt;", "xml"); // "&lt;a href=&quot;/&quot;&gt;"
+ * encodeEmbed('<a href="/">', "<", "json"); // '<a href=\\"/\\">'
+ */
+export const encodeEmbed = (
+  embed: string,
+  open: string,
+  extension: string,
+): string =>
+  open !== "<"
+    ? escapeHtml(embed)
+    : extension.toLowerCase() === "json"
+      ? JSON.stringify(embed).slice(1, -1)
+      : embed;
+
 /** An HTML heading: group 1 is its level, group 2 its attributes, group 3 its content */
 const HTML_HEADING = /<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/gi;
 
@@ -357,10 +380,12 @@ export class EmbedResolver {
    * Render a page's embeds: each placeholder of a block (see place) in order, sharing each embed's state on the page,
    * then the HTML the page's embeds need in place of EMBED_PAGE_PARTS' placeholders. A block whose key has no plugin,
    * or whose plugin fails, is shown as it is (a link for a URL, otherwise as text), and one that isn't valid is left
-   * out, with a warning (once, however many pages show it). An escaped placeholder (e.g. in a feed) gets escaped HTML.
+   * out, with a warning (once, however many pages show it). An escaped placeholder (e.g. in a feed) gets escaped HTML,
+   * and one in a JSON file HTML written as JSON text (see encodeEmbed).
    *
    * @param source - which page it is, for warnings
    * @param target - render for the website (default) or the editor
+   * @param extension - the extension of the file the page is, e.g. "json" (default: "html")
    * @example
    * await embeds.renderPage('<head><!--edaha-embeds-head--></head><body><!--edaha-embed:0--></body>', "/news/hello/");
    */
@@ -368,6 +393,7 @@ export class EmbedResolver {
     html: string,
     source: string,
     target: EmbedTarget = "build",
+    extension = "html",
   ): Promise<string> {
     const page: EmbedPage = new Map();
     const rendered: string[] = [];
@@ -380,9 +406,7 @@ export class EmbedResolver {
       rendered.push(
         embed === undefined
           ? placeholder
-          : open === "<"
-            ? embed
-            : escapeHtml(embed),
+          : encodeEmbed(embed, open as string, extension),
       );
     }
     let index = 0;

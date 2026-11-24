@@ -598,7 +598,7 @@ describe("buildSite", () => {
     await writeSiteFile(
       space,
       "templates/article/single.json.njk",
-      '{"title": {{ article.title | json | safe }}, "url": "{{ article.url }}"}',
+      '{"title": {{ article.title | json }}, "url": "{{ article.url }}"}',
     );
     await writeSiteFile(
       space,
@@ -969,6 +969,11 @@ describe("buildSite", () => {
       "article/embeds",
       `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\nIntro <!-- embed:media -->https://media.example.com/v/1<!-- /embed:media -->\n\n<!-- readmore -->\n\n<!-- embed:quote -->Hello<!-- /embed:quote -->\n\n<!-- embed:quote -->Bad<!-- /embed:quote -->\n\nAfter the bad quote\n\n<!-- embed:media -->\n<!--yaml\nsize: large\n-->\nhttps://media.example.com/v/2\n<!-- /embed:media -->\n`,
     );
+    await writeSiteFile(
+      space,
+      "templates/article/single.json.njk",
+      '{"body": {{ article.bodyHtml | json }}, "head": "{% embedHead %}"}',
+    );
     const quote = {
       key: "quote",
       name: "Quote",
@@ -1026,6 +1031,15 @@ describe("buildSite", () => {
     expect(feed).toContain(
       "&lt;iframe src=&quot;https://media.example.com/v/1&quot; class=&quot;small&quot;&gt;",
     );
+    // JSON files have embeds as JSON text, and no head or foot HTML
+    const json = JSON.parse(await read("news/embeds/index.json")) as {
+      body: string;
+      head: string;
+    };
+    expect(json.body).toContain(
+      '<iframe src="https://media.example.com/v/2" class="large"></iframe>',
+    );
+    expect(json.head).toBe("");
   });
 
   it("should reject invalid type and article folder names", async () => {

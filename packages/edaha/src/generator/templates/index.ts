@@ -33,6 +33,9 @@ export const ESCAPED_EXTENSIONS: readonly string[] = [
   "atom",
 ];
 
+/** Output extensions of HTML pages, the only outputs `{% embedHead %}` and `{% embedFoot %}` output anything in */
+export const HTML_EXTENSIONS: readonly string[] = ["html", "htm", "xhtml"];
+
 /** A template file, and the extension of the file it outputs, e.g. `{ file: "article/single.json.njk", extension: "json" }` */
 export interface TemplateOutput {
   file: string;
@@ -278,7 +281,7 @@ interface NunjucksNodes {
 /**
  * The `{% embedHead %}` and `{% embedFoot %}` tags (also `{% embedRenderHead() %}` and `{% embedRenderFoot() %}`): output
  * the HTML that the page's embeds need once in its `<head>`, or before `</body>`. They output nothing on pages without
- * embeds.
+ * embeds, and in files that aren't HTML (see Templates.render).
  */
 class EmbedTags implements nunjucks.Extension {
   tags = Object.keys(EMBED_TAGS);
@@ -460,17 +463,23 @@ export class Templates {
 
   /**
    * Render a template with the given data. Values are escaped for HTML only in templates that output HTML or XML (see
-   * ESCAPED_EXTENSIONS and outputExtension), so e.g. a JSON template writes `{{ article.title | json }}` as it is.
+   * ESCAPED_EXTENSIONS and outputExtension), so e.g. a JSON template writes `{{ article.title | json }}` as it is. The
+   * embed tags output nothing in templates that don't output HTML (see HTML_EXTENSIONS).
    *
    * @example
    * templates.render("article/single.njk", data); // HTML, with values escaped
    * templates.render("article/single.json.njk", data); // JSON, with values as they are
    */
   render(file: string, data: TemplateData): string {
+    const extension = outputExtension(file).toLowerCase();
     return (
-      ESCAPED_EXTENSIONS.includes(outputExtension(file).toLowerCase())
-        ? this.escaped
-        : this.unescaped
-    ).render(file, data);
+      ESCAPED_EXTENSIONS.includes(extension) ? this.escaped : this.unescaped
+    ).render(
+      file,
+      // Only HTML pages have a <head> and <body> for the embed tags' HTML
+      HTML_EXTENSIONS.includes(extension)
+        ? data
+        : { ...data, embeds: undefined },
+    );
   }
 }

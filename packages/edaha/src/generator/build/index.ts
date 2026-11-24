@@ -37,7 +37,11 @@ import { collectLists, PAGE_SIZE, pageFile, paginate } from "../lists/index.ts";
 import { createMarkdown, renderMarkdown } from "../markdown/index.ts";
 import { isSlug } from "../slug/index.ts";
 import { THEME_DIR } from "../../theme/index.ts";
-import { Templates, type TemplateOutput } from "../templates/index.ts";
+import {
+  outputExtension,
+  Templates,
+  type TemplateOutput,
+} from "../templates/index.ts";
 import type {
   Logger,
   TemplateData,
@@ -527,6 +531,8 @@ export const buildSite = async (
     embeds.renderPage(
       templates.render(template, { ...data, embeds: EMBED_PAGE_PARTS }),
       url,
+      "build",
+      outputExtension(template),
     );
   // Each template outputs a file with its extension (see Templates.outputs); lists link to the XML feed, if there is one
   const feedOutputs = templates.feedOutputs();
