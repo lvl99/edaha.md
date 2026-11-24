@@ -30,6 +30,7 @@ import {
   SOURCE_FOLDERS,
   type ArticleTypeConfig,
   type EdahaConfig,
+  type FilesConfig,
 } from "../config/index.ts";
 import { loadSiteConfig } from "../configFile/index.ts";
 import { collectLists, PAGE_SIZE, pageFile, paginate } from "../lists/index.ts";
@@ -43,6 +44,7 @@ import type {
   TemplateDataArticle,
   TemplateDataArticleType,
   TemplateDataList,
+  TemplateDataFiles,
   TemplateDataSite,
 } from "../types/index.ts";
 import {
@@ -215,6 +217,20 @@ const typeData = (
 });
 
 /**
+ * Where the shared files folder's files are on the website (see TemplateDataFiles).
+ *
+ * @example
+ * filesData({ ...DEFAULT_FILES_CONFIG, path: "media" }, "/docs"); // { url: "/docs/media/", path: "/docs/media/" }
+ */
+export const filesData = (
+  files: FilesConfig,
+  baseUrl: string,
+): TemplateDataFiles => {
+  const path = folderUrl(folderPath(files.path), baseUrl);
+  return { url: files.url ?? path, path };
+};
+
+/**
  * The website's template data: its name, description, absolute URL and home URL, default author, and each article
  * type's settings and URL.
  *
@@ -236,6 +252,7 @@ export const siteData = (
     url: url.replace(/\/+$/, ""),
     baseUrl,
     path: folderUrl(folderPath(config.path), baseUrl),
+    files: filesData(config.files, baseUrl),
     author:
       config.author === false
         ? undefined

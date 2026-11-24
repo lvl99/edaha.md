@@ -120,6 +120,7 @@ The folder that holds the config file is the **site folder**. Every folder in th
 | `publishDir`     | No       | A folder outside the site folder that the built website is copied into.                 |
 | `siteUrl`        | No       | The website's absolute URL, for links in RSS feeds.                                     |
 | `reservedPaths`  | No       | Paths at the website's root that articles and article types can't use.                  |
+| `files`          | No       | The shared files folder: files any article can use, and where new uploads go.           |
 | `types`          | No       | Settings for each article type: URL path, labels and what is built.                     |
 | `plugins`        | No       | Embed plugins: their package names, or (JavaScript config only) the plugins themselves. |
 | `metadata`       | No       | Custom settings for articles, with how the editor shows them.                           |
@@ -244,6 +245,37 @@ Paths at the website's root that articles and article types can't use, e.g. the 
 ```yaml
 reservedPaths: [app, api, jwks.json]
 ```
+
+### `files`
+
+The shared files folder: images and other files that any article can use, besides the files in its own folder. Articles refer to a shared file by its website path, e.g. `/files/2026/11/photo.jpg`, in their settings (such as `thumbnail`) and their body. The build copies the folder to that path, and stops if one of its files has the same path as an article's or a static file.
+
+| Setting     | Description                                                                                                                   | Default       |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| `dir`       | The folder, inside the site folder and apart from the articles, templates and static files folders. It doesn't have to exist. | `files`       |
+| `path`      | The website path articles use for shared files (lowercase folders).                                                           | `/files/`     |
+| `url`       | The absolute URL the files are hosted at, e.g. on another server. Built pages use it instead of `path`.                       | none          |
+| `outputDir` | With `url`, the folder the build copies the files into (instead of the website), so you can upload them there.                | `build-files` |
+| `uploadTo`  | Where the editor puts new uploads (see below).                                                                                | `article`     |
+
+`uploadTo` only changes where new uploads go. Articles can always use files in their own folder and in the shared folder.
+
+| `uploadTo`      | New uploads go to                                                           |
+| --------------- | --------------------------------------------------------------------------- |
+| `article`       | The article's own folder.                                                   |
+| `files`         | The shared folder.                                                          |
+| `files-by-date` | A folder for the year and month they're uploaded in, e.g. `files/2026/11/`. |
+
+```yaml
+files:
+  dir: files
+  path: /files/
+  url: https://static.example.com/
+  outputDir: build-files
+  uploadTo: files-by-date
+```
+
+Templates get the folder's address as `site.files.url` and `site.files.path` (see [Templating](/docs/05-templating/#template-data)).
 
 ### `theme`
 

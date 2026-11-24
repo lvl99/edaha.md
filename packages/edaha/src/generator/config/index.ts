@@ -44,6 +44,29 @@ export interface ArticleTypeConfig {
   author?: AuthorConfig | false | undefined;
 }
 
+/** Where new uploads go: the article's folder, the top of the shared files folder, or its year/month folders */
+export const FILES_UPLOAD_TO = ["article", "files", "files-by-date"] as const;
+
+/** Where new uploads go (see `FILES_UPLOAD_TO`) */
+export type FilesUploadTo = (typeof FILES_UPLOAD_TO)[number];
+
+/** Settings of the shared files folder: files any article can use, besides the files in its own folder */
+export interface FilesConfig {
+  /** The shared files folder, relative to the site folder and inside it. It may not exist. Default: "files" */
+  dir: string;
+  /** The website path articles use for shared files, as folders without slashes around them. Default: "files" */
+  path: string;
+  /**
+   * Optional; the absolute URL shared files are hosted at (e.g. "https://static.example.com/"), used for them in built
+   * pages instead of `path`. Default: none (they are published with the website)
+   */
+  url?: string | undefined;
+  /** Where the build copies shared files when `url` is set, relative to the site folder. Default: "build-files" */
+  outputDir: string;
+  /** Where new uploads go in the editor. Default: "article" */
+  uploadTo: FilesUploadTo;
+}
+
 /** The site's settings from the config file */
 export interface EdahaConfig {
   /** The name of the website */
@@ -71,6 +94,8 @@ export interface EdahaConfig {
   siteUrl?: string | undefined;
   /** Paths at the website's root that the site can't use, e.g. another app's routes. Default: none */
   reservedPaths: string[];
+  /** The shared files folder's settings */
+  files: FilesConfig;
   /** Article type settings, by type */
   types: Record<string, ArticleTypeConfig>;
   /**
@@ -118,12 +143,30 @@ const CONFIG_KEYS = [
   "publishDir",
   "siteUrl",
   "reservedPaths",
+  "files",
   "types",
   "plugins",
   "metadata",
   "metadataGroups",
   "author",
 ];
+
+/** Settings under `files` */
+const FILES_KEYS: (keyof FilesConfig)[] = [
+  "dir",
+  "path",
+  "url",
+  "outputDir",
+  "uploadTo",
+];
+
+/** The shared files folder's default settings */
+export const DEFAULT_FILES_CONFIG: FilesConfig = {
+  dir: "files",
+  path: "files",
+  outputDir: "build-files",
+  uploadTo: "article",
+};
 
 /** List folders that can't be used as article types */
 export const RESERVED_TYPES = ["tags", "authors"];
@@ -262,20 +305,28 @@ const parseAuthor = (
 /**
  * Read a required, non-empty string field from parsed YAML.
  */
-const requireString = (data: Record<string, unknown>, field: string) => {
+const requireString = (
+  data: Record<string, unknown>,
+  field: string,
+  what = `"${field}"`,
+) => {
   const value = data[field];
   if (typeof value !== "string" || value.trim() === "")
-    throw new Error(`"${field}" must be a non-empty string`);
+    throw new Error(`${what} must be a non-empty string`);
   return value.trim();
 };
 
 /**
  * Read an optional, non-empty string field from parsed YAML.
  */
-const optionalString = (data: Record<string, unknown>, field: string) =>
+const optionalString = (
+  data: Record<string, unknown>,
+  field: string,
+  what?: string,
+) =>
   data[field] === undefined || data[field] === null
     ? undefined
-    : requireString(data, field);
+    : requireString(data, field, what);
 
 /**
  * Read the optional site URL: an absolute http(s) URL.
@@ -308,13 +359,15 @@ type SourceFolder = keyof typeof SOURCE_FOLDERS;
  */
 const parseFolder = (
   data: Record<string, unknown>,
-  field: SourceFolder,
+  field: string,
+  fallback: string,
+  what = `"${field}"`,
 ): string => {
-  const value = optionalString(data, field) ?? SOURCE_FOLDERS[field];
+  const value = optionalString(data, field, what) ?? fallback;
   const folder = normalize(value).split(sep).join("/").replace(/\/$/, "");
   if (isAbsolute(value) || folder === "." || folder.split("/")[0] === "..")
     throw new Error(
-      `"${field}" must be a folder inside the site folder, got "${value}"`,
+      `${what} must be a folder inside the site folder, got "${value}"`,
     );
   return folder;
 };
@@ -331,7 +384,10 @@ const parseSourceFolders = (
 ): Record<SourceFolder, string> => {
   const fields = Object.keys(SOURCE_FOLDERS) as SourceFolder[];
   const folders = Object.fromEntries(
-    fields.map((field) => [field, parseFolder(data, field)]),
+    fields.map((field) => [
+      field,
+      parseFolder(data, field, SOURCE_FOLDERS[field]),
+    ]),
   ) as Record<SourceFolder, string>;
   fields.forEach((a, i) => {
     for (const b of fields.slice(i + 1))
@@ -378,6 +434,63 @@ const parseReservedPaths = (data: Record<string, unknown>): string[] => {
 };
 
 /**
+ * Read the shared files folder's settings (`files`), filling in defaults. Its folder must be apart from the source
+ * folders, and its path is folders of lowercase letters, numbers, ".", "_" or "-", e.g. "/files/" or "/media/shared/".
+ *
+ * @param sourceFolders - the articles, templates and static files folders
+ *
+ * @example
+ * parseFiles({ files: { path: "/media/", uploadTo: "files-by-date" } }, folders);
+ * // { dir: "files", path: "media", outputDir: "build-files", uploadTo: "files-by-date" }
+ */
+const parseFiles = (
+  data: Record<string, unknown>,
+  sourceFolders: Record<SourceFolder, string>,
+): FilesConfig => {
+  const value = data.files;
+  if (value === undefined || value === null) return { ...DEFAULT_FILES_CONFIG };
+  const fields = asMap(value, '"files"');
+  checkKeys(fields, FILES_KEYS, '"files"');
+  const dir = parseFolder(
+    fields,
+    "dir",
+    DEFAULT_FILES_CONFIG.dir,
+    '"files.dir"',
+  );
+  for (const [field, folder] of Object.entries(sourceFolders))
+    if (overlaps(dir, folder))
+      throw new Error(
+        `"files.dir" and "${field}" must be apart from each other, got "${dir}" and "${folder}"`,
+      );
+  const path = (
+    optionalString(fields, "path", '"files.path"') ?? DEFAULT_FILES_CONFIG.path
+  ).replace(/^\/+|\/+$/g, "");
+  if (!path.split("/").every((part) => /^[a-z0-9][a-z0-9._-]*$/.test(part)))
+    throw new Error(
+      `"files.path" must be a website path of lowercase folders, e.g. "/files/", got "${String(fields.path)}"`,
+    );
+  const url = optionalString(fields, "url", '"files.url"');
+  if (url !== undefined && !/^https?:\/\/[^/]/.test(url))
+    throw new Error(
+      '"files.url" must be an absolute http(s) URL, e.g. "https://static.example.com/"',
+    );
+  const uploadTo = fields.uploadTo ?? DEFAULT_FILES_CONFIG.uploadTo;
+  if (!FILES_UPLOAD_TO.includes(uploadTo as FilesUploadTo))
+    throw new Error(
+      `"files.uploadTo" must be ${FILES_UPLOAD_TO.map((option) => `"${option}"`).join(", ")}, got "${String(uploadTo)}"`,
+    );
+  return {
+    dir,
+    path,
+    url: url && url.replace(/\/*$/, "/"),
+    outputDir:
+      optionalString(fields, "outputDir", '"files.outputDir"') ??
+      DEFAULT_FILES_CONFIG.outputDir,
+    uploadTo: uploadTo as FilesUploadTo,
+  };
+};
+
+/**
  * Validate the settings read from the site's config file and fill in defaults.
  */
 const validateConfig = (data: unknown): EdahaConfig => {
@@ -397,6 +510,7 @@ const validateConfig = (data: unknown): EdahaConfig => {
       parseTypeConfig(type, value),
     ]),
   );
+  const sourceFolders = parseSourceFolders(fields);
   // Types can only use custom metadata that is defined
   for (const [type, { metadata: keys }] of Object.entries(typeConfigs))
     for (const key of keys || [])
@@ -409,7 +523,8 @@ const validateConfig = (data: unknown): EdahaConfig => {
     description: requireString(fields, "description"),
     path: parsePath(fields.path, '"path"') ?? "",
     outputDir: optionalString(fields, "outputDir") ?? "build",
-    ...parseSourceFolders(fields),
+    ...sourceFolders,
+    files: parseFiles(fields, sourceFolders),
     theme: optionalString(fields, "theme"),
     publishDir: optionalString(fields, "publishDir"),
     siteUrl: parseSiteUrl(fields),

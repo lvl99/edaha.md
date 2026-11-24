@@ -157,6 +157,7 @@ describe("Templates", () => {
       url: "https://example.com",
       baseUrl: "",
       path: "/",
+      files: { url: "/files/", path: "/files/" },
       types: {},
     };
     expect(
@@ -242,6 +243,7 @@ describe("Templates", () => {
           url: "2026-10-19T09:54:00.000Z",
           baseUrl: "",
           path: ' src="/a.png"',
+          files: { url: "/files/", path: "/files/" },
           types: {},
         },
         type: "news",
@@ -268,6 +270,7 @@ describe("Templates", () => {
           url: "https://example.com",
           baseUrl: "",
           path: "/",
+          files: { url: "/files/", path: "/files/" },
           types: {
             news: { tags: [{ name: "a" }, {}, { name: "b" }] },
           } as never,

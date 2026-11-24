@@ -20,6 +20,7 @@ const site: TemplateDataSite = {
   url: "https://example.com",
   baseUrl: "",
   path: "/",
+  files: { url: "/files/", path: "/files/" },
   types: {},
   author: { name: "Test News" },
 };

@@ -10,6 +10,7 @@ const site: TemplateDataSite = {
   url: "https://example.com",
   baseUrl: "",
   path: "/",
+  files: { url: "/files/", path: "/files/" },
   types: {
     news: { ...defaultTypeConfig("news"), labelPlural: "News", url: "/news/" },
     page: { ...defaultTypeConfig("page"), path: "", url: "/" },

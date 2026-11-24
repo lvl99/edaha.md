@@ -33,6 +33,12 @@ describe("parseConfig", () => {
       publishDir: "../app/dist",
       siteUrl: undefined,
       reservedPaths: [],
+      files: {
+        dir: "files",
+        path: "files",
+        outputDir: "build-files",
+        uploadTo: "article",
+      },
       types: {},
       plugins: [],
       metadata: {},
@@ -162,6 +168,60 @@ describe("parseConfig", () => {
       expect(() => parseYaml(`${VALID}reservedPaths: ${value}\n`)).toThrow(
         '"reservedPaths" must be a list of lowercase paths',
       );
+  });
+
+  it("should read the shared files folder's settings, filling in defaults", () => {
+    expect(
+      parseYaml(
+        `${VALID}files:\n  dir: shared/\n  path: /media/shared/\n  url: https://static.example.com\n  outputDir: dist-files\n  uploadTo: files-by-date\n`,
+      ).files,
+    ).toEqual({
+      dir: "shared",
+      path: "media/shared",
+      url: "https://static.example.com/",
+      outputDir: "dist-files",
+      uploadTo: "files-by-date",
+    });
+    expect(parseYaml(`${VALID}files:\n  uploadTo: files\n`).files).toEqual({
+      dir: "files",
+      path: "files",
+      url: undefined,
+      outputDir: "build-files",
+      uploadTo: "files",
+    });
+  });
+
+  it("should reject invalid shared files folder settings", () => {
+    for (const [files, error] of [
+      ["files: shared", '"files" must be a map of settings'],
+      ["files:\n  folder: x", 'unknown "files" setting "folder"'],
+      [
+        "files:\n  dir: ../x",
+        '"files.dir" must be a folder inside the site folder',
+      ],
+      [
+        "files:\n  dir: static/files",
+        '"files.dir" and "staticDir" must be apart from each other, got "static/files" and "static"',
+      ],
+      ["files:\n  dir: ''", '"files.dir" must be a non-empty string'],
+      [
+        "files:\n  path: /Media/",
+        '"files.path" must be a website path of lowercase folders',
+      ],
+      [
+        "files:\n  path: /",
+        '"files.path" must be a website path of lowercase folders',
+      ],
+      [
+        "files:\n  url: static.example.com",
+        '"files.url" must be an absolute http(s) URL',
+      ],
+      [
+        "files:\n  uploadTo: cloud",
+        '"files.uploadTo" must be "article", "files", "files-by-date", got "cloud"',
+      ],
+    ])
+      expect(() => parseYaml(`${VALID}${files}\n`), files).toThrow(error);
   });
 
   it("should read an absolute siteUrl and reject anything else", () => {

@@ -119,6 +119,8 @@ describe("siteData", () => {
       // Without an author setting, articles' default author is the website
       author: { name: "Site" },
       types: { news: { ...defaultTypeConfig("news"), url: "/docs/news/" } },
+      // Shared files are published at files.path (not under the site's path)
+      files: { url: "/files/", path: "/files/" },
     });
     expect(siteData({ ...config, path: "" }, {}, "https://e.com").path).toBe(
       "/",
@@ -133,6 +135,21 @@ describe("siteData", () => {
     expect(sub.baseUrl).toBe("/edaha.md");
     expect(sub.path).toBe("/edaha.md/docs/");
     expect(sub.types.news?.url).toBe("/edaha.md/docs/news/");
+    expect(sub.files).toEqual({
+      url: "/edaha.md/files/",
+      path: "/edaha.md/files/",
+    });
+    // Shared files hosted elsewhere
+    expect(
+      siteData(
+        {
+          ...config,
+          files: { ...config.files, url: "https://static.example.com/" },
+        },
+        {},
+        "https://e.com",
+      ).files,
+    ).toEqual({ url: "https://static.example.com/", path: "/files/" });
     expect(
       siteData({ ...config, author: { name: "Matt" } }, {}, "https://e.com")
         .author,
