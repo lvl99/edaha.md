@@ -4,3 +4,5 @@ pnpm-lock.yaml
 packages/*/src/**/fixtures/**
 # The website built from site/ (generated)
 /build
+# Nunjucks templates: Prettier has no parser for them, and the Jinja plugin doesn't format them cleanly; `edaha check` checks them
+*.njk
