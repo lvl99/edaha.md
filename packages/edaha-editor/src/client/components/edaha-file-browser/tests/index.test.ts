@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FilePage, FileSummary } from "../../../../server/types";
 import type { EditorApi } from "../../../editorApi";
 import "..";
-import { acceptedKind, formatFileSize, type EdahaFileBrowser } from "..";
+import { acceptedKind, type EdahaFileBrowser } from "..";
 import {
   button,
   chooseFile,
@@ -108,18 +108,6 @@ const setup = async () => {
 /** The status line's text */
 const status = (element: EdahaFileBrowser) =>
   find(element, '[role="status"]').textContent?.trim();
-
-describe("formatFileSize", () => {
-  it("should show sizes in B, KB, MB or GB, with one decimal below 10", () => {
-    expect(formatFileSize(0)).toBe("0 B");
-    expect(formatFileSize(512)).toBe("512 B");
-    expect(formatFileSize(1536)).toBe("1.5 KB");
-    expect(formatFileSize(20 * 1024 + 300)).toBe("20 KB");
-    expect(formatFileSize(3 * 1024 ** 2)).toBe("3 MB");
-    expect(formatFileSize(5.25 * 1024 ** 3)).toBe("5.3 GB");
-    expect(formatFileSize(4096 * 1024 ** 3)).toBe("4096 GB");
-  });
-});
 
 describe("acceptedKind", () => {
   it("should be images only when a file input only accepts images", () => {

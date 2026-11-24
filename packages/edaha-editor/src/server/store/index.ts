@@ -86,6 +86,10 @@ import {
 } from "../files/index.ts";
 import { folderPath, folderUrl } from "@lvl99dotcom/edaha.md/generator/urls";
 import {
+  fileFolderName,
+  sharedFolderName,
+} from "../types/index.ts";
+import {
   isSafeSharedPath,
   isShared,
   listSharedFiles,
@@ -115,6 +119,8 @@ import type {
   EditorArticleData,
   UploadResult,
 } from "../types/index.ts";
+
+export { fileFolderName, sharedFolderName };
 
 /** An editor request that can't be done, with the HTTP status to answer with */
 export class EditorError extends Error {
@@ -302,29 +308,6 @@ const previewOutput = (
     );
   return output.file;
 };
-
-/**
- * How the editor names the folder a file is in, e.g. in errors: its article's type and slug, or its folder in the
- * shared files folder.
- *
- * @example
- * fileFolderName({ type: "news", slug: "hello" }); // "news/hello"
- * fileFolderName({ type: "@shared", slug: "2026/11" }); // "Shared files/2026/11"
- */
-export const fileFolderName = (location: ArticleLocation): string =>
-  isShared(location)
-    ? sharedFolderName(location.slug)
-    : `${location.type}/${location.slug}`;
-
-/**
- * How the editor names a folder in the shared files folder, e.g. in errors.
- *
- * @example
- * sharedFolderName("2026/11"); // "Shared files/2026/11"
- * sharedFolderName(""); // "Shared files"
- */
-export const sharedFolderName = (folder: string): string =>
-  folder ? `Shared files/${folder}` : "Shared files";
 
 /**
  * Reads and writes articles in the site's articles folder (`articlesDir`) for the editor, and renders previews with the site's

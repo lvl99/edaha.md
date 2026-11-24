@@ -149,6 +149,29 @@ export const sharedFilePath = ({
   name: string;
 }): string => (slug ? `${slug}/${name}` : name);
 
+/**
+ * How the editor names the folder a file is in, e.g. in errors: its article's type and slug, or its folder in the
+ * shared files folder.
+ *
+ * @example
+ * fileFolderName({ type: "news", slug: "hello" }); // "news/hello"
+ * fileFolderName({ type: "@shared", slug: "2026/11" }); // "Shared files/2026/11"
+ */
+export const fileFolderName = (location: ArticleLocation): string =>
+  isShared(location)
+    ? sharedFolderName(location.slug)
+    : `${location.type}/${location.slug}`;
+
+/**
+ * How the editor names a folder in the shared files folder, e.g. in errors.
+ *
+ * @example
+ * sharedFolderName("2026/11"); // "Shared files/2026/11"
+ * sharedFolderName(""); // "Shared files"
+ */
+export const sharedFolderName = (folder: string): string =>
+  folder ? `Shared files/${folder}` : "Shared files";
+
 /** A file, as the file browser shows it */
 export interface FileSummary extends IndexedFile {
   /** Its path on the website, e.g. "/news/welcome/photo.png" */

@@ -3,10 +3,12 @@ import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import addColumnRight from "@material-symbols/svg-400/outlined/add_column_right.svg?raw";
 import addPhotoAlternate from "@material-symbols/svg-400/outlined/add_photo_alternate.svg?raw";
 import addRowBelow from "@material-symbols/svg-400/outlined/add_row_below.svg?raw";
+import arrowForward from "@material-symbols/svg-400/outlined/arrow_forward.svg?raw";
 import audioFile from "@material-symbols/svg-400/outlined/audio_file.svg?raw";
 import description from "@material-symbols/svg-400/outlined/description.svg?raw";
 import draft from "@material-symbols/svg-400/outlined/draft.svg?raw";
 import folderZip from "@material-symbols/svg-400/outlined/folder_zip.svg?raw";
+import uploadFile from "@material-symbols/svg-400/outlined/upload_file.svg?raw";
 import videoFile from "@material-symbols/svg-400/outlined/video_file.svg?raw";
 import close from "@material-symbols/svg-400/outlined/close.svg?raw";
 import codeBlocks from "@material-symbols/svg-400/outlined/code_blocks.svg?raw";
@@ -14,6 +16,8 @@ import deleteSweep from "@material-symbols/svg-400/outlined/delete_sweep.svg?raw
 import expandCircleDown from "@material-symbols/svg-400/outlined/expand_circle_down.svg?raw";
 import contentCopy from "@material-symbols/svg-400/outlined/content_copy.svg?raw";
 import deleteIcon from "@material-symbols/svg-400/outlined/delete.svg?raw";
+import driveFileMove from "@material-symbols/svg-400/outlined/drive_file_move.svg?raw";
+import driveFileRename from "@material-symbols/svg-400/outlined/drive_file_rename.svg?raw";
 import findReplace from "@material-symbols/svg-400/outlined/find_replace.svg?raw";
 import folderOpen from "@material-symbols/svg-400/outlined/folder_open.svg?raw";
 import fullscreen from "@material-symbols/svg-400/outlined/fullscreen.svg?raw";
@@ -47,14 +51,18 @@ export const ICONS = {
   add_column_right: addColumnRight,
   add_photo_alternate: addPhotoAlternate,
   add_row_below: addRowBelow,
+  arrow_forward: arrowForward,
   audio_file: audioFile,
   description: description,
   draft: draft,
   folder_zip: folderZip,
+  upload_file: uploadFile,
   video_file: videoFile,
   close,
   content_copy: contentCopy,
   delete: deleteIcon,
+  drive_file_move: driveFileMove,
+  drive_file_rename: driveFileRename,
   find_replace: findReplace,
   folder_open: folderOpen,
   code_blocks: codeBlocks,

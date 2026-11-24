@@ -10,29 +10,17 @@ import type {
   FileSummary,
 } from "../../../server/types/index.ts";
 import type { ArticleLocation, EditorApi } from "../../editorApi/index.ts";
-import { icon, type IconName } from "../../icons/index.ts";
+import { icon } from "../../icons/index.ts";
+import {
+  FILE_KIND_ICONS,
+  FILE_KINDS,
+  formatFileSize,
+} from "../../fileLabels/index.ts";
 import { nextSort, sortHeading } from "../../sortTable/index.ts";
 import { ARTICLE_CHOOSE_EVENT } from "../edaha-article-browser/index.ts";
 import { defineElement } from "../define/index.ts";
 
-/** The kinds of files, as the file browser names them */
-export const FILE_KINDS: readonly { value: FileKind; label: string }[] = [
-  { value: "image", label: "Image" },
-  { value: "document", label: "Document" },
-  { value: "archive", label: "Archive" },
-  { value: "video", label: "Video" },
-  { value: "audio", label: "Audio" },
-  { value: "other", label: "Other" },
-];
-
-/** The icon shown for each kind of file that isn't an image, in place of its thumbnail */
-export const FILE_KIND_ICONS: Record<Exclude<FileKind, "image">, IconName> = {
-  document: "description",
-  archive: "folder_zip",
-  video: "video_file",
-  audio: "audio_file",
-  other: "draft",
-};
+export { FILE_KIND_ICONS, FILE_KINDS, formatFileSize };
 
 /** The results' sortable columns (Operations isn't sortable) */
 export const FILE_COLUMNS: readonly { sort: FileSort; label: string }[] = [
@@ -73,28 +61,6 @@ export const acceptedKind = (accept = ""): FileKind | undefined =>
   accept && accept.split(",").every((type) => type.trim().startsWith("image/"))
     ? "image"
     : undefined;
-
-/** The units file sizes are shown in */
-const SIZE_UNITS = ["B", "KB", "MB", "GB"];
-
-/**
- * A file size for people: bytes, kilobytes, megabytes or gigabytes (1 KB = 1024 bytes), with one decimal below 10.
- *
- * @example
- * formatFileSize(512); // "512 B"
- * formatFileSize(1536); // "1.5 KB"
- * formatFileSize(5 * 1024 ** 3); // "5 GB"
- */
-export const formatFileSize = (bytes: number): string => {
-  const unit = Math.min(
-    Math.max(Math.floor(Math.log(bytes) / Math.log(1024)), 0),
-    SIZE_UNITS.length - 1,
-  );
-  const value = bytes / 1024 ** unit;
-  const rounded =
-    unit && value < 10 ? Math.round(value * 10) / 10 : Math.round(value);
-  return `${rounded} ${SIZE_UNITS[unit]}`;
-};
 
 /** "1 article" or "2 articles" */
 const articles = (count: number) =>
