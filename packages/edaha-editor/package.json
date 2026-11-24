@@ -1,6 +1,6 @@
 {
   "name": "@lvl99dotcom/edaha-editor",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Local WYSIWYG article editor for edaha.md sites.",
   "keywords": [
     "blog",
