@@ -207,6 +207,27 @@ describe("EditorApi", () => {
     ).rejects.toMatchObject({ message: "Not valid", problems });
   });
 
+  it("should move files, sending where to and how", async () => {
+    const fetch = answer(200, { name: "b.png" });
+    const file = { ...LOCATION, name: "a.png", url: "/x/a.png" };
+    await new EditorApi(fetch).moveFile(file, file, { name: "b.png" });
+    await new EditorApi(fetch).moveFile(file, { type: "@shared", slug: "" });
+    const calls = fetch.mock.calls as unknown as [string, RequestInit][];
+    expect(calls.map(([path, init]) => [path, init.method])).toEqual([
+      ["/api/file-moves", "POST"],
+      ["/api/file-moves", "POST"],
+    ]);
+    expect(JSON.parse(calls[0]![1].body as string)).toEqual({
+      from: { ...LOCATION, name: "a.png" },
+      to: LOCATION,
+      name: "b.png",
+    });
+    expect(JSON.parse(calls[1]![1].body as string)).toEqual({
+      from: { ...LOCATION, name: "a.png" },
+      to: { type: "@shared", slug: "" },
+    });
+  });
+
   it("should give the two files when a file couldn't be saved because another has its name", async () => {
     const conflict = {
       incoming: { name: "a.png", kind: "image", size: 1 },

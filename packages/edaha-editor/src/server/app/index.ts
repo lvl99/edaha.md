@@ -178,6 +178,40 @@ const embedRequest = async (request: Request): Promise<EmbedFrameData> => {
   };
 };
 
+/** A file move's request body: the file, where it goes, and optionally its new name and whether to overwrite */
+interface MoveRequest {
+  from: ArticleLocation & { name: string };
+  to: ArticleLocation;
+  name?: string | undefined;
+  overwrite: boolean;
+}
+
+/** The text of a request body's value, or "" */
+const text = (value: unknown): string =>
+  typeof value === "string" ? value : "";
+
+/**
+ * Read a file move from a request's JSON body (see `ArticleStore.moveFile`), leaving out what isn't text.
+ *
+ * @example
+ * await moveRequest(request); // { from: { type: "news", slug: "hello", name: "a.png" }, to: { type: "@shared", slug: "" }, overwrite: false }
+ */
+const moveRequest = async (request: Request): Promise<MoveRequest> => {
+  const body = (await request.json()) as Record<string, unknown>;
+  const from = (body.from ?? {}) as Record<string, unknown>;
+  const to = (body.to ?? {}) as Record<string, unknown>;
+  return {
+    from: {
+      type: text(from.type),
+      slug: text(from.slug),
+      name: text(from.name),
+    },
+    to: { type: text(to.type), slug: text(to.slug) },
+    name: text(body.name) || undefined,
+    overwrite: body.overwrite === true,
+  };
+};
+
 /** A logger that leaves out warnings, for renders whose problems the editor shows itself (or doesn't need) */
 const QUIET: Logger = { warn: () => undefined };
 
@@ -335,6 +369,9 @@ const uploadFile = async (
  * - `GET /files/:type/:slug/:name`: an article's file, for previews in the editor
  * - `GET /api/shared-files/references?path=`, `PUT /api/shared-files?path=` and `DELETE /api/shared-files?path=`: the
  *   articles that refer to a file in the shared files folder, replacing it, and deleting it (as `/api/files/…` does)
+ * - `POST /api/file-moves`: move a file (`{ from: { type, slug, name }, to: { type, slug }, name?, overwrite? }`) into
+ *   another article's folder or the shared files folder, or rename it, updating references to it (`FileMoved`); a file
+ *   with its name there answers 409 with the `conflict`
  * - `GET /api/embeds`: the embed plugins (`EmbedInfo`), for the editor's embed dialog
  * - `POST /api/embed-validations`: check an embed block's content (`{ key, content }`) with its plugin's `validate`,
  *   giving why it isn't valid (`EmbedValidation`)
@@ -445,6 +482,11 @@ export const createEditorApp = (
   app.delete("/api/shared-files", async (c) => {
     const { slug, name } = sharedFile(c.req.query("path"));
     return c.json(await store.deleteFile(SHARED_FILES_TYPE, slug, name));
+  });
+
+  app.post("/api/file-moves", async (c) => {
+    const { from, to, name, overwrite } = await moveRequest(c.req.raw);
+    return c.json(await store.moveFile(from, to, { name, overwrite }));
   });
 
   app.get("/api/files/:type/:slug/:name/references", async (c) =>

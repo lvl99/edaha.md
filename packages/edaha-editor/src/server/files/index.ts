@@ -158,16 +158,27 @@ export const fileReferences = (
   ...(siteUrl ? [siteUrl + url] : []),
 ];
 
-/** What to do with references to a file: point them at another file name, or remove them */
-export type ReferenceChange = { rename: string } | { remove: true };
+/**
+ * What to do with references to a file: point them at another file name, point each at the file somewhere else (given
+ * by `move`, from the reference), or remove them
+ */
+export type ReferenceChange =
+  | { rename: string }
+  | { move: (reference: string) => string }
+  | { remove: true };
 
 /** A reference in Markdown or HTML: an image or link (with its text), or an HTML image or link */
 const REFERENCE =
   /(?<image>!?)\[(?<text>[^\]]*)\]\(\s*<?(?<dest>[^)\s>]+)>?(?<title>\s+"[^"]*")?\s*\)|<img\b[^>]*?\ssrc=(?<imgQuote>["'])(?<imgSrc>[^"']+)\k<imgQuote>[^>]*>|<a\b[^>]*?\shref=(?<linkQuote>["'])(?<linkHref>[^"']+)\k<linkQuote>[^>]*>(?<linkText>[\s\S]*?)<\/a>/;
 
-/** Swap a reference's file name for another, keeping its folder or address */
-const renamed = (reference: string, name: string) =>
-  reference.replace(/[^/]+$/, name);
+/** A reference changed to point at a renamed or moved file (renaming keeps its folder or address) */
+const changed = (
+  reference: string,
+  change: Exclude<ReferenceChange, { remove: true }>,
+) =>
+  "move" in change
+    ? change.move(reference)
+    : reference.replace(/[^/]+$/, change.rename);
 
 /**
  * Change references to a file in Markdown (outside code): point them at a new file name, or remove them (images are
@@ -188,8 +199,8 @@ export const changeBodyReferences = (
     const dest = (groups.dest ?? groups.imgSrc ?? groups.linkHref) as string;
     if (!references.includes(dest)) return match[0];
     count++;
-    if ("rename" in change)
-      return match[0].replace(dest, renamed(dest, change.rename));
+    if (!("remove" in change))
+      return match[0].replace(dest, changed(dest, change));
     // Images go; links keep their text
     if (groups.imgSrc || groups.image) return "";
     return (groups.text ?? groups.linkText) as string;
@@ -214,9 +225,9 @@ const changeValue = (
   change: ReferenceChange,
 ): ChangedValue => {
   if (typeof value === "string" && references.includes(value))
-    return "rename" in change
-      ? { value: renamed(value, change.rename), removed: false, count: 1 }
-      : { value: undefined, removed: true, count: 1 };
+    return "remove" in change
+      ? { value: undefined, removed: true, count: 1 }
+      : { value: changed(value, change), removed: false, count: 1 };
   if (!value || typeof value !== "object")
     return { value, removed: false, count: 0 };
   let count = 0;
@@ -249,8 +260,8 @@ const changeHeaderReferences = (
   const { thumbnail, attachments } = header;
   if (typeof thumbnail === "string" && references.includes(thumbnail)) {
     count++;
-    if ("rename" in change) next.thumbnail = renamed(thumbnail, change.rename);
-    else delete next.thumbnail;
+    if ("remove" in change) delete next.thumbnail;
+    else next.thumbnail = changed(thumbnail, change);
   }
   if (Array.isArray(attachments)) {
     const kept: unknown[] = [];
@@ -263,16 +274,15 @@ const changeHeaderReferences = (
       if (typeof fields.url === "string" && references.includes(fields.url)) {
         count++;
         if ("remove" in change) continue;
-        fields.url = renamed(fields.url, change.rename);
+        fields.url = changed(fields.url, change);
       }
       if (
         typeof fields.thumbnail === "string" &&
         references.includes(fields.thumbnail)
       ) {
         count++;
-        if ("rename" in change)
-          fields.thumbnail = renamed(fields.thumbnail, change.rename);
-        else delete fields.thumbnail;
+        if ("remove" in change) delete fields.thumbnail;
+        else fields.thumbnail = changed(fields.thumbnail, change);
       }
       kept.push(typeof attachment === "string" ? fields.url : fields);
     }
@@ -303,6 +313,7 @@ const changeHeaderReferences = (
  *
  * @example
  * changeArticleReferences(source, ["photo.png"], { rename: "photo.jpg" });
+ * changeArticleReferences(source, ["photo.png"], { move: () => "/files/photo.png" });
  */
 export const changeArticleReferences = (
   source: string,

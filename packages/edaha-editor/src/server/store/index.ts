@@ -101,6 +101,7 @@ import type {
   FileChange,
   FileConflict,
   FileFilters,
+  FileMoved,
   FileSummary,
   FilePage,
   FileQuery,
@@ -674,11 +675,11 @@ export class ArticleStore {
 
   /**
    * Change references to a file in every article (see `changeArticleReferences`), or only find them with `dryRun`.
-   * Returns the articles that refer to it.
+   * The change can depend on the article. Returns the articles that refer to it.
    */
   private async changeReferences(
     file: ArticleLocation & { name: string },
-    change: ReferenceChange,
+    change: ReferenceChange | ((article: ArticleLocation) => ReferenceChange),
     dryRun = false,
   ): Promise<ArticleLocation[]> {
     const index = await this.index();
@@ -705,7 +706,11 @@ export class ArticleStore {
       let next: string | undefined;
       try {
         source = await this.source(type, slug);
-        next = changeArticleReferences(source, references, change);
+        next = changeArticleReferences(
+          source,
+          references,
+          typeof change === "function" ? change({ type, slug }) : change,
+        );
       } catch {
         // Articles that can't be read are left alone
         continue;
@@ -784,6 +789,73 @@ export class ArticleStore {
     await rm(path);
     await this.fileChanged({ type, slug });
     return { articles };
+  }
+
+  /**
+   * Move a file into another article's folder or the top of the shared files folder, or rename it where it is (moving
+   * it to its own folder with another name). References to it in every article point at it where it went: by name in
+   * the article it went into, or else at its path on the website (or full address, if they used one). Throws a
+   * `FileConflictError` if a file there already has its name, unless it is to be overwritten.
+   *
+   * @example
+   * await store.moveFile({ type: "news", slug: "hello", name: "photo.png" }, { type: "@shared", slug: "" });
+   * // { type: "@shared", slug: "", name: "photo.png", articles: [{ type: "news", slug: "hello" }] }
+   * await store.moveFile({ type: "news", slug: "hello", name: "photo.png" }, { type: "news", slug: "hello" }, { name: "cover.png" });
+   */
+  async moveFile(
+    from: ArticleLocation & { name: string },
+    to: ArticleLocation,
+    { name, overwrite = false }: { name?: string; overwrite?: boolean } = {},
+  ): Promise<FileMoved> {
+    const fromPath = await this.filePath(from.type, from.slug, from.name);
+    const sameFolder = from.type === to.type && from.slug === to.slug;
+    // Moves into the shared files folder go to its top; renames stay where they are
+    const folder: ArticleLocation =
+      isShared(to) && !sameFolder ? { type: to.type, slug: "" } : to;
+    if (!isShared(folder)) await this.source(folder.type, folder.slug);
+    const moved = {
+      ...folder,
+      name: safeFileName(name ?? from.name),
+    };
+    if (
+      moved.type === from.type &&
+      moved.slug === from.slug &&
+      moved.name === from.name
+    )
+      return { ...moved, articles: [] };
+    const dir = await this.fileDir(folder);
+    const toPath = join(dir, moved.name);
+    if (!overwrite && (await exists(toPath)))
+      throw new FileConflictError(
+        `A file called ${moved.name} is already in ${fileFolderName(folder)}`,
+        {
+          incoming: await this.fileSummary(from),
+          existing: await this.fileSummary(moved),
+        },
+      );
+    await mkdir(dir, { recursive: true });
+    await rename(fromPath, toPath);
+    const { siteUrl } = await this.articleUrls();
+    const { url: hostedUrl, webPath } = await this.sharedFiles();
+    const url = (await this.fileUrls())(moved);
+    const articles = await this.changeReferences(from, (article) => ({
+      move: (reference) => {
+        if (
+          !isShared(moved) &&
+          article.type === moved.type &&
+          article.slug === moved.slug
+        )
+          return moved.name;
+        if (siteUrl && reference.startsWith(`${siteUrl}/`))
+          return siteUrl + url;
+        if (hostedUrl && isShared(moved) && reference.startsWith(hostedUrl))
+          return hostedUrl + url.slice(webPath.length);
+        return url;
+      },
+    }));
+    await this.fileChanged(from);
+    await this.fileChanged(moved);
+    return { ...moved, articles };
   }
 
   /** Stop watching the articles folder for changes */

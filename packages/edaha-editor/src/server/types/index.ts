@@ -295,6 +295,12 @@ export interface UploadResult {
   reference: string;
 }
 
+/** Where a file was moved (or renamed) to, and the articles whose references to it changed */
+export interface FileMoved extends ArticleLocation {
+  name: string;
+  articles: ArticleLocation[];
+}
+
 /** A file that has the same name as another, as the file conflict dialog shows it */
 export interface ConflictFile {
   name: string;

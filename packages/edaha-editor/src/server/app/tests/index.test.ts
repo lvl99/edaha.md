@@ -277,6 +277,54 @@ describe("createEditorApp", () => {
       ).toBe(404);
   });
 
+  it("should move and rename files, answering a name clash with the conflict", async () => {
+    const { app, dir } = await setup();
+    const move = (body: unknown) =>
+      app.request("/api/file-moves", json("POST", body));
+    const moved = await move({
+      from: { type: "article", slug: "first", name: "thumb.png" },
+      to: { type: "@shared", slug: "" },
+    });
+    expect(await moved.json()).toEqual({
+      type: "@shared",
+      slug: "",
+      name: "thumb.png",
+      articles: [{ type: "article", slug: "first" }],
+    });
+    expect(await readFile(join(dir, "files/thumb.png"))).toBeDefined();
+    const renamed = await move({
+      from: { type: "@shared", slug: "", name: "thumb.png" },
+      to: { type: "@shared", slug: "" },
+      name: "Cover.png",
+    });
+    expect(await renamed.json()).toMatchObject({ name: "cover.png" });
+    await writeFile(join(dir, "articles/article/first/cover.png"), "");
+    const clash = await move({
+      from: { type: "@shared", slug: "", name: "cover.png" },
+      to: { type: "article", slug: "first" },
+    });
+    expect(clash.status).toBe(409);
+    expect(await clash.json()).toMatchObject({
+      conflict: { existing: { url: "/news/first/cover.png" } },
+    });
+    expect(
+      (
+        await move({
+          from: { type: "@shared", slug: "", name: "cover.png" },
+          to: { type: "article", slug: "first" },
+          overwrite: true,
+        })
+      ).status,
+    ).toBe(200);
+    // Values that aren't text are left out
+    const empty = await move({ from: { type: 1 }, name: 2 });
+    expect([empty.status, await empty.json()]).toEqual([
+      400,
+      { error: expect.any(String) },
+    ]);
+    expect((await move({})).status).toBe(400);
+  });
+
   it("should create, save, move and delete articles", async () => {
     const { app } = await setup();
     const created = await app.request("/api/articles", json("POST", ARTICLE));

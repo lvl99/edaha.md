@@ -4,6 +4,7 @@ import type {
   FileChange,
   FileConflict,
   FileFilters,
+  FileMoved,
   FilePage,
   FileQuery,
   MetadataInfo,
@@ -57,7 +58,7 @@ export class ApiError extends Error {
   }
 }
 
-/** How to upload a file: under another name, or overwriting a file with its name */
+/** How to upload or move a file: under another name, or overwriting a file with its name */
 export interface UploadOptions {
   name?: string | undefined;
   overwrite?: boolean | undefined;
@@ -217,6 +218,28 @@ export class EditorApi {
     const body = new FormData();
     body.append("file", replacement);
     return this.request(fileRoute(file), { method: "PUT", body });
+  }
+
+  /**
+   * Move a file into another article's folder or the shared files folder (`{ type: "@shared", slug: "" }`), or rename
+   * it (moving it to its own folder with another name), updating references to it. A file there with its name fails
+   * with an ApiError giving the `conflict`, unless overwritten.
+   *
+   * @example
+   * await api.moveFile({ type: "news", slug: "hello", name: "a.png" }, { type: "@shared", slug: "" });
+   * await api.moveFile(file, file, { name: "b.png" }); // rename
+   */
+  moveFile(
+    from: FileLocation,
+    to: ArticleLocation,
+    { name, overwrite }: UploadOptions = {},
+  ): Promise<FileMoved> {
+    return this.send<FileMoved>("POST", "/api/file-moves", {
+      from: { type: from.type, slug: from.slug, name: from.name },
+      to: { type: to.type, slug: to.slug },
+      name,
+      overwrite,
+    });
   }
 
   /** Delete a file, removing references to it from every article */

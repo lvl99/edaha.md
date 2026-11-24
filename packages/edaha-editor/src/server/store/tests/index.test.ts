@@ -581,6 +581,127 @@ describe("ArticleStore", () => {
       expect(await readdir(join(dir, "files"))).toContain("logo-2.png");
     });
 
+    it("should move files between articles' folders and the shared files folder, pointing references at them", async () => {
+      const { dir, store } = await sharedSite();
+      const first = () =>
+        readFile(join(dir, "articles/article/first/article.md"), "utf8");
+      const about = () =>
+        readFile(join(dir, "articles/page/about-us/article.md"), "utf8");
+      // An article's file goes to the top of the shared files folder
+      expect(
+        await store.moveFile(
+          { type: "article", slug: "first", name: "thumb.png" },
+          { type: SHARED_FILES_TYPE, slug: "2026/11" },
+        ),
+      ).toEqual({
+        type: SHARED_FILES_TYPE,
+        slug: "",
+        name: "thumb.png",
+        articles: [{ type: "article", slug: "first" }],
+      });
+      expect(await first()).toContain("thumbnail: /files/thumb.png");
+      expect(await first()).toContain("![an image](/files/thumb.png)");
+      expect(await readdir(join(dir, "articles/article/first"))).not.toContain(
+        "thumb.png",
+      );
+      // A shared file goes into an article's folder, which refers to it by name
+      expect(
+        await store.moveFile(
+          { type: SHARED_FILES_TYPE, slug: "2026/11", name: "photo.jpg" },
+          { type: "page", slug: "about-us" },
+        ),
+      ).toMatchObject({ type: "page", slug: "about-us", name: "photo.jpg" });
+      expect(await about()).toContain("thumbnail: photo.jpg");
+      expect(await about()).toContain("![](photo.jpg)");
+      // And on to another article, which the first refers to at its path on the website
+      await store.moveFile(
+        { type: "page", slug: "about-us", name: "photo.jpg" },
+        { type: "article", slug: "first" },
+        { name: "Cover.JPG" },
+      );
+      expect(await about()).toContain("thumbnail: /news/first/cover.jpg");
+      // Moving it where it is changes nothing
+      expect(
+        await store.moveFile(
+          { type: "article", slug: "first", name: "cover.jpg" },
+          { type: "article", slug: "first" },
+        ),
+      ).toEqual({
+        type: "article",
+        slug: "first",
+        name: "cover.jpg",
+        articles: [],
+      });
+      await rejectsWith(
+        store.moveFile(
+          { type: "article", slug: "first", name: "cover.jpg" },
+          { type: "article", slug: "missing" },
+        ),
+        404,
+        "not found",
+      );
+    });
+
+    it("should refuse to move a file over another with its name, unless overwriting it", async () => {
+      const { dir, store } = await sharedSite();
+      await writeFile(join(dir, "files/thumb.png"), "shared");
+      const move = (overwrite?: boolean) =>
+        store.moveFile(
+          { type: "article", slug: "first", name: "thumb.png" },
+          { type: SHARED_FILES_TYPE, slug: "" },
+          { overwrite },
+        );
+      await expect(move()).rejects.toMatchObject({
+        status: 409,
+        message: "A file called thumb.png is already in Shared files",
+        conflict: {
+          incoming: { name: "thumb.png", url: "/news/first/thumb.png" },
+          existing: { name: "thumb.png", url: "/files/thumb.png", size: 6 },
+        },
+      });
+      await move(true);
+      expect(await readFile(join(dir, "files/thumb.png"), "utf8")).not.toBe(
+        "shared",
+      );
+    });
+
+    it("should rename shared files, keeping the address references used", async () => {
+      const { dir, store } = await sharedSite(
+        "  url: https://static.example.com/\n",
+      );
+      const config = await readFile(join(dir, "edahaconfig.yml"), "utf8");
+      await writeFile(
+        join(dir, "edahaconfig.yml"),
+        `siteUrl: https://example.com\n${config}`,
+      );
+      await writeFile(
+        join(dir, "articles/article/second/article.md"),
+        `<!--yaml\ndate: ${DATE}\n-->\n[Photo](https://example.com/files/2026/11/photo.jpg)\n`,
+      );
+      await store.moveFile(
+        { type: SHARED_FILES_TYPE, slug: "", name: "logo.png" },
+        { type: SHARED_FILES_TYPE, slug: "" },
+        { name: "brand.png" },
+      );
+      await store.moveFile(
+        { type: SHARED_FILES_TYPE, slug: "2026/11", name: "photo.jpg" },
+        { type: SHARED_FILES_TYPE, slug: "2026/11" },
+        { name: "photo-2.jpg" },
+      );
+      const about = await readFile(
+        join(dir, "articles/page/about-us/article.md"),
+        "utf8",
+      );
+      expect(about).toContain("[Logo](https://static.example.com/brand.png)");
+      expect(about).toContain("![](/files/2026/11/photo-2.jpg)");
+      expect(
+        await readFile(join(dir, "articles/article/second/article.md"), "utf8"),
+      ).toContain("[Photo](https://example.com/files/2026/11/photo-2.jpg)");
+      expect(await readdir(join(dir, "files/2026/11"))).toEqual([
+        "photo-2.jpg",
+      ]);
+    });
+
     it("should replace and delete them, changing references in every article, at their other address too", async () => {
       const { dir, store } = await sharedSite(
         "  url: https://static.example.com/\n",
