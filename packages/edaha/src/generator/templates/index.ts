@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, isAbsolute, join, posix, relative, sep } from "node:path";
 import get from "lodash/get.js";
 import nunjucks from "nunjucks";
 import { formatDate, formatRfc822 } from "../format/index.ts";
@@ -152,18 +152,56 @@ export const resolveTemplateName = (
 };
 
 /**
+ * Whether a template name is relative to the template that names it: it starts with `./` or `../`.
+ *
+ * @example
+ * isRelativeName("./b.njk"); // true
+ * isRelativeName("partials/b.njk"); // false
+ */
+export const isRelativeName = (name: string): boolean =>
+  name.startsWith("./") || name.startsWith("../");
+
+/**
+ * A relative template name (see isRelativeName) as a name in the template folders, from the template that names it
+ * (its name, or its file's path in one of the folders, as Nunjucks gives it).
+ *
+ * @example
+ * relativeTemplateName(["/site/templates"], "/site/templates/partials/x.njk", "../b.njk"); // "b.njk"
+ * relativeTemplateName([], "partials/x.njk", "./b.njk"); // "partials/b.njk"
+ */
+export const relativeTemplateName = (
+  dirs: readonly string[],
+  from: string,
+  name: string,
+): string => {
+  const dir = dirs.find(
+    (d) => isAbsolute(from) && !relative(d, from).startsWith(".."),
+  );
+  const fromName = dir ? relative(dir, from).split(sep).join("/") : from;
+  return posix.join(posix.dirname(fromName), name);
+};
+
+/**
  * A Nunjucks loader for the template folders, where an earlier folder's file overrides a later one's (see
- * resolveTemplateName). Names starting with THEME_PREFIX load from the last folder only (the theme's).
+ * resolveTemplateName). Names starting with THEME_PREFIX load from the last folder only (the theme's), and names
+ * starting with `./` or `../` are relative to the template that names them (see relativeTemplateName).
  *
  * @example
  * templateLoader(["site/templates", "theme/templates"]).getSource("@theme/layouts/rssfeed.njk");
  * // the theme's layouts/rssfeed.xml.njk
  */
-export const templateLoader = (dirs: readonly string[]): nunjucks.ILoader => {
+export const templateLoader = (
+  dirs: readonly string[],
+): nunjucks.ILoader & {
+  isRelative: typeof isRelativeName;
+  resolve: (from: string, name: string) => string;
+} => {
   const themeDirs = dirs.slice(-1);
   const files = new nunjucks.FileSystemLoader([...dirs]);
   const themeFiles = new nunjucks.FileSystemLoader(themeDirs);
   return {
+    isRelative: isRelativeName,
+    resolve: (from, name) => relativeTemplateName(dirs, from, name),
     getSource: (name) =>
       name.startsWith(THEME_PREFIX)
         ? themeFiles.getSource(

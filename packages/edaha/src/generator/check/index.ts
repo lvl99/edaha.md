@@ -5,7 +5,9 @@ import { loadSiteConfig } from "../configFile/index.ts";
 import {
   addTemplateTools,
   findTemplates,
+  isRelativeName,
   outputExtension,
+  relativeTemplateName,
   REQUIRED_TEMPLATES,
   resolveTemplateName,
   TEMPLATE_EXTENSIONS,
@@ -100,8 +102,8 @@ export const templateExists = (
   const searchDirs = theme ? dirs.slice(-1) : dirs;
   const relative = theme
     ? name.slice(THEME_PREFIX.length)
-    : name.startsWith("./") || name.startsWith("../")
-      ? posix.join(posix.dirname(from), name)
+    : isRelativeName(name)
+      ? relativeTemplateName(dirs, from, name)
       : name;
   const file = resolveTemplateName(searchDirs, relative);
   return searchDirs.some((dir) => existsSync(join(dir, file)));

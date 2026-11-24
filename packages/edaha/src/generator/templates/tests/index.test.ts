@@ -9,7 +9,9 @@ import {
   absoluteUrl,
   absoluteUrls,
   contains,
+  isRelativeName,
   outputExtension,
+  relativeTemplateName,
   parseJson,
   toJson,
   where,
@@ -336,6 +338,30 @@ describe("Templates", () => {
     );
   });
 
+  it("should load ./ and ../ names relative to the template that names them", async () => {
+    const theme = await templatesDir({
+      ...without("layouts/rssfeed.njk"),
+      "partials/b.njk": "theme partial b",
+      "partials/e.njk": "theme e",
+      "partials/deep/c.njk": '{% include "../e.njk" %}',
+      "layouts/rssfeed.xml.njk": "theme feed",
+    });
+    const site = await templatesDir({
+      "b.njk": "root b",
+      "partials/x.njk":
+        '{% include "./b.njk" %}, {% include "./deep/c.njk" %}, {% include "../b.njk" %}, {% include "../layouts/rssfeed.njk" %}',
+      "partials/b.njk": "site partial b",
+    });
+    const templates = new Templates([site, theme], { warn: vi.fn() });
+    // Then found as any other name: the site's first, without its output extension
+    expect(templates.render("partials/x.njk", {} as never)).toBe(
+      "site partial b, theme e, root b, theme feed",
+    );
+    expect(templates.render("@theme/partials/deep/c.njk", {} as never)).toBe(
+      "theme e",
+    );
+  });
+
   describe("output extensions", () => {
     it("should load a template by its name without its output extension, the earlier folder's first", async () => {
       const theme = await templatesDir({
@@ -494,6 +520,26 @@ describe("Templates", () => {
         "Template page/list.njk not found; using article/list.json.njk and article/list.njk",
       );
     });
+  });
+});
+
+describe("relativeTemplateName", () => {
+  it("should give a relative name as a name in the template folders, from the template that names it", () => {
+    const dirs = ["/site/templates", "/theme/templates"];
+    expect(
+      relativeTemplateName(dirs, "/theme/templates/partials/x.njk", "../b.njk"),
+    ).toBe("b.njk");
+    expect(relativeTemplateName(dirs, "partials/x.njk", "./b.njk")).toBe(
+      "partials/b.njk",
+    );
+    // Outside the folders, where nothing loads
+    expect(relativeTemplateName(dirs, "/elsewhere/x.njk", "./b.njk")).toBe(
+      "/elsewhere/b.njk",
+    );
+    expect(relativeTemplateName(dirs, "x.njk", "../b.njk")).toBe("../b.njk");
+    expect(isRelativeName("./b.njk")).toBe(true);
+    expect(isRelativeName("../b.njk")).toBe(true);
+    expect(isRelativeName("b.njk")).toBe(false);
   });
 });
 
