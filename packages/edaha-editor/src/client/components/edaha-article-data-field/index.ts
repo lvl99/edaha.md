@@ -223,7 +223,12 @@ export class EdahaArticleDataField extends LitElement {
           ? html`<p class="file-current">
               ${
                 this.preview && this.previewUrl && IMAGE.test(this.value)
-                  ? html`<img src=${this.previewUrl} alt="" width="120" />`
+                  ? html`<img
+                      class="checkerboard"
+                      src=${this.previewUrl}
+                      alt=""
+                      width="120"
+                    />`
                   : nothing
               }
               <span>${this.value}</span>
