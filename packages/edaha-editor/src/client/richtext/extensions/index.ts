@@ -13,6 +13,8 @@ import {
 } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type NodeView } from "@tiptap/pm/view";
 import { headingIds } from "@lvl99dotcom/edaha.md/generator/slug";
+import { copyText } from "../../clipboard/index.ts";
+import { showToast } from "../../components/edaha-toasts/index.ts";
 import { embedOptionsOf, embedText } from "@lvl99dotcom/edaha.md/embeds/blocks";
 import {
   embedName,
@@ -422,9 +424,35 @@ export const Embed = Node.create<EmbedOptions>({
   },
 });
 
+/** The toast shown once a heading's link is copied */
+export const HEADING_LINK_COPIED = "Copied link to heading";
+
 /**
- * Show each heading's ID after it (e.g. `#this-is-an-example`), as the website gives it from the heading's text, so it
- * can be copied for links. The IDs aren't saved: they come from the text whenever the article is built.
+ * Copy a heading's link (e.g. `#intro`) and say so with a toast, or that it couldn't be copied.
+ *
+ * @param from - the element the toast's event is fired from (it bubbles up to the editor's toasts)
+ * @example
+ * await copyHeadingLink(button, "#intro"); // toast: "Copied link to heading"
+ */
+export const copyHeadingLink = async (
+  from: HTMLElement,
+  link: string,
+): Promise<void> => {
+  try {
+    await copyText(link, from.closest("dialog") ?? document.body);
+    showToast(from, { kind: "success", message: HEADING_LINK_COPIED });
+  } catch {
+    showToast(from, {
+      kind: "error",
+      message: "Couldn't copy the link to the heading",
+    });
+  }
+};
+
+/**
+ * Show each heading's ID after it (e.g. `#this-is-an-example`), as the website gives it from the heading's text, as a
+ * button that copies the link to the heading (see copyHeadingLink). The IDs aren't saved: they come from the text
+ * whenever the article is built.
  */
 export const HeadingIds = Extension.create({
   name: "headingIds",
@@ -443,15 +471,25 @@ export const HeadingIds = Extension.create({
             headings.flatMap(({ pos, node }, i) => {
               const id = ids[i] as string;
               if (!id) return [];
-              const label = document.createElement("span");
-              label.className = "heading-id";
-              label.contentEditable = "false";
-              label.textContent = `#${id}`;
+              const link = document.createElement("button");
+              link.type = "button";
+              link.className = "btn btn-link btn-copy-heading-link heading-id";
+              link.contentEditable = "false";
+              link.textContent = `#${id}`;
+              link.title = "Copy link to heading";
+              // Its name starts with what it shows, so speech input finds it by its text
+              link.setAttribute("aria-label", `#${id}, copy link to heading`);
+              link.addEventListener(
+                "click",
+                () => void copyHeadingLink(link, `#${id}`),
+              );
               return [
-                Decoration.widget(pos + node.nodeSize - 1, label, {
+                Decoration.widget(pos + node.nodeSize - 1, link, {
                   side: 1,
                   key: id,
                   ignoreSelection: true,
+                  // The button handles its own clicks and keys, not the editor
+                  stopEvent: () => true,
                 }),
               ];
             }),

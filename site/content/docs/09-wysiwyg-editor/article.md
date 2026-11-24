@@ -50,7 +50,7 @@ Searches and the article browser include changes made outside the editor straigh
    - **Read more**: where the article's summary in lists ends.
 4. Choose **Save**.
 
-Selecting text also shows a small toolbar just above it, with **Bold**, **Italic**, **Underline**, **Strikethrough**, **Link**, **Heading 1**, **Heading 2** and **Heading 3**. It doesn't show for code or raw text, which can't be formatted. From the keyboard, press Tab to move from the selected text into it, and Escape to go back to the text. Underlined text is saved as HTML (`<u>`), as Markdown has none, and struck-through text as `~~text~~`. The article's title is its page's main heading, so use **Heading 1** in the body sparingly.
+Selecting text also shows a small toolbar just above it, with **Bold**, **Italic**, **Underline**, **Strikethrough**, **Link**, **Heading 1**, **Heading 2** and **Heading 3**. It doesn't show for code or raw text, which can't be formatted. From the keyboard, press Tab to move from the selected text into it, and Escape to go back to the text. Underlined text is saved as HTML (`<u>`), as Markdown has none, and struck-through text as `~~text~~`. The article's title is its page's main heading, so use **Heading 1** in the body sparingly. Each heading shows its ID after it (e.g. `#intro`), as your website gives it; choose it to copy the link to the heading, e.g. for a link elsewhere in the article.
 
 **Upload image** saves the image where your website's [`files.uploadTo`](/docs/03-configuration/#files) says: into the article's folder (which needs the article to be saved first), or into the shared files folder (at any time). See [Where uploads go](#where-uploads-go).
 

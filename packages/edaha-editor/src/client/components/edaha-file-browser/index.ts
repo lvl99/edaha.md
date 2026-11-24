@@ -27,6 +27,7 @@ import {
 } from "../../fileLabels/index.ts";
 import { nextSort, sortHeading } from "../../sortTable/index.ts";
 import { ARTICLE_CHOOSE_EVENT } from "../edaha-article-browser/index.ts";
+import { copyText } from "../../clipboard/index.ts";
 import { defineElement } from "../define/index.ts";
 import "../edaha-file-conflict/index.ts";
 import {
@@ -159,23 +160,7 @@ export class EdahaFileBrowser extends LitElement {
    * Copy text to the clipboard: with the Clipboard API, or where it isn't allowed, by selecting the text in a hidden
    * text box inside the dialog (the page behind it can't be focused). Rejects if neither works.
    */
-  copy = async (text: string): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch {
-      // Try selecting it instead
-    }
-    const box = document.createElement("textarea");
-    box.value = text;
-    box.className = "visually-hidden";
-    box.setAttribute("aria-hidden", "true");
-    (this.dialog ?? this).append(box);
-    box.select();
-    const copied = document.execCommand("copy");
-    box.remove();
-    if (!copied) throw new Error("Can't copy");
-  };
+  copy = (text: string): Promise<void> => copyText(text, this.dialog ?? this);
 
   /** The waiting search, if any */
   private searchTimer?: ReturnType<typeof setTimeout> | undefined;

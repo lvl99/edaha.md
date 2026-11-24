@@ -11,7 +11,16 @@ import {
   markdownToEditorHtml,
 } from "../../../../server/convert";
 import { AddressedImage, createRichtextEditor, showFormatMenu } from "..";
-import { EMBED_EDIT_EVENT, Embed, blockView } from "../../extensions";
+import {
+  EMBED_EDIT_EVENT,
+  Embed,
+  HEADING_LINK_COPIED,
+  blockView,
+} from "../../extensions";
+import {
+  TOAST_EVENT,
+  type ToastMessage,
+} from "../../../components/edaha-toasts";
 
 let editor: Editor | undefined;
 
@@ -574,6 +583,58 @@ describe("createRichtextEditor", () => {
     editor.commands.setTextSelection(5);
     editor.commands.insertContent("X");
     expect(labels()[0]).toEqual(["H2", "#thisx-is-an-example"]);
+  });
+
+  it("should copy the link to a heading from its ID, saying so with a toast", async () => {
+    const { editor, element } = create("<h2>Intro</h2><p>Text</p>");
+    const toasts: ToastMessage[] = [];
+    document.body.addEventListener(TOAST_EVENT, (event) =>
+      toasts.push((event as CustomEvent<ToastMessage>).detail),
+    );
+    const writeText = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValue(new Error("Not allowed"));
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+    const link = element.querySelector<HTMLButtonElement>(".heading-id")!;
+    expect(link.tagName).toBe("BUTTON");
+    expect(link.type).toBe("button");
+    expect(link.classList).toContain("btn-copy-heading-link");
+    expect(link.title).toBe("Copy link to heading");
+    expect(link.getAttribute("aria-label")).toBe(
+      "#intro, copy link to heading",
+    );
+    // Its keys are its own, not the editor's (Enter doesn't split the heading)
+    const html = editor.getHTML();
+    link.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+    );
+    expect(editor.getHTML()).toBe(html);
+    link.click();
+    await vi.waitFor(() =>
+      expect(toasts).toEqual([
+        { kind: "success", message: HEADING_LINK_COPIED },
+      ]),
+    );
+    expect(writeText).toHaveBeenCalledWith("#intro");
+    expect(HEADING_LINK_COPIED).toBe("Copied link to heading");
+
+    // Where it can't be copied, the toast says so
+    Object.defineProperty(document, "execCommand", {
+      value: vi.fn(() => false),
+      configurable: true,
+    });
+    link.click();
+    await vi.waitFor(() =>
+      expect(toasts.at(-1)).toEqual({
+        kind: "error",
+        message: "Couldn't copy the link to the heading",
+      }),
+    );
+    delete (document as { execCommand?: unknown }).execCommand;
   });
 
   it("should select a whole details block when its box is clicked, and cut, copy and paste it", () => {

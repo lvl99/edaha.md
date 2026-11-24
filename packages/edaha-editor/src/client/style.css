@@ -1061,13 +1061,20 @@ edaha-article .preview {
   padding: 0.5rem 1rem 1rem;
 }
 
-/* Heading IDs, shown after headings for copying into links */
+/* Heading IDs, shown after headings: buttons copying the link to the heading */
 .richtext-content .heading-id {
   margin-inline-start: 0.5em;
+  padding: 0;
+  color: inherit;
   font-size: 0.75em;
   font-weight: normal;
+  text-decoration: none;
   opacity: 0.6;
-  user-select: all;
+}
+
+.richtext-content .heading-id:hover {
+  color: inherit;
+  opacity: 1;
 }
 
 .richtext-content .ProseMirror-selectednode {
