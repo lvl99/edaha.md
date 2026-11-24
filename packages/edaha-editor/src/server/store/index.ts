@@ -781,7 +781,8 @@ export class ArticleStore {
   }
 
   /**
-   * Render an article from unsaved editor data as the website would, with its type's "single" template, for the
+   * Render an article from unsaved editor data as the website would, with its own template (its type's "single" one by
+   * default), for the
    * editor's preview. Drafts are shown as if published. Its files come from its saved folder (`location`), if it has one,
    * and are shown from the editor's file URLs. Throws a 400 EditorError if it can't be rendered (e.g. a file isn't in
    * the article's folder).
@@ -836,7 +837,7 @@ export class ArticleStore {
       })) as TemplateDataArticle;
       const templates = this.loadTemplates();
       return await embeds.renderPage(
-        templates.render(templates.resolve(data.type, "single"), {
+        templates.render(templates.resolve(data.type, article.template), {
           ...articlePageData(site, article),
           embeds: EMBED_PAGE_PARTS,
         }),

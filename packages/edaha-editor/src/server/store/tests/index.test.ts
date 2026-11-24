@@ -1050,6 +1050,22 @@ describe("ArticleStore.preview", () => {
     expect(html).toContain('href="https://example.com/x"');
   });
 
+  it("should render the article with its own template", async () => {
+    const { dir, store, embeds } = await previewSite();
+    await mkdir(join(dir, "templates/article"), { recursive: true });
+    await writeFile(
+      join(dir, "templates/article/landing.njk"),
+      "Landing: {{ article.title }}",
+    );
+    expect(
+      await store.preview(
+        data({ title: "First", template: "landing" }),
+        undefined,
+        embeds,
+      ),
+    ).toBe("Landing: First");
+  });
+
   it("should render an unsaved article of a type that isn't configured, titled Untitled when it has no title", async () => {
     const { store, embeds } = await previewSite();
     const html = await store.preview(

@@ -90,7 +90,7 @@ Three tabs above the body change what you see. Move between them with the arrow 
 
 - **WYSIWYG**: the rich text editor.
 - **Markdown**: the body as Markdown, if you'd like to edit it directly. Its toolbar has the same buttons, which write Markdown for you, or HTML where Markdown has nothing for it (underlined, small and big text, and details blocks). Cmd+Z (Ctrl+Z on Windows and Linux) undoes them like typing.
-- **Preview**: the article as your website will show it, with its layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred.
+- **Preview**: the article as your website will show it, with its own template (see **Template** in its settings), layout and styles. Drafts are shown as if published. **Width** shows it at full width, or at 900px, 600px or 320px wide (like a tablet, a small tablet or a phone), centred.
 
 ## Managing files
 
