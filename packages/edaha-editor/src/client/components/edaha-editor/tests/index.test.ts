@@ -725,8 +725,11 @@ describe("edaha-editor unsaved changes", () => {
     expect(dialog.getAttribute("role")).toBe("alertdialog");
     expect(find(dialog, "h2").textContent).toBe(UNSAVED_DIALOG.heading);
     expect(find(dialog, "p").textContent).toBe(UNSAVED_DIALOG.message);
+    // Its buttons are grouped together
     expect(
-      [...dialog.querySelectorAll("button")].map((b) => b.textContent?.trim()),
+      [...dialog.querySelectorAll(".dialog-actions > button")].map((b) =>
+        b.textContent?.trim(),
+      ),
     ).toEqual(["Save", "Don't save", "Cancel"]);
     await answer(element, "cancel");
     await opening;

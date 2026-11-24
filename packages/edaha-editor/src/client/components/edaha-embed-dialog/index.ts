@@ -263,7 +263,7 @@ export class EdahaEmbedDialog extends LitElement {
           </div>
           ${this.renderOptionFields()}
         </div>
-        <div class="embed-dialog-actions">
+        <div class="dialog-actions embed-dialog-actions">
           <button
             type="submit"
             class="btn btn-save"

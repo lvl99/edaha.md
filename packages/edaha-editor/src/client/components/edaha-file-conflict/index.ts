@@ -308,7 +308,7 @@ export class EdahaFileConflict extends LitElement {
         <span>${fileTypeLabel(file.name, file.kind)}</span>
         <span>${formatFileSize(file.size)}</span>
       </p>
-      <div class="file-conflict-actions">
+      <div class="dialog-actions file-conflict-actions">
         <button
           type="button"
           class="btn btn-rename"
@@ -350,7 +350,7 @@ export class EdahaFileConflict extends LitElement {
         (${fileTypeLabel(incoming.name, incoming.kind)};
         ${formatFileSize(incoming.size)})?
       </p>
-      <div class="file-conflict-actions">
+      <div class="dialog-actions file-conflict-actions">
         <button
           type="button"
           class="btn btn-confirm-overwrite"
@@ -406,7 +406,7 @@ export class EdahaFileConflict extends LitElement {
         }
         <p class="file-conflict-error" role="alert">${this.error}</p>
       </div>
-      <div class="file-conflict-footer">
+      <div class="dialog-actions file-conflict-footer">
         <button
           type="button"
           class="btn btn-cancel"

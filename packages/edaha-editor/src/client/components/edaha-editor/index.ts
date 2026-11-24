@@ -550,17 +550,19 @@ export class EdahaEditor extends LitElement {
       >
         <h2 id="unsaved-heading">${UNSAVED_DIALOG.heading}</h2>
         <p id="unsaved-message">${UNSAVED_DIALOG.message}</p>
-        ${UNSAVED_DIALOG.choices.map(
-          ({ value, label }) =>
-            html`<button
-              type="button"
-              class="btn btn-${value}"
-              data-choice=${value}
-              @click=${() => answer(value)}
-            >
-              ${label}
-            </button>`,
-        )}
+        <div class="dialog-actions">
+          ${UNSAVED_DIALOG.choices.map(
+            ({ value, label }) =>
+              html`<button
+                type="button"
+                class="btn btn-${value}"
+                data-choice=${value}
+                @click=${() => answer(value)}
+              >
+                ${label}
+              </button>`,
+          )}
+        </div>
       </div>
     </div>`;
   }
