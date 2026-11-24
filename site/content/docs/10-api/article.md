@@ -69,6 +69,8 @@ templates --> listPages
 pages --> output["outputDir"]
 listPages --> output
 files["Articles' files"] --> output
+shared["Shared files"] --> output
+shared -. "with files.url" .-> filesOutput["files.outputDir"]
 statics["Static files:<br>the site's over the theme's"] --> output
 output -. "if set" .-> publish["publishDir"]
 <!-- /embed:mermaidjs -->
@@ -77,7 +79,7 @@ output -. "if set" .-> publish["publishDir"]
 2. Every folder in the articles folder is an article type, with its settings from the config file (or the defaults, with a warning).
 3. Each article's `article.md` is read: its header settings are checked, its embed blocks are set aside for the pages that show them, and its Markdown becomes HTML. Drafts are checked but not built.
 4. Published articles are collected into lists: one for each type, and one for each tag and author within a type, as the types' `generate` settings say.
-5. Each article page, list page and RSS feed is rendered with its template, then the embed blocks it shows are rendered by their plugins (sharing each embed's state on the page) and the HTML its embeds need is added. Pages are written to `outputDir` with the articles' files and the static files. If `publishDir` is set, everything is then copied there.
+5. Each article page, list page and RSS feed is rendered with its template, then the embed blocks it shows are rendered by their plugins (sharing each embed's state on the page) and the HTML its embeds need is added. Pages are written to `outputDir` with the articles' files, the static files and the shared files (at their path, e.g. `/files/`, or into `files.outputDir` when they are hosted at `files.url`). If `publishDir` is set, everything is then copied there.
 
 Templates are found in the site's templates folder first, then in the default theme. A type's own template (e.g. `templates/news/single.njk`) comes before the `article` ones, and an article can name another with its `template` setting. Every page template extends a layout:
 
@@ -110,14 +112,15 @@ A site's template can build on the theme's version of itself with `{% extends "@
 
 `buildSite` resolves with:
 
-| Property     | Description                                                             |
-| ------------ | ----------------------------------------------------------------------- |
-| `outputDir`  | The absolute output folder.                                             |
-| `publishDir` | The absolute folder the files were copied into, if `publishDir` is set. |
-| `articles`   | The built articles' template data (published and unlisted).             |
-| `files`      | Every file written, relative to the output folder.                      |
+| Property         | Description                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `outputDir`      | The absolute output folder.                                                               |
+| `publishDir`     | The absolute folder the files were copied into, if `publishDir` is set.                   |
+| `filesOutputDir` | The absolute folder the shared files were copied into, if they are hosted at `files.url`. |
+| `articles`       | The built articles' template data (published and unlisted).                               |
+| `files`          | Every file written, relative to the output folder.                                        |
 
-It rejects with an error that names the problem (and the config file or article) when the site can't be built, e.g. a config setting is wrong, or a static file has the same path as an article's file. Problems that don't stop the build go to `logger.warn`.
+It rejects with an error that names the problem (and the config file or article) when the site can't be built, e.g. a config setting is wrong, or a static file or shared file has the same path as an article's file. Problems that don't stop the build go to `logger.warn`.
 
 ### Reading the config file
 

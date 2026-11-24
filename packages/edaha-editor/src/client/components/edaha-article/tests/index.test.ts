@@ -24,6 +24,7 @@ import type { EdahaArticleDataGroup } from "../../edaha-article-data-group";
 import type { EdahaMarkdown } from "../../edaha-markdown";
 import type { EdahaRichtext } from "../../edaha-richtext";
 import type { EdahaEmbedDialog } from "../../edaha-embed-dialog";
+import type { EdahaFileConflict } from "../../edaha-file-conflict";
 import type { ToastMessage } from "../../edaha-toasts";
 import {
   button,
@@ -68,8 +69,11 @@ const fakeApi = () =>
       type === "page" ? ["home", "single"] : ["single"],
     ),
     upload: vi.fn(async (_location: unknown, file: File) => ({
+      type: "article",
+      slug: "hello",
       name: file.name.toLowerCase(),
       url: `/files/article/hello/${file.name.toLowerCase()}`,
+      reference: file.name.toLowerCase(),
     })),
     toMarkdown: vi.fn(async (html: string) =>
       html.replace(/<\/?p>/g, "").trim(),
@@ -347,6 +351,7 @@ describe("edaha-article", () => {
     expect(api.upload).toHaveBeenCalledWith(
       { type: "article", slug: "hello" },
       expect.any(File),
+      {},
     );
     expect(element.data.thumbnail).toBe("new.png");
     expect(element.files).toEqual(["guide.pdf", "new.png", "thumb.png"]);
@@ -386,6 +391,90 @@ describe("edaha-article", () => {
     await expect(uploadImage(new File(["x"], "Pic.png"))).rejects.toThrow(
       "Upload failed",
     );
+  });
+
+  it("should upload into the shared files folder when the website says so, even before the article is saved", async () => {
+    const { element, api } = await setup(undefined);
+    element.site = {
+      name: "Test News",
+      uploadTo: "files-by-date",
+      types: {},
+    };
+    api.upload.mockResolvedValueOnce({
+      type: "@shared",
+      slug: "2026/11",
+      name: "pic.png",
+      url: "/files/2026/11/pic.png",
+      reference: "/files/2026/11/pic.png",
+    });
+    await settle(element);
+    expect(field(element, "thumbnail").disabled).toBe(false);
+    expect(element.querySelector(".unsaved-notice")).toBeNull();
+    const uploadImage = find<EdahaRichtext>(
+      element,
+      "edaha-richtext",
+    ).uploadImage!;
+    expect(await uploadImage(new File(["x"], "Pic.png"))).toBe(
+      "/files/2026/11/pic.png",
+    );
+    expect(api.upload).toHaveBeenCalledWith(undefined, expect.any(File), {});
+    expect(element.files).toEqual([]);
+  });
+
+  it("should resolve an upload's name clash with the conflict dialog, telling the editor when the existing file is renamed", async () => {
+    HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+      this.setAttribute("open", "");
+    };
+    HTMLDialogElement.prototype.close = function (this: HTMLDialogElement) {
+      this.removeAttribute("open");
+      this.dispatchEvent(new Event("close"));
+    };
+    const { element, api } = await setup();
+    const existing = {
+      type: "article",
+      slug: "hello",
+      name: "pic.png",
+      kind: "image" as const,
+      size: 4,
+      updated: DATE,
+      url: "/news/hello/pic.png",
+    };
+    (api as unknown as { moveFile: unknown }).moveFile = vi.fn(async () => ({
+      ...existing,
+      name: "old.png",
+      articles: [{ type: "news", slug: "other" }],
+    }));
+    api.upload.mockRejectedValueOnce(
+      new ApiError("A file called pic.png is already in article/hello", [], {
+        incoming: { name: "pic.png", kind: "image", size: 1 },
+        existing,
+      }),
+    );
+    URL.createObjectURL = vi.fn(() => "blob:pic");
+    URL.revokeObjectURL = vi.fn();
+    const changed = vi.fn();
+    element.addEventListener("files-changed", changed);
+    const uploadImage = find<EdahaRichtext>(
+      element,
+      "edaha-richtext",
+    ).uploadImage!;
+    const uploading = uploadImage(
+      new File(["x"], "Pic.png", { type: "image/png" }),
+    );
+    await settle(element);
+    const dialog = find<EdahaFileConflict>(element, "edaha-file-conflict");
+    expect(dialog.open).toBe(true);
+    expect(find<HTMLImageElement>(dialog, "img").src).toBe("blob:pic");
+    expect(
+      [...dialog.querySelectorAll<HTMLImageElement>("img")][1]!.src,
+    ).toContain("/news/hello/pic.png");
+    await dialog.choose({ rename: "existing", name: "old.png" });
+    expect(await uploading).toBe("/files/article/hello/pic.png");
+    expect(changed.mock.calls[0]![0].detail).toEqual({
+      file: existing,
+      articles: [{ type: "news", slug: "other" }],
+    });
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:pic");
   });
 
   it("should upload images for the body's Markdown, referring to them by file name", async () => {
@@ -1774,6 +1863,7 @@ describe("edaha-article default author", () => {
     const result = await setup({ ...ARTICLE, author: undefined });
     result.element.site = {
       name: "Test News",
+      uploadTo: "article",
       author: {
         name: "Matt",
         email: "matt@example.com",

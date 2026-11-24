@@ -492,6 +492,13 @@ edaha-article form {
   font-size: 1rem;
 }
 
+/* On the narrowest screens, the three tabs fit side by side */
+@media (max-width: 23.98rem) {
+  .body-tabs [role="tab"] {
+    padding-inline: 0.5rem;
+  }
+}
+
 .body-tabs [role="tab"]:hover {
   color: var(--colour-text);
 }
@@ -1612,4 +1619,143 @@ edaha-metadata-field {
   font: inherit;
   text-align: inherit;
   cursor: pointer;
+}
+
+/* The file browser's header: Upload file beside Close */
+.file-browser-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.file-browser-header-actions .btn {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+/* The file conflict dialog: the incoming file, an arrow, then the existing file (stacked on narrow screens) */
+@media (min-width: 900px) {
+  .file-conflict {
+    width: min(44rem, calc(100vw - 2rem));
+  }
+}
+
+.file-conflict-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  overflow-y: auto;
+}
+
+.file-conflict-body p {
+  margin: 0;
+}
+
+.file-conflict-files {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.file-conflict-file {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.file-conflict-file h3 {
+  margin: 0;
+  font-size: var(--font-size-h5);
+}
+
+.file-conflict-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 10rem;
+  border: 1px solid var(--colour-border);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.file-conflict-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.file-conflict-icon,
+.file-conflict-arrow {
+  display: flex;
+  color: var(--colour-muted);
+}
+
+.file-conflict-icon svg {
+  width: 3rem;
+  height: 3rem;
+  fill: currentcolor;
+}
+
+/* The arrow sits between the previews */
+.file-conflict-arrow {
+  align-self: start;
+  margin-top: 5.75rem;
+}
+
+.file-conflict-arrow svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  fill: currentcolor;
+}
+
+.file-conflict-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  color: var(--colour-muted);
+  font-size: var(--font-size-s);
+}
+
+.file-conflict-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.file-conflict-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--colour-error);
+  border-radius: var(--border-radius);
+}
+
+.file-conflict-error {
+  color: var(--colour-error);
+}
+
+.file-conflict-error:empty {
+  display: none;
+}
+
+.file-conflict-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.5rem 1rem 1rem;
+}
+
+@media (max-width: 35.98rem) {
+  .file-conflict-files {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .file-conflict-arrow {
+    justify-self: center;
+    margin: 0;
+    transform: rotate(90deg);
+  }
 }

@@ -210,6 +210,30 @@ describe("changeArticleReferences", () => {
     );
   });
 
+  it("should point each reference at a moved file, as the move gives it", () => {
+    const moved = changeArticleReferences(
+      `${source}[Photo](https://example.com/news/a/photo.png)\n`,
+      [...references, "https://example.com/news/a/photo.png"],
+      {
+        move: (reference) =>
+          reference.startsWith("https:")
+            ? "https://example.com/files/photo.png"
+            : "/files/photo.png",
+      },
+    ) as string;
+    expect(moved).toContain("thumbnail: /files/photo.png");
+    expect(moved).toContain("  - url: /files/photo.png\n    name: Photo");
+    expect(moved).toContain("    thumbnail: /files/photo.png");
+    expect(moved).toContain("  - /files/photo.png");
+    expect(moved).toContain("![](/files/photo.png)");
+    expect(moved).toContain("[Photo](https://example.com/files/photo.png)");
+    expect(
+      changeArticleReferences("<!--yaml\nhero: photo.png\n-->\n", references, {
+        move: () => "/files/photo.png",
+      }),
+    ).toBe("<!--yaml\nhero: /files/photo.png\n-->\n");
+  });
+
   it("should clear thumbnails and remove attachments that are the file", () => {
     expect(changeArticleReferences(source, references, { remove: true })).toBe(
       [

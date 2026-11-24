@@ -98,6 +98,10 @@ describe("resolveOutputDir", () => {
       expect(() => resolveOutputDir("/site", dir, sources)).toThrow(
         `"outputDir" must be apart from site/content, site/templates, site/static, got "${dir}"`,
       );
+    // Errors name the setting
+    expect(() =>
+      resolveOutputDir("/site", "build", ["build"], "files.outputDir"),
+    ).toThrow('"files.outputDir" must be apart from build, got "build"');
   });
 });
 
@@ -119,6 +123,8 @@ describe("siteData", () => {
       // Without an author setting, articles' default author is the website
       author: { name: "Site" },
       types: { news: { ...defaultTypeConfig("news"), url: "/docs/news/" } },
+      // Shared files are published at files.path (not under the site's path)
+      files: { url: "/files/", path: "/files/" },
     });
     expect(siteData({ ...config, path: "" }, {}, "https://e.com").path).toBe(
       "/",
@@ -133,6 +139,21 @@ describe("siteData", () => {
     expect(sub.baseUrl).toBe("/edaha.md");
     expect(sub.path).toBe("/edaha.md/docs/");
     expect(sub.types.news?.url).toBe("/edaha.md/docs/news/");
+    expect(sub.files).toEqual({
+      url: "/edaha.md/files/",
+      path: "/edaha.md/files/",
+    });
+    // Shared files hosted elsewhere
+    expect(
+      siteData(
+        {
+          ...config,
+          files: { ...config.files, url: "https://static.example.com/" },
+        },
+        {},
+        "https://e.com",
+      ).files,
+    ).toEqual({ url: "https://static.example.com/", path: "/files/" });
     expect(
       siteData({ ...config, author: { name: "Matt" } }, {}, "https://e.com")
         .author,
@@ -489,6 +510,89 @@ describe("buildSite", () => {
     expect(await read("site.css")).toBe("site");
   });
 
+  it("should publish the shared files folder at its path, for articles to use", async () => {
+    const space = await workspace();
+    await writeSiteFile(space, "files/2026/11/logo.png", "png");
+    await writeArticle(
+      space,
+      "article/shared",
+      "<!--yaml\ndate: 2026-10-19\nthumbnail: /files/2026/11/logo.png\n-->\n# Shared\n\n![Logo](/files/2026/11/logo.png)",
+    );
+    await writeSiteFile(
+      space,
+      "templates/article/single.njk",
+      "{{ article.thumbnail }}|{{ article.bodyHtml | safe }}|{{ site.files.url }}",
+    );
+    const { result, read } = await build(space, "https://example.com/blog");
+    expect(result.files).toContain("files/2026/11/logo.png");
+    expect(await read("files/2026/11/logo.png")).toBe("png");
+    expect(result.filesOutputDir).toBeUndefined();
+    expect(await read("news/shared/index.html")).toBe(
+      '/blog/files/2026/11/logo.png|<p><img src="/blog/files/2026/11/logo.png" alt="Logo"></p>\n|/blog/files/',
+    );
+  });
+
+  it("should copy shared files hosted elsewhere into their own folder, and link to them there", async () => {
+    const space = await workspace();
+    await writeFile(
+      join(space.siteDir, "edahaconfig.yml"),
+      `${await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8")}files:\n  dir: shared\n  path: /media/\n  url: https://static.example.com\n  outputDir: out-files\n`,
+    );
+    await writeSiteFile(space, "shared/logo.png", "png");
+    await writeArticle(
+      space,
+      "article/shared",
+      "<!--yaml\ndate: 2026-10-19\nthumbnail: /media/logo.png\n-->\n# Shared\n\n![Logo](/media/logo.png)",
+    );
+    await writeSiteFile(
+      space,
+      "templates/article/single.njk",
+      "{{ article.thumbnail }}|{{ article.bodyHtml | safe }}",
+    );
+    const { result, read } = await build(space);
+    expect(result.filesOutputDir).toBe(join(space.siteDir, "out-files"));
+    expect(
+      await readFile(join(space.siteDir, "out-files/logo.png"), "utf8"),
+    ).toBe("png");
+    expect(result.files).not.toContain("media/logo.png");
+    expect(await read("news/shared/index.html")).toBe(
+      'https://static.example.com/logo.png|<p><img src="https://static.example.com/logo.png" alt="Logo"></p>\n',
+    );
+    // Emptied on every build
+    await rm(join(space.siteDir, "shared/logo.png"));
+    await rm(join(space.root, "site"), { recursive: true });
+    await writeArticle(
+      space,
+      "article/shared",
+      "<!--yaml\ndate: 2026-10-19\n-->\n# Shared",
+    );
+    await build(space);
+    await expect(
+      readFile(join(space.siteDir, "out-files/logo.png")),
+    ).rejects.toThrow();
+  });
+
+  it("should reserve the shared files' path, and stop when a shared file has another file's path", async () => {
+    const space = await workspace();
+    await configurePages(space, '    path: ""\n');
+    await writeSiteFile(space, "files/site.css", "shared");
+    await writeSiteFile(space, "static/files/site.css", "static");
+    await expect(build(space)).rejects.toThrow(
+      "files/site.css has the same path as an article's or a static file",
+    );
+    await rm(join(space.siteDir, "files/site.css"));
+    await writeSiteFile(space, "files/logo.png", "png");
+    await writeArticle(
+      space,
+      "page/files",
+      "<!--yaml\ndate: 2026-10-19\n-->\n# Files",
+    );
+    await expect(build(space)).rejects.toThrow("files");
+    // Without shared files, the path is free
+    await rm(join(space.siteDir, "files"), { recursive: true });
+    await expect(build(space)).resolves.toBeDefined();
+  });
+
   it("should render every template of a name to a file with its output extension", async () => {
     const space = await workspace();
     await writeSiteFile(
@@ -826,7 +930,7 @@ describe("buildSite", () => {
       }),
     );
     await expect(buildSite({ configFile, logger })).rejects.toThrow(
-      'settings.json: "outputDir" must be apart from content, templates, static, got "content/out"',
+      'settings.json: "outputDir" must be apart from content, templates, static, files, got "content/out"',
     );
   });
 

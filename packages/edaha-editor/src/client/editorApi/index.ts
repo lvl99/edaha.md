@@ -2,7 +2,9 @@ import type {
   ArticleFilters,
   ArticleLocation,
   FileChange,
+  FileConflict,
   FileFilters,
+  FileMoved,
   FilePage,
   FileQuery,
   MetadataInfo,
@@ -19,6 +21,7 @@ import type {
   RecentArticles,
   UploadResult,
 } from "../../server/types/index.ts";
+import { isShared, sharedFilePath } from "../../server/types/index.ts";
 
 import { previewAddress } from "../embeds/index.ts";
 
@@ -35,14 +38,30 @@ export interface EditorApiOptions {
   fetch?: typeof fetch | undefined;
 }
 
-/** A failed request: the server's message, and the problems with an article's metadata when saving it was refused */
+/**
+ * A failed request: the server's message, the problems with an article's metadata when saving it was refused, and the
+ * two files when a file couldn't be saved because another has its name
+ */
 export class ApiError extends Error {
   readonly problems?: MetadataProblem[] | undefined;
 
-  constructor(message: string, problems?: MetadataProblem[]) {
+  readonly conflict?: FileConflict | undefined;
+
+  constructor(
+    message: string,
+    problems?: MetadataProblem[],
+    conflict?: FileConflict,
+  ) {
     super(message);
     this.problems = problems;
+    this.conflict = conflict;
   }
+}
+
+/** How to upload or move a file: under another name, or overwriting a file with its name */
+export interface UploadOptions {
+  name?: string | undefined;
+  overwrite?: boolean | undefined;
 }
 
 /** A file in an article's folder */
@@ -65,9 +84,18 @@ export const searchParams = (query: object): string => {
   return params.size ? `?${params}` : "";
 };
 
-/** A file's API route */
-const fileRoute = ({ type, slug, name }: FileLocation) =>
-  `/api/files/${type}/${slug}/${encodeURIComponent(name)}`;
+/**
+ * A file's API route, or the route of the articles that refer to it: by its article, or by its path in the shared
+ * files folder.
+ *
+ * @example
+ * fileRoute({ type: "news", slug: "hello", name: "a b.png" }); // "/api/files/news/hello/a%20b.png"
+ * fileRoute({ type: "@shared", slug: "2026/11", name: "a.png" }, "references"); // "/api/shared-files/references?path=2026%2F11%2Fa.png"
+ */
+const fileRoute = (file: FileLocation, part?: "references") =>
+  isShared(file)
+    ? `/api/shared-files${part ? `/${part}` : ""}?path=${encodeURIComponent(sharedFilePath(file))}`
+    : `/api/files/${file.type}/${file.slug}/${encodeURIComponent(file.name)}${part ? `/${part}` : ""}`;
 
 /** A preview page: its URL, and the extensions of the files its article's template outputs, HTML first */
 export interface PreviewPage {
@@ -134,11 +162,13 @@ export class EditorApi {
     const body = (await response.json().catch(() => ({}))) as {
       error?: string;
       problems?: MetadataProblem[];
+      conflict?: FileConflict;
     };
     if (!response.ok)
       throw new ApiError(
         body.error ?? `Request failed with ${response.status}`,
         body.problems,
+        body.conflict,
       );
     return body as T;
   }
@@ -180,7 +210,7 @@ export class EditorApi {
 
   /** The articles that refer to a file */
   fileReferences(file: FileLocation): Promise<ArticleLocation[]> {
-    return this.request(`${fileRoute(file)}/references`);
+    return this.request(fileRoute(file, "references"));
   }
 
   /** Replace a file with another, updating references to it if the new one's name differs */
@@ -188,6 +218,28 @@ export class EditorApi {
     const body = new FormData();
     body.append("file", replacement);
     return this.request(fileRoute(file), { method: "PUT", body });
+  }
+
+  /**
+   * Move a file into another article's folder or the shared files folder (`{ type: "@shared", slug: "" }`), or rename
+   * it (moving it to its own folder with another name), updating references to it. A file there with its name fails
+   * with an ApiError giving the `conflict`, unless overwritten.
+   *
+   * @example
+   * await api.moveFile({ type: "news", slug: "hello", name: "a.png" }, { type: "@shared", slug: "" });
+   * await api.moveFile(file, file, { name: "b.png" }); // rename
+   */
+  moveFile(
+    from: FileLocation,
+    to: ArticleLocation,
+    { name, overwrite }: UploadOptions = {},
+  ): Promise<FileMoved> {
+    return this.send<FileMoved>("POST", "/api/file-moves", {
+      from: { type: from.type, slug: from.slug, name: from.name },
+      to: { type: to.type, slug: to.slug },
+      name,
+      overwrite,
+    });
   }
 
   /** Delete a file, removing references to it from every article */
@@ -315,13 +367,28 @@ export class EditorApi {
     });
   }
 
-  /** Upload a file into an article's folder */
-  upload({ type, slug }: ArticleLocation, file: File): Promise<UploadResult> {
+  /**
+   * Upload a file where the config file's `files.uploadTo` says: the article's folder (which must be given), or the
+   * shared files folder. A file there with its name fails with an ApiError giving the `conflict`, unless overwritten.
+   *
+   * @example
+   * await api.upload({ type: "news", slug: "hello" }, file);
+   * await api.upload(undefined, file, { name: "photo-2.png" }); // into the shared files folder
+   */
+  upload(
+    article: ArticleLocation | undefined,
+    file: File,
+    { name, overwrite }: UploadOptions = {},
+  ): Promise<UploadResult> {
     const body = new FormData();
     body.append("file", file);
-    return this.request(`/api/articles/${type}/${slug}/files`, {
-      method: "POST",
-      body,
-    });
+    if (name) body.append("name", name);
+    if (overwrite) body.append("overwrite", "true");
+    return this.request(
+      article
+        ? `/api/articles/${article.type}/${article.slug}/files`
+        : "/api/files",
+      { method: "POST", body },
+    );
   }
 }

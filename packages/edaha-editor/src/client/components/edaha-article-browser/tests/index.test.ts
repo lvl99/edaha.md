@@ -131,7 +131,7 @@ describe("edaha-article-browser", () => {
     expect(dialog.getAttribute("aria-labelledby")).toBe(
       "article-browser-title",
     );
-    expect(find(element, "#article-browser-title").textContent).toBe(
+    expect(find(element, "#article-browser-title").textContent?.trim()).toBe(
       "All articles",
     );
     expect(find(element, '[role="status"]').textContent?.trim()).toBe(
@@ -398,6 +398,33 @@ describe("edaha-article-browser", () => {
       type: "news",
       slug: "hello",
     });
+  });
+
+  it("should give the article chosen while picking, instead of firing article-choose", async () => {
+    const { element } = await setup();
+    const chosen = vi.fn();
+    element.addEventListener("article-choose", chosen);
+    const picked = element.pick({ type: "news" });
+    await settle(element);
+    expect(find(element, "#article-browser-title").textContent?.trim()).toBe(
+      "Choose an article",
+    );
+    find(element, ".article-browser-table tbody a").click();
+    expect(await picked).toEqual({ type: "news", slug: "hello" });
+    expect(element.open).toBe(false);
+    expect(chosen).not.toHaveBeenCalled();
+    // Closing, or showing it again, chooses none
+    const closed = element.pick();
+    await settle(element);
+    button(element, "Close").click();
+    expect(await closed).toBeUndefined();
+    const shown = element.pick();
+    await settle(element);
+    await element.show();
+    expect(await shown).toBeUndefined();
+    expect(find(element, "#article-browser-title").textContent?.trim()).toBe(
+      "All articles",
+    );
   });
 
   it("should close from its close button, cancelling a waiting search", async () => {

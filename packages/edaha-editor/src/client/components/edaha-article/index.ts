@@ -29,6 +29,15 @@ import type {
 } from "../edaha-article-data-field/index.ts";
 import { showToast } from "../edaha-toasts/index.ts";
 import "../edaha-embed-dialog/index.ts";
+import "../edaha-file-conflict/index.ts";
+import {
+  saveResolvingConflicts,
+  type EdahaFileConflict,
+} from "../edaha-file-conflict/index.ts";
+import {
+  FILES_CHANGED_EVENT,
+  type FilesChanged,
+} from "../edaha-file-browser/index.ts";
 import type { EdahaEmbedDialog } from "../edaha-embed-dialog/index.ts";
 import type { EmbedTools } from "../../embeds/index.ts";
 import "../edaha-metadata-field/index.ts";
@@ -586,29 +595,69 @@ export class EdahaArticle extends LitElement {
   }
 
   /**
-   * Upload a file into the article's folder. Returns the saved file name.
+   * Whether files can be uploaded: into the article's folder once it is saved, or into the shared files folder (when
+   * the config file's `files.uploadTo` says so) at any time.
    */
-  private async upload(file: File): Promise<string | undefined> {
-    const location = this.location;
-    if (!location) return undefined;
-    const result = await this.run(() => this.api.upload(location, file));
-    if (result && !this.files.includes(result.name))
-      this.files = [...this.files, result.name].sort();
-    return result?.name;
+  private get canUpload(): boolean {
+    return (
+      Boolean(this.location) || (this.site?.uploadTo ?? "article") !== "article"
+    );
   }
 
-  /** Images inserted into the body are uploaded and shown from the article folder */
+  /**
+   * Upload a file where the config file says (the article's folder, or the shared files folder), resolving a clash
+   * with a file of its name with the file conflict dialog. Returns how the article refers to it: its name in the
+   * article's folder, or its path on the website (undefined if it failed or the conflict was cancelled).
+   */
+  private async upload(file: File): Promise<string | undefined> {
+    if (!this.canUpload) return undefined;
+    const incomingUrl = file.type.startsWith("image/")
+      ? URL.createObjectURL(file)
+      : undefined;
+    const result = await this.run(() =>
+      saveResolvingConflicts(
+        this.querySelector("edaha-file-conflict") as EdahaFileConflict,
+        this.api,
+        (options) => this.api.upload(this.location, file, options),
+        {
+          action: "upload",
+          incomingUrl,
+          address: (url) => this.api.url(url),
+          // Renaming the existing file changed its references, which the editor may be showing
+          onExistingRenamed: (existing, { articles }) =>
+            this.dispatchEvent(
+              new CustomEvent<FilesChanged>(FILES_CHANGED_EVENT, {
+                detail: { file: existing, articles },
+                bubbles: true,
+              }),
+            ),
+        },
+      ),
+    );
+    if (incomingUrl) URL.revokeObjectURL(incomingUrl);
+    if (!result) return undefined;
+    // Files uploaded into the article's own folder are listed with it
+    if (
+      result.type === this.location?.type &&
+      result.slug === this.location.slug &&
+      !this.files.includes(result.name)
+    )
+      this.files = [...this.files, result.name].sort();
+    return result.reference;
+  }
+
+  /** Images inserted into the body are uploaded and shown from where they were saved */
   private readonly uploadImage = async (file: File) => {
-    const name = await this.upload(file);
-    if (!name) throw new Error("Upload failed");
-    return this.fileUrl(name) as string;
+    const reference = await this.upload(file);
+    if (!reference) throw new Error("Upload failed");
+    return this.fileUrl(reference) as string;
   };
 
-  /** Images inserted into the body's Markdown are uploaded and referred to by their file name in the article folder */
+  /** Images inserted into the body's Markdown are uploaded and referred to as the article refers to them */
   private readonly uploadMarkdownImage = async (file: File) => {
-    const name = await this.upload(file);
-    if (!name) throw new Error("Upload failed");
-    return name;
+    const reference = await this.upload(file);
+    if (!reference) throw new Error("Upload failed");
+    return reference;
   };
 
   /**
@@ -1104,7 +1153,7 @@ export class EdahaArticle extends LitElement {
 
   /** Render the attachment fields */
   private renderAttachments() {
-    const noUploads = !this.location;
+    const noUploads = !this.canUpload;
     return html`<edaha-article-data-group
       name="attachments"
       label="Attachments"
@@ -1171,7 +1220,7 @@ export class EdahaArticle extends LitElement {
         label="Body"
         ?changed=${this.bodyChanged}
         .value=${this.bodyMarkdown}
-        .uploadImage=${this.location ? this.uploadMarkdownImage : undefined}
+        .uploadImage=${this.canUpload ? this.uploadMarkdownImage : undefined}
         .chooseFile=${this.choosers().file}
         .embedTools=${this.embedTools}
       ></edaha-article-data-field>`;
@@ -1246,7 +1295,7 @@ export class EdahaArticle extends LitElement {
         label="Body"
         ?changed=${this.bodyChanged}
         .value=${this.data.bodyHtml}
-        .uploadImage=${this.location ? this.uploadImage : undefined}
+        .uploadImage=${this.canUpload ? this.uploadImage : undefined}
         .chooseFile=${this.choosers().body}
         .embedTools=${this.embedTools}
         .fileAddress=${this.bodyFileAddress}
@@ -1414,7 +1463,7 @@ export class EdahaArticle extends LitElement {
           .chooseFile=${this.choosers().file}
           allowchange
           allowclear
-          ?disabled=${!this.location}
+          ?disabled=${!this.canUpload}
         ></edaha-article-data-field>`;
       case "attachments":
         return this.renderAttachments();
@@ -1425,7 +1474,7 @@ export class EdahaArticle extends LitElement {
 
   /** Render the files in the article's folder, or that uploads need the article saved first */
   private renderUploaded() {
-    if (!this.location)
+    if (!this.canUpload)
       return html`<p class="hint">Save the article before uploading files.</p>`;
     if (!this.files.length) return nothing;
     return html`<div class="files">
@@ -1447,7 +1496,7 @@ export class EdahaArticle extends LitElement {
       .value=${values[key]}
       .problems=${this.metaProblems}
       .hiddenFields=${hidden}
-      .uploadFile=${this.location ? this.uploadMarkdownImage : undefined}
+      .uploadFile=${this.canUpload ? this.uploadMarkdownImage : undefined}
       .chooseFile=${this.choosers().file}
       .fileUrl=${(name: string) => this.fileAddress(name)}
     ></edaha-metadata-field>`;
@@ -1586,7 +1635,7 @@ export class EdahaArticle extends LitElement {
           </div>
           ${
             // Files are saved in the article's folder, which it only has once saved
-            this.location
+            this.canUpload
               ? nothing
               : html`<p class="unsaved-notice">
                   ⚠️ Uploading images and attachments will require a title and
@@ -1652,8 +1701,9 @@ export class EdahaArticle extends LitElement {
           </div>
         </aside>
       </form>
-      <!-- Outside the form, as it has its own -->
-      <edaha-embed-dialog></edaha-embed-dialog>`;
+      <!-- Outside the form, as they have their own -->
+      <edaha-embed-dialog></edaha-embed-dialog>
+      <edaha-file-conflict></edaha-file-conflict>`;
   }
 }
 

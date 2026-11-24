@@ -1,4 +1,5 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
+import { isSafeSharedPath, SHARED_FILES_TYPE } from "../sharedFiles/index.ts";
 import mime from "mime-types";
 import {
   EMBED_PAGE_PARTS,
@@ -17,6 +18,7 @@ import {
 import {
   bodyBaseUrl,
   EditorError,
+  FileConflictError,
   type ArticleStore,
   type EmbedFrameData,
 } from "../store/index.ts";
@@ -176,6 +178,40 @@ const embedRequest = async (request: Request): Promise<EmbedFrameData> => {
   };
 };
 
+/** A file move's request body: the file, where it goes, and optionally its new name and whether to overwrite */
+interface MoveRequest {
+  from: ArticleLocation & { name: string };
+  to: ArticleLocation;
+  name?: string | undefined;
+  overwrite: boolean;
+}
+
+/** The text of a request body's value, or "" */
+const text = (value: unknown): string =>
+  typeof value === "string" ? value : "";
+
+/**
+ * Read a file move from a request's JSON body (see `ArticleStore.moveFile`), leaving out what isn't text.
+ *
+ * @example
+ * await moveRequest(request); // { from: { type: "news", slug: "hello", name: "a.png" }, to: { type: "@shared", slug: "" }, overwrite: false }
+ */
+const moveRequest = async (request: Request): Promise<MoveRequest> => {
+  const body = (await request.json()) as Record<string, unknown>;
+  const from = (body.from ?? {}) as Record<string, unknown>;
+  const to = (body.to ?? {}) as Record<string, unknown>;
+  return {
+    from: {
+      type: text(from.type),
+      slug: text(from.slug),
+      name: text(from.name),
+    },
+    to: { type: text(to.type), slug: text(to.slug) },
+    name: text(body.name) || undefined,
+    overwrite: body.overwrite === true,
+  };
+};
+
 /** A logger that leaves out warnings, for renders whose problems the editor shows itself (or doesn't need) */
 const QUIET: Logger = { warn: () => undefined };
 
@@ -271,6 +307,53 @@ ${FRAME_HEIGHT_SCRIPT}
 `;
 
 /**
+ * A shared file's folder (its `slug`) and name, from its path in the shared files folder. Throws a 404 EditorError
+ * without a safe path.
+ *
+ * @example
+ * sharedFile("2026/11/photo.png"); // { slug: "2026/11", name: "photo.png" }
+ */
+export const sharedFile = (
+  path: string | undefined,
+): { slug: string; name: string } => {
+  if (!path || !isSafeSharedPath(path))
+    throw new EditorError(404, "File not found");
+  const at = path.lastIndexOf("/");
+  return { slug: path.slice(0, Math.max(at, 0)), name: path.slice(at + 1) };
+};
+
+/** The file uploaded in a request's multipart "file" field. Throws a 400 EditorError without one. */
+const uploadedFile = async (c: Context): Promise<File> => {
+  const file = (await c.req.parseBody()).file;
+  if (!(file instanceof File))
+    throw new EditorError(400, 'Expected a file in the "file" field');
+  return file;
+};
+
+/**
+ * Answer an upload request: save the file in its multipart "file" field where `files.uploadTo` says (see
+ * `ArticleStore.upload`), under the name in its "name" field if it has one, overwriting a file with that name when its
+ * "overwrite" field is "true".
+ */
+const uploadFile = async (
+  c: Context,
+  store: ArticleStore,
+  article?: ArticleLocation,
+): Promise<Response> => {
+  const file = await uploadedFile(c);
+  const body = await c.req.parseBody();
+  return c.json(
+    await store.upload(
+      article,
+      typeof body.name === "string" && body.name ? body.name : file.name,
+      new Uint8Array(await file.arrayBuffer()),
+      body.overwrite === "true",
+    ),
+    201,
+  );
+};
+
+/**
  * Create the article editor's local API. Requests that change files must come from the editor's own page (checked
  * with the Origin header), so other websites open in the same browser can't write articles.
  *
@@ -280,8 +363,15 @@ ${FRAME_HEIGHT_SCRIPT}
  * - `GET /api/templates/:type`: the template names an article of a type can use
  * - `POST /api/articles`: create an article
  * - `GET|PUT|DELETE /api/articles/:type/:slug`: load, save (and move) or delete an article
- * - `POST /api/articles/:type/:slug/files`: upload a file (multipart field "file")
+ * - `POST /api/articles/:type/:slug/files` and `POST /api/files`: upload a file (multipart field "file", with "name"
+ *   and "overwrite" fields) where `files.uploadTo` says, for an article or not; a file with its name answers 409 with
+ *   the `conflict` (`FileConflict`)
  * - `GET /files/:type/:slug/:name`: an article's file, for previews in the editor
+ * - `GET /api/shared-files/references?path=`, `PUT /api/shared-files?path=` and `DELETE /api/shared-files?path=`: the
+ *   articles that refer to a file in the shared files folder, replacing it, and deleting it (as `/api/files/…` does)
+ * - `POST /api/file-moves`: move a file (`{ from: { type, slug, name }, to: { type, slug }, name?, overwrite? }`) into
+ *   another article's folder or the shared files folder, or rename it, updating references to it (`FileMoved`); a file
+ *   with its name there answers 409 with the `conflict`
  * - `GET /api/embeds`: the embed plugins (`EmbedInfo`), for the editor's embed dialog
  * - `POST /api/embed-validations`: check an embed block's content (`{ key, content }`) with its plugin's `validate`,
  *   giving why it isn't valid (`EmbedValidation`)
@@ -348,6 +438,9 @@ export const createEditorApp = (
           {
             error: error.message,
             ...(error.problems ? { problems: error.problems } : {}),
+            ...(error instanceof FileConflictError
+              ? { conflict: error.conflict }
+              : {}),
           },
           error.status as 400,
         )
@@ -366,6 +459,36 @@ export const createEditorApp = (
 
   app.get("/api/files/filters", async (c) => c.json(await store.fileFilters()));
 
+  // Files in the shared files folder, by their path in it (e.g. ?path=2026/11/photo.png)
+  app.get("/api/shared-files/references", async (c) => {
+    const { slug, name } = sharedFile(c.req.query("path"));
+    return c.json(await store.fileReferences(SHARED_FILES_TYPE, slug, name));
+  });
+
+  app.put("/api/shared-files", async (c) => {
+    const { slug, name } = sharedFile(c.req.query("path"));
+    const file = await uploadedFile(c);
+    return c.json(
+      await store.replaceFile(
+        SHARED_FILES_TYPE,
+        slug,
+        name,
+        file.name,
+        new Uint8Array(await file.arrayBuffer()),
+      ),
+    );
+  });
+
+  app.delete("/api/shared-files", async (c) => {
+    const { slug, name } = sharedFile(c.req.query("path"));
+    return c.json(await store.deleteFile(SHARED_FILES_TYPE, slug, name));
+  });
+
+  app.post("/api/file-moves", async (c) => {
+    const { from, to, name, overwrite } = await moveRequest(c.req.raw);
+    return c.json(await store.moveFile(from, to, { name, overwrite }));
+  });
+
   app.get("/api/files/:type/:slug/:name/references", async (c) =>
     c.json(
       await store.fileReferences(
@@ -377,10 +500,7 @@ export const createEditorApp = (
   );
 
   app.put("/api/files/:type/:slug/:name", async (c) => {
-    const body = await c.req.parseBody();
-    const file = body.file;
-    if (!(file instanceof File))
-      throw new EditorError(400, 'Expected a file in the "file" field');
+    const file = await uploadedFile(c);
     return c.json(
       await store.replaceFile(
         c.req.param("type"),
@@ -551,29 +671,21 @@ export const createEditorApp = (
     return c.body(null, 204);
   });
 
-  app.post("/api/articles/:type/:slug/files", async (c) => {
-    const body = await c.req.parseBody();
-    const file = body.file;
-    if (!(file instanceof File))
-      throw new EditorError(400, 'Expected a file in the "file" field');
-    return c.json(
-      await store.upload(
-        c.req.param("type"),
-        c.req.param("slug"),
-        file.name,
-        new Uint8Array(await file.arrayBuffer()),
-      ),
-      201,
-    );
-  });
+  app.post("/api/articles/:type/:slug/files", async (c) =>
+    uploadFile(c, store, {
+      type: c.req.param("type"),
+      slug: c.req.param("slug"),
+    }),
+  );
+
+  app.post("/api/files", async (c) => uploadFile(c, store));
 
   app.get("/files/:type/:slug/:name", async (c) => {
     const name = c.req.param("name");
-    const contents = await store.file(
-      c.req.param("type"),
-      c.req.param("slug"),
-      name,
-    );
+    const contents = await store
+      .file(c.req.param("type"), c.req.param("slug"), name)
+      // Shared files can have the same kind of path (e.g. /files/2026/11/photo.png)
+      .catch(() => store.staticFile(c.req.path.slice(1)));
     return c.body(contents as Uint8Array<ArrayBuffer>, 200, {
       "Content-Type": mime.lookup(name) || "application/octet-stream",
       "Cache-Control": "no-store",

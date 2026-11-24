@@ -151,6 +151,7 @@ Every template gets:
 - `site.baseUrl`: the path of `site.url`, e.g. `/my-site` for `https://example.github.io/my-site`, or nothing for a website at its domain's root. Every URL in the template data already starts with it. Use it for links you write yourself, such as static files: `{{ site.baseUrl }}/base.css`.
 - `site.path`: the URL of the website's home page, e.g. `/` (or `/docs/` with the `path` setting `docs`), after `site.baseUrl`.
 - `site.types`: each article type's settings (`labelSingle`, `labelPlural`, `path`, `generate`) and `url`.
+- `site.files`: where the [shared files folder](/docs/03-configuration/#files)'s files are: `path` is their website path, e.g. `/files/` (after `site.baseUrl`), and `url` is what to put before a shared file's name, e.g. `{{ site.files.url }}logo.png`: the config's `files.url` when they're hosted elsewhere, otherwise `path`.
 - `type`: the page's article type, e.g. `news`: the article's, or the list's.
 - `isArticle`: `true` on an article's page (index articles and the editor's previews included).
 - `isList`: `true` on a list's pages and its RSS feed.

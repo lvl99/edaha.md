@@ -6,6 +6,7 @@ import type {
 } from "@lvl99dotcom/edaha.md/generator/metadata";
 import type { MetadataGroup } from "@lvl99dotcom/edaha.md/generator/metadataGroups";
 import type { EmbedOptionSchemas } from "@lvl99dotcom/edaha.md/embeds";
+import type { FilesUploadTo } from "@lvl99dotcom/edaha.md/generator/config";
 
 export type { ArticleStatus } from "@lvl99dotcom/edaha.md/generator/types";
 export type {
@@ -123,6 +124,54 @@ export interface IndexedFile {
   updated: string;
 }
 
+/**
+ * The `type` the editor gives files in the shared files folder (their `slug` is their sub-folder, "" at its top). It
+ * isn't a valid article type, so it can't be mistaken for one.
+ */
+export const SHARED_FILES_TYPE = "@shared";
+
+/** Whether a file is in the shared files folder (rather than an article's) */
+export const isShared = (file: { type: string }): boolean =>
+  file.type === SHARED_FILES_TYPE;
+
+/**
+ * A shared file's path in its folder: its sub-folder (if any) and name.
+ *
+ * @example
+ * sharedFilePath({ slug: "2026/11", name: "photo.png" }); // "2026/11/photo.png"
+ * sharedFilePath({ slug: "", name: "logo.png" }); // "logo.png"
+ */
+export const sharedFilePath = ({
+  slug,
+  name,
+}: {
+  slug: string;
+  name: string;
+}): string => (slug ? `${slug}/${name}` : name);
+
+/**
+ * How the editor names the folder a file is in, e.g. in errors: its article's type and slug, or its folder in the
+ * shared files folder.
+ *
+ * @example
+ * fileFolderName({ type: "news", slug: "hello" }); // "news/hello"
+ * fileFolderName({ type: "@shared", slug: "2026/11" }); // "Shared files/2026/11"
+ */
+export const fileFolderName = (location: ArticleLocation): string =>
+  isShared(location)
+    ? sharedFolderName(location.slug)
+    : `${location.type}/${location.slug}`;
+
+/**
+ * How the editor names a folder in the shared files folder, e.g. in errors.
+ *
+ * @example
+ * sharedFolderName("2026/11"); // "Shared files/2026/11"
+ * sharedFolderName(""); // "Shared files"
+ */
+export const sharedFolderName = (folder: string): string =>
+  folder ? `Shared files/${folder}` : "Shared files";
+
 /** A file, as the file browser shows it */
 export interface FileSummary extends IndexedFile {
   /** Its path on the website, e.g. "/news/welcome/photo.png" */
@@ -194,11 +243,13 @@ export interface ArticleFilters {
 }
 
 /**
- * The website, as the editor needs it: its name, the author of articles that don't name one (undefined for none), and
- * the types with their own default author (`false` for none)
+ * The website, as the editor needs it: its name, where uploads go, the author of articles that don't name one (undefined
+ * for none), and the types with their own default author (`false` for none)
  */
 export interface SiteInfo {
   name: string;
+  /** Where uploaded files go (the config file's `files.uploadTo`) */
+  uploadTo: FilesUploadTo;
   author?: EditorAuthor | undefined;
   types: Record<string, EditorAuthor | false>;
 }
@@ -252,12 +303,41 @@ export interface EditorArticle extends EditorArticleData {
   problems?: MetadataProblem[] | undefined;
 }
 
-/** The result of uploading a file into an article's folder */
+/**
+ * The result of uploading a file: where it was saved (an article's folder, or the shared files folder as type "@shared"
+ * and its sub-folder as slug), its name, and how articles refer to it.
+ */
 export interface UploadResult {
-  /** The saved file name (relative to the article folder) */
+  type: string;
+  slug: string;
+  /** The saved file name */
   name: string;
   /** Where the editor can show the file */
   url: string;
+  /** How articles refer to it: its name for the article it was uploaded to, or its path on the website (shared files) */
+  reference: string;
+}
+
+/** Where a file was moved (or renamed) to, and the articles whose references to it changed */
+export interface FileMoved extends ArticleLocation {
+  name: string;
+  articles: ArticleLocation[];
+}
+
+/** A file that has the same name as another, as the file conflict dialog shows it */
+export interface ConflictFile {
+  name: string;
+  kind: FileKind;
+  /** Its size in bytes */
+  size: number;
+  /** Where the editor can show it (none for an upload, which the editor has itself) */
+  url?: string | undefined;
+}
+
+/** Two files with the same name in a folder: the one coming in (uploaded or moved) and the one already there */
+export interface FileConflict {
+  incoming: ConflictFile;
+  existing: FileSummary;
 }
 
 /** An embed plugin, for the editor's lists of embeds */

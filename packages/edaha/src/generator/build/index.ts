@@ -30,6 +30,7 @@ import {
   SOURCE_FOLDERS,
   type ArticleTypeConfig,
   type EdahaConfig,
+  type FilesConfig,
 } from "../config/index.ts";
 import { loadSiteConfig } from "../configFile/index.ts";
 import { collectLists, PAGE_SIZE, pageFile, paginate } from "../lists/index.ts";
@@ -43,6 +44,7 @@ import type {
   TemplateDataArticle,
   TemplateDataArticleType,
   TemplateDataList,
+  TemplateDataFiles,
   TemplateDataSite,
 } from "../types/index.ts";
 import {
@@ -89,6 +91,8 @@ export interface BuildResult {
   outputDir: string;
   /** The absolute folder the files were copied to, if the config file sets `publishDir` */
   publishDir: string | undefined;
+  /** The absolute folder the shared files were copied to, if they are hosted elsewhere (the config's `files.url`) */
+  filesOutputDir?: string | undefined;
   /** Rendered articles (published and unlisted) */
   articles: TemplateDataArticle[];
   /** Files written, relative to the output directory (and the publish directory) */
@@ -145,6 +149,7 @@ const overlaps = (a: string, b: string) => {
  * articles, templates and static files folders), as it is emptied on every build.
  *
  * @param sources - the source folders, relative to the site folder (default: the default ones)
+ * @param setting - the setting, for errors (default: "outputDir"; also used for "files.outputDir")
  *
  * @example
  * resolveOutputDir("/site", "build"); // "/site/build"
@@ -154,16 +159,17 @@ export const resolveOutputDir = (
   siteDir: string,
   folder: string,
   sources: readonly string[] = Object.values(SOURCE_FOLDERS),
+  setting = "outputDir",
 ): string => {
   const dir = resolve(siteDir, folder);
   const fromSite = relative(resolve(siteDir), dir);
   if (!fromSite || fromSite.startsWith("..") || isAbsolute(fromSite))
     throw new Error(
-      `"outputDir" must be a folder inside the site folder, got "${folder}"`,
+      `"${setting}" must be a folder inside the site folder, got "${folder}"`,
     );
   if (sources.some((source) => overlaps(join(siteDir, source), dir)))
     throw new Error(
-      `"outputDir" must be apart from ${sources.join(", ")}, got "${folder}"`,
+      `"${setting}" must be apart from ${sources.join(", ")}, got "${folder}"`,
     );
   return dir;
 };
@@ -215,6 +221,20 @@ const typeData = (
 });
 
 /**
+ * Where the shared files folder's files are on the website (see TemplateDataFiles).
+ *
+ * @example
+ * filesData({ ...DEFAULT_FILES_CONFIG, path: "media" }, "/docs"); // { url: "/docs/media/", path: "/docs/media/" }
+ */
+export const filesData = (
+  files: FilesConfig,
+  baseUrl: string,
+): TemplateDataFiles => {
+  const path = folderUrl(folderPath(files.path), baseUrl);
+  return { url: files.url ?? path, path };
+};
+
+/**
  * The website's template data: its name, description, absolute URL and home URL, default author, and each article
  * type's settings and URL.
  *
@@ -236,6 +256,7 @@ export const siteData = (
     url: url.replace(/\/+$/, ""),
     baseUrl,
     path: folderUrl(folderPath(config.path), baseUrl),
+    files: filesData(config.files, baseUrl),
     author:
       config.author === false
         ? undefined
@@ -334,13 +355,28 @@ export const buildSite = async (
       });
     }
   };
+  // Output folders are emptied on every build, so they must be apart from the source folders
+  const sources = [
+    config.articlesDir,
+    config.templatesDir,
+    config.staticDir,
+    config.files.dir,
+  ];
   const outputDir = checkConfig(() =>
-    resolveOutputDir(siteDir, config.outputDir, [
-      config.articlesDir,
-      config.templatesDir,
-      config.staticDir,
-    ]),
+    resolveOutputDir(siteDir, config.outputDir, sources),
   );
+  // Shared files hosted elsewhere are built into their own folder, to upload there
+  const filesOutputDir =
+    config.files.url === undefined
+      ? undefined
+      : checkConfig(() =>
+          resolveOutputDir(
+            siteDir,
+            config.files.outputDir,
+            [...sources, config.outputDir],
+            "files.outputDir",
+          ),
+        );
   const publishDir =
     config.publishDir === undefined
       ? undefined
@@ -374,10 +410,23 @@ export const buildSite = async (
       typeConfigs[type] = defaultTypeConfig(type);
     }
   }
-  checkConfig(() =>
-    checkTypePaths(config.path, typeConfigs, config.reservedPaths),
-  );
+  // Shared files published with the website take their path's first folder at its root
+  const sharedFilesDir = join(siteDir, config.files.dir);
+  const sharedFileList = await listFiles(sharedFilesDir);
+  const reservedPaths =
+    sharedFileList.length && !filesOutputDir
+      ? [...config.reservedPaths, config.files.path.split("/")[0] as string]
+      : config.reservedPaths;
+  checkConfig(() => checkTypePaths(config.path, typeConfigs, reservedPaths));
   const site = siteData(config, typeConfigs, siteUrl || DEFAULT_SITE_URL);
+  // Articles can use the shared files folder's files, at their website path or, when hosted elsewhere, their URL there
+  const sharedFiles = {
+    dir: sharedFilesDir,
+    path: `/${config.files.path}/`,
+  };
+  const hostedFiles = config.files.url
+    ? { path: sharedFiles.path, url: config.files.url }
+    : undefined;
 
   const markdown = createMarkdown();
   const embeds = new EmbedResolver({
@@ -423,7 +472,7 @@ export const buildSite = async (
         type,
         config.path,
         typeConfigs,
-        config.reservedPaths,
+        reservedPaths,
       );
       if (problem) throw new Error(`${source}: ${problem}`);
       const dir = join(articlesDir, type, slug);
@@ -448,7 +497,8 @@ export const buildSite = async (
         setEmbedHeadings: (html, headings) =>
           embeds.setHeadings(html, headings),
         renderMarkdown: (md, baseUrl) =>
-          renderMarkdown(markdown, md, baseUrl, site.baseUrl),
+          renderMarkdown(markdown, md, baseUrl, site.baseUrl, hostedFiles),
+        sharedFiles,
         metadata: {
           validator,
           keys: typeMetadataKeys(config.metadata, typeConfigs[type]?.metadata),
@@ -555,6 +605,21 @@ export const buildSite = async (
     await cp(source, join(outputDir, file));
   }
 
+  // Shared files: at their website path, beside the articles and static files, or in their own folder when hosted
+  // elsewhere
+  if (filesOutputDir)
+    await rm(filesOutputDir, { recursive: true, force: true });
+  const sharedOutput = filesOutputDir ?? join(outputDir, config.files.path);
+  for (const file of sharedFileList) {
+    const target = join(sharedOutput, file);
+    if (!filesOutputDir && (await exists(target)))
+      throw new Error(
+        `${config.files.dir}/${file} has the same path as an article's or a static file; rename one of them`,
+      );
+    await mkdir(dirname(target), { recursive: true });
+    await cp(join(sharedFilesDir, file), target);
+  }
+
   // Publish into the website's root, without replacing anything already there
   const built = await listFiles(outputDir);
   if (publishDir) {
@@ -569,6 +634,7 @@ export const buildSite = async (
   return {
     outputDir,
     publishDir,
+    filesOutputDir,
     articles: articles.map(({ article }) => article),
     files: built,
   };

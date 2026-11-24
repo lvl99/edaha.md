@@ -22,8 +22,10 @@ import {
   checkLocation,
   safeFileName,
   serializeArticle,
+  sharedFolderName,
 } from "..";
 import type { EditorArticleData } from "../../types";
+import { SHARED_FILES_TYPE } from "../../sharedFiles";
 import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
 import { THEME_DIR } from "@lvl99dotcom/edaha.md/theme";
 
@@ -464,6 +466,308 @@ describe("ArticleStore", () => {
     ]);
   });
 
+  describe("shared files", () => {
+    /** A copy of the site with shared files, and articles that use them */
+    const sharedSite = async (files = "") => {
+      const site = await copySite();
+      if (files)
+        await writeFile(
+          join(site.dir, "edahaconfig.yml"),
+          `${await readFile(join(site.dir, "edahaconfig.yml"), "utf8")}files:\n${files}`,
+        );
+      await mkdir(join(site.dir, "files/2026/11"), { recursive: true });
+      await writeFile(join(site.dir, "files/logo.png"), "logo");
+      await writeFile(join(site.dir, "files/2026/11/photo.jpg"), "photo");
+      await writeFile(
+        join(site.dir, "articles/page/about-us/article.md"),
+        `<!--yaml\ndate: ${DATE}\nthumbnail: /files/2026/11/photo.jpg\n-->\n# About us\n\n![](/files/2026/11/photo.jpg) [Logo](https://static.example.com/logo.png)`,
+      );
+      return { ...site, store: await openStore(site.dir) };
+    };
+
+    it("should find them beside articles' files, at their path on the website", async () => {
+      const { store } = await sharedSite();
+      const page = await store.queryFiles({ type: SHARED_FILES_TYPE });
+      expect(
+        page.files.map(({ slug, name, kind, size, url }) => [
+          slug,
+          name,
+          kind,
+          size,
+          url,
+        ]),
+      ).toEqual([
+        ["", "logo.png", "image", 4, "/files/logo.png"],
+        ["2026/11", "photo.jpg", "image", 5, "/files/2026/11/photo.jpg"],
+      ]);
+      expect((await store.queryFiles({})).total).toBe(4);
+      expect((await store.fileFilters()).types).toEqual([
+        SHARED_FILES_TYPE,
+        "article",
+      ]);
+    });
+
+    it("should serve them at their path on the website, and use them in previews", async () => {
+      const { store } = await sharedSite();
+      expect(
+        new TextDecoder().decode(await store.staticFile("files/logo.png")),
+      ).toBe("logo");
+      await rejectsWith(
+        store.staticFile("files/missing.png"),
+        404,
+        "File not found",
+      );
+      const embeds = new EmbedResolver({
+        fetch: (async () => new Response("")) as unknown as typeof fetch,
+        logger: { warn: () => undefined },
+        plugins: [],
+      });
+      const html = await store.preview(
+        data({
+          thumbnail: "/files/2026/11/photo.jpg",
+          bodyHtml: '<p><img src="/files/logo.png" alt=""></p>',
+        }),
+        undefined,
+        embeds,
+      );
+      expect(html).toContain('src="/files/logo.png"');
+      await rejectsWith(
+        store.preview(
+          data({ thumbnail: "/files/missing.png" }),
+          undefined,
+          embeds,
+        ),
+        400,
+        '"/files/missing.png" was not found in the shared files folder',
+      );
+    });
+
+    it("should upload files to the top of the shared files folder, or to the year and month's folder", async () => {
+      const { dir, store } = await sharedSite("  uploadTo: files\n");
+      expect(
+        await store.upload(undefined, "Logo 2.png", new Uint8Array([1])),
+      ).toEqual({
+        type: SHARED_FILES_TYPE,
+        slug: "",
+        name: "logo-2.png",
+        url: "/files/logo-2.png",
+        reference: "/files/logo-2.png",
+      });
+      await expect(
+        store.upload(
+          { type: "page", slug: "about-us" },
+          "logo.png",
+          new Uint8Array([1]),
+        ),
+      ).rejects.toMatchObject({
+        status: 409,
+        message: "A file called logo.png is already in Shared files",
+        conflict: { existing: { slug: "", url: "/files/logo.png", size: 4 } },
+      });
+
+      const byDate = await sharedSite("  uploadTo: files-by-date\n");
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date(2027, 0, 5));
+      try {
+        expect(
+          await byDate.store.upload(undefined, "new.png", new Uint8Array([1])),
+        ).toMatchObject({ slug: "2027/01", url: "/files/2027/01/new.png" });
+      } finally {
+        vi.useRealTimers();
+      }
+      expect(await readdir(join(byDate.dir, "files/2027/01"))).toEqual([
+        "new.png",
+      ]);
+      expect(await readdir(join(dir, "files"))).toContain("logo-2.png");
+    });
+
+    it("should move files between articles' folders and the shared files folder, pointing references at them", async () => {
+      const { dir, store } = await sharedSite();
+      const first = () =>
+        readFile(join(dir, "articles/article/first/article.md"), "utf8");
+      const about = () =>
+        readFile(join(dir, "articles/page/about-us/article.md"), "utf8");
+      // An article's file goes to the top of the shared files folder
+      expect(
+        await store.moveFile(
+          { type: "article", slug: "first", name: "thumb.png" },
+          { type: SHARED_FILES_TYPE, slug: "2026/11" },
+        ),
+      ).toEqual({
+        type: SHARED_FILES_TYPE,
+        slug: "",
+        name: "thumb.png",
+        articles: [{ type: "article", slug: "first" }],
+      });
+      expect(await first()).toContain("thumbnail: /files/thumb.png");
+      expect(await first()).toContain("![an image](/files/thumb.png)");
+      expect(await readdir(join(dir, "articles/article/first"))).not.toContain(
+        "thumb.png",
+      );
+      // A shared file goes into an article's folder, which refers to it by name
+      expect(
+        await store.moveFile(
+          { type: SHARED_FILES_TYPE, slug: "2026/11", name: "photo.jpg" },
+          { type: "page", slug: "about-us" },
+        ),
+      ).toMatchObject({ type: "page", slug: "about-us", name: "photo.jpg" });
+      expect(await about()).toContain("thumbnail: photo.jpg");
+      expect(await about()).toContain("![](photo.jpg)");
+      // And on to another article, which the first refers to at its path on the website
+      await store.moveFile(
+        { type: "page", slug: "about-us", name: "photo.jpg" },
+        { type: "article", slug: "first" },
+        { name: "Cover.JPG" },
+      );
+      expect(await about()).toContain("thumbnail: /news/first/cover.jpg");
+      // Moving it where it is changes nothing
+      expect(
+        await store.moveFile(
+          { type: "article", slug: "first", name: "cover.jpg" },
+          { type: "article", slug: "first" },
+        ),
+      ).toEqual({
+        type: "article",
+        slug: "first",
+        name: "cover.jpg",
+        articles: [],
+      });
+      await rejectsWith(
+        store.moveFile(
+          { type: "article", slug: "first", name: "cover.jpg" },
+          { type: "article", slug: "missing" },
+        ),
+        404,
+        "not found",
+      );
+    });
+
+    it("should refuse to move a file over another with its name, unless overwriting it", async () => {
+      const { dir, store } = await sharedSite();
+      await writeFile(join(dir, "files/thumb.png"), "shared");
+      const move = (overwrite?: boolean) =>
+        store.moveFile(
+          { type: "article", slug: "first", name: "thumb.png" },
+          { type: SHARED_FILES_TYPE, slug: "" },
+          { overwrite },
+        );
+      await expect(move()).rejects.toMatchObject({
+        status: 409,
+        message: "A file called thumb.png is already in Shared files",
+        conflict: {
+          incoming: { name: "thumb.png", url: "/news/first/thumb.png" },
+          existing: { name: "thumb.png", url: "/files/thumb.png", size: 6 },
+        },
+      });
+      await move(true);
+      expect(await readFile(join(dir, "files/thumb.png"), "utf8")).not.toBe(
+        "shared",
+      );
+    });
+
+    it("should rename shared files, keeping the address references used", async () => {
+      const { dir, store } = await sharedSite(
+        "  url: https://static.example.com/\n",
+      );
+      const config = await readFile(join(dir, "edahaconfig.yml"), "utf8");
+      await writeFile(
+        join(dir, "edahaconfig.yml"),
+        `siteUrl: https://example.com\n${config}`,
+      );
+      await writeFile(
+        join(dir, "articles/article/second/article.md"),
+        `<!--yaml\ndate: ${DATE}\n-->\n[Photo](https://example.com/files/2026/11/photo.jpg)\n`,
+      );
+      await store.moveFile(
+        { type: SHARED_FILES_TYPE, slug: "", name: "logo.png" },
+        { type: SHARED_FILES_TYPE, slug: "" },
+        { name: "brand.png" },
+      );
+      await store.moveFile(
+        { type: SHARED_FILES_TYPE, slug: "2026/11", name: "photo.jpg" },
+        { type: SHARED_FILES_TYPE, slug: "2026/11" },
+        { name: "photo-2.jpg" },
+      );
+      const about = await readFile(
+        join(dir, "articles/page/about-us/article.md"),
+        "utf8",
+      );
+      expect(about).toContain("[Logo](https://static.example.com/brand.png)");
+      expect(about).toContain("![](/files/2026/11/photo-2.jpg)");
+      expect(
+        await readFile(join(dir, "articles/article/second/article.md"), "utf8"),
+      ).toContain("[Photo](https://example.com/files/2026/11/photo-2.jpg)");
+      expect(await readdir(join(dir, "files/2026/11"))).toEqual([
+        "photo-2.jpg",
+      ]);
+    });
+
+    it("should replace and delete them, changing references in every article, at their other address too", async () => {
+      const { dir, store } = await sharedSite(
+        "  url: https://static.example.com/\n",
+      );
+      expect(
+        await store.fileReferences(SHARED_FILES_TYPE, "", "logo.png"),
+      ).toEqual([{ type: "page", slug: "about-us" }]);
+      expect(
+        await store.replaceFile(
+          SHARED_FILES_TYPE,
+          "2026/11",
+          "photo.jpg",
+          "Photo 2.jpg",
+          new Uint8Array([1]),
+        ),
+      ).toEqual({
+        name: "photo-2.jpg",
+        articles: [{ type: "page", slug: "about-us" }],
+      });
+      const about = () =>
+        readFile(join(dir, "articles/page/about-us/article.md"), "utf8");
+      expect(await about()).toContain("thumbnail: /files/2026/11/photo-2.jpg");
+      expect(await about()).toContain("![](/files/2026/11/photo-2.jpg)");
+      expect(await readdir(join(dir, "files/2026/11"))).toEqual([
+        "photo-2.jpg",
+      ]);
+      await expect(
+        store.replaceFile(
+          SHARED_FILES_TYPE,
+          "",
+          "logo.png",
+          "logo.png",
+          new Uint8Array([2]),
+        ),
+      ).resolves.toEqual({ name: "logo.png", articles: [] });
+      expect(await store.deleteFile(SHARED_FILES_TYPE, "", "logo.png")).toEqual(
+        { articles: [{ type: "page", slug: "about-us" }] },
+      );
+      expect(await about()).toContain(" Logo");
+      expect(await about()).not.toContain("logo.png");
+      await writeFile(join(dir, "files/2026/11/other.jpg"), "");
+      await expect(
+        store.replaceFile(
+          SHARED_FILES_TYPE,
+          "2026/11",
+          "photo-2.jpg",
+          "other.jpg",
+          new Uint8Array(),
+        ),
+      ).rejects.toMatchObject({
+        status: 409,
+        message: "A file called other.jpg is already in Shared files/2026/11",
+      });
+      for (const [slug, name] of [
+        ["..", "x.png"],
+        ["2026/../..", "x.png"],
+        ["", "missing.png"],
+      ])
+        await rejectsWith(
+          store.deleteFile(SHARED_FILES_TYPE, slug as string, name as string),
+          404,
+          "File not found",
+        );
+    });
+  });
+
   describe("custom metadata", () => {
     /** A copy of the site whose pages use "featured" and "rating", with a page using them */
     const metadataSite = async () => {
@@ -631,6 +935,7 @@ describe("ArticleStore", () => {
     const { dir, store } = await copySite();
     expect(await store.site()).toEqual({
       name: "Test News",
+      uploadTo: "article",
       author: { name: "Test News" },
       types: {},
     });
@@ -641,6 +946,7 @@ describe("ArticleStore", () => {
     );
     expect(await store.site()).toEqual({
       name: "Test News",
+      uploadTo: "article",
       author: { name: "Matt" },
       types: { article: false },
     });
@@ -921,25 +1227,58 @@ describe("ArticleStore", () => {
 
   it("should upload and read files", async () => {
     const { store } = await copySite();
+    const first = { type: "article", slug: "first" };
     expect(
-      await store.upload(
-        "article",
-        "first",
-        "My Pic.PNG",
-        new Uint8Array([1, 2]),
-      ),
+      await store.upload(first, "My Pic.PNG", new Uint8Array([1, 2])),
     ).toEqual({
+      type: "article",
+      slug: "first",
       name: "my-pic.png",
       url: "/files/article/first/my-pic.png",
+      reference: "my-pic.png",
     });
     expect([...(await store.file("article", "first", "my-pic.png"))]).toEqual([
       1, 2,
     ]);
     await rejectsWith(
-      store.upload("article", "missing", "a.png", new Uint8Array()),
+      store.upload(
+        { type: "article", slug: "missing" },
+        "a.png",
+        new Uint8Array(),
+      ),
       404,
       "not found",
     );
+    await rejectsWith(
+      store.upload(undefined, "a.png", new Uint8Array()),
+      400,
+      "Choose an article to upload the file to",
+    );
+  });
+
+  it("should refuse to upload over a file with the same name, unless overwriting it", async () => {
+    const { store } = await copySite();
+    const first = { type: "article", slug: "first" };
+    await expect(
+      store.upload(first, "Thumb.png", new Uint8Array([1, 2, 3])),
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "A file called thumb.png is already in article/first",
+      conflict: {
+        incoming: { name: "thumb.png", kind: "image", size: 3 },
+        existing: expect.objectContaining({
+          type: "article",
+          slug: "first",
+          name: "thumb.png",
+          kind: "image",
+          url: "/news/first/thumb.png",
+        }),
+      },
+    });
+    await store.upload(first, "Thumb.png", new Uint8Array([1, 2, 3]), true);
+    expect([...(await store.file("article", "first", "thumb.png"))]).toEqual([
+      1, 2, 3,
+    ]);
   });
 
   it("should only serve plain file names other than article.md", async () => {
@@ -1227,5 +1566,12 @@ describe("ArticleStore previews", () => {
       "article/first/thumb.png",
     ])
       await rejectsWith(store.staticFile(path), 404, "File not found");
+  });
+});
+
+describe("sharedFolderName", () => {
+  it("should name the shared files folder and its sub-folders", () => {
+    expect(sharedFolderName("2026/11")).toBe("Shared files/2026/11");
+    expect(sharedFolderName("")).toBe("Shared files");
   });
 });

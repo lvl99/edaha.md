@@ -11,6 +11,7 @@ import {
   fileQuery,
   previewCsp,
   previewOriginOf,
+  sharedFile,
 } from "..";
 import { ArticleStore, EditorError } from "../../store";
 import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
@@ -110,6 +111,7 @@ describe("createEditorApp", () => {
     ]);
     expect(await (await app.request("/api/site")).json()).toEqual({
       name: "Test News",
+      uploadTo: "article",
       author: { name: "Test News" },
       types: {},
     });
@@ -213,6 +215,116 @@ describe("createEditorApp", () => {
     ).toBe(404);
   });
 
+  it("should find, replace and delete shared files by their path, and serve them at their path on the website", async () => {
+    const { app, dir } = await setup();
+    await mkdir(join(dir, "files/2026/11"), { recursive: true });
+    await writeFile(join(dir, "files/2026/11/photo.jpg"), "photo");
+    await writeFile(join(dir, "files/logo.png"), "logo");
+    await writeFile(
+      join(dir, "articles/article/first/article.md"),
+      `${await readFile(join(dir, "articles/article/first/article.md"), "utf8")}\n![](/files/2026/11/photo.jpg)\n`,
+    );
+
+    const found = (await (
+      await app.request("/api/files?type=%40shared")
+    ).json()) as { files: { slug: string; name: string; url: string }[] };
+    expect(found.files.map(({ url }) => url)).toEqual([
+      "/files/logo.png",
+      "/files/2026/11/photo.jpg",
+    ]);
+    expect(
+      await (
+        await app.request("/api/shared-files/references?path=2026/11/photo.jpg")
+      ).json(),
+    ).toEqual([{ type: "article", slug: "first" }]);
+
+    const served = await app.request("/files/2026/11/photo.jpg");
+    expect(served.headers.get("content-type")).toBe("image/jpeg");
+    expect(await served.text()).toBe("photo");
+    expect(await (await app.request("/files/logo.png")).text()).toBe("logo");
+
+    const body = new FormData();
+    body.append("file", new File([new Uint8Array([1])], "Photo 2.jpg"));
+    expect(
+      (
+        await app.request("/api/shared-files?path=2026/11/photo.jpg", {
+          method: "PUT",
+          body,
+        })
+      ).status,
+    ).toBe(403);
+    const replaced = await app.request(
+      "/api/shared-files?path=2026/11/photo.jpg",
+      { method: "PUT", headers: { Origin: ORIGIN }, body },
+    );
+    expect(await replaced.json()).toEqual({
+      name: "photo-2.jpg",
+      articles: [{ type: "article", slug: "first" }],
+    });
+    const deleted = await app.request("/api/shared-files?path=logo.png", {
+      method: "DELETE",
+      headers: { Origin: ORIGIN },
+    });
+    expect(await deleted.json()).toEqual({ articles: [] });
+    for (const path of ["", "../edahaconfig.yml", "logo.png"])
+      expect(
+        (
+          await app.request(`/api/shared-files?path=${path}`, {
+            method: "DELETE",
+            headers: { Origin: ORIGIN },
+          })
+        ).status,
+      ).toBe(404);
+  });
+
+  it("should move and rename files, answering a name clash with the conflict", async () => {
+    const { app, dir } = await setup();
+    const move = (body: unknown) =>
+      app.request("/api/file-moves", json("POST", body));
+    const moved = await move({
+      from: { type: "article", slug: "first", name: "thumb.png" },
+      to: { type: "@shared", slug: "" },
+    });
+    expect(await moved.json()).toEqual({
+      type: "@shared",
+      slug: "",
+      name: "thumb.png",
+      articles: [{ type: "article", slug: "first" }],
+    });
+    expect(await readFile(join(dir, "files/thumb.png"))).toBeDefined();
+    const renamed = await move({
+      from: { type: "@shared", slug: "", name: "thumb.png" },
+      to: { type: "@shared", slug: "" },
+      name: "Cover.png",
+    });
+    expect(await renamed.json()).toMatchObject({ name: "cover.png" });
+    await writeFile(join(dir, "articles/article/first/cover.png"), "");
+    const clash = await move({
+      from: { type: "@shared", slug: "", name: "cover.png" },
+      to: { type: "article", slug: "first" },
+    });
+    expect(clash.status).toBe(409);
+    expect(await clash.json()).toMatchObject({
+      conflict: { existing: { url: "/news/first/cover.png" } },
+    });
+    expect(
+      (
+        await move({
+          from: { type: "@shared", slug: "", name: "cover.png" },
+          to: { type: "article", slug: "first" },
+          overwrite: true,
+        })
+      ).status,
+    ).toBe(200);
+    // Values that aren't text are left out
+    const empty = await move({ from: { type: 1 }, name: 2 });
+    expect([empty.status, await empty.json()]).toEqual([
+      400,
+      { error: expect.any(String) },
+    ]);
+    expect((await move({})).status).toBe(400);
+  });
+
   it("should create, save, move and delete articles", async () => {
     const { app } = await setup();
     const created = await app.request("/api/articles", json("POST", ARTICLE));
@@ -288,8 +400,11 @@ describe("createEditorApp", () => {
     });
     expect(uploaded.status).toBe(201);
     expect(await uploaded.json()).toEqual({
+      type: "article",
+      slug: "first",
       name: "photo.png",
       url: "/files/article/first/photo.png",
+      reference: "photo.png",
     });
 
     const file = await app.request("/files/article/first/photo.png");
@@ -299,6 +414,78 @@ describe("createEditorApp", () => {
 
     const unknown = await app.request("/files/article/first/guide.pdf");
     expect(unknown.headers.get("content-type")).toBe("application/pdf");
+  });
+
+  it("should answer an upload with a file's name with the conflict, and upload it renamed or overwriting it", async () => {
+    const { app, dir } = await setup();
+    const upload = (fields: Record<string, string> = {}) => {
+      const body = new FormData();
+      body.append("file", new File([new Uint8Array([1, 2])], "thumb.png"));
+      for (const [name, value] of Object.entries(fields))
+        body.append(name, value);
+      return app.request("/api/articles/article/first/files", {
+        method: "POST",
+        headers: { Origin: ORIGIN },
+        body,
+      });
+    };
+    const conflict = await upload();
+    expect(conflict.status).toBe(409);
+    expect(await conflict.json()).toMatchObject({
+      error: "A file called thumb.png is already in article/first",
+      conflict: {
+        incoming: { name: "thumb.png", kind: "image", size: 2 },
+        existing: { name: "thumb.png", url: "/news/first/thumb.png" },
+      },
+    });
+    expect(await (await upload({ name: "Thumb 2.png" })).json()).toMatchObject({
+      name: "thumb-2.png",
+    });
+    expect((await upload({ overwrite: "true" })).status).toBe(201);
+    expect([
+      ...(await readFile(join(dir, "articles/article/first/thumb.png"))),
+    ]).toEqual([1, 2]);
+
+    const body = new FormData();
+    body.append("file", new File(["x"], "notes.txt"));
+    const noArticle = await app.request("/api/files", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body,
+    });
+    expect(noArticle.status).toBe(400);
+    expect(await noArticle.json()).toEqual({
+      error: "Choose an article to upload the file to",
+    });
+  });
+
+  it("should upload files to the shared files folder when the config file says so", async () => {
+    const { dir } = await setup();
+    await writeFile(
+      join(dir, "edahaconfig.yml"),
+      `${await readFile(join(dir, "edahaconfig.yml"), "utf8")}files:\n  uploadTo: files\n`,
+    );
+    const shared = createEditorApp(
+      new ArticleStore(await loadSiteConfig({ siteDir: dir }), undefined, {
+        watch: false,
+      }),
+      { allowedOrigins: [ORIGIN] },
+    );
+    const body = new FormData();
+    body.append("file", new File(["x"], "notes.txt"));
+    const uploaded = await shared.request("/api/files", {
+      method: "POST",
+      headers: { Origin: ORIGIN },
+      body,
+    });
+    expect(await uploaded.json()).toEqual({
+      type: "@shared",
+      slug: "",
+      name: "notes.txt",
+      url: "/files/notes.txt",
+      reference: "/files/notes.txt",
+    });
+    expect(await readFile(join(dir, "files/notes.txt"), "utf8")).toBe("x");
   });
 
   it("should serve files without a known type as binary", async () => {
@@ -703,6 +890,21 @@ describe("createEditorApp", () => {
     expect(await response.json()).toEqual({
       error: 'Expected a file in the "file" field',
     });
+  });
+});
+
+describe("sharedFile", () => {
+  it("should split a shared file's path into its folder and name", () => {
+    expect(sharedFile("2026/11/photo.png")).toEqual({
+      slug: "2026/11",
+      name: "photo.png",
+    });
+    expect(sharedFile("logo.png")).toEqual({ slug: "", name: "logo.png" });
+  });
+
+  it("should refuse a missing or unsafe path", () => {
+    for (const path of [undefined, "", "../secret", "a//b", ".hidden"])
+      expect(() => sharedFile(path)).toThrow("File not found");
   });
 });
 

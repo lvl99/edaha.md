@@ -82,6 +82,7 @@ const setup = async (
     filters: vi.fn(async () => ({ types: [], authors: [], tags: [] })),
     site: vi.fn(async () => ({
       name: "Test News",
+      uploadTo: "files",
       author: { name: "Matt", email: "matt@example.com" },
       types: {},
     })),
@@ -443,6 +444,7 @@ describe("edaha-editor", () => {
     expect(form.article).toBe(ARTICLE);
     expect(form.site).toEqual({
       name: "Test News",
+      uploadTo: "files",
       author: { name: "Matt", email: "matt@example.com" },
       types: {},
     });
@@ -523,8 +525,9 @@ describe("edaha-editor files", () => {
     element: EdahaEditor,
     file: { type: string; slug: string },
     articles: { type: string; slug: string }[] = [],
+    from = "edaha-file-browser",
   ) => {
-    find(element, "edaha-file-browser").dispatchEvent(
+    find(element, from).dispatchEvent(
       new CustomEvent("files-changed", {
         detail: { file: { ...file, name: "a.png" }, articles },
         bubbles: true,
@@ -543,6 +546,25 @@ describe("edaha-editor files", () => {
     button(element, "Files").click();
     expect(show).toHaveBeenCalledOnce();
     expect(element.navOpen).toBe(false);
+  });
+
+  it("should tell the file browser where uploads go, the open article, and let it choose articles", async () => {
+    const { element } = await setup();
+    const browser = find<EdahaFileBrowser>(element, "edaha-file-browser");
+    expect(browser.uploadTo).toBe("files");
+    expect(browser.article).toBeUndefined();
+    await element.open(SUMMARIES[0]!);
+    await settle(element);
+    expect(browser.article).toBe(SUMMARIES[0]);
+    const articles = find<EdahaArticleBrowser>(
+      element,
+      "edaha-article-browser",
+    );
+    const pick = vi
+      .spyOn(articles, "pick")
+      .mockResolvedValue({ type: "news", slug: "x" });
+    expect(await browser.pickArticle?.()).toEqual({ type: "news", slug: "x" });
+    expect(pick).toHaveBeenCalledOnce();
   });
 
   it("should let the article form choose existing files in the file browser", async () => {
@@ -583,6 +605,14 @@ describe("edaha-editor files", () => {
       { type: "article", slug: "hello" },
     ]);
     expect(api.read).toHaveBeenCalledTimes(reads + 2);
+    // A file renamed by the open article's upload
+    await filesChanged(
+      element,
+      { type: "page", slug: "broken" },
+      [{ type: "article", slug: "hello" }],
+      "edaha-article",
+    );
+    expect(api.read).toHaveBeenCalledTimes(reads + 3);
   });
 
   it("should warn instead when the touched article has unsaved changes, and do nothing with none open", async () => {

@@ -11,12 +11,23 @@ interface RenderEnv {
   baseUrl: string;
   /** The website's base URL (see `site.baseUrl`), which root-relative links and images are put under */
   siteBaseUrl: string;
+  /** Optional; shared files hosted elsewhere: links and images under their website path use their URL instead */
+  sharedFiles?: SharedFilesUrl | undefined;
+}
+
+/** Where shared files hosted elsewhere are: their website path (e.g. "/files/") and their URL there */
+export interface SharedFilesUrl {
+  /** The website path articles use for them, without the website's base URL, e.g. "/files/" */
+  path: string;
+  /** The URL they are hosted at, e.g. "https://static.example.com/" */
+  url: string;
 }
 
 /**
  * Create the markdown renderer. Raw HTML is allowed, as articles are written by trusted authors and embeds are HTML.
  * Relative link and image URLs are resolved against the article's URL, so they work on any page (e.g. lists), and
- * root-relative ones (e.g. `/docs/`) are put under the website's base URL.
+ * root-relative ones (e.g. `/docs/`) are put under the website's base URL, or, for shared files hosted elsewhere,
+ * given their URL there.
  * Headings get IDs from their text (see `headingIds`), so they can be linked to, e.g. `#this-is-an-example`.
  * Typographer (curly quotes, dashes) is on for the website and off for the editor, so text round-trips unchanged.
  *
@@ -27,7 +38,8 @@ interface RenderEnv {
 export const createMarkdown = ({ typographer = true } = {}): Markdown => {
   const markdown = new MarkdownIt({ html: true, typographer });
   markdown.core.ruler.push("resolve_relative_urls", (state) => {
-    const { baseUrl, siteBaseUrl } = state.env as unknown as RenderEnv;
+    const { baseUrl, siteBaseUrl, sharedFiles } =
+      state.env as unknown as RenderEnv;
     for (const block of state.tokens) {
       for (const token of block.children ?? []) {
         const attribute =
@@ -40,6 +52,11 @@ export const createMarkdown = ({ typographer = true } = {}): Markdown => {
         // markdown-it always sets src on images and href on links
         const url = String(token.attrGet(attribute));
         if (isRelativeUrl(url)) token.attrSet(attribute, baseUrl + url);
+        else if (sharedFiles && url.startsWith(sharedFiles.path))
+          token.attrSet(
+            attribute,
+            sharedFiles.url + url.slice(sharedFiles.path.length),
+          );
         else if (siteBaseUrl && /^\/(?!\/)/.test(url))
           token.attrSet(attribute, siteBaseUrl + url);
       }
@@ -71,15 +88,22 @@ export const createMarkdown = ({ typographer = true } = {}): Markdown => {
 
 /**
  * Render markdown to HTML, resolving relative URLs against a folder URL and putting root-relative ones under the
- * website's base URL.
+ * website's base URL (or, for shared files hosted elsewhere, giving them their URL there).
  *
  * @example
  * renderMarkdown(markdown, "[Docs](/docs/)", "/edaha.md/news/hello/", "/edaha.md"); // '<p><a href="/edaha.md/docs/">Docs</a></p>\n'
+ * renderMarkdown(markdown, "![A](/files/a.png)", "/news/hello/", "", { path: "/files/", url: "https://cdn.example.com/" });
+ * // '<p><img src="https://cdn.example.com/a.png" alt="A"></p>\n'
  */
 export const renderMarkdown = (
   markdown: Markdown,
   source: string,
   baseUrl: string,
   siteBaseUrl = "",
+  sharedFiles?: SharedFilesUrl,
 ): string =>
-  markdown.render(source, { baseUrl, siteBaseUrl } satisfies RenderEnv);
+  markdown.render(source, {
+    baseUrl,
+    siteBaseUrl,
+    sharedFiles,
+  } satisfies RenderEnv);

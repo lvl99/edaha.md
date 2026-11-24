@@ -107,6 +107,7 @@ export class EdahaArticleBrowser extends LitElement {
     filters: { state: true },
     loading: { state: true },
     error: { state: true },
+    picking: { state: true },
   };
 
   declare api: EditorApi;
@@ -130,6 +131,8 @@ export class EdahaArticleBrowser extends LitElement {
   declare filters: ArticleFilters;
   declare loading: boolean;
   declare error: string;
+  /** While choosing an article with `pick`: gives the chosen article (or undefined) */
+  declare picking?: ((article?: ArticleLocation) => void) | undefined;
 
   /** How long to wait after typing in the search before searching, in ms (replaceable for tests) */
   searchDelay = 250;
@@ -174,6 +177,37 @@ export class EdahaArticleBrowser extends LitElement {
    * field.
    */
   async show(options: ArticleBrowserOptions = {}): Promise<void> {
+    this.finishPicking();
+    await this.openWith(options);
+  }
+
+  /**
+   * Open the browser to choose an article (e.g. to upload a file to), as `show` does. Resolves with the chosen article,
+   * or undefined if the browser is closed without choosing one.
+   *
+   * @example
+   * const article = await browser.pick();
+   */
+  async pick(
+    options: ArticleBrowserOptions = {},
+  ): Promise<ArticleLocation | undefined> {
+    this.finishPicking();
+    const chosen = new Promise<ArticleLocation | undefined>(
+      (resolve) => (this.picking = resolve),
+    );
+    await this.openWith(options);
+    return chosen;
+  }
+
+  /** Stop choosing an article, giving the chosen one (or undefined) */
+  private finishPicking(article?: ArticleLocation): void {
+    const picking = this.picking;
+    this.picking = undefined;
+    picking?.(article);
+  }
+
+  /** Open the browser with a search and type, as `show` says */
+  private async openWith(options: ArticleBrowserOptions): Promise<void> {
     this.search = options.search ?? "";
     this.type = options.type ?? "";
     this.author = "";
@@ -264,12 +298,17 @@ export class EdahaArticleBrowser extends LitElement {
     this.querySelector(".article-browser-results")?.scrollTo?.(0, 0);
   }
 
-  /** Choose an article: close the browser and tell the editor */
+  /** Choose an article: close the browser, and give it while picking or else tell the editor */
   private chooseArticle(article: ArticleSummary) {
+    const location = { type: article.type, slug: article.slug };
+    // While picking, the article is given before closing (which would give none)
+    const picking = Boolean(this.picking);
+    this.finishPicking(location);
     this.close();
+    if (picking) return;
     this.dispatchEvent(
       new CustomEvent<ArticleLocation>(ARTICLE_CHOOSE_EVENT, {
-        detail: { type: article.type, slug: article.slug },
+        detail: location,
         bubbles: true,
       }),
     );
@@ -401,10 +440,15 @@ export class EdahaArticleBrowser extends LitElement {
     return html`<dialog
       class="article-browser"
       aria-labelledby="article-browser-title"
-      @close=${() => clearTimeout(this.searchTimer)}
+      @close=${() => {
+        clearTimeout(this.searchTimer);
+        this.finishPicking();
+      }}
     >
       <div class="article-browser-header">
-        <h2 id="article-browser-title">All articles</h2>
+        <h2 id="article-browser-title">
+          ${this.picking ? "Choose an article" : "All articles"}
+        </h2>
         <button
           type="button"
           class="btn-icon"

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FilePage, FileSummary } from "../../../../server/types";
-import type { EditorApi } from "../../../editorApi";
+import { ApiError, type EditorApi } from "../../../editorApi";
+import type { EdahaFileConflict } from "../../edaha-file-conflict";
 import "..";
-import { acceptedKind, formatFileSize, type EdahaFileBrowser } from "..";
+import { acceptedKind, type EdahaFileBrowser } from "..";
 import {
   button,
   chooseFile,
@@ -83,6 +84,19 @@ const setup = async () => {
       articles: [{ type: "news", slug: "hello" }],
     })),
     deleteFile: vi.fn(async () => ({ articles: [] })),
+    moveFile: vi.fn(async () => ({
+      type: "@shared",
+      slug: "",
+      name: "photo.png",
+      articles: [{ type: "news", slug: "hello" }],
+    })),
+    upload: vi.fn(async (_article: unknown, file: File) => ({
+      type: "@shared",
+      slug: "2026/11",
+      name: file.name,
+      url: `/files/2026/11/${file.name}`,
+      reference: `/files/2026/11/${file.name}`,
+    })),
     // The page's own server, as by default
     url: (path: string) => path,
   } as unknown as EditorApi &
@@ -91,7 +105,9 @@ const setup = async () => {
       | "fileFilters"
       | "fileReferences"
       | "replaceFile"
-      | "deleteFile",
+      | "deleteFile"
+      | "moveFile"
+      | "upload",
       ReturnType<typeof vi.fn>
     >;
   const element = await mount<EdahaFileBrowser>("edaha-file-browser", {
@@ -108,18 +124,6 @@ const setup = async () => {
 /** The status line's text */
 const status = (element: EdahaFileBrowser) =>
   find(element, '[role="status"]').textContent?.trim();
-
-describe("formatFileSize", () => {
-  it("should show sizes in B, KB, MB or GB, with one decimal below 10", () => {
-    expect(formatFileSize(0)).toBe("0 B");
-    expect(formatFileSize(512)).toBe("512 B");
-    expect(formatFileSize(1536)).toBe("1.5 KB");
-    expect(formatFileSize(20 * 1024 + 300)).toBe("20 KB");
-    expect(formatFileSize(3 * 1024 ** 2)).toBe("3 MB");
-    expect(formatFileSize(5.25 * 1024 ** 3)).toBe("5.3 GB");
-    expect(formatFileSize(4096 * 1024 ** 3)).toBe("4096 GB");
-  });
-});
 
 describe("acceptedKind", () => {
   it("should be images only when a file input only accepts images", () => {
@@ -214,6 +218,7 @@ describe("edaha-file-browser", () => {
       ]),
     ).toEqual([
       ["Copy URL of photo.png", "Copy URL of photo.png"],
+      ["Move photo.png to shared files", "Move photo.png to shared files"],
       ["Replace photo.png…", "Replace photo.png…"],
       ["Delete photo.png…", "Delete photo.png…"],
     ]);
@@ -595,5 +600,250 @@ describe("edaha-file-browser", () => {
     await settle(element);
     find<HTMLButtonElement>(element, "tbody tr .btn").click();
     expect(await again).toEqual(summary());
+  });
+
+  it("should show shared files at their path on the website, in the shared files folder, filtered as Shared files", async () => {
+    const { element, api } = await setup();
+    api.queryFiles.mockResolvedValueOnce(
+      page([
+        summary({
+          type: "@shared",
+          slug: "2026/11",
+          url: "/files/2026/11/photo.png",
+        }),
+      ]),
+    );
+    api.fileFilters.mockResolvedValueOnce({
+      kinds: ["image"],
+      types: ["@shared", "news"],
+    });
+    await element.show();
+    await settle(element);
+    const row = find(element, "tbody tr");
+    expect(find<HTMLImageElement>(row, "img").getAttribute("src")).toBe(
+      "/files/2026/11/photo.png",
+    );
+    expect(row.querySelectorAll("td")[4]!.textContent?.trim()).toBe(
+      "Shared files/2026/11",
+    );
+    expect(row.querySelectorAll("td")[4]!.querySelector("a")).toBeNull();
+    expect(row.textContent).not.toContain("to shared files");
+    expect(
+      [...element.querySelectorAll("#file-browser-type option")].map((o) =>
+        o.textContent?.trim(),
+      ),
+    ).toEqual(["All article types", "Shared files", "News"]);
+  });
+
+  it("should move a file to the shared files folder or a chosen article, telling the editor", async () => {
+    const { element, api } = await setup();
+    const changed = vi.fn();
+    element.addEventListener("files-changed", changed);
+    button(element, "Move photo.png to shared files").click();
+    await settle(element);
+    expect(api.moveFile).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "photo.png" }),
+      { type: "@shared", slug: "" },
+      {},
+    );
+    expect(status(element)).toBe(
+      "Moved photo.png to Shared files, updating 1 article",
+    );
+    expect(changed.mock.calls[0]![0].detail).toMatchObject({
+      file: { type: "news", slug: "hello", name: "photo.png" },
+      articles: [{ type: "news", slug: "hello" }],
+    });
+
+    // Moving to articles needs a way to choose one
+    expect(element.textContent).not.toContain("to an article");
+    const pick = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValue({ type: "page", slug: "about" });
+    element.pickArticle = pick;
+    await element.updateComplete;
+    button(element, "Move photo.png to an article…").click();
+    await settle(element);
+    expect(api.moveFile).toHaveBeenCalledTimes(1);
+    api.moveFile.mockResolvedValueOnce({
+      type: "page",
+      slug: "about",
+      name: "photo-2.png",
+      articles: [],
+    });
+    button(element, "Move photo.png to an article…").click();
+    await settle(element);
+    expect(api.moveFile).toHaveBeenLastCalledWith(
+      expect.objectContaining({ name: "photo.png" }),
+      { type: "page", slug: "about" },
+      {},
+    );
+    expect(status(element)).toBe(
+      "Moved photo.png to page/about as photo-2.png",
+    );
+    // The article it went into is told about too
+    expect(changed.mock.calls[1]![0].detail.articles).toEqual([
+      { type: "page", slug: "about" },
+    ]);
+
+    api.moveFile.mockRejectedValueOnce(new Error("Disk full"));
+    button(element, "Move photo.png to shared files").click();
+    await settle(element);
+    expect(status(element)).toBe("Disk full");
+  });
+
+  it("should resolve a name clash with the conflict dialog, telling the editor when the existing file is renamed", async () => {
+    const { element, api } = await setup();
+    const changed = vi.fn();
+    element.addEventListener("files-changed", changed);
+    const existing = summary({
+      type: "@shared",
+      slug: "",
+      url: "/files/photo.png",
+    });
+    api.moveFile
+      .mockRejectedValueOnce(
+        new ApiError("A file called photo.png is already in Shared files", [], {
+          incoming: summary(),
+          existing,
+        }),
+      )
+      .mockResolvedValueOnce({
+        type: "@shared",
+        slug: "",
+        name: "old.png",
+        articles: [{ type: "page", slug: "about" }],
+      });
+    button(element, "Move photo.png to shared files").click();
+    await settle(element);
+    const dialog = find<EdahaFileConflict>(element, "edaha-file-conflict");
+    expect(dialog.open).toBe(true);
+    expect(
+      find<HTMLImageElement>(dialog, ".file-conflict-file img").src,
+    ).toContain("/news/hello/photo.png");
+    await dialog.choose({ rename: "existing", name: "old.png" });
+    await settle(element);
+    expect(api.moveFile).toHaveBeenCalledWith(existing, existing, {
+      name: "old.png",
+    });
+    expect(changed.mock.calls[0]![0].detail).toMatchObject({
+      file: existing,
+      articles: [{ type: "page", slug: "about" }],
+    });
+    expect(dialog.open).toBe(false);
+    expect(status(element)).toMatch(/^Moved photo.png to Shared files/);
+
+    // Cancelling it moves nothing
+    api.moveFile.mockRejectedValueOnce(
+      new ApiError("Clash", [], { incoming: summary(), existing }),
+    );
+    const before = changed.mock.calls.length;
+    button(element, "Move photo.png to shared files").click();
+    await settle(element);
+    dialog.close();
+    await settle(element);
+    expect(changed).toHaveBeenCalledTimes(before);
+  });
+
+  it("should upload files where the config file says, showing images being uploaded in conflicts", async () => {
+    const { element, api } = await setup();
+    const changed = vi.fn();
+    element.addEventListener("files-changed", changed);
+    const click = vi.spyOn(
+      find<HTMLInputElement>(element, "#file-browser-upload"),
+      "click",
+    );
+    button(element, "Upload file").click();
+    expect(click).toHaveBeenCalled();
+
+    // To the shared files folder
+    element.uploadTo = "files-by-date";
+    chooseFile(
+      find<HTMLInputElement>(element, "#file-browser-upload"),
+      new File(["x"], "a.txt"),
+    );
+    await settle(element);
+    expect(api.upload).toHaveBeenCalledWith(undefined, expect.any(File), {});
+    expect(status(element)).toBe("Uploaded a.txt to Shared files/2026/11");
+    expect(changed.mock.calls[0]![0].detail).toMatchObject({
+      file: { type: "@shared", slug: "2026/11", name: "a.txt" },
+      articles: [],
+    });
+
+    // To the open article, or one chosen
+    element.uploadTo = "article";
+    element.article = { type: "news", slug: "hello" };
+    await element.upload([new File(["x"], "a.txt"), new File(["y"], "b.txt")]);
+    expect(api.upload).toHaveBeenLastCalledWith(
+      { type: "news", slug: "hello" },
+      expect.any(File),
+      {},
+    );
+    expect(status(element)).toBe("Uploaded 2 files to Shared files/2026/11");
+    element.article = undefined;
+    const calls = api.upload.mock.calls.length;
+    await element.upload([new File(["x"], "a.txt")]);
+    expect(api.upload).toHaveBeenCalledTimes(calls);
+    element.pickArticle = vi.fn(async () => ({ type: "page", slug: "about" }));
+    await element.upload([new File(["x"], "a.txt")]);
+    expect(api.upload).toHaveBeenLastCalledWith(
+      { type: "page", slug: "about" },
+      expect.any(File),
+      {},
+    );
+
+    // An image is shown in the conflict dialog from the browser's own copy
+    URL.createObjectURL = vi.fn(() => "blob:a");
+    URL.revokeObjectURL = vi.fn();
+    api.upload.mockRejectedValueOnce(
+      new ApiError("Clash", [], {
+        incoming: { name: "a.png", kind: "image", size: 1 },
+        existing: summary(),
+      }),
+    );
+    const uploading = element.upload([
+      new File(["x"], "a.png", { type: "image/png" }),
+    ]);
+    await settle(element);
+    const dialog = find<EdahaFileConflict>(element, "edaha-file-conflict");
+    expect(find<HTMLImageElement>(dialog, "img").src).toBe("blob:a");
+    await dialog.choose({ overwrite: true });
+    await uploading;
+    expect(api.upload).toHaveBeenLastCalledWith(
+      { type: "page", slug: "about" },
+      expect.any(File),
+      { overwrite: true },
+    );
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:a");
+
+    // Errors are shown, after what was uploaded
+    api.upload
+      .mockResolvedValueOnce({
+        type: "page",
+        slug: "about",
+        name: "a.txt",
+        url: "/files/page/about/a.txt",
+        reference: "a.txt",
+      })
+      .mockRejectedValueOnce(new Error("Disk full"));
+    await element.upload([new File(["x"], "a.txt"), new File(["y"], "b.txt")]);
+    expect(status(element)).toBe("Disk full");
+    // Choosing no files uploads nothing
+    chooseFile(find<HTMLInputElement>(element, "#file-browser-upload"));
+    api.upload.mockRejectedValueOnce(new Error("No space"));
+    await element.upload([new File(["x"], "a.txt")]);
+    expect(status(element)).toBe("No space");
+    // Cancelling a conflict uploads nothing, and says nothing
+    api.upload.mockRejectedValueOnce(
+      new ApiError("Clash", [], {
+        incoming: { name: "a.txt", kind: "other", size: 1 },
+        existing: summary(),
+      }),
+    );
+    const cancelled = element.upload([new File(["x"], "a.txt")]);
+    await settle(element);
+    dialog.close();
+    await cancelled;
+    expect(status(element)).toBe("No space");
   });
 });

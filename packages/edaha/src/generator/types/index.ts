@@ -22,6 +22,8 @@ export interface TemplateDataSite {
   path: string;
   /** Article type settings (configured types, plus any other types articles use) */
   types: Record<string, TemplateDataArticleType>;
+  /** The shared files folder: where its files are on the website */
+  files: TemplateDataFiles;
   /**
    * The author of articles that don't name one (unless their type has its own): the config file's `author`, the
    * website's name without one, or undefined when it is `false`
@@ -29,6 +31,17 @@ export interface TemplateDataSite {
   author?:
     | { name: string; email?: string | undefined; url?: string | undefined }
     | undefined;
+}
+
+/** Where the shared files folder's files are on the website */
+export interface TemplateDataFiles {
+  /**
+   * The URL to put before a shared file's path in its folder: the config's `files.url` when they are hosted elsewhere
+   * (e.g. "https://static.example.com/"), otherwise `path`. E.g. `{{ site.files.url }}logo.png`.
+   */
+  url: string;
+  /** The website path articles use for shared files, e.g. "/files/" (after `site.baseUrl`) */
+  path: string;
 }
 
 /** What is built for an article type */
