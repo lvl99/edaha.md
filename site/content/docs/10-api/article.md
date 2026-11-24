@@ -122,6 +122,22 @@ A site's template can build on the theme's version of itself with `{% extends "@
 
 It rejects with an error that names the problem (and the config file or article) when the site can't be built, e.g. a config setting is wrong, or a static file or shared file has the same path as an article's file. Problems that don't stop the build go to `logger.warn`.
 
+### Checking templates
+
+`checkSite` checks a site's templates and its theme's as `edaha check` does (see [Templating](/docs/05-templating/#checking-templates)), without building. It takes `siteDir`, `configFile`, `themeDir` and `logger`, like `buildSite`, and resolves with a list of problems, empty when there are none. Each has the template's `file` (an absolute path), its `line` and `column` (from 1; not given for problems with a whole file) and a `message`. `checkTemplates` checks template folders you give it (the site's first, the theme's last), and `formatProblem` writes a problem as `file:line:column message`, with the file relative to a folder:
+
+<!-- embed:codehighlight -->
+
+```ts
+import { checkSite, formatProblem } from "@lvl99dotcom/edaha.md";
+
+const problems = await checkSite({ siteDir: "my-site" });
+for (const problem of problems)
+  console.error(formatProblem(problem, process.cwd()));
+```
+
+<!-- /embed:codehighlight -->
+
 ### Reading the config file
 
 `loadSiteConfig` finds and reads a site's config file as the build does, e.g. to read its settings in a script of your own:
@@ -189,7 +205,7 @@ const { name, version, authors, isPackage } = await readThemeInfo(themeDir);
 
 ### Embed plugins
 
-The embed API (`EmbedPlugin`, `EmbedResolver`, `EMBED_PAGE_PARTS`, `embedBlock`, `splitEmbed`, `cachedFetch`, `isEmbedPlugin`, `loadPlugins` and `validationErrors`) is exported too. `EmbedResolver` renders embeds page by page: `replaceBlocks` puts placeholders for a page's blocks in its Markdown, and `renderPage` renders them in the page's HTML, with the HTML its embeds need in place of `EMBED_PAGE_PARTS` (the template data for `{% embedHead %}` and `{% embedFoot %}`). The fields' `defaultValue`, `showWhen` and `hideWhen` are applied by `resolveFields`, from `@lvl99dotcom/edaha.md/generator/fields`. See [Embeds](/docs/07-embeds/#creating-your-own) for how to write a plugin.
+The embed API (`EmbedPlugin`, `EmbedResolver`, `EMBED_PAGE_PARTS`, `embedBlock`, `splitEmbed`, `cachedFetch`, `isEmbedPlugin`, `loadPlugins` and `validationErrors`) is exported too. `EmbedResolver` renders embeds page by page: `replaceBlocks` puts placeholders for a page's blocks in its Markdown, and `renderPage` renders them in the page's HTML, with the HTML its embeds need in place of `EMBED_PAGE_PARTS` (the template data for `{% embedHead %}` and `{% embedFoot %}`). Give `renderPage` the page's output extension (its fourth argument, `html` by default), so embeds in a JSON file are written as JSON text. The fields' `defaultValue`, `showWhen` and `hideWhen` are applied by `resolveFields`, from `@lvl99dotcom/edaha.md/generator/fields`. See [Embeds](/docs/07-embeds/#creating-your-own) for how to write a plugin.
 
 ### The command line
 

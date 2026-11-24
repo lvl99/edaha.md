@@ -90,7 +90,7 @@ A JavaScript config file exports a plain object. It is the only format that can 
 
 ### Where it is found
 
-`edaha build` and `edaha editor` look for the config file:
+`edaha build`, `edaha check` and `edaha editor` look for the config file:
 
 1. in the folder given with `--dir` (default: the folder you run the command in);
 2. then in the folder of the nearest `package.json`, looking up from there.
@@ -564,6 +564,15 @@ Builds the website into `outputDir`, and copies it into `publishDir` if that is 
 | `--dir <folder>`        | The folder to look for a config file in. Default: the current folder.                        |
 | `--site-url <url>`      | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl`.                  |
 
+### `edaha check`
+
+Checks your templates and the theme's for problems without building, and lists each one by file and line. See [Checking templates](/docs/05-templating/#checking-templates).
+
+| Option                  | Description                                                    |
+| ----------------------- | -------------------------------------------------------------- |
+| `-c`, `--config <file>` | The config file, as for `edaha build`.                         |
+| `--dir <folder>`        | The folder to look for a config file in, as for `edaha build`. |
+
 ### `edaha editor`
 
 Runs the [WYSIWYG editor](/docs/09-wysiwyg-editor/) on your computer.
@@ -574,4 +583,4 @@ Runs the [WYSIWYG editor](/docs/09-wysiwyg-editor/) on your computer.
 | `--dir <folder>`        | The folder to look for a config file in, as for `edaha build`. |
 | `--port <number>`       | The port the editor listens on. Default: `5180`.               |
 
-Both commands also take `-h` / `--help` and `-v` / `--version`.
+Every command also takes `-h` / `--help` and `-v` / `--version`.

@@ -235,7 +235,7 @@ const chart = {
 };
 ```
 
-Your layout template needs `{% embedHead %}` before `</head>` and `{% embedFoot %}` before `</body>` for these to show; the default theme's `layouts/html.njk` has both. See [Templating](/docs/05-templating/#embed-tags).
+Your layout template needs `{% embedHead %}` before `</head>` and `{% embedFoot %}` before `</body>` for these to show; the default theme's `layouts/html.njk` has both. They're only added to HTML pages, not to feeds or JSON files. See [Templating](/docs/05-templating/#embed-tags).
 
 ### Adding it to your site
 
