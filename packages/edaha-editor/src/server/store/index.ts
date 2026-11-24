@@ -84,6 +84,12 @@ import {
   type ReferenceChange,
 } from "../files/index.ts";
 import { folderPath, folderUrl } from "@lvl99dotcom/edaha.md/generator/urls";
+import {
+  isSafeSharedPath,
+  isShared,
+  listSharedFiles,
+  sharedFilePath,
+} from "../sharedFiles/index.ts";
 import type {
   ArticleFilters,
   ArticleLocation,
@@ -93,6 +99,7 @@ import type {
   FileFilters,
   FilePage,
   FileQuery,
+  IndexedFile,
   MetadataInfo,
   MetadataProblem,
   SiteInfo,
@@ -279,6 +286,16 @@ const previewOutput = (
     );
   return output.file;
 };
+
+/**
+ * How the editor names a folder in the shared files folder, e.g. in errors.
+ *
+ * @example
+ * sharedFolderName("2026/11"); // "Shared files/2026/11"
+ * sharedFolderName(""); // "Shared files"
+ */
+export const sharedFolderName = (folder: string): string =>
+  folder ? `Shared files/${folder}` : "Shared files";
 
 /**
  * Reads and writes articles in the site's articles folder (`articlesDir`) for the editor, and renders previews with the site's
@@ -553,23 +570,62 @@ export class ArticleStore {
    * await store.queryFiles({ kind: "image", sort: "size" });
    */
   async queryFiles(query: FileQuery): Promise<FilePage> {
-    const { articleUrl } = await this.articleUrls();
-    const page = queryFiles((await this.index()).files(), query);
+    const fileUrl = await this.fileUrls();
+    const page = queryFiles(await this.allFiles(), query);
     return {
       ...page,
-      files: page.files.map((file) => ({
-        ...file,
-        url: articleUrl(file.type, file.slug) + file.name,
-      })),
+      files: page.files.map((file) => ({ ...file, url: fileUrl(file) })),
     };
   }
 
-  /** The kinds of files and the article types they are in, for the file browser's filters */
+  /** The kinds of files and the article types they are in (and the shared files folder), for the file browser's filters */
   async fileFilters(): Promise<FileFilters> {
-    return fileFilters((await this.index()).files());
+    return fileFilters(await this.allFiles());
   }
 
-  /** A file's path in an article's folder. Throws a 404 EditorError if there is no such file. */
+  /**
+   * The shared files folder: its settings from the config file, where it is, and the website path articles use for
+   * its files (e.g. "/files/").
+   */
+  async sharedFiles() {
+    const { files } = await this.config();
+    return {
+      ...files,
+      root: join(this.siteDir, files.dir),
+      webPath: `/${files.path}/`,
+    };
+  }
+
+  /** The files in the articles' folders, then those in the shared files folder */
+  private async allFiles(): Promise<IndexedFile[]> {
+    return [
+      ...(await this.index()).files(),
+      ...(await listSharedFiles((await this.sharedFiles()).root)),
+    ];
+  }
+
+  /** A function giving a file's path on the website: in its article's folder, or under the shared files' path */
+  private async fileUrls() {
+    const { articleUrl } = await this.articleUrls();
+    const { webPath } = await this.sharedFiles();
+    return (file: IndexedFile) =>
+      isShared(file)
+        ? webPath + sharedFilePath(file)
+        : articleUrl(file.type, file.slug) + file.name;
+  }
+
+  /**
+   * The folder a file is in: its article's, or (for a shared file) its folder in the shared files folder. Throws a 404
+   * EditorError for a shared folder that isn't safe (e.g. with "..").
+   */
+  private async fileDir({ type, slug }: ArticleLocation) {
+    if (!isShared({ type })) return this.dir(type, slug);
+    if (slug && !isSafeSharedPath(slug))
+      throw new EditorError(404, "File not found");
+    return join((await this.sharedFiles()).root, slug);
+  }
+
+  /** A file's path on disk: in an article's folder or the shared files folder. Throws a 404 EditorError if there is no such file. */
   private async filePath(type: string, slug: string, name: string) {
     if (
       name === "article.md" ||
@@ -577,9 +633,14 @@ export class ArticleStore {
       name.startsWith(".")
     )
       throw new EditorError(404, "File not found");
-    const path = join(this.dir(type, slug), name);
+    const path = join(await this.fileDir({ type, slug }), name);
     if (!(await exists(path))) throw new EditorError(404, "File not found");
     return path;
+  }
+
+  /** Update the article index after a file in an article's folder changed (shared files aren't indexed) */
+  private async fileChanged({ type, slug }: ArticleLocation) {
+    if (!isShared({ type })) await (await this.index()).update(type, slug);
   }
 
   /**
@@ -592,16 +653,30 @@ export class ArticleStore {
     dryRun = false,
   ): Promise<ArticleLocation[]> {
     const index = await this.index();
-    const { articleUrl, siteUrl } = await this.articleUrls();
-    const url = articleUrl(file.type, file.slug) + file.name;
+    const { siteUrl } = await this.articleUrls();
+    const url = (await this.fileUrls())({
+      ...file,
+      kind: "other",
+      size: 0,
+      updated: "",
+    });
+    // A shared file hosted elsewhere can also be referred to at its address there
+    const { url: hostedUrl, webPath } = await this.sharedFiles();
+    const hosted =
+      isShared(file) && hostedUrl
+        ? [hostedUrl + url.slice(webPath.length)]
+        : [];
     const changed: ArticleLocation[] = [];
     for (const { type, slug } of index.articles()) {
-      const references = fileReferences(
-        file.name,
-        url,
-        siteUrl,
-        type === file.type && slug === file.slug,
-      );
+      const references = [
+        ...fileReferences(
+          file.name,
+          url,
+          siteUrl,
+          type === file.type && slug === file.slug,
+        ),
+        ...hosted,
+      ];
       let source: string;
       let next: string | undefined;
       try {
@@ -647,11 +722,11 @@ export class ArticleStore {
   ): Promise<FileChange> {
     const oldPath = await this.filePath(type, slug, name);
     const newName = safeFileName(fileName);
-    const newPath = join(this.dir(type, slug), newName);
+    const newPath = join(await this.fileDir({ type, slug }), newName);
     if (newName !== name && (await exists(newPath)))
       throw new EditorError(
         409,
-        `A file called ${newName} is already in ${type}/${slug}`,
+        `A file called ${newName} is already in ${isShared({ type }) ? sharedFolderName(slug) : `${type}/${slug}`}`,
       );
     await writeFile(newPath, contents);
     const articles: ArticleLocation[] = [];
@@ -664,7 +739,7 @@ export class ArticleStore {
       );
       await rm(oldPath);
     }
-    await (await this.index()).update(type, slug);
+    await this.fileChanged({ type, slug });
     return { name: newName, articles };
   }
 
@@ -683,7 +758,7 @@ export class ArticleStore {
       { remove: true },
     );
     await rm(path);
-    await (await this.index()).update(type, slug);
+    await this.fileChanged({ type, slug });
     return { articles };
   }
 
@@ -830,11 +905,16 @@ export class ArticleStore {
       );
     const baseUrl = bodyBaseUrl(location);
     const config = await this.config();
-    const site = siteData(
-      config,
-      { [data.type]: defaultTypeConfig(data.type), ...config.types },
-      DEFAULT_SITE_URL,
-    );
+    const shared = await this.sharedFiles();
+    const site = {
+      ...siteData(
+        config,
+        { [data.type]: defaultTypeConfig(data.type), ...config.types },
+        DEFAULT_SITE_URL,
+      ),
+      // Shared files are shown from the editor, even when the website has them elsewhere
+      files: { url: shared.webPath, path: shared.webPath },
+    };
     const source = serializeArticle(
       { ...data, status: "published", title: data.title.trim() || "Untitled" },
       editorHtmlToMarkdown(data.bodyHtml, baseUrl),
@@ -858,6 +938,8 @@ export class ArticleStore {
         setEmbedHeadings: (html, headings) =>
           embeds.setHeadings(html, headings),
         renderMarkdown: (md, base) => renderMarkdown(markdown, md, base),
+        // Shared files are shown from the editor, at their path on the website
+        sharedFiles: { dir: shared.root, path: shared.webPath },
         metadata: {
           ...metadata.context(data.type),
           // The editor shows problems itself
@@ -1016,6 +1098,16 @@ export class ArticleStore {
         // Not in this folder
       }
     }
+    // A shared file, at its path on the website
+    const { root, webPath } = await this.sharedFiles();
+    if (`/${path}`.startsWith(webPath))
+      try {
+        return await readFile(
+          join(root, ...`/${path}`.slice(webPath.length).split("/")),
+        );
+      } catch {
+        // Not a shared file: an article's file may have this path
+      }
     const { articleUrl } = await this.articleUrls();
     const file = (await this.index())
       .files()

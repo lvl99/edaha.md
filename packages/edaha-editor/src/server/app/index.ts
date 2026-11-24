@@ -1,4 +1,5 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
+import { isSafeSharedPath, SHARED_FILES_TYPE } from "../sharedFiles/index.ts";
 import mime from "mime-types";
 import {
   EMBED_PAGE_PARTS,
@@ -271,6 +272,30 @@ ${FRAME_HEIGHT_SCRIPT}
 `;
 
 /**
+ * A shared file's folder (its `slug`) and name, from its path in the shared files folder. Throws a 404 EditorError
+ * without a safe path.
+ *
+ * @example
+ * sharedFile("2026/11/photo.png"); // { slug: "2026/11", name: "photo.png" }
+ */
+export const sharedFile = (
+  path: string | undefined,
+): { slug: string; name: string } => {
+  if (!path || !isSafeSharedPath(path))
+    throw new EditorError(404, "File not found");
+  const at = path.lastIndexOf("/");
+  return { slug: path.slice(0, Math.max(at, 0)), name: path.slice(at + 1) };
+};
+
+/** The file uploaded in a request's multipart "file" field. Throws a 400 EditorError without one. */
+const uploadedFile = async (c: Context): Promise<File> => {
+  const file = (await c.req.parseBody()).file;
+  if (!(file instanceof File))
+    throw new EditorError(400, 'Expected a file in the "file" field');
+  return file;
+};
+
+/**
  * Create the article editor's local API. Requests that change files must come from the editor's own page (checked
  * with the Origin header), so other websites open in the same browser can't write articles.
  *
@@ -282,6 +307,8 @@ ${FRAME_HEIGHT_SCRIPT}
  * - `GET|PUT|DELETE /api/articles/:type/:slug`: load, save (and move) or delete an article
  * - `POST /api/articles/:type/:slug/files`: upload a file (multipart field "file")
  * - `GET /files/:type/:slug/:name`: an article's file, for previews in the editor
+ * - `GET /api/shared-files/references?path=`, `PUT /api/shared-files?path=` and `DELETE /api/shared-files?path=`: the
+ *   articles that refer to a file in the shared files folder, replacing it, and deleting it (as `/api/files/…` does)
  * - `GET /api/embeds`: the embed plugins (`EmbedInfo`), for the editor's embed dialog
  * - `POST /api/embed-validations`: check an embed block's content (`{ key, content }`) with its plugin's `validate`,
  *   giving why it isn't valid (`EmbedValidation`)
@@ -366,6 +393,31 @@ export const createEditorApp = (
 
   app.get("/api/files/filters", async (c) => c.json(await store.fileFilters()));
 
+  // Files in the shared files folder, by their path in it (e.g. ?path=2026/11/photo.png)
+  app.get("/api/shared-files/references", async (c) => {
+    const { slug, name } = sharedFile(c.req.query("path"));
+    return c.json(await store.fileReferences(SHARED_FILES_TYPE, slug, name));
+  });
+
+  app.put("/api/shared-files", async (c) => {
+    const { slug, name } = sharedFile(c.req.query("path"));
+    const file = await uploadedFile(c);
+    return c.json(
+      await store.replaceFile(
+        SHARED_FILES_TYPE,
+        slug,
+        name,
+        file.name,
+        new Uint8Array(await file.arrayBuffer()),
+      ),
+    );
+  });
+
+  app.delete("/api/shared-files", async (c) => {
+    const { slug, name } = sharedFile(c.req.query("path"));
+    return c.json(await store.deleteFile(SHARED_FILES_TYPE, slug, name));
+  });
+
   app.get("/api/files/:type/:slug/:name/references", async (c) =>
     c.json(
       await store.fileReferences(
@@ -377,10 +429,7 @@ export const createEditorApp = (
   );
 
   app.put("/api/files/:type/:slug/:name", async (c) => {
-    const body = await c.req.parseBody();
-    const file = body.file;
-    if (!(file instanceof File))
-      throw new EditorError(400, 'Expected a file in the "file" field');
+    const file = await uploadedFile(c);
     return c.json(
       await store.replaceFile(
         c.req.param("type"),
@@ -569,11 +618,10 @@ export const createEditorApp = (
 
   app.get("/files/:type/:slug/:name", async (c) => {
     const name = c.req.param("name");
-    const contents = await store.file(
-      c.req.param("type"),
-      c.req.param("slug"),
-      name,
-    );
+    const contents = await store
+      .file(c.req.param("type"), c.req.param("slug"), name)
+      // Shared files can have the same kind of path (e.g. /files/2026/11/photo.png)
+      .catch(() => store.staticFile(c.req.path.slice(1)));
     return c.body(contents as Uint8Array<ArrayBuffer>, 200, {
       "Content-Type": mime.lookup(name) || "application/octet-stream",
       "Cache-Control": "no-store",

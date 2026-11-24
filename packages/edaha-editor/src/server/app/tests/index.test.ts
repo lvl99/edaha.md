@@ -11,6 +11,7 @@ import {
   fileQuery,
   previewCsp,
   previewOriginOf,
+  sharedFile,
 } from "..";
 import { ArticleStore, EditorError } from "../../store";
 import { loadSiteConfig } from "@lvl99dotcom/edaha.md/generator/configFile";
@@ -211,6 +212,68 @@ describe("createEditorApp", () => {
       (await app.request("/api/files/article/first/cover.png/references"))
         .status,
     ).toBe(404);
+  });
+
+  it("should find, replace and delete shared files by their path, and serve them at their path on the website", async () => {
+    const { app, dir } = await setup();
+    await mkdir(join(dir, "files/2026/11"), { recursive: true });
+    await writeFile(join(dir, "files/2026/11/photo.jpg"), "photo");
+    await writeFile(join(dir, "files/logo.png"), "logo");
+    await writeFile(
+      join(dir, "articles/article/first/article.md"),
+      `${await readFile(join(dir, "articles/article/first/article.md"), "utf8")}\n![](/files/2026/11/photo.jpg)\n`,
+    );
+
+    const found = (await (
+      await app.request("/api/files?type=%40shared")
+    ).json()) as { files: { slug: string; name: string; url: string }[] };
+    expect(found.files.map(({ url }) => url)).toEqual([
+      "/files/logo.png",
+      "/files/2026/11/photo.jpg",
+    ]);
+    expect(
+      await (
+        await app.request("/api/shared-files/references?path=2026/11/photo.jpg")
+      ).json(),
+    ).toEqual([{ type: "article", slug: "first" }]);
+
+    const served = await app.request("/files/2026/11/photo.jpg");
+    expect(served.headers.get("content-type")).toBe("image/jpeg");
+    expect(await served.text()).toBe("photo");
+    expect(await (await app.request("/files/logo.png")).text()).toBe("logo");
+
+    const body = new FormData();
+    body.append("file", new File([new Uint8Array([1])], "Photo 2.jpg"));
+    expect(
+      (
+        await app.request("/api/shared-files?path=2026/11/photo.jpg", {
+          method: "PUT",
+          body,
+        })
+      ).status,
+    ).toBe(403);
+    const replaced = await app.request(
+      "/api/shared-files?path=2026/11/photo.jpg",
+      { method: "PUT", headers: { Origin: ORIGIN }, body },
+    );
+    expect(await replaced.json()).toEqual({
+      name: "photo-2.jpg",
+      articles: [{ type: "article", slug: "first" }],
+    });
+    const deleted = await app.request("/api/shared-files?path=logo.png", {
+      method: "DELETE",
+      headers: { Origin: ORIGIN },
+    });
+    expect(await deleted.json()).toEqual({ articles: [] });
+    for (const path of ["", "../edahaconfig.yml", "logo.png"])
+      expect(
+        (
+          await app.request(`/api/shared-files?path=${path}`, {
+            method: "DELETE",
+            headers: { Origin: ORIGIN },
+          })
+        ).status,
+      ).toBe(404);
   });
 
   it("should create, save, move and delete articles", async () => {
@@ -703,6 +766,21 @@ describe("createEditorApp", () => {
     expect(await response.json()).toEqual({
       error: 'Expected a file in the "file" field',
     });
+  });
+});
+
+describe("sharedFile", () => {
+  it("should split a shared file's path into its folder and name", () => {
+    expect(sharedFile("2026/11/photo.png")).toEqual({
+      slug: "2026/11",
+      name: "photo.png",
+    });
+    expect(sharedFile("logo.png")).toEqual({ slug: "", name: "logo.png" });
+  });
+
+  it("should refuse a missing or unsafe path", () => {
+    for (const path of [undefined, "", "../secret", "a//b", ".hidden"])
+      expect(() => sharedFile(path)).toThrow("File not found");
   });
 });
 
