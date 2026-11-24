@@ -145,7 +145,7 @@ When agent has work ready for UAT (after lint and unit tests have passed 100%), 
 
 Human will signal to agent if UAT has passed and when to prepare a PR, or will update agent on any new work to complete via brief or prompt.
 
-PRs will be submitted, reviewed, and hopefully merged into `main`.
+PRs will be submitted, reviewed, and hopefully merged into `main`. PR and commit messages should never mention nor link to agent conversations/threads or contain any attributions to agent conversations/threads.
 
 Releases will be made via `pnpm` (ensure human has logged in first), and only from the `main` branch, when human signals to prepare a release:
 
