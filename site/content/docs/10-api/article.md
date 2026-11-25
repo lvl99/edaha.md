@@ -338,3 +338,5 @@ The editor is as tall as the window unless the app's page gives it another heigh
 `<edaha-metadata-field>` (`EdahaMetadataField`) is the field the editor builds from a custom metadata value's schema, for an app's own forms, e.g. with `CONFIG_FORM_SCHEMA`. Give it a `path`, a `schema` (a JSON Schema with `$edahaField`s; an object's properties become a group of fields), a `value` and any `problems`; it fires `metadata-change` with `{ path, value }` when a value changes (paths inside an object are joined with `/`, e.g. `settings/name`). It renders without a shadow root, styled by the editor's stylesheet.
 
 Preview pages and embed frames are still shown from the editor server, at its previews' own address (`http://localhost:<port>`), so the app's page must allow loading frames and images from it.
+
+The editor checks custom settings' values in the page with [ajv](https://ajv.js.org/), which compiles each check into code at runtime. If the app's page has a content security policy that doesn't allow that (without `'unsafe-eval'` in `script-src`), the editor has its server check them instead, so the page's policy can stay strict.
