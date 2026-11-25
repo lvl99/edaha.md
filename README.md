@@ -80,6 +80,7 @@ edaha editor   # Run the local article editor (only reachable from this computer
 | `-c`, `--config <file>` | all     | The config file. Default: the first one found (see [Config file](#config-file))      |
 | `--dir <folder>`        | all     | The folder to look for a config file in. Default: the current folder                 |
 | `--site-url <url>`      | build   | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl` in config |
+| `--output-dir <folder>` | build   | Build into this folder instead of `outputDir`, without copying into `publishDir`     |
 | `--render`              | check   | Also render every page as the build would, without writing anything                  |
 | `--port <number>`       | editor  | The port to listen on. Default: 5180                                                 |
 | `-h`, `--help`          |         | Show help                                                                            |

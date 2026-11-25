@@ -38,6 +38,16 @@ To add it to your project's scripts, in `package.json`:
 }
 ```
 
+### Building into another folder
+
+To look at the website before publishing it, build it into another folder with `--output-dir`, e.g. a temporary one:
+
+```sh
+npx edaha build --output-dir /tmp/my-site-preview
+```
+
+The folder can be anywhere apart from your articles, templates, static files and shared files folders, and not your site folder or a folder it's in, as it is emptied first. Your `outputDir` is left as it is, nothing is copied into `publishDir`, and shared files hosted elsewhere (`files.url`) aren't written.
+
 ### Settings that affect the build
 
 | Setting      | What it does                                                           |
