@@ -104,6 +104,7 @@ describe("EditorApi", () => {
     await api.embeds();
     await api.embedFrame("youtube", "https://youtu.be/x");
     await api.validateEmbed("youtube", "x", { size: 1 });
+    await api.validateMetadata({ rating: 3 });
     const calls = fetch.mock.calls as unknown as [string, RequestInit?][];
     expect(
       calls.map(([path, init]) => `${init?.method ?? "GET"} ${path}`),
@@ -133,6 +134,7 @@ describe("EditorApi", () => {
       "GET /api/embeds",
       "POST /api/embed-frames",
       "POST /api/embed-validations",
+      "POST /api/metadata-validations",
     ]);
     // An upload's other name and overwriting are sent with the file
     const upload = calls[21]![1]!.body as FormData;
@@ -148,6 +150,7 @@ describe("EditorApi", () => {
     expect(calls[24]![1]!.body).toBe(
       '{"key":"youtube","content":"x","options":{"size":1}}',
     );
+    expect(calls[25]![1]!.body).toBe('{"values":{"rating":3}}');
     expect(
       (calls[10]![1]!.body as FormData).get("file") as File,
     ).toHaveProperty("name", "b.png");

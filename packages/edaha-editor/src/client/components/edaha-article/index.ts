@@ -868,9 +868,11 @@ export class EdahaArticle extends LitElement {
   async save(): Promise<boolean> {
     // Invalid custom metadata values aren't saved
     const { values } = this.resolvedMeta();
-    const errors = this.metadataKeys().flatMap((key) =>
-      this.checkMetadata(key, values),
+    const errors = await this.run(() =>
+      this.checkMetadata(this.metadataKeys(), values),
     );
+    // The checks couldn't be made (the run says why)
+    if (errors === undefined) return false;
     if (errors.length) {
       this.metaProblems = errors;
       showToast(this, { kind: "error", message: METADATA_ERRORS });
@@ -959,6 +961,9 @@ export class EdahaArticle extends LitElement {
     this.dispatchEvent(new CustomEvent("article-deleted", { bubbles: true }));
   }
 
+  /** Whether custom metadata is checked in the page (until its checks can't be compiled; see checkMetadata) */
+  private checksInPage = true;
+
   /** The validator for the custom metadata definitions, made once for them */
   private validator(): MetadataValidator {
     // Only used for the type's custom fields, so the definitions are there
@@ -1001,13 +1006,29 @@ export class EdahaArticle extends LitElement {
     );
   }
 
-  /** The errors in a custom metadata field's value (none when it has no value, or is hidden) */
-  private checkMetadata(
-    key: string,
+  /**
+   * The errors in custom metadata fields' values (none for fields without a value, or hidden). They're checked in the
+   * page, or by the editor's server when the page can't compile the checks, e.g. in an app's page whose content
+   * security policy doesn't allow code made at runtime (then they're always checked there).
+   */
+  private async checkMetadata(
+    keys: string[],
     values = this.resolvedMeta().values,
-  ): MetadataProblem[] {
-    const value = values[key];
-    return value === undefined ? [] : this.validator().validate(key, value);
+  ): Promise<MetadataProblem[]> {
+    const shown = Object.fromEntries(
+      keys.flatMap((key) =>
+        values[key] === undefined ? [] : [[key, values[key]]],
+      ),
+    );
+    if (this.checksInPage)
+      try {
+        return Object.entries(shown).flatMap(([key, value]) =>
+          this.validator().validate(key, value),
+        );
+      } catch {
+        this.checksInPage = false;
+      }
+    return this.api.validateMetadata(shown);
   }
 
   /** Change a custom metadata value (or a value inside one) */
@@ -1023,12 +1044,18 @@ export class EdahaArticle extends LitElement {
   }
 
   /** Check a custom metadata field once focus leaves it, saying so when errors are found */
-  private onMetadataBlur(event: CustomEvent<string>) {
+  private async onMetadataBlur(event: CustomEvent<string>) {
     const key = event.detail.split("/")[0] as string;
     const isKey = (problem: MetadataProblem) =>
       problem.path.split("/")[0] === key;
+    let errors: MetadataProblem[];
+    try {
+      errors = await this.checkMetadata([key]);
+    } catch {
+      // Saving checks again, and says why it can't
+      return;
+    }
     const hadErrors = this.metaProblems.some(isKey);
-    const errors = this.checkMetadata(key);
     this.metaProblems = [
       ...this.metaProblems.filter((problem) => !isKey(problem)),
       ...errors,

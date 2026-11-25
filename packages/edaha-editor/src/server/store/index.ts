@@ -153,6 +153,8 @@ export interface ArticleStoreOptions extends ArticleIndexOptions {
 /** What articles' custom metadata is checked with (see `ArticleStore.metadata`) */
 interface MetadataTools {
   config: EdahaConfig;
+  /** Checks custom metadata values against the config file's `metadata` */
+  validator: MetadataValidator;
   /** An article's problems, from its type and settings */
   check: MetadataCheck;
   /** What `loadArticle` reads a type's metadata with (besides `warn`) */
@@ -482,7 +484,7 @@ export class ArticleStore {
         const { keys, typeLabel } = context(type);
         return articleMetadata(settings, keys, validator, typeLabel).problems;
       };
-      return { config, check, context };
+      return { config, validator, check, context };
     })();
     return this.metadataLoad;
   }
@@ -493,6 +495,25 @@ export class ArticleStore {
    */
   async load(): Promise<void> {
     await this.index();
+  }
+
+  /**
+   * The problems with custom metadata values, by their keys, checked against the config file's `metadata` (values of
+   * keys it doesn't define aren't checked). For pages that can't compile the checks themselves, e.g. an app's page whose
+   * content security policy doesn't allow code made at runtime.
+   *
+   * @example
+   * await store.validateMetadata({ rating: 11 }); // [{ path: "rating", message: "must be <= 10", level: "error" }]
+   */
+  async validateMetadata(
+    values: Record<string, unknown>,
+  ): Promise<MetadataProblem[]> {
+    const { config, validator } = await this.metadata();
+    return Object.entries(values).flatMap(([key, value]) =>
+      key in config.metadata && value !== undefined
+        ? validator.validate(key, value)
+        : [],
+    );
   }
 
   /**
