@@ -2,6 +2,48 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
+## 0.7.0 (2026-11-25)
+
+Templates escape values only for HTML and XML, pages link their other outputs and feeds, `edaha check` finds template problems without building, and a round of editor improvements.
+
+### Added
+
+- `edaha check` lists problems in the site's and theme's templates as `file:line:column message` without building: syntax errors, unknown tags and filters, missing templates named in `extends`, `include` and `import`, missing required templates, and two templates in one folder that output the same file type. It exits with code 1 when there are any. `checkSite`, `checkTemplates` and `formatProblem` are exported.
+- `edaha check --render` also renders every page the build would make, without writing anything, and lists the pages' render problems with the page they were found on. `check` takes `--site-url`, like `build`.
+- `buildSite` takes `dryRun`: it renders every page without writing anything and reports pages that can't be rendered in the result's `problems` instead of stopping.
+- Articles and list pages get `alternates` (their other outputs, with extension, MIME type and URL) and lists get `feeds`. The default theme links to them with `<link rel="alternate">`.
+- The default theme styles blockquotes with a border on their left.
+- The editor:
+  - **Main heading** (H1) and **Horizontal rule** buttons in the rich text and Markdown toolbars.
+  - Choosing a heading's ID in the WYSIWYG body copies the link to the heading and shows a toast.
+  - Button and input size variables (`--button-size-*`, `--input-size-*`), corner radius variables (`--border-radius-base`, `-xs`, `-s`, `-l`, `-xl`) and size classes (`.btn-xs`, `.btn-s`, `.btn-l`, `.btn-xl`).
+- Docs: [checking templates](https://edaha.md/docs/05-templating/#checking-templates), escaping by output type, alternates and feeds, and `buildSite`'s `dryRun` in the API docs.
+
+### Changed
+
+- Templates escape values only when they output HTML, HTM, XHTML, XML, SVG, RSS or Atom; others (e.g. JSON) write values as they are, so `| safe` isn't needed.
+- A template name loads the first folder's template that outputs the same file type, whatever its file name: e.g. `@theme/layouts/rssfeed.njk` loads the theme's `layouts/rssfeed.xml.njk`.
+- `{% embedHead %}` and `{% embedFoot %}` output nothing in files that aren't HTML, and embeds in JSON files are written as JSON text.
+- `paginate` takes the extensions the list's page and feed templates output, instead of the feed's file name.
+- `TemplateProblem` moved to the templates module (still exported from the check module).
+- Nunjucks templates are left out of Prettier on purpose; `edaha check` checks them instead.
+- The editor:
+  - File fields (custom file settings, the thumbnail and attachments) have one **Choose or upload file** button opening the file browser, instead of a file input.
+  - Every button has the `btn` class and a `btn-` class for its purpose. Classes without the prefix were renamed, e.g. `toolbar-button` → `btn-toolbar`, `nav-toggle` → `btn-nav-toggle`, `show-all` → `btn-show-all`. `--border-radius` is replaced by `--border-radius-base`.
+  - Everything focused from the keyboard has the same 3px outline in the focus colour.
+  - Checkboxes are on/off switches (`role="switch"`), and article fields' labels sit above their fields.
+  - The welcome prompt's **Write a new article** and **Edit an existing one** are large buttons with icons, and **Open article browser** is now **Show all (n)**.
+  - **Show all** in the article list is grey with the article browser's icon; the article list's and welcome prompt's links aren't underlined.
+  - Turning on **No author** hides the author's fields instead of disabling them.
+  - Dialogs' buttons are grouped together in a row.
+  - Fieldsets have the inputs' border colour and a corner radius.
+
+### Fixed
+
+- `./` and `../` template names load again, relative to the template that names them.
+- Embeds no longer break JSON files.
+- File links no longer break when an article's type or slug changes, in it and in other articles.
+
 ## 0.6.0 (2026-11-24)
 
 A shared files folder that any article can use, moving files between articles, and an editor that resolves file name clashes.
