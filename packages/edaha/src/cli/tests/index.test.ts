@@ -1,4 +1,8 @@
 import { readFileSync } from "node:fs";
+import { cp, mkdtemp, readdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   EDITOR_PACKAGE,
@@ -246,6 +250,87 @@ describe("runCli", () => {
     expect(two.error).toHaveBeenLastCalledWith(
       "Found 2 problems in the templates",
     );
+  });
+
+  it("should render every page with --render, once the templates read without problems", async () => {
+    const fine = context({ env: { SITE_URL: "https://example.com" } });
+    expect(await runCli(["check", "--render"], fine)).toBe(0);
+    expect(fine.build).toHaveBeenCalledWith({
+      siteDir: "/work",
+      configFile: undefined,
+      siteUrl: "https://example.com",
+      logger: { warn: fine.error },
+      dryRun: true,
+    });
+    expect(fine.log).toHaveBeenCalledWith(
+      "No problems found in the templates, or rendering 1 pages",
+    );
+
+    const build = vi.fn(async () => ({
+      outputDir: "/work/build",
+      publishDir: undefined,
+      articles: [],
+      files: ["index.html"],
+      problems: [
+        {
+          file: "/work/templates/partials/a.njk",
+          line: 2,
+          column: 9,
+          message: "Unable to call `foo` (on /news/a/)",
+        },
+      ],
+    }));
+    const broken = context({ build });
+    expect(
+      await runCli(
+        ["check", "--render", "--site-url", "https://x.com"],
+        broken,
+      ),
+    ).toBe(1);
+    expect((build.mock.calls[0] as unknown[])[0]).toMatchObject({
+      siteUrl: "https://x.com",
+    });
+    expect(broken.error.mock.calls).toEqual([
+      ["templates/partials/a.njk:2:9 Unable to call `foo` (on /news/a/)"],
+      ["Found 1 problem in the templates"],
+    ]);
+
+    // Templates with problems aren't rendered
+    const unread = context({
+      check: vi.fn(async () => [
+        { file: "/work/templates", message: "Missing" },
+      ]),
+    });
+    expect(await runCli(["check", "--render"], unread)).toBe(1);
+    expect(unread.build).not.toHaveBeenCalled();
+    expect(unread.error).toHaveBeenLastCalledWith(
+      "Found 1 problem in the templates; pages are rendered once they are fixed",
+    );
+  });
+
+  it("should check and render a real site when no fakes are given, writing nothing", async () => {
+    // A copy of the fixture site, whose publish folder is beside it
+    const root = await mkdtemp(join(tmpdir(), "edaha-cli-"));
+    await cp(
+      fileURLToPath(
+        new URL("../../shared/tests/fixtures/site", import.meta.url),
+      ),
+      join(root, "my-site"),
+      { recursive: true },
+    );
+    const ctx = context({
+      cwd: root,
+      env: { SITE_URL: "https://example.com" },
+    });
+    delete (ctx as Partial<CliContext>).check;
+    delete (ctx as Partial<CliContext>).build;
+    expect(await runCli(["check", "--render", "--dir", "my-site"], ctx)).toBe(
+      0,
+    );
+    expect(ctx.log.mock.calls[0]?.[0]).toMatch(
+      /^No problems found in the templates, or rendering \d+ pages$/,
+    );
+    expect(await readdir(root)).toEqual(["my-site"]);
   });
 
   it("should use the real check when none is given", async () => {

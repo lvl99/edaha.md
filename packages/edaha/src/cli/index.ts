@@ -49,7 +49,8 @@ Options:
   -c, --config <file>  The config file (default: the first edahaconfig file found in --dir, then in the nearest
                        package.json's folder). The site folder is the config file's folder.
   --dir <folder>       The folder to look for a config file in (default: the current folder)
-  --site-url <url>     build: the website's absolute URL for feeds (default: SITE_URL, then the config's siteUrl)
+  --site-url <url>     build, check: the website's absolute URL for feeds (default: SITE_URL, then the config's siteUrl)
+  --render             check: also render every page as the build would, without writing anything
   --port <number>      editor: the port to listen on (default: ${EDITOR_PORT})
   -h, --help           Show this help
   -v, --version        Show edaha.md's version
@@ -183,20 +184,40 @@ export const runCli = async (
       return 0;
     }
     if (command === "check") {
-      const problems = await (context.check ?? checkSite)({
+      const logger = { warn: context.error };
+      const found = await (context.check ?? checkSite)({
         siteDir,
         configFile,
-        logger: { warn: context.error },
+        logger,
       });
+      // Pages are rendered once the templates read without problems, which would stop or repeat in every page
+      const rendered =
+        values.render && !found.length
+          ? await (context.build ?? buildSite)({
+              siteDir,
+              configFile,
+              siteUrl: values["site-url"] ?? context.env.SITE_URL,
+              logger,
+              dryRun: true,
+            })
+          : undefined;
+      const problems = rendered?.problems ?? found;
       for (const problem of problems)
         context.error(formatProblem(problem, context.cwd));
       if (problems.length) {
         context.error(
-          `Found ${problems.length} ${problems.length === 1 ? "problem" : "problems"} in the templates`,
+          `Found ${problems.length} ${problems.length === 1 ? "problem" : "problems"} in the templates` +
+            (values.render && !rendered
+              ? "; pages are rendered once they are fixed"
+              : ""),
         );
         return 1;
       }
-      context.log("No problems found in the templates");
+      context.log(
+        rendered
+          ? `No problems found in the templates, or rendering ${rendered.files.length} pages`
+          : "No problems found in the templates",
+      );
       return 0;
     }
     if (command === "editor") {
@@ -228,6 +249,7 @@ const parse = (args: string[]) =>
       dir: { type: "string" },
       "site-url": { type: "string" },
       port: { type: "string" },
+      render: { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },
