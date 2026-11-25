@@ -8,6 +8,8 @@ author: false
 
 **edaha.md** v0.7.1 has been released, with everything from v0.7.0: `edaha check` to find template problems before building, links to each page's other outputs and feeds, and a round of editor improvements. v0.7.1 adds building your website into another folder, to look at it before publishing!
 
+The editor's v0.7.1 patch also helps apps with strict content security policies show the editor and its previews.
+
 ## Added
 
 - `edaha check` lists problems in your templates by file and line, without building.
@@ -21,6 +23,9 @@ author: false
 - `edaha build --output-dir <folder>` and `buildSite`'s `outputDir` option build the website into another folder, leaving your own build and `publishDir` as they are. (v0.7.1)
 - The docs explain [checking templates](https://edaha.md/docs/05-templating/#checking-templates).
 - The docs explain [building into another folder](https://edaha.md/docs/08-build-and-deploy/#building-into-another-folder). (v0.7.1)
+- `startEditor` takes `frameAncestors` to allow an app's page to show previews and embed frames. (editor v0.7.1)
+- `EditorApi.validateMetadata` and the editor's server can check custom metadata values for an app's page. (editor v0.7.1)
+- The docs explain the content security policy settings for [showing the editor in an app](https://edaha.md/docs/10-api/#showing-the-editor-in-your-own-app). (editor v0.7.1)
 
 ## Changed
 
@@ -45,3 +50,4 @@ author: false
 - `./` and `../` template names load again.
 - Embeds no longer break JSON files.
 - File links no longer break when an article's type or slug changes.
+- The editor checks custom metadata on its server if the page cannot compile the checks, and says why when checks cannot be made. (editor v0.7.1)
