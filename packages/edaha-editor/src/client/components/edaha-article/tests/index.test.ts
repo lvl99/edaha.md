@@ -8,6 +8,7 @@ import type { EditorApi } from "../../../editorApi";
 import { ApiError } from "../../../editorApi";
 import type { EdahaMetadataField } from "../../edaha-metadata-field";
 import { metadataLayout } from "@lvl99dotcom/edaha.md/generator/metadataGroups";
+import { MetadataValidator } from "@lvl99dotcom/edaha.md/generator/metadata";
 import {
   METADATA_ERRORS,
   applyFieldChange,
@@ -91,6 +92,7 @@ const fakeApi = () =>
       warnings: [],
     })),
     validateEmbed: vi.fn(async () => ["Bad"]),
+    validateMetadata: vi.fn(async () => []),
     // The page's own server, as by default
     url: (path: string) => path,
     previewUrl: (path: string) => path,
@@ -106,7 +108,8 @@ const fakeApi = () =>
       | "preview"
       | "embeds"
       | "embedFrame"
-      | "validateEmbed",
+      | "validateEmbed"
+      | "validateMetadata",
       ReturnType<typeof vi.fn>
     >;
 
@@ -1712,6 +1715,46 @@ describe("edaha-article custom settings", () => {
     api.save.mockRejectedValueOnce(new ApiError("Not valid", problems));
     expect(await element.save()).toBe(false);
     expect(element.metaProblems).toEqual(problems);
+  });
+
+  it("should check values with the editor's server when the page can't compile the checks", async () => {
+    // As in a page whose content security policy doesn't allow code made at runtime
+    const compile = vi
+      .spyOn(MetadataValidator.prototype, "validate")
+      .mockImplementation(() => {
+        throw new EvalError("Refused to evaluate a string as JavaScript");
+      });
+    try {
+      const { element, api } = await setupMetadata({ rating: 20 });
+      const problems = [
+        {
+          path: "rating",
+          message: "must be at most 10",
+          level: "error" as const,
+        },
+      ];
+      api.validateMetadata.mockResolvedValue(problems);
+      blur(element, "rating");
+      await settle(element);
+      expect(api.validateMetadata).toHaveBeenCalledWith({ rating: 20 });
+      expect(element.metaProblems).toEqual(problems);
+      expect(await element.save()).toBe(false);
+      expect(api.save).not.toHaveBeenCalled();
+      // Once it can't, the page doesn't try again
+      expect(compile).toHaveBeenCalledOnce();
+      api.validateMetadata.mockResolvedValue([]);
+      expect(await element.save()).toBe(true);
+      // Checks that can't be made stop saving, saying why
+      api.validateMetadata.mockRejectedValue(new Error("No server"));
+      expect(await element.save()).toBe(false);
+      expect(toasts.at(-1)).toEqual({ kind: "error", message: "No server" });
+      // Leaving a field leaves it to saving
+      blur(element, "rating");
+      await settle(element);
+      expect(element.metaProblems).toEqual([]);
+    } finally {
+      compile.mockRestore();
+    }
   });
 
   it("should show the errors it was loaded with, and show them again on reset", async () => {

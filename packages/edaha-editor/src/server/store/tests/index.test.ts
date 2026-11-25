@@ -824,6 +824,20 @@ describe("ArticleStore", () => {
       ]);
     });
 
+    it("should check custom metadata values for pages that can't, leaving out values of keys it doesn't define", async () => {
+      const { store } = await metadataSite();
+      expect(
+        await store.validateMetadata({
+          rating: 11,
+          featured: undefined,
+          oops: true,
+        }),
+      ).toEqual([
+        { path: "rating", message: "must be at most 10", level: "error" },
+      ]);
+      expect(await store.validateMetadata({ rating: 3 })).toEqual([]);
+    });
+
     it("should give summaries their problems, and find articles with errors, warnings or either", async () => {
       const { store } = await metadataSite();
       await store.load();

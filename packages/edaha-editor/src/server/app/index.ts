@@ -34,6 +34,7 @@ import type {
   EmbedFrame,
   EmbedInfo,
   EmbedValidation,
+  MetadataValidation,
 } from "../types/index.ts";
 
 /** Read search parameters as text or numbers, undefined when empty or not a number */
@@ -375,6 +376,8 @@ const uploadFile = async (
  * - `GET /api/embeds`: the embed plugins (`EmbedInfo`), for the editor's embed dialog
  * - `POST /api/embed-validations`: check an embed block's content (`{ key, content }`) with its plugin's `validate`,
  *   giving why it isn't valid (`EmbedValidation`)
+ * - `POST /api/metadata-validations`: check custom metadata values (`{ values }`, by key) against the config file's
+ *   `metadata`, giving their problems (`MetadataValidation`), for pages that can't compile the checks themselves
  * - `POST /api/embed-frames`: remember an embed block (`{ key, content }`) for its frame in the editor's body, and give
  *   the frame's URL, and why its content isn't valid (then it has no frame) or can't be shown (`EmbedFrame`); `GET /embed-frame/:id/?theme=light|dark` is the frame's page
  * - `POST /api/convert/markdown` and `POST /api/convert/html`: convert an article body between editor HTML and Markdown
@@ -563,6 +566,17 @@ export const createEditorApp = (
     const embeds = await embedResolver(QUIET);
     return c.json<EmbedValidation>({
       errors: await embeds.validate(key, content, options),
+    });
+  });
+
+  app.post("/api/metadata-validations", async (c) => {
+    const { values } = (await c.req.json()) as { values?: unknown };
+    return c.json<MetadataValidation>({
+      problems: await store.validateMetadata(
+        values && typeof values === "object" && !Array.isArray(values)
+          ? (values as Record<string, unknown>)
+          : {},
+      ),
     });
   });
 

@@ -353,6 +353,32 @@ describe("createEditorApp", () => {
     });
   });
 
+  it("should check custom metadata values for the editor's page, only for it", async () => {
+    const { app, store } = await setup();
+    const problems = [{ path: "rating", message: "is wrong", level: "error" }];
+    const validate = vi
+      .spyOn(store, "validateMetadata")
+      .mockResolvedValue(problems as never);
+    const check = async (body: unknown) =>
+      (
+        await (
+          await app.request("/api/metadata-validations", json("POST", body))
+        ).json()
+      ).problems;
+    expect(await check({ values: { rating: 11 } })).toEqual(problems);
+    expect(validate).toHaveBeenLastCalledWith({ rating: 11 });
+    // Values that aren't a map are none
+    await check({ values: [1] });
+    expect(validate).toHaveBeenLastCalledWith({});
+    await check({});
+    expect(validate).toHaveBeenLastCalledWith({});
+    const other = await app.request("/api/metadata-validations", {
+      method: "POST",
+      body: "{}",
+    });
+    expect(other.status).toBe(403);
+  });
+
   it("should give the custom metadata fields, and the problems when saving is refused", async () => {
     const { app, store } = await setup();
     expect(await (await app.request("/api/metadata")).json()).toMatchObject({

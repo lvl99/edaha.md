@@ -18,6 +18,7 @@ import type {
   EmbedFrame,
   EmbedInfo,
   EmbedValidation,
+  MetadataValidation,
   RecentArticles,
   UploadResult,
 } from "../../server/types/index.ts";
@@ -318,6 +319,20 @@ export class EditorApi {
         options,
       })
     ).errors;
+  }
+
+  /**
+   * The problems with custom metadata values, by their keys, checked by the editor's server, for pages that can't
+   * compile the checks themselves (see `/api/metadata-validations`)
+   */
+  async validateMetadata(
+    values: Record<string, unknown>,
+  ): Promise<MetadataProblem[]> {
+    return (
+      await this.send<MetadataValidation>("POST", "/api/metadata-validations", {
+        values,
+      })
+    ).problems;
   }
 
   /** Render an embed block for its frame in the rich text body */

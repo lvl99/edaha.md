@@ -363,6 +363,11 @@ export interface EmbedValidation {
   errors: string[];
 }
 
+/** The problems with custom metadata values, as checked by the editor's server (see `/api/metadata-validations`) */
+export interface MetadataValidation {
+  problems: MetadataProblem[];
+}
+
 /** An embed block's frame in the editor's body */
 export interface EmbedFrame {
   /** The frame page's URL, e.g. "/embed-frame/<id>/", or "" when the content isn't valid */
