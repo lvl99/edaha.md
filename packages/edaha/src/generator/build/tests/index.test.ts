@@ -1,6 +1,7 @@
 import {
   cp,
   mkdir,
+  readdir,
   mkdtemp,
   readFile,
   rename,
@@ -15,6 +16,7 @@ import { parse } from "yaml";
 import { THEME_DIR } from "../../../theme";
 import {
   buildSite,
+  foundOn,
   DEFAULT_SITE_URL,
   resolveOutputDir,
   resolvePublishDir,
@@ -1212,5 +1214,73 @@ describe("buildSite authors", () => {
     expect(
       result.files.filter((file) => file.startsWith("page/authors/")),
     ).toEqual(["page/authors/zoe/feed.xml", "page/authors/zoe/index.html"]);
+  });
+});
+
+describe("foundOn", () => {
+  it("should name the first page and count the others", () => {
+    expect(foundOn(["/a/"])).toBe("on /a/");
+    expect(foundOn(["/a/", "/b/"])).toBe("on /a/ and 1 other page");
+    expect(foundOn(["/a/", "/b/", "/c/"])).toBe("on /a/ and 2 other pages");
+  });
+});
+
+describe("buildSite dry run", () => {
+  it("should render every page without writing anything, collecting each template's render problems once", async () => {
+    const space = await workspace();
+    await writeSiteFile(
+      space,
+      "templates/partials/broken.njk",
+      "Fine\n  {{ nope() }}",
+    );
+    await writeSiteFile(
+      space,
+      "templates/article/single.njk",
+      '{% include "partials/broken.njk" %}',
+    );
+    await writeSiteFile(
+      space,
+      "templates/article/list.json.njk",
+      "{{ list.name | json }}",
+    );
+    // An output folder already there is left as it is
+    const outputDir = join(space.siteDir, "build");
+    await mkdir(outputDir, { recursive: true });
+    await writeFile(join(outputDir, "keep.txt"), "kept");
+    const options = {
+      siteDir: space.siteDir,
+      siteUrl: "https://example.com",
+      logger: { warn: vi.fn() },
+      fetch: vi.fn() as unknown as typeof globalThis.fetch,
+    };
+    const result = await buildSite({ ...options, dryRun: true });
+    expect(await readdir(outputDir)).toEqual(["keep.txt"]);
+    expect(result.files).toContain("news/index.json");
+    expect(result.files).toContain("news/first/index.html");
+    expect(result.problems).toEqual([
+      {
+        file: join(space.siteDir, "templates/partials/broken.njk"),
+        line: 2,
+        column: 10,
+        message:
+          "Unable to call `nope`, which is undefined or falsey (on /news/first/ and 2 other pages)",
+      },
+    ]);
+    // Building stops at it
+    await expect(buildSite(options)).rejects.toThrow("Unable to call `nope`");
+  });
+
+  it("should give no problems for templates that render", async () => {
+    const space = await workspace();
+    const result = await buildSite({
+      siteDir: space.siteDir,
+      siteUrl: "https://example.com",
+      logger: { warn: vi.fn() },
+      fetch: vi.fn() as unknown as typeof globalThis.fetch,
+      dryRun: true,
+    });
+    expect(result.problems).toEqual([]);
+    // Pages are listed, but static and shared files aren't copied
+    expect(result.files).not.toContain("base.css");
   });
 });

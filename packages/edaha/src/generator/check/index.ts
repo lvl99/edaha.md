@@ -14,21 +14,12 @@ import {
   TEMPLATE_OPTIONS,
   templateFileName,
   THEME_PREFIX,
+  type TemplateProblem,
 } from "../templates/index.ts";
 import { THEME_DIR } from "../../theme/index.ts";
 import type { Logger } from "../types/index.ts";
 
-/** A problem in a template */
-export interface TemplateProblem {
-  /** The template file's absolute path */
-  file: string;
-  /** Where the problem is in the file, from 1; undefined for problems with the whole file */
-  line?: number | undefined;
-  /** Where the problem is on its line, from 1 */
-  column?: number | undefined;
-  /** What the problem is */
-  message: string;
-}
+export type { TemplateProblem } from "../templates/index.ts";
 
 /** A Nunjucks template node (not in @types/nunjucks) */
 interface TemplateNode {

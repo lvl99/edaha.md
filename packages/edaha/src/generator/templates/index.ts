@@ -73,6 +73,51 @@ export const outputExtension = (file: string): string =>
     ? FEED_OUTPUT_EXTENSION
     : DEFAULT_OUTPUT_EXTENSION);
 
+/** A problem in a template */
+export interface TemplateProblem {
+  /** The template file's absolute path (or its name, when Nunjucks doesn't say) */
+  file: string;
+  /** Where the problem is in the file, from 1; undefined for problems with the whole file */
+  line?: number | undefined;
+  /** Where the problem is on its line, from 1 */
+  column?: number | undefined;
+  /** What the problem is */
+  message: string;
+}
+
+/**
+ * A problem from an error thrown while rendering a template: in the innermost template Nunjucks names (e.g. an
+ * included partial), at its line and column, with the error's own message. Errors that name no template are given
+ * `template`.
+ *
+ * @param template - the template that was rendered, e.g. "article/single.njk"
+ * @example
+ * renderProblem(new Error("(/t/a.njk) [Line 1, Column 8]\n  Error: Unable to call `foo`"), "a.njk");
+ * // { file: "/t/a.njk", line: 2, column: 9, message: "Unable to call `foo`" }
+ */
+export const renderProblem = (
+  error: unknown,
+  template: string,
+): TemplateProblem => {
+  const message = error instanceof Error ? error.message : String(error);
+  // Nunjucks names each template the error passed through, innermost last; its lines and columns count from 0
+  const where = [
+    ...message.matchAll(/\(([^()\n]+)\)(?: \[Line (\d+), Column (\d+)\])?/g),
+  ].at(-1);
+  const detail = (message.split("\n").at(-1) as string)
+    .trim()
+    .replace(
+      /^(?:Template render error: )?(?:\([^()\n]+\) )?(?:\[Line \d+, Column \d+\] )?(?:Error: )?/,
+      "",
+    );
+  return {
+    file: where?.[1] ?? template,
+    line: where?.[2] === undefined ? undefined : Number(where[2]) + 1,
+    column: where?.[3] === undefined ? undefined : Number(where[3]) + 1,
+    message: detail,
+  };
+};
+
 /**
  * Template names starting with this always load from the last template folder (the default theme's), e.g.
  * `{% extends "@theme/article/single.njk" %}` in a site's own `article/single.njk`, to build on the theme's version.

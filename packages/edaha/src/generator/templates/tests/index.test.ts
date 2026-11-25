@@ -11,6 +11,7 @@ import {
   contains,
   isRelativeName,
   outputExtension,
+  renderProblem,
   relativeTemplateName,
   parseJson,
   toJson,
@@ -540,6 +541,48 @@ describe("relativeTemplateName", () => {
     expect(isRelativeName("./b.njk")).toBe(true);
     expect(isRelativeName("../b.njk")).toBe(true);
     expect(isRelativeName("b.njk")).toBe(false);
+  });
+});
+
+describe("renderProblem", () => {
+  it("should give the innermost template Nunjucks names, its line and column from 1, and the error's message", () => {
+    expect(
+      renderProblem(
+        new Error(
+          "(/t/a.njk)\n  Template render error: (/t/a.njk)\n  Template render error: (/t/partials/p.njk) [Line 1, Column 8]\n  Error: Unable to call `foo`, which is undefined or falsey",
+        ),
+        "a.njk",
+      ),
+    ).toEqual({
+      file: "/t/partials/p.njk",
+      line: 2,
+      column: 9,
+      message: "Unable to call `foo`, which is undefined or falsey",
+    });
+    // Without a line, e.g. a template that isn't found
+    expect(
+      renderProblem(
+        new Error(
+          "(/t/c.json.njk)\n  Template render error: (/t/c.json.njk)\n  Error: template not found: missing.njk",
+        ),
+        "c.json.njk",
+      ),
+    ).toEqual({
+      file: "/t/c.json.njk",
+      line: undefined,
+      column: undefined,
+      message: "template not found: missing.njk",
+    });
+  });
+
+  it("should give the rendered template for errors that name none", () => {
+    expect(renderProblem(new Error("Embed failed"), "a.njk")).toEqual({
+      file: "a.njk",
+      line: undefined,
+      column: undefined,
+      message: "Embed failed",
+    });
+    expect(renderProblem("oops", "a.njk").message).toBe("oops");
   });
 });
 

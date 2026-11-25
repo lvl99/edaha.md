@@ -45,8 +45,10 @@ import { isSlug } from "../slug/index.ts";
 import { THEME_DIR } from "../../theme/index.ts";
 import {
   outputExtension,
+  renderProblem,
   Templates,
   type TemplateOutput,
+  type TemplateProblem,
 } from "../templates/index.ts";
 import type {
   Logger,
@@ -94,6 +96,12 @@ export interface BuildOptions {
   fetch?: typeof fetch;
   /** Embed plugins added after the config file's `plugins` (a key in both uses the config file's). Default: none */
   plugins?: readonly EmbedPlugin[];
+  /**
+   * Render every page without writing anything (the output, publish and shared files folders are left as they are),
+   * to check the templates: a page that can't be rendered is reported in the result's `problems` instead of stopping
+   * the build. Default: false
+   */
+  dryRun?: boolean | undefined;
 }
 
 /** What a build produced */
@@ -106,9 +114,26 @@ export interface BuildResult {
   filesOutputDir?: string | undefined;
   /** Rendered articles (published and unlisted) */
   articles: TemplateDataArticle[];
-  /** Files written, relative to the output directory (and the publish directory) */
+  /** Files written, relative to the output directory (and the publish directory); with `dryRun`, the pages rendered */
   files: string[];
+  /**
+   * With `dryRun`, the pages' render problems: each in the template it is in, once, naming the first page it was found
+   * on and how many others
+   */
+  problems?: TemplateProblem[] | undefined;
 }
+
+/**
+ * Which pages a render problem was found on: the first, and how many others.
+ *
+ * @example
+ * foundOn(["/news/a/"]); // "on /news/a/"
+ * foundOn(["/news/a/", "/news/b/", "/news/c/"]); // "on /news/a/ and 2 other pages"
+ */
+export const foundOn = (pages: readonly string[]): string => {
+  const others = pages.length - 1;
+  return `on ${pages[0]}${others ? ` and ${others} other ${others === 1 ? "page" : "pages"}` : ""}`;
+};
 
 /** List the names of sub-folders in a folder (none if it doesn't exist) */
 const subfolders = async (dir: string): Promise<string[]> => {
@@ -472,17 +497,27 @@ export const buildSite = async (
   });
 
   // Remove what the previous build published, then empty the build folder
-  if (publishDir)
-    for (const file of await listFiles(outputDir))
-      await rm(join(publishDir, file), { force: true });
-  await rm(outputDir, { recursive: true, force: true });
+  const dryRun = options.dryRun ?? false;
+  if (!dryRun) {
+    if (publishDir)
+      for (const file of await listFiles(outputDir))
+        await rm(join(publishDir, file), { force: true });
+    await rm(outputDir, { recursive: true, force: true });
+  }
   const files: string[] = [];
   const write = async (file: string, contents: string) => {
-    const path = join(outputDir, file);
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, contents);
+    if (!dryRun) {
+      const path = join(outputDir, file);
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, contents);
+    }
     files.push(file);
   };
+  // A dry run's render problems, each with the pages it was found on
+  const problems = new Map<
+    string,
+    { problem: TemplateProblem; pages: string[] }
+  >();
 
   // Validates articles' custom metadata
   const validator = new MetadataValidator(config.metadata);
@@ -564,13 +599,28 @@ export const buildSite = async (
     );
   const lists = collectLists(listed, site, withIndex);
   /** Render a page's template, then the embeds it shows (see EmbedResolver.renderPage) */
-  const renderPage = (template: string, data: TemplateData, url: string) =>
-    embeds.renderPage(
-      templates.render(template, { ...data, embeds: EMBED_PAGE_PARTS }),
-      url,
-      "build",
-      outputExtension(template),
-    );
+  const renderPage = async (
+    template: string,
+    data: TemplateData,
+    url: string,
+  ) => {
+    try {
+      return await embeds.renderPage(
+        templates.render(template, { ...data, embeds: EMBED_PAGE_PARTS }),
+        url,
+        "build",
+        outputExtension(template),
+      );
+    } catch (error) {
+      if (!dryRun) throw error;
+      const problem = renderProblem(error, template);
+      const key = JSON.stringify(problem);
+      const found = problems.get(key) ?? { problem, pages: [] };
+      found.pages.push(url);
+      problems.set(key, found);
+      return "";
+    }
+  };
   // Each template outputs a file with its extension (see Templates.outputs); lists link to the XML feed, if there is one
   const feedOutputs = templates.feedOutputs();
   const firstPages = new Map<string, TemplateDataList>();
@@ -611,10 +661,11 @@ export const buildSite = async (
 
   // Article pages with their assets; index articles also get their type's list
   for (const { article, dir, folder } of articles) {
-    await cp(dir, join(outputDir, folder), {
-      recursive: true,
-      filter: (path) => path !== join(dir, "article.md"),
-    });
+    if (!dryRun)
+      await cp(dir, join(outputDir, folder), {
+        recursive: true,
+        filter: (path) => path !== join(dir, "article.md"),
+      });
     const list =
       article.slug === "index" ? firstPages.get(article.type) : undefined;
     for (const { file, extension } of templates.outputs(
@@ -630,6 +681,19 @@ export const buildSite = async (
         ),
       );
   }
+
+  if (dryRun)
+    return {
+      outputDir,
+      publishDir,
+      filesOutputDir,
+      articles: articles.map(({ article }) => article),
+      files: files.sort(),
+      problems: [...problems.values()].map(({ problem, pages }) => ({
+        ...problem,
+        message: `${problem.message} (${foundOn(pages)})`,
+      })),
+    };
 
   // Static files (stylesheet, fonts) at the website's root, beside the articles
   const statics = await staticFiles([
