@@ -147,7 +147,7 @@ Human will signal to agent if UAT has passed and when to prepare a PR, or will u
 
 PRs will be submitted, reviewed, and hopefully merged into `main`. PR and commit messages should never mention nor link to agent conversations/threads or contain any attributions to agent conversations/threads.
 
-Releases will be made via `pnpm` (ensure human has logged in first), and only from the `main` branch, when human signals to prepare a release:
+Releases will be made via `pnpm` (ensure human has logged in first: `pnpm login` -- don't use `npm`), and only from the `main` branch, when human signals to prepare a release:
 
 1. Update [CHANGELOG.md] for the new version and commit it to `main`.
 2. Create a news article at `site/content/news/release-v<version-kebab-case>/article.md` (e.g. `site/content/news/release-v0-3-0`) and for each item in the changelog write it as one short sentence (refer to previous release news articles for content and style reference).
