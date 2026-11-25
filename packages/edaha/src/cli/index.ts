@@ -50,6 +50,9 @@ Options:
                        package.json's folder). The site folder is the config file's folder.
   --dir <folder>       The folder to look for a config file in (default: the current folder)
   --site-url <url>     build, check: the website's absolute URL for feeds (default: SITE_URL, then the config's siteUrl)
+  --output-dir <folder>
+                       build: build into this folder instead, without copying into publishDir, e.g. to look at the
+                       website before publishing
   --render             check: also render every page as the build would, without writing anything
   --port <number>      editor: the port to listen on (default: ${EDITOR_PORT})
   -h, --help           Show this help
@@ -174,6 +177,10 @@ export const runCli = async (
         configFile,
         siteUrl: values["site-url"] ?? context.env.SITE_URL,
         logger: { warn: context.error },
+        outputDir:
+          values["output-dir"] === undefined
+            ? undefined
+            : resolve(context.cwd, values["output-dir"]),
       });
       context.log(
         `Built ${result.articles.length} articles (${result.files.length} files) into ${result.outputDir}` +
@@ -248,6 +255,7 @@ const parse = (args: string[]) =>
       config: { type: "string", short: "c" },
       dir: { type: "string" },
       "site-url": { type: "string" },
+      "output-dir": { type: "string" },
       port: { type: "string" },
       render: { type: "boolean" },
       help: { type: "boolean", short: "h" },

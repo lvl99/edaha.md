@@ -18,6 +18,7 @@ import {
   buildSite,
   foundOn,
   DEFAULT_SITE_URL,
+  resolveBuildDir,
   resolveOutputDir,
   resolvePublishDir,
   siteData,
@@ -163,6 +164,30 @@ describe("siteData", () => {
     expect(
       siteData({ ...config, author: false }, {}, "https://e.com").author,
     ).toBeUndefined();
+  });
+});
+
+describe("resolveBuildDir", () => {
+  const sources = ["articles", "templates", "static", "files"];
+
+  it("should allow any folder apart from the site's sources", () => {
+    expect(resolveBuildDir("/tmp/preview", "/work/site", sources)).toBe(
+      "/tmp/preview",
+    );
+    expect(resolveBuildDir("/work/site/preview", "/work/site", sources)).toBe(
+      "/work/site/preview",
+    );
+  });
+
+  it("should refuse the site folder, folders it's in, and its source folders", () => {
+    for (const dir of ["/work/site", "/work", "/"])
+      expect(() => resolveBuildDir(dir, "/work/site", sources)).toThrow(
+        `The "outputDir" option must not be the site folder or a folder it's in, got "${dir}"`,
+      );
+    for (const dir of ["/work/site/articles", "/work/site/static/out"])
+      expect(() => resolveBuildDir(dir, "/work/site", sources)).toThrow(
+        'The "outputDir" option must be apart from articles, templates, static, files',
+      );
   });
 });
 
@@ -532,6 +557,54 @@ describe("buildSite", () => {
     expect(await read("news/shared/index.html")).toBe(
       '/blog/files/2026/11/logo.png|<p><img src="/blog/files/2026/11/logo.png" alt="Logo"></p>\n|/blog/files/',
     );
+  });
+
+  it("should build into another folder with the outputDir option, without publishing or changing the site's build", async () => {
+    const space = await workspace();
+    await writeArticle(
+      space,
+      "article/first",
+      "<!--yaml\ndate: 2026-10-19\n-->\n# First",
+    );
+    const elsewhere = join(space.root, "preview");
+    await mkdir(elsewhere);
+    await writeFile(join(elsewhere, "old.html"), "old");
+    const result = await buildSite({
+      siteDir: space.siteDir,
+      outputDir: elsewhere,
+      logger: { warn: vi.fn() },
+    });
+    expect(result.outputDir).toBe(elsewhere);
+    expect(result.publishDir).toBeUndefined();
+    expect(result.files).toContain("news/first/index.html");
+    expect(result.files).not.toContain("old.html");
+    await expect(
+      readFile(join(elsewhere, "news/first/index.html"), "utf8"),
+    ).resolves.toContain("First");
+    // The site's own build and publish folders are left as they are
+    await expect(readdir(join(space.siteDir, "build"))).rejects.toThrow();
+    await expect(readdir(join(space.root, "site"))).rejects.toThrow();
+    await expect(
+      buildSite({ siteDir: space.siteDir, outputDir: space.siteDir }),
+    ).rejects.toThrow("must not be the site folder");
+  });
+
+  it("should leave out shared files hosted elsewhere when building into another folder", async () => {
+    const space = await workspace();
+    await writeFile(
+      join(space.siteDir, "edahaconfig.yml"),
+      `${await readFile(join(FIXTURE, "edahaconfig.yml"), "utf8")}files:\n  dir: shared\n  path: /media/\n  url: https://static.example.com\n  outputDir: out-files\n`,
+    );
+    await writeSiteFile(space, "shared/logo.png", "png");
+    const elsewhere = join(space.root, "preview");
+    const result = await buildSite({
+      siteDir: space.siteDir,
+      outputDir: elsewhere,
+      logger: { warn: vi.fn() },
+    });
+    expect(result.filesOutputDir).toBeUndefined();
+    expect(result.files).not.toContain("media/logo.png");
+    await expect(readdir(join(space.siteDir, "out-files"))).rejects.toThrow();
   });
 
   it("should copy shared files hosted elsewhere into their own folder, and link to them there", async () => {
