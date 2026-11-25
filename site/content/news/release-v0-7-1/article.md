@@ -4,9 +4,9 @@ date: 2026-11-25T17:00:00.000Z
 author: false
 -->
 
-# Release v0.7.0
+# Release v0.7.1
 
-**edaha.md** v0.7.0 has been released, with `edaha check` to find template problems before building, links to each page's other outputs and feeds, and a round of editor improvements!
+**edaha.md** v0.7.1 has been released, with everything from v0.7.0: `edaha check` to find template problems before building, links to each page's other outputs and feeds, and a round of editor improvements. v0.7.1 adds building your website into another folder, to look at it before publishing!
 
 ## Added
 
@@ -18,7 +18,9 @@ author: false
 - The editor's toolbars have **Main heading** (H1) and **Horizontal rule** buttons.
 - Choosing a heading's ID in the editor's WYSIWYG body copies the link to the heading.
 - The editor has button, input and corner radius size variables, and button size classes.
+- `edaha build --output-dir <folder>` and `buildSite`'s `outputDir` option build the website into another folder, leaving your own build and `publishDir` as they are. (v0.7.1)
 - The docs explain [checking templates](https://edaha.md/docs/05-templating/#checking-templates).
+- The docs explain [building into another folder](https://edaha.md/docs/08-build-and-deploy/#building-into-another-folder). (v0.7.1)
 
 ## Changed
 
