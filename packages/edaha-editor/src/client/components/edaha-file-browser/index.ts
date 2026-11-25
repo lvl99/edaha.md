@@ -27,6 +27,7 @@ import {
 } from "../../fileLabels/index.ts";
 import { nextSort, sortHeading } from "../../sortTable/index.ts";
 import { ARTICLE_CHOOSE_EVENT } from "../edaha-article-browser/index.ts";
+import { copyText } from "../../clipboard/index.ts";
 import { defineElement } from "../define/index.ts";
 import "../edaha-file-conflict/index.ts";
 import {
@@ -159,23 +160,7 @@ export class EdahaFileBrowser extends LitElement {
    * Copy text to the clipboard: with the Clipboard API, or where it isn't allowed, by selecting the text in a hidden
    * text box inside the dialog (the page behind it can't be focused). Rejects if neither works.
    */
-  copy = async (text: string): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch {
-      // Try selecting it instead
-    }
-    const box = document.createElement("textarea");
-    box.value = text;
-    box.className = "visually-hidden";
-    box.setAttribute("aria-hidden", "true");
-    (this.dialog ?? this).append(box);
-    box.select();
-    const copied = document.execCommand("copy");
-    box.remove();
-    if (!copied) throw new Error("Can't copy");
-  };
+  copy = (text: string): Promise<void> => copyText(text, this.dialog ?? this);
 
   /** The waiting search, if any */
   private searchTimer?: ReturnType<typeof setTimeout> | undefined;
@@ -579,15 +564,19 @@ export class EdahaFileBrowser extends LitElement {
     </div>`;
   }
 
-  /** Render an operation's icon button, named for screen readers and as a tooltip */
+  /**
+   * Render an operation's icon button, named for screen readers and as a tooltip, with a class for its purpose (e.g.
+   * "delete" gives `btn-delete`)
+   */
   private renderOperation(
+    purpose: string,
     label: string,
     name: Parameters<typeof icon>[0],
     run: () => unknown,
   ) {
     return html`<button
       type="button"
-      class="btn-icon"
+      class="btn btn-icon btn-${purpose}"
       title=${label}
       @click=${run}
     >
@@ -671,7 +660,7 @@ export class EdahaFileBrowser extends LitElement {
                 this.picking
                   ? html`<button
                       type="button"
-                      class="btn"
+                      class="btn btn-choose"
                       @click=${() => this.chooseFile(file)}
                     >
                       Choose<span class="visually-hidden"> ${file.name}</span>
@@ -679,6 +668,7 @@ export class EdahaFileBrowser extends LitElement {
                   : nothing
               }
               ${this.renderOperation(
+                "copy-url",
                 `Copy URL of ${file.name}`,
                 "content_copy",
                 () => void this.copyUrl(file),
@@ -687,6 +677,7 @@ export class EdahaFileBrowser extends LitElement {
                 shared
                   ? nothing
                   : this.renderOperation(
+                      "move-to-files",
                       `Move ${file.name} to shared files`,
                       "drive_file_move",
                       () =>
@@ -699,6 +690,7 @@ export class EdahaFileBrowser extends LitElement {
               ${
                 this.pickArticle
                   ? this.renderOperation(
+                      "move-to-article",
                       `Move ${file.name} to an article…`,
                       "folder_open",
                       () => void this.moveToArticle(file),
@@ -706,11 +698,13 @@ export class EdahaFileBrowser extends LitElement {
                   : nothing
               }
               ${this.renderOperation(
+                "replace",
                 `Replace ${file.name}…`,
                 "find_replace",
                 () => this.chooseReplacement(file),
               )}
               ${this.renderOperation(
+                "delete",
                 `Delete ${file.name}…`,
                 "delete",
                 () => void this.delete(file),
@@ -729,7 +723,7 @@ export class EdahaFileBrowser extends LitElement {
     return html`<nav class="article-browser-pages" aria-label="Pages">
       <button
         type="button"
-        class="btn"
+        class="btn btn-previous"
         ?disabled=${result.page <= 1}
         @click=${() => void this.goTo(result.page - 1)}
       >
@@ -738,7 +732,7 @@ export class EdahaFileBrowser extends LitElement {
       <span>Page ${result.page} of ${result.pages}</span>
       <button
         type="button"
-        class="btn"
+        class="btn btn-next"
         ?disabled=${result.page >= result.pages}
         @click=${() => void this.goTo(result.page + 1)}
       >
@@ -782,14 +776,14 @@ export class EdahaFileBrowser extends LitElement {
         <div class="file-browser-header-actions">
           <button
             type="button"
-            class="btn"
+            class="btn btn-upload-file"
             @click=${() => this.chooseUploads()}
           >
             ${icon("upload_file")} Upload file
           </button>
           <button
             type="button"
-            class="btn-icon"
+            class="btn btn-icon btn-close"
             title="Close"
             @click=${() => this.close()}
           >

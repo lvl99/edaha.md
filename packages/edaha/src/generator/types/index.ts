@@ -93,6 +93,16 @@ export interface TemplateDataAttachment {
   sizeRelative?: string | undefined;
 }
 
+/** Another file a page is output as, beside its HTML page, e.g. its JSON (see the Templating docs' output file types) */
+export interface TemplateDataAlternate {
+  /** The file's extension, e.g. "json" */
+  extension: string;
+  /** The file's MIME type, e.g. "application/json" ("application/rss+xml" for XML feeds) */
+  type: string;
+  /** The file's URL, e.g. "/news/hello/index.json" */
+  url: string;
+}
+
 /** Article status: published articles are listed, unlisted ones only get their own page, drafts are not built */
 export type ArticleStatus = "published" | "draft" | "unlisted";
 
@@ -132,6 +142,11 @@ export interface TemplateDataArticle {
   bodyHtml: string;
   /** Article attachments */
   attachments: TemplateDataAttachment[];
+  /**
+   * The article page's other outputs than HTML, e.g. its `index.json` from an `article/single.json.njk` template. Empty
+   * in the editor's previews.
+   */
+  alternates: TemplateDataAlternate[];
   /**
    * The article's custom metadata (see the config file's `metadata`): the valid values of the fields its type uses, by
    * key, with file fields as paths on the website
@@ -180,6 +195,10 @@ export interface TemplateDataList {
   feedUrl: string;
   /** Whether the list has an RSS feed */
   hasFeed: boolean;
+  /** The list's feeds, one per feed template output (e.g. `feed.xml` and `feed.json`), or none without a feed */
+  feeds: TemplateDataAlternate[];
+  /** The current page's other outputs than HTML, e.g. `2.json` from an `article/list.json.njk` template */
+  alternates: TemplateDataAlternate[];
   /** The articles on the current page */
   articles: TemplateDataArticle[];
   /** The list's paginated pages */

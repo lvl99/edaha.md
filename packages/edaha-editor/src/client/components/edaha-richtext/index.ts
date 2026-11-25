@@ -46,7 +46,7 @@ const headingAction = (level: 1 | 2 | 3): ToolbarAction => ({
 const actionButton = (action: ToolbarAction, editor: Editor | undefined) =>
   html`<button
     type="button"
-    class="toolbar-button"
+    class="btn btn-toolbar"
     data-action=${action.label}
     title=${action.label}
     ?disabled=${!editor || (action.enabled ? !action.enabled(editor) : false)}
@@ -196,6 +196,11 @@ export class EdahaRichtext extends LitElement {
       active: (e) => e.isActive("link"),
     },
     {
+      label: "Main heading",
+      run: (e) => e.chain().focus().toggleHeading({ level: 1 }).run(),
+      active: (e) => e.isActive("heading", { level: 1 }),
+    },
+    {
       label: "Heading",
       run: (e) => e.chain().focus().toggleHeading({ level: 2 }).run(),
       active: (e) => e.isActive("heading", { level: 2 }),
@@ -224,6 +229,17 @@ export class EdahaRichtext extends LitElement {
       label: "Code",
       run: (e) => e.chain().focus().toggleCodeBlock().run(),
       active: (e) => e.isActive("codeBlock"),
+    },
+    {
+      label: "Horizontal rule",
+      // After the selection, keeping it
+      run: (e) =>
+        e
+          .chain()
+          .focus()
+          .setTextSelection(e.state.selection.to)
+          .setHorizontalRule()
+          .run(),
     },
     {
       label: "Details",
@@ -440,7 +456,7 @@ export class EdahaRichtext extends LitElement {
           }),
         )}
         <label
-          class="toolbar-button toolbar-upload"
+          class="btn btn-toolbar btn-upload"
           title="Upload image"
           ?data-disabled=${!editor || !this.uploadImage}
         >
@@ -455,7 +471,7 @@ export class EdahaRichtext extends LitElement {
         </label>
         <button
           type="button"
-          class="toolbar-button"
+          class="btn btn-toolbar"
           data-action="Choose file"
           title="Choose file"
           ?disabled=${!editor || !this.chooseFile}

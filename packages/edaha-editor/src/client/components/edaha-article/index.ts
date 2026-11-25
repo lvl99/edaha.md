@@ -317,6 +317,30 @@ export const RESET_QUESTION =
   "Reset this article to how it was last saved? Your changes will be lost.";
 
 /**
+ * Point the rich text body's addresses of an article's files (e.g. `/files/news/hello/a.png`) at the article's new
+ * folder, once it has moved (its type or slug changed). Other addresses are left as they are.
+ *
+ * @example
+ * moveFileAddresses('<img src="/files/article/hi/a.png">', { type: "article", slug: "hi" }, { type: "page", slug: "hi" });
+ * // '<img src="/files/page/hi/a.png">'
+ */
+export const moveFileAddresses = (
+  html: string,
+  from: ArticleLocation,
+  to: ArticleLocation,
+): string => {
+  if (from.type === to.type && from.slug === to.slug) return html;
+  const prefix = `/files/${from.type}/${from.slug}/`;
+  return html.replace(
+    /(\s(?:src|href)=")([^"]*)/g,
+    (match, attribute: string, address: string) =>
+      address.startsWith(prefix)
+        ? `${attribute}/files/${to.type}/${to.slug}/${address.slice(prefix.length)}`
+        : match,
+  );
+};
+
+/**
  * The article form: title and body, with its configuration (type, status, slug, date, author, excerpt, thumbnail, tags
  * and attachments) beside it. The body can be edited as rich text ("WYSIWYG") or Markdown, or previewed as the website
  * would show the article with its type's "single" template. Saving a changed type or slug moves the article's folder.
@@ -798,13 +822,6 @@ export class EdahaArticle extends LitElement {
     return this.dirty;
   }
 
-  /** Upload a file chosen in a file field and set the field to its name */
-  private async onFieldFile(event: CustomEvent<File>) {
-    const field = (event.target as HTMLElement & { name: string }).name;
-    const name = await this.upload(event.detail);
-    if (name) this.data = applyFieldChange(this.data, field, name);
-  }
-
   /**
    * Bring the body's HTML up to date with its Markdown, when it is edited in Markdown mode. Returns whether it is up to
    * date (false if converting failed, which shows the error).
@@ -878,8 +895,12 @@ export class EdahaArticle extends LitElement {
       from ? this.api.save(from, data) : this.api.create(data),
     );
     if (!location) return false;
-    this.data = data;
-    this.savedData = structuredClone(data);
+    // A moved article's files moved with it, so the body shows them from their new folder
+    const saved = from
+      ? { ...data, bodyHtml: moveFileAddresses(data.bodyHtml, from, location) }
+      : data;
+    this.data = saved;
+    this.savedData = structuredClone(saved);
     this.savedProblems = [];
     this.metaProblems = [];
     this.location = location;
@@ -887,7 +908,7 @@ export class EdahaArticle extends LitElement {
     showToast(this, { kind: "success", message: this.message });
     this.bodyChanged = false;
     void this.rememberBody(
-      data.bodyHtml,
+      saved.bodyHtml,
       this.mode === "markdown" ? this.bodyMarkdown : undefined,
     );
     this.dispatchEvent(
@@ -1056,7 +1077,7 @@ export class EdahaArticle extends LitElement {
     return this.site.author;
   }
 
-  /** Render the author fields, with a choice of no author at all */
+  /** Render the author fields, with a choice of no author at all, which hides them */
   private renderAuthor() {
     const noAuthor = this.data.author === false;
     const author = noAuthor
@@ -1064,14 +1085,12 @@ export class EdahaArticle extends LitElement {
       : (this.data.author as EditorAuthor | undefined);
     const fallback = this.defaultAuthor();
     // The default's details apply only when the article has no author of its own
-    const shown = author || noAuthor ? undefined : fallback;
-    const namePlaceholder = noAuthor
-      ? ""
-      : !this.site
-        ? "Defaults to the site name"
-        : fallback
-          ? `Defaults to ${fallback.name}`
-          : "No author unless you name one";
+    const shown = author ? undefined : fallback;
+    const namePlaceholder = !this.site
+      ? "Defaults to the site name"
+      : fallback
+        ? `Defaults to ${fallback.name}`
+        : "No author unless you name one";
     return html`<edaha-article-data-group
       name="author"
       label="Author"
@@ -1082,6 +1101,7 @@ export class EdahaArticle extends LitElement {
       <label class="no-author">
         <input
           type="checkbox"
+          role="switch"
           .checked=${noAuthor}
           @change=${(event: Event) =>
             (this.data = {
@@ -1093,29 +1113,30 @@ export class EdahaArticle extends LitElement {
         />
         No author
       </label>
-      <edaha-article-data-field
-        name="author[name]"
-        label="Name"
-        placeholder=${namePlaceholder}
-        ?disabled=${noAuthor}
-        .value=${author?.name ?? ""}
-      ></edaha-article-data-field>
-      <edaha-article-data-field
-        name="author[email]"
-        type="email"
-        label="Email address"
-        placeholder=${shown?.email ?? ""}
-        ?disabled=${noAuthor}
-        .value=${author?.email ?? ""}
-      ></edaha-article-data-field>
-      <edaha-article-data-field
-        name="author[url]"
-        type="url"
-        label="Homepage"
-        placeholder=${shown?.url ?? "https://example.com"}
-        ?disabled=${noAuthor}
-        .value=${author?.url ?? ""}
-      ></edaha-article-data-field>
+      ${
+        noAuthor
+          ? nothing
+          : html`<edaha-article-data-field
+                name="author[name]"
+                label="Name"
+                placeholder=${namePlaceholder}
+                .value=${author?.name ?? ""}
+              ></edaha-article-data-field>
+              <edaha-article-data-field
+                name="author[email]"
+                type="email"
+                label="Email address"
+                placeholder=${shown?.email ?? ""}
+                .value=${author?.email ?? ""}
+              ></edaha-article-data-field>
+              <edaha-article-data-field
+                name="author[url]"
+                type="url"
+                label="Homepage"
+                placeholder=${shown?.url ?? "https://example.com"}
+                .value=${author?.url ?? ""}
+              ></edaha-article-data-field>`
+      }
     </edaha-article-data-group>`;
   }
 
@@ -1137,7 +1158,7 @@ export class EdahaArticle extends LitElement {
             ></edaha-article-data-field>
             <button
               type="button"
-              class="remove"
+              class="btn btn-remove"
               @click=${() =>
                 (this.data = {
                   ...this.data,
@@ -1153,7 +1174,6 @@ export class EdahaArticle extends LitElement {
 
   /** Render the attachment fields */
   private renderAttachments() {
-    const noUploads = !this.canUpload;
     return html`<edaha-article-data-group
       name="attachments"
       label="Attachments"
@@ -1171,14 +1191,13 @@ export class EdahaArticle extends LitElement {
             <edaha-article-data-field
               name="attachments[${i}][url]"
               type="file"
-              label="Upload file"
+              label="File"
               accept="image/png, image/jpeg, image/gif, application/zip, application/pdf"
               .value=${attachment.url}
               preview
               .previewUrl=${this.fileAddress(attachment.url)}
               .chooseFile=${this.choosers().file}
               allowchange
-              ?disabled=${noUploads}
             ></edaha-article-data-field>
             <edaha-article-data-field
               name="attachments[${i}][url]"
@@ -1196,7 +1215,7 @@ export class EdahaArticle extends LitElement {
             ></edaha-article-data-field>
             <button
               type="button"
-              class="remove"
+              class="btn btn-remove"
               @click=${() =>
                 (this.data = {
                   ...this.data,
@@ -1310,6 +1329,7 @@ export class EdahaArticle extends LitElement {
           ({ mode, label }) =>
             html`<button
               type="button"
+              class="btn btn-tab"
               role="tab"
               id=${bodyTabId(mode)}
               data-mode=${mode}
@@ -1463,7 +1483,6 @@ export class EdahaArticle extends LitElement {
           .chooseFile=${this.choosers().file}
           allowchange
           allowclear
-          ?disabled=${!this.canUpload}
         ></edaha-article-data-field>`;
       case "attachments":
         return this.renderAttachments();
@@ -1496,7 +1515,6 @@ export class EdahaArticle extends LitElement {
       .value=${values[key]}
       .problems=${this.metaProblems}
       .hiddenFields=${hidden}
-      .uploadFile=${this.canUpload ? this.uploadMarkdownImage : undefined}
       .chooseFile=${this.choosers().file}
       .fileUrl=${(name: string) => this.fileAddress(name)}
     ></edaha-metadata-field>`;
@@ -1576,7 +1594,7 @@ export class EdahaArticle extends LitElement {
                       >
                       <button
                         type="button"
-                        class="btn btn-xs"
+                        class="btn btn-remove"
                         @click=${() => this.removeSetting(path)}
                       >
                         Remove${hiddenText(` "${path}"`)}
@@ -1603,7 +1621,6 @@ export class EdahaArticle extends LitElement {
         @field-change=${this.onFieldChange}
         @metadata-change=${this.onMetadataChange}
         @metadata-blur=${this.onMetadataBlur}
-        @field-file=${(event: CustomEvent<File>) => void this.onFieldFile(event)}
         @submit=${(event: Event) => {
           event.preventDefault();
           void this.save();
@@ -1622,7 +1639,7 @@ export class EdahaArticle extends LitElement {
             <!-- Only on wide screens: narrow screens always have the compact layout focus mode gives -->
             <button
               type="button"
-              class="btn-icon btn-focus-mode"
+              class="btn btn-icon btn-focus-mode"
               title="Focus mode"
               aria-pressed=${this.focusMode ? "true" : "false"}
               @click=${() => this.toggleFocusMode()}

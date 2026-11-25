@@ -292,7 +292,7 @@ export class EdahaEditor extends LitElement {
   async openNav(): Promise<void> {
     this.navOpen = true;
     await this.updateComplete;
-    this.querySelector<HTMLElement>(".nav-close")?.focus();
+    this.querySelector<HTMLElement>(".btn-nav-close")?.focus();
   }
 
   /**
@@ -304,7 +304,7 @@ export class EdahaEditor extends LitElement {
     if (
       this.querySelector(".edaha-editor-nav")?.contains(document.activeElement)
     )
-      this.querySelector<HTMLElement>(".nav-toggle")?.focus();
+      this.querySelector<HTMLElement>(".btn-nav-toggle")?.focus();
   }
 
   /** Let the user choose an article with the article browser (e.g. to move a file to) */
@@ -550,16 +550,19 @@ export class EdahaEditor extends LitElement {
       >
         <h2 id="unsaved-heading">${UNSAVED_DIALOG.heading}</h2>
         <p id="unsaved-message">${UNSAVED_DIALOG.message}</p>
-        ${UNSAVED_DIALOG.choices.map(
-          ({ value, label }) =>
-            html`<button
-              type="button"
-              data-choice=${value}
-              @click=${() => answer(value)}
-            >
-              ${label}
-            </button>`,
-        )}
+        <div class="dialog-actions">
+          ${UNSAVED_DIALOG.choices.map(
+            ({ value, label }) =>
+              html`<button
+                type="button"
+                class="btn btn-${value}"
+                data-choice=${value}
+                @click=${() => answer(value)}
+              >
+                ${label}
+              </button>`,
+          )}
+        </div>
       </div>
     </div>`;
   }
@@ -572,23 +575,23 @@ export class EdahaEditor extends LitElement {
     const welcome = this.welcome;
     return html`<div class="welcome-prompt">
       <div class="welcome-prompt-box">
-        <!-- "Write a new article" starts a new article; "edit an existing one" opens the article browser -->
+        <!-- "Write a new article" starts a new article; "Edit an existing one" opens the article browser -->
         <p class="welcome-prompt-message">
           <button
             type="button"
-            class="btn-link"
+            class="btn btn-xl btn-new-article"
             @click=${() => void this.create()}
           >
-            Write a new article
+            ${icon("post_add")} Write a new article
           </button>
-          or
+          <span>or</span>
           <button
             type="button"
-            class="btn-link"
+            class="btn btn-xl btn-edit-existing"
             @click=${() => void this.openBrowser()}
           >
-            edit an existing one</button
-          >...
+            ${icon("edit_document")} Edit an existing one
+          </button>
         </p>
         ${
           welcome?.articles.length
@@ -620,10 +623,13 @@ export class EdahaEditor extends LitElement {
           welcome && welcome.total > welcome.articles.length
             ? html`<button
                 type="button"
-                class="btn-link welcome-prompt-browse"
+                class="btn btn-link btn-show-all btn-browse"
                 @click=${() => void this.openBrowser()}
               >
-                Open article browser
+                ${icon("manage_search")} Show all<span class="visually-hidden">
+                  articles</span
+                >
+                (${welcome.total})
               </button>`
             : nothing
         }
@@ -670,7 +676,7 @@ export class EdahaEditor extends LitElement {
         attention.total > attention.articles.length
           ? html`<button
               type="button"
-              class="btn-link welcome-prompt-browse"
+              class="btn btn-link btn-browse"
               @click=${() => void this.openBrowser({ problems: "any" })}
             >
               See all ${attention.total} articles with problems
@@ -697,13 +703,13 @@ export class EdahaEditor extends LitElement {
         total > result.articles.length
           ? html`<button
               type="button"
-              class="btn-link show-all"
+              class="btn btn-link btn-show-all"
               @click=${() => {
                 this.closeNav();
                 void this.openBrowser({ search: this.searchText.trim() });
               }}
             >
-              See all results
+              ${icon("manage_search")} See all results
             </button>`
           : nothing
       }
@@ -723,13 +729,17 @@ export class EdahaEditor extends LitElement {
             group.total > group.articles.length
               ? html`<button
                   type="button"
-                  class="btn-link show-all"
+                  class="btn btn-link btn-show-all"
                   @click=${() => {
                     this.closeNav();
                     void this.openBrowser({ type: group.type });
                   }}
                 >
-                  Show all<span class="visually-hidden"> ${group.label}</span>
+                  ${icon("manage_search")} Show all<span
+                    class="visually-hidden"
+                  >
+                    ${group.label}</span
+                  >
                   (${group.total})
                 </button>`
               : nothing
@@ -764,7 +774,7 @@ export class EdahaEditor extends LitElement {
       <div class="edaha-editor-bar">
         <button
           type="button"
-          class="btn-icon nav-toggle"
+          class="btn btn-icon btn-nav-toggle"
           title="Articles"
           aria-expanded=${this.navOpen ? "true" : "false"}
           aria-controls="edaha-editor-nav"
@@ -788,7 +798,7 @@ export class EdahaEditor extends LitElement {
       >
         <button
           type="button"
-          class="btn-icon nav-close"
+          class="btn btn-icon btn-nav-close"
           title="Close articles"
           @click=${() => this.closeNav()}
         >
@@ -799,7 +809,7 @@ export class EdahaEditor extends LitElement {
             ? nothing
             : html`<button
                 type="button"
-                class="theme-switcher"
+                class="btn btn-theme-switcher"
                 title=${themeSwitcherLabel()}
                 @click=${() => {
                   toggleTheme();
@@ -818,7 +828,7 @@ export class EdahaEditor extends LitElement {
                 <h1 class="edaha-title">
                   <button
                     type="button"
-                    class="edaha-title-button"
+                    class="btn btn-title"
                     title="Show the welcome prompt"
                     @click=${() => void this.showWelcome()}
                   >
@@ -829,7 +839,7 @@ export class EdahaEditor extends LitElement {
         <div class="edaha-editor-new">
           <button
             type="button"
-            class="btn"
+            class="btn btn-new-article"
             @click=${() => {
               this.closeNav();
               void this.create();
@@ -859,7 +869,7 @@ export class EdahaEditor extends LitElement {
           />
           <button
             type="button"
-            class="btn-icon"
+            class="btn btn-icon btn-articles"
             title="All articles"
             @click=${() => {
               this.closeNav();
@@ -872,7 +882,7 @@ export class EdahaEditor extends LitElement {
           </button>
           <button
             type="button"
-            class="btn-icon"
+            class="btn btn-icon btn-files"
             title="Files"
             @click=${() => {
               this.closeNav();

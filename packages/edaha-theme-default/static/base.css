@@ -121,6 +121,12 @@ code {
   padding: 0.2em;
 }
 
+blockquote {
+  margin-left: 0;
+  border-left: solid 6px var(--colour-muted);
+  padding-left: 1em;
+}
+
 /* Hidden on screen but read by screen readers, e.g. extra context for "Read more" links */
 .visually-hidden {
   position: absolute;

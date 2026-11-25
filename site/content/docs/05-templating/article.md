@@ -46,11 +46,26 @@ Every template of a name is rendered, each to its own file. So with `article/sin
 | `article/list.json.njk`    | `news/index.json`, `news/2.json`, … (each list page)   |
 | `layouts/rssfeed.json.njk` | `news/feed.json` (each list's feed, beside `feed.xml`) |
 
-An article's `template` setting names the template without extensions (e.g. `home` for `page/home.njk` and `page/home.json.njk`). A list's `feedUrl` links to its XML feed, or its only feed if it has no XML one.
+An article's `template` setting names the template without extensions (e.g. `home` for `page/home.njk` and `page/home.json.njk`). A list's `feedUrl` links to its XML feed, or its only feed if it has no XML one; `list.feeds` lists them all. An article's other outputs are in `article.alternates`, and a list page's in `list.alternates` (see [Template data](#template-data)). The default theme links to them all from each page's `<head>` with `<link rel="alternate">`.
 
 Your own template overrides the theme's that outputs the same type of file, whatever its name: a site's `layouts/rssfeed.njk` replaces the theme's `layouts/rssfeed.xml.njk`. Two templates in one folder can't output the same type of file (e.g. `single.njk` and `single.html.njk`): the build stops and names them.
 
-Templates escape values for HTML unless you mark them safe, so output other types of file with filters such as `json`, e.g. `{{ article.title | json | safe }}`.
+Templates that output HTML, HTM, XHTML, XML, SVG, RSS or Atom escape values for HTML unless you mark them `safe`. Templates that output anything else, such as JSON or text, write values as they are, so `{{ article.title | json }}` writes a JSON string. A template that includes or imports another (e.g. a partial) decides for both. For example, `article/single.json.njk`:
+
+<!-- embed:codehighlight -->
+
+```njk
+{
+  "title": {{ article.title | json }},
+  "url": {{ article.url | absoluteUrl(site.url) | json }},
+  "date": {{ article.date | json }},
+  "body": {{ article.bodyHtml | json }}
+}
+```
+
+<!-- /embed:codehighlight -->
+
+[Embeds](/docs/07-embeds/) in a JSON file's values are written as JSON text, so the JSON stays valid.
 
 Your site's static files folder (`static/`, or [`staticDir`](/docs/03-configuration/#staticdir)) works the same way: its files are copied to the website's root over the theme's, so a `static/site.css` replaces the theme's stylesheet.
 
@@ -116,7 +131,9 @@ To build on the theme's version of a template you **have** overridden, start its
 
 `{{ super() }}` outputs the theme's own content for that block. `@theme/` works the same in `include` and `import`.
 
-Relative paths such as `../theme/article/single.njk` don't work: they're looked for inside your templates folder, and the theme's folder can be anywhere (e.g. in `node_modules`).
+A name can leave out the template's output extension: it loads the template that outputs the same type of file, HTML unless it is the feed's (`layouts/rssfeed.njk` outputs XML). So `{% extends "@theme/layouts/rssfeed.njk" %}` loads the theme's `layouts/rssfeed.xml.njk`, and `article/single.njk` loads your `article/single.html.njk` if you have one.
+
+Names starting with `./` or `../` are relative to the template that names them, e.g. `{% include "./note.njk" %}` in `partials/aside.njk` loads `partials/note.njk`. They're then looked for like any other name: in your templates folder first, then the theme's. They can't reach outside the templates folders, so `../theme/article/single.njk` doesn't load the theme's file: use `@theme/` for that.
 
 ## Templates for article types
 
@@ -156,6 +173,8 @@ Every template gets:
 - `isArticle`: `true` on an article's page (index articles and the editor's previews included).
 - `isList`: `true` on a list's pages and its RSS feed.
 
+Other outputs of a page (see [output file types](#output-file-types)) are given as lists of `extension`, `type` (its MIME type, e.g. `application/json`) and `url`.
+
 These make it easy to show something on some pages only, e.g. in your `layouts/html.njk`:
 
 <!-- embed:codehighlight -->
@@ -183,19 +202,22 @@ Article pages also get `article`:
 | `article.excerptHtml`, `article.excerptText`     | The excerpt as HTML, and as plain text.                                                                                                                                                 |
 | `article.attachments`                            | Each attachment's `name`, `url`, `thumbnail`, `mimeType` and `sizeRelative` (e.g. "2.5 MB").                                                                                            |
 | `article.meta`                                   | The article's [custom settings](/docs/03-configuration/#metadata) by key, e.g. `article.meta.featured`: the valid values of those its type uses, with file fields' names as their URLs. |
+| `article.alternates`                             | The page's other outputs than HTML, e.g. `/news/hello-world/index.json` from an `article/single.json.njk`. Empty in the editor's previews.                                              |
 
 List pages (and [index articles](/docs/06-lists/#index-articles)) get `list`:
 
-| Variable                                   | Description                                                                            |
-| ------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `list.name`                                | The type's plural label, the tag's name or the author's name.                          |
-| `list.kind`                                | `type`, `tag` or `author`.                                                             |
-| `list.type`                                | The article type the list belongs to.                                                  |
-| `list.url`, `list.feedUrl`, `list.hasFeed` | The list's first page, its RSS feed, and whether it has one.                           |
-| `list.articles`                            | The articles on this page, newest first.                                               |
-| `list.pagination`                          | `pages` (each with `index`, `url` and `isCurrent`), `page`, `prevPage` and `nextPage`. |
+| Variable                                   | Description                                                                               |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `list.name`                                | The type's plural label, the tag's name or the author's name.                             |
+| `list.kind`                                | `type`, `tag` or `author`.                                                                |
+| `list.type`                                | The article type the list belongs to.                                                     |
+| `list.url`, `list.feedUrl`, `list.hasFeed` | The list's first page, its RSS feed, and whether it has one.                              |
+| `list.feeds`                               | Each of the list's feeds, e.g. `feed.xml` (`application/rss+xml`) and `feed.json`.        |
+| `list.alternates`                          | This page's other outputs than HTML, e.g. `/news/2.json` from an `article/list.json.njk`. |
+| `list.articles`                            | The articles on this page, newest first.                                                  |
+| `list.pagination`                          | `pages` (each with `index`, `url` and `isCurrent`), `page`, `prevPage` and `nextPage`.    |
 
-HTML values such as `bodyHtml` must be output with the `safe` filter, as Nunjucks escapes everything else:
+In templates that output HTML or XML, HTML values such as `bodyHtml` must be output with the `safe` filter, as everything else is escaped:
 
 <!-- embed:codehighlight -->
 
@@ -215,11 +237,13 @@ As well as Nunjucks' own filters, templates have:
 | `rfc822`                 | `{{ article.date \| rfc822 }}`                        | Mon, 16 Nov 2026 09:00:00 GMT                                                                                      |
 | `absoluteUrl(site.url)`  | `{{ article.url \| absoluteUrl(site.url) }}`          | `https://example.com/news/hello/`                                                                                  |
 | `absoluteUrls(site.url)` | `{{ article.excerptHtml \| absoluteUrls(site.url) }}` | The HTML with absolute links                                                                                       |
-| `json`                   | `{{ article.tags \| json \| safe }}`                  | `[{"name":"News","url":"/tags/news/"}]`                                                                            |
-| `json(true)`             | `{{ article.tags \| json(true) \| safe }}`            | The same JSON, indented by 2 spaces                                                                                |
+| `json`                   | `{{ article.tags \| json }}`                          | `[{"name":"News","url":"/tags/news/"}]`                                                                            |
+| `json(true)`             | `{{ article.tags \| json(true) }}`                    | The same JSON, indented by 2 spaces                                                                                |
 | `parseJson`              | `{% set data = '{"a":1}' \| parseJson %}{{ data.a }}` | `1` (nothing if the text isn't valid JSON)                                                                         |
 | `contains(value)`        | `{% if article.slug \| contains("plugin-") %}`        | `true` if a string has the text, or an array has the value                                                         |
 | `where(property)`        | `{{ article.tags \| where("name") \| join(", ") }}`   | `News, Releases` (a property's values, skipping items without it; nested properties like `"author.name"` work too) |
+
+In templates that output HTML or XML, add `| safe` after `json` to write it as it is, e.g. in a `<script type="application/ld+json">`.
 
 ## Embed tags
 
@@ -228,7 +252,37 @@ Some [embeds](/docs/07-embeds/) need a stylesheet or a script on the pages that 
 - `{% embedHead %}`: before `</head>`.
 - `{% embedFoot %}`: before `</body>`.
 
-They output nothing on pages without such embeds, and on feeds. The default theme's `layouts/html.njk` has both, so you only need them in a layout of your own that doesn't extend it. `{% embedRenderHead() %}` and `{% embedRenderFoot() %}` work too.
+They output nothing on pages without such embeds, and in files that aren't HTML, such as feeds and JSON. The default theme's `layouts/html.njk` has both, so you only need them in a layout of your own that doesn't extend it. `{% embedRenderHead() %}` and `{% embedRenderFoot() %}` work too.
+
+## Checking templates
+
+`edaha check` reads every template in your templates folder and the theme's without building, and lists each problem by file, line and column:
+
+```sh
+npx edaha check
+```
+
+```
+templates/article/single.njk:12:23 Unknown filter "dat"
+templates/layouts/html.njk:4:3 unknown block tag: endfo
+templates/news/list.njk:1:4 Template "layouts/page.njk" not found
+Found 3 problems in the templates
+```
+
+It finds syntax mistakes and unknown tags, unknown filters, templates named in `extends`, `include` and `import` that don't exist, missing required templates, and two templates in one folder that output the same type of file. It exits with code 1 when there are problems, so it can run before a build, e.g. in CI. It takes the same `--config` and `--dir` options as `edaha build`.
+
+Some mistakes only show when a page is rendered, such as calling something that isn't a function, or a template named in a variable that doesn't exist. Add `--render` to also render every page as the build would, without writing anything. Each problem is listed once, in the template it is in (e.g. an included partial), with the first page it was found on:
+
+```sh
+npx edaha check --render
+```
+
+```
+templates/partials/byline.njk:3:15 Unable to call `formatName`, which is undefined or falsey (on /news/hello/ and 11 other pages)
+Found 1 problem in the templates
+```
+
+Pages are only rendered once the templates have no problems of the first kind. A misspelt variable (e.g. `{{ artcle.title }}`) isn't a problem to Nunjucks, which writes nothing for it, so it isn't found. `--render` takes `--site-url` too, like `edaha build`.
 
 ## Examples
 

@@ -1,5 +1,5 @@
 import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { basename, isAbsolute, join, posix, relative, sep } from "node:path";
 import get from "lodash/get.js";
 import nunjucks from "nunjucks";
 import { formatDate, formatRfc822 } from "../format/index.ts";
@@ -21,6 +21,20 @@ export const DEFAULT_OUTPUT_EXTENSION = "html";
 
 /** What the feed template (`layouts/rssfeed.njk`) outputs when its file name gives no extension */
 export const FEED_OUTPUT_EXTENSION = "xml";
+
+/** Output extensions whose templates escape values for HTML; other outputs (e.g. JSON, text) are written as they are */
+export const ESCAPED_EXTENSIONS: readonly string[] = [
+  "html",
+  "htm",
+  "xhtml",
+  "xml",
+  "svg",
+  "rss",
+  "atom",
+];
+
+/** Output extensions of HTML pages, the only outputs `{% embedHead %}` and `{% embedFoot %}` output anything in */
+export const HTML_EXTENSIONS: readonly string[] = ["html", "htm", "xhtml"];
 
 /** A template file, and the extension of the file it outputs, e.g. `{ file: "article/single.json.njk", extension: "json" }` */
 export interface TemplateOutput {
@@ -45,26 +59,200 @@ export const templateFileName = (
 };
 
 /**
+ * The extension of the file a template outputs: the one in its file name, or else `xml` for the feed template
+ * (`layouts/rssfeed.njk`) and `html` for the rest.
+ *
+ * @example
+ * outputExtension("article/single.json.njk"); // "json"
+ * outputExtension("article/single.njk"); // "html"
+ * outputExtension("@theme/layouts/rssfeed.njk"); // "xml"
+ */
+export const outputExtension = (file: string): string =>
+  templateFileName(basename(file))?.extension ??
+  (/(^|\/)layouts\/rssfeed\.njk$/.test(file)
+    ? FEED_OUTPUT_EXTENSION
+    : DEFAULT_OUTPUT_EXTENSION);
+
+/** A problem in a template */
+export interface TemplateProblem {
+  /** The template file's absolute path (or its name, when Nunjucks doesn't say) */
+  file: string;
+  /** Where the problem is in the file, from 1; undefined for problems with the whole file */
+  line?: number | undefined;
+  /** Where the problem is on its line, from 1 */
+  column?: number | undefined;
+  /** What the problem is */
+  message: string;
+}
+
+/**
+ * A problem from an error thrown while rendering a template: in the innermost template Nunjucks names (e.g. an
+ * included partial), at its line and column, with the error's own message. Errors that name no template are given
+ * `template`.
+ *
+ * @param template - the template that was rendered, e.g. "article/single.njk"
+ * @example
+ * renderProblem(new Error("(/t/a.njk) [Line 1, Column 8]\n  Error: Unable to call `foo`"), "a.njk");
+ * // { file: "/t/a.njk", line: 2, column: 9, message: "Unable to call `foo`" }
+ */
+export const renderProblem = (
+  error: unknown,
+  template: string,
+): TemplateProblem => {
+  const message = error instanceof Error ? error.message : String(error);
+  // Nunjucks names each template the error passed through, innermost last; its lines and columns count from 0
+  const where = [
+    ...message.matchAll(/\(([^()\n]+)\)(?: \[Line (\d+), Column (\d+)\])?/g),
+  ].at(-1);
+  const detail = (message.split("\n").at(-1) as string)
+    .trim()
+    .replace(
+      /^(?:Template render error: )?(?:\([^()\n]+\) )?(?:\[Line \d+, Column \d+\] )?(?:Error: )?/,
+      "",
+    );
+  return {
+    file: where?.[1] ?? template,
+    line: where?.[2] === undefined ? undefined : Number(where[2]) + 1,
+    column: where?.[3] === undefined ? undefined : Number(where[3]) + 1,
+    message: detail,
+  };
+};
+
+/**
  * Template names starting with this always load from the last template folder (the default theme's), e.g.
  * `{% extends "@theme/article/single.njk" %}` in a site's own `article/single.njk`, to build on the theme's version.
  */
 export const THEME_PREFIX = "@theme/";
 
 /**
- * A Nunjucks loader for template names starting with THEME_PREFIX, from one folder. Other names are left to the next
- * loader.
+ * The templates in the given folders for a template's path without `.njk` (e.g. "article/single"), with the extension
+ * of each one's output: `single.njk` outputs `defaultExtension`, and `single.json.njk` outputs `json`. A template in an
+ * earlier folder (e.g. the site's) overrides one in a later folder (e.g. the theme's) that outputs the same extension,
+ * whatever its file name (e.g. a site's `rssfeed.njk` over a theme's `rssfeed.xml.njk`). Throws if two in one folder
+ * output the same extension (e.g. `single.njk` and `single.html.njk`).
  *
  * @example
- * themeLoader("/theme/templates").getSource("@theme/article/single.njk"); // the theme's article/single.njk
+ * findTemplates(["site/templates", "theme/templates"], "article/single", "html");
+ * // [{ file: "article/single.njk", extension: "html" }, { file: "article/single.json.njk", extension: "json" }]
  */
-export const themeLoader = (dir: string): nunjucks.ILoader => {
-  const files = new nunjucks.FileSystemLoader(dir);
+export const findTemplates = (
+  dirs: readonly string[],
+  path: string,
+  defaultExtension: string,
+): TemplateOutput[] => {
+  const slash = path.lastIndexOf("/");
+  const folder = path.slice(0, Math.max(slash, 0));
+  const name = path.slice(slash + 1);
+  const outputs = new Map<string, TemplateOutput>();
+  for (const dir of dirs) {
+    const own = new Map<string, TemplateOutput>();
+    let files: string[] = [];
+    try {
+      files = readdirSync(join(dir, folder)).sort();
+    } catch {
+      // A template folder without this folder
+    }
+    for (const file of files) {
+      const parsed = templateFileName(file);
+      if (parsed?.name !== name) continue;
+      const extension = parsed.extension ?? defaultExtension;
+      const relative = folder ? `${folder}/${file}` : file;
+      const clash = own.get(extension);
+      if (clash)
+        throw new Error(
+          `${clash.file} and ${relative} in ${dir} both output ${name}'s .${extension} file; rename or remove one of them`,
+        );
+      own.set(extension, { file: relative, extension });
+    }
+    for (const [extension, output] of own)
+      if (!outputs.has(extension)) outputs.set(extension, output);
+  }
+  return [...outputs.values()];
+};
+
+/**
+ * The template file a template name loads from the given folders: the first folder's template that outputs the same
+ * extension (see outputExtension), whatever its file name. So `layouts/rssfeed.njk` loads `layouts/rssfeed.xml.njk`,
+ * and `article/single.njk` a site's `article/single.html.njk` over a theme's `article/single.njk`. Other names, and
+ * names no template outputs, are given back as they are.
+ *
+ * @example
+ * resolveTemplateName(["theme/templates"], "layouts/rssfeed.njk"); // "layouts/rssfeed.xml.njk"
+ * resolveTemplateName(["theme/templates"], "partials/notes.txt"); // "partials/notes.txt"
+ */
+export const resolveTemplateName = (
+  dirs: readonly string[],
+  name: string,
+): string => {
+  const slash = name.lastIndexOf("/");
+  const parsed = templateFileName(name.slice(slash + 1));
+  if (!parsed) return name;
+  const path = name.slice(0, slash + 1) + parsed.name;
+  const extension = outputExtension(name);
+  return (
+    findTemplates(dirs, path, outputExtension(`${path}.njk`)).find(
+      (output) => output.extension === extension,
+    )?.file ?? name
+  );
+};
+
+/**
+ * Whether a template name is relative to the template that names it: it starts with `./` or `../`.
+ *
+ * @example
+ * isRelativeName("./b.njk"); // true
+ * isRelativeName("partials/b.njk"); // false
+ */
+export const isRelativeName = (name: string): boolean =>
+  name.startsWith("./") || name.startsWith("../");
+
+/**
+ * A relative template name (see isRelativeName) as a name in the template folders, from the template that names it
+ * (its name, or its file's path in one of the folders, as Nunjucks gives it).
+ *
+ * @example
+ * relativeTemplateName(["/site/templates"], "/site/templates/partials/x.njk", "../b.njk"); // "b.njk"
+ * relativeTemplateName([], "partials/x.njk", "./b.njk"); // "partials/b.njk"
+ */
+export const relativeTemplateName = (
+  dirs: readonly string[],
+  from: string,
+  name: string,
+): string => {
+  const dir = dirs.find(
+    (d) => isAbsolute(from) && !relative(d, from).startsWith(".."),
+  );
+  const fromName = dir ? relative(dir, from).split(sep).join("/") : from;
+  return posix.join(posix.dirname(fromName), name);
+};
+
+/**
+ * A Nunjucks loader for the template folders, where an earlier folder's file overrides a later one's (see
+ * resolveTemplateName). Names starting with THEME_PREFIX load from the last folder only (the theme's), and names
+ * starting with `./` or `../` are relative to the template that names them (see relativeTemplateName).
+ *
+ * @example
+ * templateLoader(["site/templates", "theme/templates"]).getSource("@theme/layouts/rssfeed.njk");
+ * // the theme's layouts/rssfeed.xml.njk
+ */
+export const templateLoader = (
+  dirs: readonly string[],
+): nunjucks.ILoader & {
+  isRelative: typeof isRelativeName;
+  resolve: (from: string, name: string) => string;
+} => {
+  const themeDirs = dirs.slice(-1);
+  const files = new nunjucks.FileSystemLoader([...dirs]);
+  const themeFiles = new nunjucks.FileSystemLoader(themeDirs);
   return {
+    isRelative: isRelativeName,
+    resolve: (from, name) => relativeTemplateName(dirs, from, name),
     getSource: (name) =>
       name.startsWith(THEME_PREFIX)
-        ? files.getSource(name.slice(THEME_PREFIX.length))
-        : // Nunjucks' loaders answer null for templates they don't have
-          (null as unknown as nunjucks.LoaderSource),
+        ? themeFiles.getSource(
+            resolveTemplateName(themeDirs, name.slice(THEME_PREFIX.length)),
+          )
+        : files.getSource(resolveTemplateName(dirs, name)),
   };
 };
 
@@ -176,7 +364,7 @@ interface NunjucksNodes {
 /**
  * The `{% embedHead %}` and `{% embedFoot %}` tags (also `{% embedRenderHead() %}` and `{% embedRenderFoot() %}`): output
  * the HTML that the page's embeds need once in its `<head>`, or before `</body>`. They output nothing on pages without
- * embeds.
+ * embeds, and in files that aren't HTML (see Templates.render).
  */
 class EmbedTags implements nunjucks.Extension {
   tags = Object.keys(EMBED_TAGS);
@@ -198,6 +386,39 @@ for (const [tag, part] of Object.entries(EMBED_TAGS))
       new nunjucks.runtime.SafeString(context.ctx.embeds?.[part] ?? ""),
   });
 
+/** Options for reading templates, the same for rendering and checking them */
+export const TEMPLATE_OPTIONS = {
+  // Keep the generated HTML free of blank lines left by template tags
+  trimBlocks: true,
+  lstripBlocks: true,
+} as const;
+
+/** Template tags added to Nunjucks, by name (see EmbedTags) */
+export const TEMPLATE_EXTENSIONS: Readonly<Record<string, nunjucks.Extension>> =
+  { embeds: new EmbedTags() };
+
+/**
+ * Add edaha.md's filters and tags to a Nunjucks environment.
+ *
+ * @example
+ * addTemplateTools(new nunjucks.Environment()).getFilter("rfc822");
+ */
+export const addTemplateTools = (
+  env: nunjucks.Environment,
+): nunjucks.Environment => {
+  env.addFilter("date", formatDate);
+  env.addFilter("rfc822", formatRfc822);
+  env.addFilter("absoluteUrl", absoluteUrl);
+  env.addFilter("absoluteUrls", absoluteUrls);
+  env.addFilter("json", toJson);
+  env.addFilter("parseJson", parseJson);
+  env.addFilter("contains", contains);
+  env.addFilter("where", where);
+  for (const [name, extension] of Object.entries(TEMPLATE_EXTENSIONS))
+    env.addExtension(name, extension);
+  return env;
+};
+
 /**
  * Loads and renders the site's Nunjucks templates from one or more folders. A file in an earlier folder overrides the
  * same file in later ones (e.g. a site's templates over the default theme's). Falls back to the `article` templates
@@ -211,7 +432,10 @@ for (const [tag, part] of Object.entries(EMBED_TAGS))
 export class Templates {
   private readonly dirs: string[];
   private readonly logger: Logger;
-  private readonly env: nunjucks.Environment;
+  /** Renders templates that output HTML or XML (see ESCAPED_EXTENSIONS) */
+  private readonly escaped: nunjucks.Environment;
+  /** Renders templates that output anything else, e.g. JSON */
+  private readonly unescaped: nunjucks.Environment;
   private readonly warned = new Set<string>();
 
   /**
@@ -230,27 +454,20 @@ export class Templates {
         `Missing required templates in ${this.dirs.join(", ")}: ${missing.join(", ")}`,
       );
     this.logger = logger;
-    this.env = new nunjucks.Environment(
-      [
-        themeLoader(this.dirs.at(-1) as string),
-        new nunjucks.FileSystemLoader(this.dirs),
-      ],
-      {
-        autoescape: true,
-        // Keep the generated HTML free of blank lines left by template tags
-        trimBlocks: true,
-        lstripBlocks: true,
-      },
-    );
-    this.env.addFilter("date", formatDate);
-    this.env.addFilter("rfc822", formatRfc822);
-    this.env.addFilter("absoluteUrl", absoluteUrl);
-    this.env.addFilter("absoluteUrls", absoluteUrls);
-    this.env.addFilter("json", toJson);
-    this.env.addFilter("parseJson", parseJson);
-    this.env.addFilter("contains", contains);
-    this.env.addFilter("where", where);
-    this.env.addExtension("embeds", new EmbedTags());
+    this.escaped = this.environment(true);
+    this.unescaped = this.environment(false);
+  }
+
+  /**
+   * A Nunjucks environment for the template folders, with edaha.md's filters and tags, that escapes values for HTML or
+   * not. Each has its own loaders, as Nunjucks keeps compiled templates (bound to their environment) in them.
+   */
+  private environment(autoescape: boolean): nunjucks.Environment {
+    const env = new nunjucks.Environment(templateLoader(this.dirs), {
+      autoescape,
+      ...TEMPLATE_OPTIONS,
+    });
+    return addTemplateTools(env);
   }
 
   /**
@@ -264,43 +481,13 @@ export class Templates {
   }
 
   /**
-   * The templates for a template's path without `.njk` (e.g. "article/single"), with the extension of each one's output:
-   * `single.njk` outputs `defaultExtension`, and `single.json.njk` outputs `json`. A template in an earlier template
-   * folder (e.g. the site's) overrides one in a later folder (e.g. the theme's) that outputs the same extension, whatever
-   * its file name (e.g. a site's `rssfeed.njk` over a theme's `rssfeed.xml.njk`). Throws if two in one folder output the
-   * same extension (e.g. `single.njk` and `single.html.njk`).
+   * The templates for a template's path without `.njk` in the template folders (see findTemplates).
    *
    * @example
-   * templates.find("article/single", "html");
-   * // [{ file: "article/single.njk", extension: "html" }, { file: "article/single.json.njk", extension: "json" }]
+   * templates.find("article/single", "html"); // [{ file: "article/single.njk", extension: "html" }, ...]
    */
   private find(path: string, defaultExtension: string): TemplateOutput[] {
-    const slash = path.lastIndexOf("/");
-    const [folder, name] = [path.slice(0, slash), path.slice(slash + 1)];
-    const outputs = new Map<string, TemplateOutput>();
-    for (const dir of this.dirs) {
-      const own = new Map<string, TemplateOutput>();
-      let files: string[] = [];
-      try {
-        files = readdirSync(join(dir, folder)).sort();
-      } catch {
-        // A template folder without this folder
-      }
-      for (const file of files) {
-        const parsed = templateFileName(file);
-        if (parsed?.name !== name) continue;
-        const extension = parsed.extension ?? defaultExtension;
-        const clash = own.get(extension);
-        if (clash)
-          throw new Error(
-            `${clash.file} and ${folder}/${file} in ${dir} both output ${name}'s .${extension} file; rename or remove one of them`,
-          );
-        own.set(extension, { file: `${folder}/${file}`, extension });
-      }
-      for (const [extension, output] of own)
-        if (!outputs.has(extension)) outputs.set(extension, output);
-    }
-    return [...outputs.values()];
+    return findTemplates(this.dirs, path, defaultExtension);
   }
 
   /**
@@ -380,9 +567,24 @@ export class Templates {
   }
 
   /**
-   * Render a template with the given data.
+   * Render a template with the given data. Values are escaped for HTML only in templates that output HTML or XML (see
+   * ESCAPED_EXTENSIONS and outputExtension), so e.g. a JSON template writes `{{ article.title | json }}` as it is. The
+   * embed tags output nothing in templates that don't output HTML (see HTML_EXTENSIONS).
+   *
+   * @example
+   * templates.render("article/single.njk", data); // HTML, with values escaped
+   * templates.render("article/single.json.njk", data); // JSON, with values as they are
    */
   render(file: string, data: TemplateData): string {
-    return this.env.render(file, data);
+    const extension = outputExtension(file).toLowerCase();
+    return (
+      ESCAPED_EXTENSIONS.includes(extension) ? this.escaped : this.unescaped
+    ).render(
+      file,
+      // Only HTML pages have a <head> and <body> for the embed tags' HTML
+      HTML_EXTENSIONS.includes(extension)
+        ? data
+        : { ...data, embeds: undefined },
+    );
   }
 }

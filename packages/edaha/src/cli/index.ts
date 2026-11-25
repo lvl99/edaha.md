@@ -2,6 +2,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { buildSite } from "../generator/build/index.ts";
+import {
+  checkSite,
+  formatProblem,
+  type CheckOptions,
+  type TemplateProblem,
+} from "../generator/check/index.ts";
 import type { BuildOptions, BuildResult } from "../generator/build/index.ts";
 
 /** The package with the article editor, which `edaha editor` loads when it is installed */
@@ -36,13 +42,15 @@ export const USAGE = `Usage: edaha <command> [options]
 
 Commands:
   build    Build the site into the config file's outputDir (and copy it into publishDir, if set)
+  check    Check the site's and theme's templates for problems, by file and line, without building
   editor   Run the local article editor (only reachable from this computer)
 
 Options:
   -c, --config <file>  The config file (default: the first edahaconfig file found in --dir, then in the nearest
                        package.json's folder). The site folder is the config file's folder.
   --dir <folder>       The folder to look for a config file in (default: the current folder)
-  --site-url <url>     build: the website's absolute URL for feeds (default: SITE_URL, then the config's siteUrl)
+  --site-url <url>     build, check: the website's absolute URL for feeds (default: SITE_URL, then the config's siteUrl)
+  --render             check: also render every page as the build would, without writing anything
   --port <number>      editor: the port to listen on (default: ${EDITOR_PORT})
   -h, --help           Show this help
   -v, --version        Show edaha.md's version
@@ -60,6 +68,8 @@ export interface CliContext {
   error: (message: string) => void;
   /** Builds the site (default: buildSite) */
   build?: (options: BuildOptions) => Promise<BuildResult>;
+  /** Checks the site's templates (default: checkSite) */
+  check?: (options: CheckOptions) => Promise<TemplateProblem[]>;
   /** Starts the editor (default: the editor package's startEditor, see loadEditor) */
   editor?: StartEditor;
 }
@@ -173,6 +183,43 @@ export const runCli = async (
       );
       return 0;
     }
+    if (command === "check") {
+      const logger = { warn: context.error };
+      const found = await (context.check ?? checkSite)({
+        siteDir,
+        configFile,
+        logger,
+      });
+      // Pages are rendered once the templates read without problems, which would stop or repeat in every page
+      const rendered =
+        values.render && !found.length
+          ? await (context.build ?? buildSite)({
+              siteDir,
+              configFile,
+              siteUrl: values["site-url"] ?? context.env.SITE_URL,
+              logger,
+              dryRun: true,
+            })
+          : undefined;
+      const problems = rendered?.problems ?? found;
+      for (const problem of problems)
+        context.error(formatProblem(problem, context.cwd));
+      if (problems.length) {
+        context.error(
+          `Found ${problems.length} ${problems.length === 1 ? "problem" : "problems"} in the templates` +
+            (values.render && !rendered
+              ? "; pages are rendered once they are fixed"
+              : ""),
+        );
+        return 1;
+      }
+      context.log(
+        rendered
+          ? `No problems found in the templates, or rendering ${rendered.files.length} pages`
+          : "No problems found in the templates",
+      );
+      return 0;
+    }
     if (command === "editor") {
       const editor = await (context.editor ?? (await loadEditor()))({
         siteDir,
@@ -202,6 +249,7 @@ const parse = (args: string[]) =>
       dir: { type: "string" },
       "site-url": { type: "string" },
       port: { type: "string" },
+      render: { type: "boolean" },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
     },

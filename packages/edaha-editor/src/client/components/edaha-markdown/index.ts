@@ -28,6 +28,7 @@ import {
   toggleBulletList,
   toggleHeading,
   toggleNumberedList,
+  insertHorizontalRule,
   toggleQuote,
   toggleReadmore,
   wrapInline,
@@ -114,12 +115,14 @@ export class EdahaMarkdown extends LitElement {
         return url === null ? undefined : setLink(e, url.trim());
       },
     },
+    { label: "Main heading", run: (e) => toggleHeading(e, 1) },
     { label: "Heading", run: (e) => toggleHeading(e, 2) },
     { label: "Subheading", run: (e) => toggleHeading(e, 3) },
     { label: "Bullet list", run: toggleBulletList },
     { label: "Numbered list", run: toggleNumberedList },
     { label: "Quote", run: toggleQuote },
     { label: "Code", run: (e) => wrapLines(e, "```", "```") },
+    { label: "Horizontal rule", run: insertHorizontalRule },
     {
       label: "Details",
       // A collapsible block, written as HTML with its content as Markdown
@@ -249,7 +252,7 @@ export class EdahaMarkdown extends LitElement {
           (action) =>
             html`<button
               type="button"
-              class="toolbar-button"
+              class="btn btn-toolbar"
               data-action=${action.label}
               title=${action.label}
               ?disabled=${action.enabled ? !action.enabled(selection) : false}
@@ -266,7 +269,7 @@ export class EdahaMarkdown extends LitElement {
           }),
         )}
         <label
-          class="toolbar-button toolbar-upload"
+          class="btn btn-toolbar btn-upload"
           title="Upload image"
           ?data-disabled=${!this.uploadImage}
         >
@@ -281,7 +284,7 @@ export class EdahaMarkdown extends LitElement {
         </label>
         <button
           type="button"
-          class="toolbar-button"
+          class="btn btn-toolbar"
           data-action="Choose file"
           title="Choose file"
           ?disabled=${!this.chooseFile}

@@ -3,14 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "..";
 import type { EdahaMetadataField } from "..";
 import type { MetadataSchema } from "@lvl99dotcom/edaha.md/generator/metadata";
-import {
-  button,
-  chooseFile,
-  find,
-  input,
-  mount,
-  settle,
-} from "../../../../shared/tests/helpers";
+import { button, find, input, mount } from "../../../../shared/tests/helpers";
 
 afterEach(() => document.body.replaceChildren());
 
@@ -261,7 +254,7 @@ describe("edaha-metadata-field", () => {
     ]).toEqual([]);
   });
 
-  it("should mark selects and file fields with problems as invalid", async () => {
+  it("should mark selects with problems as invalid, and describe file fields by them", async () => {
     const problems = [
       { path: "a", message: "is wrong", level: "error" as const },
     ];
@@ -276,9 +269,12 @@ describe("edaha-metadata-field", () => {
       "a",
       { $edahaField: { file: true } },
       undefined,
-      { problems },
+      { problems, chooseFile: vi.fn() },
     );
-    expect(find(file, "input").getAttribute("aria-invalid")).toBe("true");
+    // A file field's button is described by its problems
+    expect(
+      find(file, ".btn-choose-file").getAttribute("aria-describedby"),
+    ).toContain("meta-a-problems");
   });
 
   it("should show radio buttons with their descriptions", async () => {
@@ -313,11 +309,7 @@ describe("edaha-metadata-field", () => {
     expect(changes).toEqual([{ path: "mood", value: "loud" }]);
   });
 
-  it("should upload a chosen file, show and clear the current one", async () => {
-    const uploadFile = vi
-      .fn()
-      .mockResolvedValueOnce("hero.png")
-      .mockRejectedValueOnce(new Error("Upload failed"));
+  it("should show and clear the current file, without a file input", async () => {
     const { element, changes } = await setup(
       "featured",
       {
@@ -326,7 +318,7 @@ describe("edaha-metadata-field", () => {
       },
       "old.png",
       {
-        uploadFile,
+        chooseFile: vi.fn(),
         fileUrl: (name: string) => `/files/news/hi/${name}`,
         required: true,
       },
@@ -334,36 +326,21 @@ describe("edaha-metadata-field", () => {
     expect(find(element, ".metadata-file a").getAttribute("href")).toBe(
       "/files/news/hi/old.png",
     );
-    const chooser = find<HTMLInputElement>(element, 'input[type="file"]');
-    expect(chooser.accept).toBe("image/*");
-    // A file is set, so choosing another isn't required
-    expect(chooser.required).toBe(false);
-    chooseFile(chooser, new File(["x"], "Hero.png"));
-    await settle(element);
-    chooseFile(chooser, new File(["x"], "bad.png"));
-    await settle(element);
-    chooseFile(chooser);
+    expect(element.querySelector('input[type="file"]')).toBeNull();
+    // The button is named by its own text, not the field's label
+    const choose = find<HTMLButtonElement>(element, "button.btn-choose-file");
+    expect(choose.id).toBe("meta-featured");
+    expect(find<HTMLLabelElement>(element, "label").htmlFor).toBe("");
     button(element, "Clear Featured").click();
-    expect(changes).toEqual([
-      { path: "featured", value: "hero.png" },
-      { path: "featured", value: undefined },
-    ]);
-    expect(uploadFile).toHaveBeenCalledTimes(2);
+    expect(changes).toEqual([{ path: "featured", value: undefined }]);
 
-    // Without an uploader (an unsaved article), files can't be chosen; names without a URL aren't linked
-    const { element: unsaved } = await setup(
+    // Names without a URL aren't linked
+    const { element: unlinked } = await setup(
       "featured",
       { $edahaField: { file: true } },
       "x.png",
     );
-    expect(find<HTMLInputElement>(unsaved, 'input[type="file"]').disabled).toBe(
-      true,
-    );
-    expect(unsaved.querySelector(".metadata-file a")).toBeNull();
-    chooseFile(
-      find<HTMLInputElement>(unsaved, 'input[type="file"]'),
-      new File(["x"], "y.png"),
-    );
+    expect(unlinked.querySelector(".metadata-file a")).toBeNull();
     const { element: empty } = await setup("featured", {
       $edahaField: { file: true },
     });
@@ -385,7 +362,12 @@ describe("edaha-metadata-field", () => {
       undefined,
       { chooseFile },
     );
-    const choose = button(element, "Choose existing file… for Featured");
+    const choose = find<HTMLButtonElement>(element, ".btn-choose-file");
+    expect(choose.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Choose or upload file for Featured",
+    );
+    // With the file browser's icon
+    expect(choose.firstElementChild!.classList).toContain("icon-folder_open");
     choose.click();
     await vi.waitFor(() =>
       expect(changes).toEqual([

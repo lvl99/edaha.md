@@ -90,7 +90,7 @@ A JavaScript config file exports a plain object. It is the only format that can 
 
 ### Where it is found
 
-`edaha build` and `edaha editor` look for the config file:
+`edaha build`, `edaha check` and `edaha editor` look for the config file:
 
 1. in the folder given with `--dir` (default: the folder you run the command in);
 2. then in the folder of the nearest `package.json`, looking up from there.
@@ -427,7 +427,7 @@ types:
 | `select`                                                                 | A dropdown of `options` (each a `value` and `title`, or the schema's `enum`), starting with "—" for none, unless an option's `value` is `""`, which is the "none" choice instead; `list: true` shows it as a list. |
 | `checkbox`                                                               | A checkbox, for `type: boolean` (`true` or `false`). With `{ value: ... }`, it saves that value when checked and nothing when not.                                                                                 |
 | `radio`                                                                  | Radio buttons for `options` (each with an optional `description`), or the schema's `enum`.                                                                                                                         |
-| `file`                                                                   | A file chooser that uploads into the article's folder (e.g. with `accept`).                                                                                                                                        |
+| `file`                                                                   | A button opening the editor's file browser, to choose a file or upload one (e.g. with `accept`, the kind shown first).                                                                                             |
 
 A `color` field keeps a value written without its `#` (e.g. `0687f5`) that way.
 
@@ -564,6 +564,17 @@ Builds the website into `outputDir`, and copies it into `publishDir` if that is 
 | `--dir <folder>`        | The folder to look for a config file in. Default: the current folder.                        |
 | `--site-url <url>`      | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl`.                  |
 
+### `edaha check`
+
+Checks your templates and the theme's for problems without building, and lists each one by file and line. See [Checking templates](/docs/05-templating/#checking-templates).
+
+| Option                  | Description                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `-c`, `--config <file>` | The config file, as for `edaha build`.                                        |
+| `--dir <folder>`        | The folder to look for a config file in, as for `edaha build`.                |
+| `--render`              | Also render every page as the build would, without writing anything.          |
+| `--site-url <url>`      | With `--render`, the website's absolute URL, for feeds, as for `edaha build`. |
+
 ### `edaha editor`
 
 Runs the [WYSIWYG editor](/docs/09-wysiwyg-editor/) on your computer.
@@ -574,4 +585,4 @@ Runs the [WYSIWYG editor](/docs/09-wysiwyg-editor/) on your computer.
 | `--dir <folder>`        | The folder to look for a config file in, as for `edaha build`. |
 | `--port <number>`       | The port the editor listens on. Default: `5180`.               |
 
-Both commands also take `-h` / `--help` and `-v` / `--version`.
+Every command also takes `-h` / `--help` and `-v` / `--version`.

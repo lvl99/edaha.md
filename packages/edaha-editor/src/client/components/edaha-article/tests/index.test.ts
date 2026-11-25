@@ -13,6 +13,7 @@ import {
   applyFieldChange,
   changedFields,
   cleanArticleData,
+  moveFileAddresses,
   nextTabIndex,
   RESET_QUESTION,
   newArticleData,
@@ -138,6 +139,25 @@ const field = (element: HTMLElement, name: string) =>
     `edaha-article-data-field[name="${name}"]`,
   );
 
+describe("moveFileAddresses", () => {
+  it("should point a moved article's file addresses at its new folder, leaving others", () => {
+    const from = { type: "article", slug: "hi" };
+    const to = { type: "page", slug: "hi-there" };
+    expect(
+      moveFileAddresses(
+        '<img src="/files/article/hi/a.png" alt="/files/article/hi/"><a href="/files/article/hi/b.pdf">/files/article/hi/b.pdf</a><img src="/files/article/other/c.png"><a href="https://x.com/files/article/hi/d.pdf">D</a>',
+        from,
+        to,
+      ),
+    ).toBe(
+      '<img src="/files/page/hi-there/a.png" alt="/files/article/hi/"><a href="/files/page/hi-there/b.pdf">/files/article/hi/b.pdf</a><img src="/files/article/other/c.png"><a href="https://x.com/files/article/hi/d.pdf">D</a>',
+    );
+    // Not moved: as it is
+    const html = '<img src="/files/article/hi/a.png">';
+    expect(moveFileAddresses(html, from, from)).toBe(html);
+  });
+});
+
 describe("applyFieldChange", () => {
   const data = newArticleData(new Date(DATE));
 
@@ -193,6 +213,11 @@ describe("applyFieldChange", () => {
       name: "",
       email: "a@b.c",
     });
+    // A field set after "no author" starts a new author
+    expect(
+      applyFieldChange({ ...data, author: false }, "author[email]", "a@b.c")
+        .author,
+    ).toEqual({ name: "", email: "a@b.c" });
   });
 
   it("should set tags and attachment fields by index", () => {
@@ -268,12 +293,11 @@ describe("edaha-article", () => {
     expect(button(element, "Delete…")).toBeDefined();
   });
 
-  it("should start a new article empty, with uploads disabled until saved", async () => {
+  it("should start a new article empty, with uploads into its folder disabled until saved", async () => {
     const { element } = await setup(undefined);
     expect(field(element, "title").value).toBe("");
     expect(field(element, "status").value).toBe("draft");
     expect(field(element, "slug").placeholder).toBe("title-converted-to-slug");
-    expect(field(element, "thumbnail").disabled).toBe(true);
     expect(
       find<EdahaRichtext>(element, "edaha-richtext").uploadImage,
     ).toBeUndefined();
@@ -318,6 +342,31 @@ describe("edaha-article", () => {
     expect(element.querySelector(".unsaved-notice")).toBeNull();
   });
 
+  it("should show a moved article's files from its new folder once saved, so they stay relative when saved again", async () => {
+    const { element, api } = await setup();
+    element.data = {
+      ...element.data,
+      type: "page",
+      bodyHtml:
+        '<p><img src="/files/article/hello/a.png"><a href="/files/article/hello/b.pdf">B</a></p>',
+    };
+    await element.save();
+    expect(api.save.mock.calls[0]![0]).toEqual({
+      type: "article",
+      slug: "hello",
+    });
+    expect(element.data.bodyHtml).toBe(
+      '<p><img src="/files/page/hello/a.png"><a href="/files/page/hello/b.pdf">B</a></p>',
+    );
+    // Not changed since it was saved
+    expect(element.savedData.bodyHtml).toBe(element.data.bodyHtml);
+    await element.save();
+    expect(api.save.mock.calls[1]![0]).toEqual({ type: "page", slug: "hello" });
+    expect(api.save.mock.calls[1]![1].bodyHtml).toContain(
+      "/files/page/hello/a.png",
+    );
+  });
+
   it("should save an existing article to its location and show errors", async () => {
     const { element, api } = await setup();
     find<HTMLFormElement>(element, "form").requestSubmit();
@@ -339,43 +388,32 @@ describe("edaha-article", () => {
     expect(element.message).toBe("");
   });
 
-  it("should upload a thumbnail and set the field to its name", async () => {
+  it("should list files uploaded into the article's folder once", async () => {
     const { element, api } = await setup();
-    field(element, "thumbnail").dispatchEvent(
-      new CustomEvent("field-file", {
-        detail: new File(["x"], "New.png"),
-        bubbles: true,
-      }),
-    );
-    await settle(element);
+    const uploadImage = find<EdahaRichtext>(
+      element,
+      "edaha-richtext",
+    ).uploadImage!;
+    await uploadImage(new File(["x"], "New.png"));
     expect(api.upload).toHaveBeenCalledWith(
       { type: "article", slug: "hello" },
       expect.any(File),
       {},
     );
-    expect(element.data.thumbnail).toBe("new.png");
     expect(element.files).toEqual(["guide.pdf", "new.png", "thumb.png"]);
+    // Uploading the same name again doesn't list it twice
+    await uploadImage(new File(["x"], "New.png"));
+    expect(element.files).toEqual(["guide.pdf", "new.png", "thumb.png"]);
+  });
 
-    // Uploading the same name again doesn't list it twice; a failed upload changes nothing
+  it("should give file fields only the file browser, to choose or upload files, even before the article is saved", async () => {
+    const { element } = await setup(undefined);
+    element.pickFile = vi.fn();
     await element.updateComplete;
-    field(element, "thumbnail").dispatchEvent(
-      new CustomEvent("field-file", {
-        detail: new File(["x"], "New.png"),
-        bubbles: true,
-      }),
-    );
-    await settle(element);
-    expect(element.files).toEqual(["guide.pdf", "new.png", "thumb.png"]);
-    api.upload.mockRejectedValueOnce(new Error("Disk full"));
-    field(element, "thumbnail").dispatchEvent(
-      new CustomEvent("field-file", {
-        detail: new File(["x"], "Other.png"),
-        bubbles: true,
-      }),
-    );
-    await settle(element);
-    expect(element.data.thumbnail).toBe("new.png");
-    expect(toasts).toContainEqual({ kind: "error", message: "Disk full" });
+    const thumbnail = field(element, "thumbnail");
+    expect(thumbnail.querySelector('input[type="file"]')).toBeNull();
+    expect(thumbnail.querySelector(".btn-choose-file")).not.toBeNull();
+    expect(thumbnail.disabled).toBe(false);
   });
 
   it("should upload images for the body and report failures", async () => {
@@ -604,14 +642,21 @@ describe("edaha-article", () => {
   });
 
   it("should not upload before the article is saved", async () => {
-    const { element, api } = await setup(undefined);
-    field(element, "thumbnail").dispatchEvent(
-      new CustomEvent("field-file", {
-        detail: new File(["x"], "a.png"),
-        bubbles: true,
-      }),
+    const { element } = await setup(undefined);
+    expect(
+      find<EdahaRichtext>(element, "edaha-richtext").uploadImage,
+    ).toBeUndefined();
+    // Nor with an uploader kept from a saved article, once a new one is open
+    const { element: saved, api } = await setup();
+    const uploadImage = find<EdahaRichtext>(
+      saved,
+      "edaha-richtext",
+    ).uploadImage!;
+    saved.article = undefined;
+    await settle(saved);
+    await expect(uploadImage(new File(["x"], "a.png"))).rejects.toThrow(
+      "Upload failed",
     );
-    await settle(element);
     expect(api.upload).not.toHaveBeenCalled();
   });
 
@@ -1697,21 +1742,16 @@ describe("edaha-article custom settings", () => {
     expect(element.metaProblems).toEqual([]);
   });
 
-  it("should upload files for file fields once saved, showing them from the article's folder", async () => {
+  it("should give file fields the file browser, showing their files from the article's folder", async () => {
     const { element } = await setupMetadata({ hero: "a.png" });
+    element.pickFile = vi.fn();
+    await element.updateComplete;
     const hero = find<EdahaMetadataField>(
       element,
       'edaha-metadata-field[path="hero"]',
     );
-    expect(await hero.uploadFile!(new File(["x"], "B.png"))).toBe("b.png");
+    expect(hero.chooseFile).toBeTypeOf("function");
     expect(hero.fileUrl!("a.png")).toBe("/files/article/hello/a.png");
-    const { element: unsaved } = await setup(undefined);
-    unsaved.metadata = structuredClone(METADATA) as never;
-    await settle(unsaved);
-    expect(
-      find<EdahaMetadataField>(unsaved, 'edaha-metadata-field[path="hero"]')
-        .uploadFile,
-    ).toBeUndefined();
   });
 });
 
@@ -1914,7 +1954,7 @@ describe("edaha-article default author", () => {
     expect(placeholders(element)[0]).toBe("No author unless you name one");
   });
 
-  it("should choose no author, disabling the author's fields, and type one to have an author again", async () => {
+  it("should choose no author, hiding the author's fields, and show them again when unchosen", async () => {
     const { element, api } = await setupAuthors();
     const noAuthor = find<HTMLInputElement>(element, ".no-author input");
     expect(noAuthor.checked).toBe(false);
@@ -1922,20 +1962,18 @@ describe("edaha-article default author", () => {
     noAuthor.dispatchEvent(new Event("change"));
     await settle(element);
     expect(element.data.author).toBe(false);
-    expect(placeholders(element)).toEqual(["", "", "https://example.com"]);
-    expect(field(element, "author[name]").disabled).toBe(true);
+    expect(noAuthor.getAttribute("role")).toBe("switch");
+    expect(element.querySelector('[name^="author["]')).toBeNull();
     await element.save();
     expect(api.save.mock.calls[0]![1]).toMatchObject({ author: false });
     noAuthor.checked = false;
     noAuthor.dispatchEvent(new Event("change"));
     await settle(element);
     expect(element.data.author).toBeUndefined();
-    // Typing an author after "no author" starts a new one
-    element.data = { ...element.data, author: false };
-    input(
-      find<HTMLInputElement>(field(element, "author[email]"), "input"),
-      "a@b.c",
-    );
-    expect(element.data.author).toEqual({ name: "", email: "a@b.c" });
+    expect(placeholders(element)).toEqual([
+      "Defaults to Matt",
+      "matt@example.com",
+      "https://matt.example",
+    ]);
   });
 });

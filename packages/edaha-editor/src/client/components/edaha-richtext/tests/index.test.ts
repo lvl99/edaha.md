@@ -71,6 +71,7 @@ describe("edaha-richtext", () => {
     );
 
     const blocks: [string, string][] = [
+      ["Main heading", "<h1>"],
       ["Heading", "<h2>"],
       ["Subheading", "<h3>"],
       ["Bullet list", "<ul>"],
@@ -91,6 +92,13 @@ describe("edaha-richtext", () => {
       await fresh.updateComplete;
       expect(fresh.value, label).toContain(tag);
     }
+
+    // A horizontal rule goes after the selection, keeping the selected text
+    const ruled = await setup();
+    selectAll(ruled);
+    button(ruled, "Horizontal rule").click();
+    await ruled.updateComplete;
+    expect(ruled.value).toMatch(/^<p>Hello world<\/p><hr>/);
   });
 
   it("should format selected text from the floating toolbar, which keeps the selection", async () => {
@@ -203,7 +211,7 @@ describe("edaha-richtext", () => {
 
   it("should have a button for each of the site's embeds, once they are known, that adds one from the embed dialog", async () => {
     const element = await setup("<p>Hi</p>");
-    expect(element.querySelector(".toolbar-embed")).toBeNull();
+    expect(element.querySelector(".btn-embed")).toBeNull();
     const tools = embedTools([
       undefined,
       { key: "youtube", content: "https://youtu.be/x", options: {} },

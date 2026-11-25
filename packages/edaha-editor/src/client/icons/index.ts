@@ -7,6 +7,8 @@ import arrowForward from "@material-symbols/svg-400/outlined/arrow_forward.svg?r
 import audioFile from "@material-symbols/svg-400/outlined/audio_file.svg?raw";
 import description from "@material-symbols/svg-400/outlined/description.svg?raw";
 import draft from "@material-symbols/svg-400/outlined/draft.svg?raw";
+import editDocument from "@material-symbols/svg-400/outlined/edit_document.svg?raw";
+import postAdd from "@material-symbols/svg-400/outlined/post_add.svg?raw";
 import folderZip from "@material-symbols/svg-400/outlined/folder_zip.svg?raw";
 import uploadFile from "@material-symbols/svg-400/outlined/upload_file.svg?raw";
 import videoFile from "@material-symbols/svg-400/outlined/video_file.svg?raw";
@@ -21,6 +23,7 @@ import driveFileRename from "@material-symbols/svg-400/outlined/drive_file_renam
 import findReplace from "@material-symbols/svg-400/outlined/find_replace.svg?raw";
 import folderOpen from "@material-symbols/svg-400/outlined/folder_open.svg?raw";
 import fullscreen from "@material-symbols/svg-400/outlined/fullscreen.svg?raw";
+import horizontalRule from "@material-symbols/svg-400/outlined/horizontal_rule.svg?raw";
 import fullscreenExit from "@material-symbols/svg-400/outlined/fullscreen_exit.svg?raw";
 import formatBold from "@material-symbols/svg-400/outlined/format_bold.svg?raw";
 import formatH1 from "@material-symbols/svg-400/outlined/format_h1.svg?raw";
@@ -55,6 +58,8 @@ export const ICONS = {
   audio_file: audioFile,
   description: description,
   draft: draft,
+  edit_document: editDocument,
+  post_add: postAdd,
   folder_zip: folderZip,
   upload_file: uploadFile,
   video_file: videoFile,
@@ -78,6 +83,7 @@ export const ICONS = {
   format_quote: formatQuote,
   format_underlined: formatUnderlined,
   fullscreen,
+  horizontal_rule: horizontalRule,
   fullscreen_exit: fullscreenExit,
   image,
   link,
@@ -108,6 +114,7 @@ export const TOOLBAR_ICONS: Record<string, IconName> = {
   Small: "text_decrease",
   Big: "text_increase",
   Link: "link",
+  "Main heading": "format_h1",
   Heading: "format_h2",
   Subheading: "format_h3",
   "Heading 1": "format_h1",
@@ -117,6 +124,7 @@ export const TOOLBAR_ICONS: Record<string, IconName> = {
   "Numbered list": "format_list_numbered",
   Quote: "format_quote",
   Code: "code_blocks",
+  "Horizontal rule": "horizontal_rule",
   Details: "expand_circle_down",
   "Image URL": "image",
   Table: "table",

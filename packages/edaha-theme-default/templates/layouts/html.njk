@@ -6,9 +6,14 @@
     <title>{% block headTitle %}{{ site.name }}{% endblock %}</title>
     <meta name="description" content="{% block headDescription %}{{ site.description }}{% endblock %}" />
 
-    {% if list and list.hasFeed %}
-    <link rel="alternate" type="application/rss+xml" title="{{ list.name }} | {{ site.name }}" href="{{ list.feedUrl }}" />
+    {% if list %}
+    {% for feed in list.feeds %}
+    <link rel="alternate" type="{{ feed.type }}" title="{{ list.name }} | {{ site.name }}" href="{{ feed.url }}" />
+    {% endfor %}
     {% endif %}
+    {% for alternate in (article.alternates if isArticle else list.alternates) %}
+    <link rel="alternate" type="{{ alternate.type }}" href="{{ alternate.url }}" />
+    {% endfor %}
 
     {% block headImports %}
       <link rel="stylesheet" href="{{ site.baseUrl }}/base.css" />

@@ -70,12 +70,14 @@ describe("edaha-markdown", () => {
       "Small",
       "Big",
       "Link",
+      "Main heading",
       "Heading",
       "Subheading",
       "Bullet list",
       "Numbered list",
       "Quote",
       "Code",
+      "Horizontal rule",
       "Details",
       "Image URL",
       "Table",
@@ -102,6 +104,7 @@ describe("edaha-markdown", () => {
       ["Strikethrough", "Hello ~~world~~"],
       ["Small", "Hello <small>world</small>"],
       ["Big", "Hello <big>world</big>"],
+      ["Main heading", "# Hello world"],
       ["Heading", "## Hello world"],
       ["Subheading", "### Hello world"],
       ["Bullet list", "- Hello world"],
@@ -114,6 +117,7 @@ describe("edaha-markdown", () => {
       ],
       ["Raw", "<!-- raw -->\nHello world\n<!-- /raw -->"],
       ["Read more", "Hello \n\n<!-- readmore -->"],
+      ["Horizontal rule", "Hello world\n\n---"],
     ];
     for (const [label, expected] of cases) {
       const element = await setup();
@@ -162,7 +166,7 @@ describe("edaha-markdown", () => {
 
   it("should have a button for each of the site's embeds, once they are known, that adds or changes one with the embed dialog", async () => {
     const element = await setup("Intro", [5, 5]);
-    expect(element.querySelector(".toolbar-embed")).toBeNull();
+    expect(element.querySelector(".btn-embed")).toBeNull();
     const answers: (EmbedValue | undefined)[] = [
       { key: "youtube", content: "https://youtu.be/abc", options: {} },
       undefined,
@@ -312,9 +316,9 @@ describe("edaha-markdown", () => {
   it("should upload a chosen image and insert it at the cursor", async () => {
     const element = await setup("Hi ", [3, 3]);
     const chooser = () =>
-      find<HTMLInputElement>(element, '.toolbar-upload input[type="file"]');
+      find<HTMLInputElement>(element, '.btn-upload input[type="file"]');
     expect(chooser().disabled).toBe(true);
-    expect(find(element, ".toolbar-upload").hasAttribute("data-disabled")).toBe(
+    expect(find(element, ".btn-upload").hasAttribute("data-disabled")).toBe(
       true,
     );
     element.uploadImage = vi

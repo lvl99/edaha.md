@@ -48,7 +48,7 @@ export const sortHeading = <S extends string>(
   >
     <button
       type="button"
-      class="sort-heading"
+      class="btn btn-sort"
       title=${hint}
       @click=${() => onSort(column)}
     >

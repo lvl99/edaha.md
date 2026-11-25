@@ -547,5 +547,7 @@ export const loadArticle = async (
       ),
     ),
     meta,
+    // The build adds the article's other outputs, from its templates
+    alternates: [],
   };
 };

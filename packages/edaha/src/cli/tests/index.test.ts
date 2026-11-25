@@ -1,4 +1,8 @@
 import { readFileSync } from "node:fs";
+import { cp, mkdtemp, readdir } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import {
   EDITOR_PACKAGE,
@@ -13,7 +17,7 @@ import type { BuildResult } from "../../generator/build";
 
 /** A CLI context that records messages, with fake build and editor functions */
 const context = (
-  overrides: Partial<Pick<CliContext, "cwd" | "env" | "build">> = {},
+  overrides: Partial<Pick<CliContext, "cwd" | "env" | "build" | "check">> = {},
 ) => {
   const build = vi.fn(async (): Promise<BuildResult> => ({
     outputDir: "/site/dist",
@@ -25,12 +29,14 @@ const context = (
     url: "http://127.0.0.1:5180",
     close: async () => undefined,
   }));
+  const check = vi.fn(async () => []);
   return {
     cwd: "/work",
     env: {},
     log: vi.fn(),
     error: vi.fn(),
     build,
+    check,
     editor,
     ...overrides,
   };
@@ -206,6 +212,133 @@ describe("runCli", () => {
     expect(await runCli(["editor", "--port", "x"], bad)).toBe(1);
     expect(bad.error).toHaveBeenCalledWith(
       '--port must be a number from 1 to 65535, got "x"',
+    );
+  });
+
+  it("should check the templates, listing each problem by file and line", async () => {
+    const fine = context();
+    expect(await runCli(["check", "--dir", "site"], fine)).toBe(0);
+    expect(fine.check).toHaveBeenCalledWith({
+      siteDir: "/work/site",
+      configFile: undefined,
+      logger: { warn: fine.error },
+    });
+    expect(fine.log).toHaveBeenCalledWith("No problems found in the templates");
+
+    const bad = context({
+      check: vi.fn(async () => [
+        {
+          file: "/work/templates/a.njk",
+          line: 2,
+          column: 5,
+          message: 'Unknown filter "nope"',
+        },
+      ]),
+    });
+    expect(await runCli(["check"], bad)).toBe(1);
+    expect(bad.error.mock.calls).toEqual([
+      ['templates/a.njk:2:5 Unknown filter "nope"'],
+      ["Found 1 problem in the templates"],
+    ]);
+    const two = context({
+      check: vi.fn(async () => [
+        { file: "/work/templates", message: "Missing" },
+        { file: "/work/templates", message: "Missing" },
+      ]),
+    });
+    expect(await runCli(["check"], two)).toBe(1);
+    expect(two.error).toHaveBeenLastCalledWith(
+      "Found 2 problems in the templates",
+    );
+  });
+
+  it("should render every page with --render, once the templates read without problems", async () => {
+    const fine = context({ env: { SITE_URL: "https://example.com" } });
+    expect(await runCli(["check", "--render"], fine)).toBe(0);
+    expect(fine.build).toHaveBeenCalledWith({
+      siteDir: "/work",
+      configFile: undefined,
+      siteUrl: "https://example.com",
+      logger: { warn: fine.error },
+      dryRun: true,
+    });
+    expect(fine.log).toHaveBeenCalledWith(
+      "No problems found in the templates, or rendering 1 pages",
+    );
+
+    const build = vi.fn(async () => ({
+      outputDir: "/work/build",
+      publishDir: undefined,
+      articles: [],
+      files: ["index.html"],
+      problems: [
+        {
+          file: "/work/templates/partials/a.njk",
+          line: 2,
+          column: 9,
+          message: "Unable to call `foo` (on /news/a/)",
+        },
+      ],
+    }));
+    const broken = context({ build });
+    expect(
+      await runCli(
+        ["check", "--render", "--site-url", "https://x.com"],
+        broken,
+      ),
+    ).toBe(1);
+    expect((build.mock.calls[0] as unknown[])[0]).toMatchObject({
+      siteUrl: "https://x.com",
+    });
+    expect(broken.error.mock.calls).toEqual([
+      ["templates/partials/a.njk:2:9 Unable to call `foo` (on /news/a/)"],
+      ["Found 1 problem in the templates"],
+    ]);
+
+    // Templates with problems aren't rendered
+    const unread = context({
+      check: vi.fn(async () => [
+        { file: "/work/templates", message: "Missing" },
+      ]),
+    });
+    expect(await runCli(["check", "--render"], unread)).toBe(1);
+    expect(unread.build).not.toHaveBeenCalled();
+    expect(unread.error).toHaveBeenLastCalledWith(
+      "Found 1 problem in the templates; pages are rendered once they are fixed",
+    );
+  });
+
+  it("should check and render a real site when no fakes are given, writing nothing", async () => {
+    // A copy of the fixture site, whose publish folder is beside it
+    const root = await mkdtemp(join(tmpdir(), "edaha-cli-"));
+    await cp(
+      fileURLToPath(
+        new URL("../../shared/tests/fixtures/site", import.meta.url),
+      ),
+      join(root, "my-site"),
+      { recursive: true },
+    );
+    const ctx = context({
+      cwd: root,
+      env: { SITE_URL: "https://example.com" },
+    });
+    delete (ctx as Partial<CliContext>).check;
+    delete (ctx as Partial<CliContext>).build;
+    expect(await runCli(["check", "--render", "--dir", "my-site"], ctx)).toBe(
+      0,
+    );
+    expect(ctx.log.mock.calls[0]?.[0]).toMatch(
+      /^No problems found in the templates, or rendering \d+ pages$/,
+    );
+    expect(await readdir(root)).toEqual(["my-site"]);
+  });
+
+  it("should use the real check when none is given", async () => {
+    const ctx = context({ cwd: "/nonexistent-edaha-site" });
+    delete (ctx as Partial<CliContext>).check;
+    expect(await runCli(["check"], ctx)).toBe(1);
+    expect(ctx.error.mock.calls[0]?.[0]).toContain(
+      "No config file found in /nonexistent-edaha-site.",
     );
   });
 

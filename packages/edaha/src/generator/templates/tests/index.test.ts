@@ -9,6 +9,10 @@ import {
   absoluteUrl,
   absoluteUrls,
   contains,
+  isRelativeName,
+  outputExtension,
+  renderProblem,
+  relativeTemplateName,
   parseJson,
   toJson,
   where,
@@ -149,6 +153,8 @@ describe("Templates", () => {
       ...REQUIRED,
       "test.njk":
         "{% embedHead %}|{% embedFoot %}|{% embedRenderHead() %}|{% embedRenderFoot() %}",
+      "test.json.njk": "{% embedHead %}|{% embedFoot %}|{{ embeds | json }}",
+      "test.xml.njk": "{% embedHead %}|{% embedFoot %}",
     });
     const templates = new Templates(dir, { warn: vi.fn() });
     const site = {
@@ -179,6 +185,11 @@ describe("Templates", () => {
         isList: false,
       }),
     ).toBe("|||");
+    // Files that aren't HTML have no <head> or <body> for them
+    const embeds = { head: "<style></style>", foot: "<script></script>" };
+    const data = { site, type: "news", isArticle: true, isList: false, embeds };
+    expect(templates.render("test.json.njk", data)).toBe("||");
+    expect(templates.render("test.xml.njk", data)).toBe("|");
   });
 
   it("should use a type's own template or fall back to article's with one warning", async () => {
@@ -328,7 +339,97 @@ describe("Templates", () => {
     );
   });
 
+  it("should load ./ and ../ names relative to the template that names them", async () => {
+    const theme = await templatesDir({
+      ...without("layouts/rssfeed.njk"),
+      "partials/b.njk": "theme partial b",
+      "partials/e.njk": "theme e",
+      "partials/deep/c.njk": '{% include "../e.njk" %}',
+      "layouts/rssfeed.xml.njk": "theme feed",
+    });
+    const site = await templatesDir({
+      "b.njk": "root b",
+      "partials/x.njk":
+        '{% include "./b.njk" %}, {% include "./deep/c.njk" %}, {% include "../b.njk" %}, {% include "../layouts/rssfeed.njk" %}',
+      "partials/b.njk": "site partial b",
+    });
+    const templates = new Templates([site, theme], { warn: vi.fn() });
+    // Then found as any other name: the site's first, without its output extension
+    expect(templates.render("partials/x.njk", {} as never)).toBe(
+      "site partial b, theme e, root b, theme feed",
+    );
+    expect(templates.render("@theme/partials/deep/c.njk", {} as never)).toBe(
+      "theme e",
+    );
+  });
+
   describe("output extensions", () => {
+    it("should load a template by its name without its output extension, the earlier folder's first", async () => {
+      const theme = await templatesDir({
+        ...without("layouts/rssfeed.njk", "article/single.njk"),
+        "layouts/rssfeed.xml.njk": "theme feed",
+        "layouts/rssfeed.json.njk": "theme json feed",
+        "article/single.njk": "theme single",
+        "partials/notes.txt": "theme notes",
+        "root.html.njk": "theme root",
+      });
+      const site = await templatesDir({
+        "article/single.html.njk":
+          '{% include "@theme/layouts/rssfeed.njk" %}, {% include "@theme/article/single.html.njk" %}',
+        "layouts/feed.njk": '{% extends "layouts/rssfeed.njk" %}',
+      });
+      const templates = new Templates([site, theme], { warn: vi.fn() });
+      // The site's single.html.njk comes before the theme's single.njk, both outputting HTML
+      expect(templates.render("article/single.njk", {} as never)).toBe(
+        "theme feed, theme single",
+      );
+      expect(templates.render("layouts/feed.njk", {} as never)).toBe(
+        "theme feed",
+      );
+      expect(templates.render("partials/notes.txt", {} as never)).toBe(
+        "theme notes",
+      );
+      expect(templates.render("root.njk", {} as never)).toBe("theme root");
+      expect(templates.render("@theme/root.njk", {} as never)).toBe(
+        "theme root",
+      );
+      expect(templates.render("layouts/rssfeed.json.njk", {} as never)).toBe(
+        "theme json feed",
+      );
+      expect(() =>
+        templates.render("article/single.txt.njk", {} as never),
+      ).toThrow("template not found: article/single.txt.njk");
+    });
+
+    it("should escape values only in templates that output HTML or XML", async () => {
+      const dir = await templatesDir({
+        ...REQUIRED,
+        "article/single.json.njk": "{{ site.name | json }}|{{ site.name }}",
+        "article/single.SVG.njk": "{{ site.name }}",
+        "article/single.txt.njk": '{% include "partials/name.njk" %}',
+        "partials/name.njk": "{{ site.name }}",
+        "layouts/rssfeed.json.njk": "{{ site.name }}",
+      });
+      const templates = new Templates(dir, { warn: vi.fn() });
+      const data = { site: { name: 'A "<b>" & B' } } as never;
+      expect(templates.render("article/single.json.njk", data)).toBe(
+        '"A \\"<b>\\" & B"|A "<b>" & B',
+      );
+      expect(templates.render("article/single.SVG.njk", data)).toBe(
+        "A &quot;&lt;b&gt;&quot; &amp; B",
+      );
+      // A partial is escaped or not as the template that includes it
+      expect(templates.render("article/single.txt.njk", data)).toBe(
+        'A "<b>" & B',
+      );
+      expect(templates.render("partials/name.njk", data)).toBe(
+        "A &quot;&lt;b&gt;&quot; &amp; B",
+      );
+      expect(templates.render("layouts/rssfeed.json.njk", data)).toBe(
+        'A "<b>" & B',
+      );
+    });
+
     it("should render every template of a name, each to its own extension (HTML unless given)", async () => {
       const dir = await templatesDir({
         ...REQUIRED,
@@ -420,6 +521,80 @@ describe("Templates", () => {
         "Template page/list.njk not found; using article/list.json.njk and article/list.njk",
       );
     });
+  });
+});
+
+describe("relativeTemplateName", () => {
+  it("should give a relative name as a name in the template folders, from the template that names it", () => {
+    const dirs = ["/site/templates", "/theme/templates"];
+    expect(
+      relativeTemplateName(dirs, "/theme/templates/partials/x.njk", "../b.njk"),
+    ).toBe("b.njk");
+    expect(relativeTemplateName(dirs, "partials/x.njk", "./b.njk")).toBe(
+      "partials/b.njk",
+    );
+    // Outside the folders, where nothing loads
+    expect(relativeTemplateName(dirs, "/elsewhere/x.njk", "./b.njk")).toBe(
+      "/elsewhere/b.njk",
+    );
+    expect(relativeTemplateName(dirs, "x.njk", "../b.njk")).toBe("../b.njk");
+    expect(isRelativeName("./b.njk")).toBe(true);
+    expect(isRelativeName("../b.njk")).toBe(true);
+    expect(isRelativeName("b.njk")).toBe(false);
+  });
+});
+
+describe("renderProblem", () => {
+  it("should give the innermost template Nunjucks names, its line and column from 1, and the error's message", () => {
+    expect(
+      renderProblem(
+        new Error(
+          "(/t/a.njk)\n  Template render error: (/t/a.njk)\n  Template render error: (/t/partials/p.njk) [Line 1, Column 8]\n  Error: Unable to call `foo`, which is undefined or falsey",
+        ),
+        "a.njk",
+      ),
+    ).toEqual({
+      file: "/t/partials/p.njk",
+      line: 2,
+      column: 9,
+      message: "Unable to call `foo`, which is undefined or falsey",
+    });
+    // Without a line, e.g. a template that isn't found
+    expect(
+      renderProblem(
+        new Error(
+          "(/t/c.json.njk)\n  Template render error: (/t/c.json.njk)\n  Error: template not found: missing.njk",
+        ),
+        "c.json.njk",
+      ),
+    ).toEqual({
+      file: "/t/c.json.njk",
+      line: undefined,
+      column: undefined,
+      message: "template not found: missing.njk",
+    });
+  });
+
+  it("should give the rendered template for errors that name none", () => {
+    expect(renderProblem(new Error("Embed failed"), "a.njk")).toEqual({
+      file: "a.njk",
+      line: undefined,
+      column: undefined,
+      message: "Embed failed",
+    });
+    expect(renderProblem("oops", "a.njk").message).toBe("oops");
+  });
+});
+
+describe("outputExtension", () => {
+  it("should give a template's output extension, or else XML for the feed and HTML for the rest", () => {
+    expect(outputExtension("article/single.json.njk")).toBe("json");
+    expect(outputExtension("article/single.JSON.njk")).toBe("JSON");
+    expect(outputExtension("article/single.njk")).toBe("html");
+    expect(outputExtension("layouts/rssfeed.njk")).toBe("xml");
+    expect(outputExtension("@theme/layouts/rssfeed.njk")).toBe("xml");
+    expect(outputExtension("layouts/rssfeed.json.njk")).toBe("json");
+    expect(outputExtension("partials/rssfeed.njk")).toBe("html");
   });
 });
 

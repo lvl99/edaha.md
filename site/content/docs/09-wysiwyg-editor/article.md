@@ -24,7 +24,7 @@ On a wider window, **Focus mode** (the button at the top right of the title) hid
 
 ## Finding articles
 
-When the editor opens (or you choose **Home** or **edaha.md** at the top of the list), the welcome prompt in the middle offers to **Write a new article** or **edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Open article browser** opens the article browser.
+When the editor opens (or you choose **Home** or **edaha.md** at the top of the list), the welcome prompt in the middle offers to **Write a new article** or **Edit an existing one** (which opens the article browser), and shows the 6 most recently changed articles; pick one to open it. When there are more, **Show all** opens the article browser.
 
 The list of articles shows the 5 most recently changed articles of each type, including drafts. Pick an article to open it. When a type has more, **Show all** opens them all in the article browser.
 
@@ -41,8 +41,8 @@ Searches and the article browser include changes made outside the editor straigh
 2. Give it a **Title**.
 3. Write in the **Body**. The toolbar's buttons format your text. Each shows an icon; point at it to see its name:
    - **Bold**, **Italic**, **Underline**, **Strikethrough**, **Small** and **Big** text;
-   - **Link**, **Heading** and **Subheading**;
-   - **Bullet list**, **Numbered list**, **Quote** and **Code**;
+   - **Link**, **Main heading** (H1), **Heading** (H2) and **Subheading** (H3);
+   - **Bullet list**, **Numbered list**, **Quote**, **Code** and **Horizontal rule** (a line across the page, written as `---`, after the selection);
    - **Details**: a block readers can open and close;
    - **Image URL**, **Upload image**, **Choose file** and **Table**, with **Add row**, **Add column**, **Remove row**, **Remove column** and **Remove table** while you are in a table;
    - a button for each of the site's [embeds](/docs/07-embeds/), e.g. **YouTube video** or **MermaidJS diagram**: paste or write its content (e.g. a video's address; some embeds, e.g. a table of contents, can be added without any), and set its options, if it has any (e.g. the Bandcamp player's layout), below the content. Options show their defaults, and options that don't apply to the others' values are hidden. If the content or options aren't right for that kind of embed, the dialog says why before adding it. The body shows the embed as the website will; its **Edit** button (or its kind's toolbar button, while it is selected) changes it. An embed that isn't valid lists why in the body, and the website leaves it out. An embed's kind can't be changed: remove it and add another. One whose kind the site has no plugin for can only be removed, or changed in the **Markdown** tab;
@@ -50,7 +50,7 @@ Searches and the article browser include changes made outside the editor straigh
    - **Read more**: where the article's summary in lists ends.
 4. Choose **Save**.
 
-Selecting text also shows a small toolbar just above it, with **Bold**, **Italic**, **Underline**, **Strikethrough**, **Link**, **Heading 1**, **Heading 2** and **Heading 3**. It doesn't show for code or raw text, which can't be formatted. From the keyboard, press Tab to move from the selected text into it, and Escape to go back to the text. Underlined text is saved as HTML (`<u>`), as Markdown has none, and struck-through text as `~~text~~`. The article's title is its page's main heading, so use **Heading 1** in the body sparingly.
+Selecting text also shows a small toolbar just above it, with **Bold**, **Italic**, **Underline**, **Strikethrough**, **Link**, **Heading 1**, **Heading 2** and **Heading 3**. It doesn't show for code or raw text, which can't be formatted. From the keyboard, press Tab to move from the selected text into it, and Escape to go back to the text. Underlined text is saved as HTML (`<u>`), as Markdown has none, and struck-through text as `~~text~~`. The article's title is its page's main heading, so use **Heading 1** in the body sparingly. Each heading shows its ID after it (e.g. `#intro`), as your website gives it; choose it to copy the link to the heading, e.g. for a link elsewhere in the article.
 
 **Upload image** saves the image where your website's [`files.uploadTo`](/docs/03-configuration/#files) says: into the article's folder (which needs the article to be saved first), or into the shared files folder (at any time). See [Where uploads go](#where-uploads-go).
 
@@ -72,13 +72,13 @@ What the settings do:
 | **Excerpt**          | A summary for lists. Left empty, the text before **Read more** (or the article's start) is used. |
 | **Thumbnail**        | An image shown in lists.                                                                         |
 
-The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, uploaded with **Upload file**, chosen with **Choose existing file…**, or linked by address. Uploads into the article's folder need the article to be saved first. The thumbnail can also be chosen with **Choose existing file…**.
+The form also has the **Author** (name, email address and homepage), **Tags**, and **Attachments**: files to download, chosen or uploaded with **Choose or upload file**, or linked by address. The thumbnail is chosen or uploaded the same way. Uploads into the article's folder need the article to be saved first.
 
 Changing an article's type or slug moves it, with all its files.
 
 ## Custom settings
 
-If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields upload where uploads go (see [Where uploads go](#where-uploads-go)), or choose an existing file with **Choose existing file…**.
+If your website defines [custom settings](/docs/03-configuration/#metadata), such as a featured image or a rating, the ones the article's type uses are in the groups your website puts them in, or in **Custom**. Lists have **Add** and **Delete** buttons, and file fields are set with **Choose or upload file**, which opens the file browser to choose a file or upload one where uploads go (see [Where uploads go](#where-uploads-go)).
 
 When you leave a field, the editor checks its value. A problem shows above the field, and a message says some values aren't valid. The article can't be saved until they are fixed. Settings the article's type doesn't use, or that nobody defined (e.g. after a custom setting was removed from the config file), are listed in **Custom**, marked ⚠️. They are kept in the article unless you choose **Remove** beside one and save.
 
@@ -108,7 +108,7 @@ Each file has these buttons:
 
 Moving a file changes every article that uses it: the article it moves into refers to it by its name, and the others by its new address on your website (keeping the website's full address, or the shared files' `files.url`, where they used one).
 
-When you choose an existing file for an article, the file browser opens as **Choose a file**, with a **Choose** button beside each file; fields that only take images show images first. A file in the article's own folder is referred to by its name, and any other file by its address on your website.
+When you choose a file for an article (e.g. with a file field's **Choose or upload file**), the file browser opens as **Choose a file**, with a **Choose** button beside each file; fields that only take images show images first. **Upload file** uploads a new file there, to then choose it. A file in the article's own folder is referred to by its name, and any other file by its address on your website.
 
 The editor finds a file's uses in article bodies, thumbnails, attachments and custom settings: by its name in its own article, and by its address in any article.
 

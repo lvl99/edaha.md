@@ -8,6 +8,7 @@ import {
   checkEmbedPlugins,
   EMBED_PAGE_PARTS,
   EmbedResolver,
+  encodeEmbed,
   htmlHeadings,
   isEmbedPlugin,
   loadPlugins,
@@ -254,6 +255,20 @@ describe("EmbedResolver", () => {
     );
   });
 
+  it("should render placeholders in JSON files as JSON text, so the JSON stays valid", async () => {
+    const { resolver } = setup();
+    const placeholder = resolver.place("plain", "<b>hi</b>", "news/a");
+    const json = await resolver.renderPage(
+      JSON.stringify({ body: `<p>Hi</p>${placeholder}` }),
+      "/news/a/index.json",
+      "build",
+      "json",
+    );
+    expect(JSON.parse(json)).toEqual({
+      body: '<p>Hi</p><div class="embed embed-plain"><b>hi</b></div>',
+    });
+  });
+
   it("should render for the editor with the editor's renderers, falling back to the website's", async () => {
     const { resolver } = setup();
     expect(await renderBlock(resolver, "example", "hi", "editor")).toBe(
@@ -481,6 +496,19 @@ describe("EmbedResolver", () => {
     ).toBe('<div class="embed embed-plain">x</div>');
     expect(logger.warn).toHaveBeenCalledWith(
       "/news/: Plain embed's renderHead failed (offline); left out",
+    );
+  });
+});
+
+describe("encodeEmbed", () => {
+  it("should escape HTML for escaped placeholders, write it as JSON text in JSON files, and leave it otherwise", () => {
+    expect(encodeEmbed('<a href="/">', "<", "html")).toBe('<a href="/">');
+    expect(encodeEmbed('<a href="/">', "<", "txt")).toBe('<a href="/">');
+    expect(encodeEmbed('<a href="/">', "&lt;", "xml")).toBe(
+      "&lt;a href=&quot;/&quot;&gt;",
+    );
+    expect(encodeEmbed('<a href="/">\n', "<", "JSON")).toBe(
+      '<a href=\\"/\\">\\n',
     );
   });
 });

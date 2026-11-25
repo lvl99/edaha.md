@@ -334,6 +334,23 @@ export const insertEmbed = (edit: TextEdit, embed: EmbedValue): TextEdit =>
     embedBlock(embed.key, embed.content, embed.options),
   );
 
+/** A horizontal rule (`<hr>`), as the editor writes it */
+export const HORIZONTAL_RULE = "---";
+
+/**
+ * Insert a horizontal rule on its own line after the selection (keeping the selected text), the cursor after it.
+ *
+ * @example
+ * insertHorizontalRule({ value: "Intro", start: 0, end: 5 }); // { value: "Intro\n\n---", start: 10, end: 10 }
+ */
+export const insertHorizontalRule = (edit: TextEdit): TextEdit =>
+  insertBlock(
+    { ...edit, start: edit.end },
+    HORIZONTAL_RULE,
+    HORIZONTAL_RULE.length,
+    HORIZONTAL_RULE.length,
+  );
+
 /**
  * Remove the selected read more break, or insert one on its own line.
  *

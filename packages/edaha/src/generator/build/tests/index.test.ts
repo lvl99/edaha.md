@@ -1,6 +1,7 @@
 import {
   cp,
   mkdir,
+  readdir,
   mkdtemp,
   readFile,
   rename,
@@ -15,6 +16,7 @@ import { parse } from "yaml";
 import { THEME_DIR } from "../../../theme";
 import {
   buildSite,
+  foundOn,
   DEFAULT_SITE_URL,
   resolveOutputDir,
   resolvePublishDir,
@@ -598,7 +600,7 @@ describe("buildSite", () => {
     await writeSiteFile(
       space,
       "templates/article/single.json.njk",
-      '{"title": {{ article.title | json | safe }}, "url": "{{ article.url }}"}',
+      '{"title": {{ article.title | json }}, "url": "{{ article.url }}"}',
     );
     await writeSiteFile(
       space,
@@ -634,6 +636,51 @@ describe("buildSite", () => {
     });
     expect(JSON.parse(await read("news/feed.json"))).toHaveProperty("articles");
     expect(await read("news/first/index.html")).toContain("<title>");
+    // The theme's pages link to their other outputs, and lists to their feeds
+    expect(await read("news/first/index.html")).toContain(
+      '<link rel="alternate" type="application/json" href="/news/first/index.json" />',
+    );
+    const list = await read("news/index.html");
+    expect(list).toContain(
+      '<link rel="alternate" type="application/json" href="/news/index.json" />',
+    );
+    expect(list).toContain(
+      '<link rel="alternate" type="application/json" title="Articles | Test News" href="/news/feed.json" />',
+    );
+    expect(list).toContain(
+      '<link rel="alternate" type="application/rss+xml" title="Articles | Test News" href="/news/feed.xml" />',
+    );
+  });
+
+  it("should give templates the other outputs of articles and list pages, and lists' feeds", async () => {
+    const space = await workspace();
+    await writeSiteFile(
+      space,
+      "templates/article/single.json.njk",
+      "{{ article.alternates | json }}",
+    );
+    await writeSiteFile(
+      space,
+      "templates/article/list.json.njk",
+      "{{ list.alternates | json }}",
+    );
+    await writeSiteFile(
+      space,
+      "templates/layouts/rssfeed.txt.njk",
+      "{{ list.feeds | json }}",
+    );
+    const { read } = await build(space, "https://example.com");
+    const json = { extension: "json", type: "application/json" };
+    expect(JSON.parse(await read("news/first/index.json"))).toEqual([
+      { ...json, url: "/news/first/index.json" },
+    ]);
+    expect(JSON.parse(await read("news/index.json"))).toEqual([
+      { ...json, url: "/news/index.json" },
+    ]);
+    expect(JSON.parse(await read("news/feed.txt"))).toEqual([
+      { extension: "txt", type: "text/plain", url: "/news/feed.txt" },
+      { extension: "xml", type: "application/rss+xml", url: "/news/feed.xml" },
+    ]);
   });
 
   it("should link lists to the feed's only output, whatever its extension", async () => {
@@ -969,6 +1016,11 @@ describe("buildSite", () => {
       "article/embeds",
       `<!--yaml\ndate: 2026-10-19T09:54:00Z\n-->\n# Embeds\n\nIntro <!-- embed:media -->https://media.example.com/v/1<!-- /embed:media -->\n\n<!-- readmore -->\n\n<!-- embed:quote -->Hello<!-- /embed:quote -->\n\n<!-- embed:quote -->Bad<!-- /embed:quote -->\n\nAfter the bad quote\n\n<!-- embed:media -->\n<!--yaml\nsize: large\n-->\nhttps://media.example.com/v/2\n<!-- /embed:media -->\n`,
     );
+    await writeSiteFile(
+      space,
+      "templates/article/single.json.njk",
+      '{"body": {{ article.bodyHtml | json }}, "head": "{% embedHead %}"}',
+    );
     const quote = {
       key: "quote",
       name: "Quote",
@@ -1026,6 +1078,15 @@ describe("buildSite", () => {
     expect(feed).toContain(
       "&lt;iframe src=&quot;https://media.example.com/v/1&quot; class=&quot;small&quot;&gt;",
     );
+    // JSON files have embeds as JSON text, and no head or foot HTML
+    const json = JSON.parse(await read("news/embeds/index.json")) as {
+      body: string;
+      head: string;
+    };
+    expect(json.body).toContain(
+      '<iframe src="https://media.example.com/v/2" class="large"></iframe>',
+    );
+    expect(json.head).toBe("");
   });
 
   it("should reject invalid type and article folder names", async () => {
@@ -1153,5 +1214,73 @@ describe("buildSite authors", () => {
     expect(
       result.files.filter((file) => file.startsWith("page/authors/")),
     ).toEqual(["page/authors/zoe/feed.xml", "page/authors/zoe/index.html"]);
+  });
+});
+
+describe("foundOn", () => {
+  it("should name the first page and count the others", () => {
+    expect(foundOn(["/a/"])).toBe("on /a/");
+    expect(foundOn(["/a/", "/b/"])).toBe("on /a/ and 1 other page");
+    expect(foundOn(["/a/", "/b/", "/c/"])).toBe("on /a/ and 2 other pages");
+  });
+});
+
+describe("buildSite dry run", () => {
+  it("should render every page without writing anything, collecting each template's render problems once", async () => {
+    const space = await workspace();
+    await writeSiteFile(
+      space,
+      "templates/partials/broken.njk",
+      "Fine\n  {{ nope() }}",
+    );
+    await writeSiteFile(
+      space,
+      "templates/article/single.njk",
+      '{% include "partials/broken.njk" %}',
+    );
+    await writeSiteFile(
+      space,
+      "templates/article/list.json.njk",
+      "{{ list.name | json }}",
+    );
+    // An output folder already there is left as it is
+    const outputDir = join(space.siteDir, "build");
+    await mkdir(outputDir, { recursive: true });
+    await writeFile(join(outputDir, "keep.txt"), "kept");
+    const options = {
+      siteDir: space.siteDir,
+      siteUrl: "https://example.com",
+      logger: { warn: vi.fn() },
+      fetch: vi.fn() as unknown as typeof globalThis.fetch,
+    };
+    const result = await buildSite({ ...options, dryRun: true });
+    expect(await readdir(outputDir)).toEqual(["keep.txt"]);
+    expect(result.files).toContain("news/index.json");
+    expect(result.files).toContain("news/first/index.html");
+    expect(result.problems).toEqual([
+      {
+        file: join(space.siteDir, "templates/partials/broken.njk"),
+        line: 2,
+        column: 10,
+        message:
+          "Unable to call `nope`, which is undefined or falsey (on /news/first/ and 2 other pages)",
+      },
+    ]);
+    // Building stops at it
+    await expect(buildSite(options)).rejects.toThrow("Unable to call `nope`");
+  });
+
+  it("should give no problems for templates that render", async () => {
+    const space = await workspace();
+    const result = await buildSite({
+      siteDir: space.siteDir,
+      siteUrl: "https://example.com",
+      logger: { warn: vi.fn() },
+      fetch: vi.fn() as unknown as typeof globalThis.fetch,
+      dryRun: true,
+    });
+    expect(result.problems).toEqual([]);
+    // Pages are listed, but static and shared files aren't copied
+    expect(result.files).not.toContain("base.css");
   });
 });

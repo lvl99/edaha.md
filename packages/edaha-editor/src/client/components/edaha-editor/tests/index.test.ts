@@ -148,7 +148,7 @@ describe("edaha-editor", () => {
         .querySelector(".welcome-prompt-box")!
         .firstElementChild!.textContent?.replace(/\s+/g, " ")
         .trim(),
-    ).toBe("Write a new article or edit an existing one...");
+    ).toBe("Write a new article or Edit an existing one");
     const list = find(welcome, ".welcome-prompt-list");
     expect(list.getAttribute("aria-label")).toBe("Recently changed articles");
     expect(
@@ -158,12 +158,21 @@ describe("edaha-editor", () => {
       ]),
     ).toEqual([["Hello", "Article · changed 2026-11-01"]]);
     // All the articles are shown, so there's no link to the browser
-    expect(welcome.querySelector(".welcome-prompt-browse")).toBeNull();
+    expect(welcome.querySelector(".btn-browse")).toBeNull();
     expect(
       [...welcome.querySelectorAll(".welcome-prompt-message button")].map((b) =>
         b.textContent?.trim(),
       ),
-    ).toEqual(["Write a new article", "edit an existing one"]);
+    ).toEqual(["Write a new article", "Edit an existing one"]);
+    // Large buttons, each with an icon on its left
+    expect(
+      [...welcome.querySelectorAll(".welcome-prompt-message button")].map(
+        (b) => [b.classList.contains("btn-xl"), b.firstElementChild?.className],
+      ),
+    ).toEqual([
+      [true, "icon icon-post_add"],
+      [true, "icon icon-edit_document"],
+    ]);
 
     find<HTMLAnchorElement>(list, "a").click();
     await settle(element);
@@ -181,15 +190,26 @@ describe("edaha-editor", () => {
     expect(
       element.querySelectorAll(".welcome-prompt-box > .welcome-prompt-list li"),
     ).toHaveLength(2);
-    button(element, "Open article browser").click();
+    // Like the article list's "Show all", with the article browser's icon
+    const showAll = find<HTMLButtonElement>(
+      element,
+      ".welcome-prompt-box > .btn-show-all",
+    );
+    expect(showAll.textContent?.replace(/\s+/g, " ").trim()).toBe(
+      "Show all articles (9)",
+    );
+    expect(showAll.firstElementChild!.classList).toContain(
+      "icon-manage_search",
+    );
+    showAll.click();
     expect(show).toHaveBeenCalledWith({});
   });
 
-  it('should start a new article from "Write a new article", and open the article browser from "edit an existing one"', async () => {
+  it('should start a new article from "Write a new article", and open the article browser from "Edit an existing one"', async () => {
     const { element } = await setup();
     const browser = find<EdahaArticleBrowser>(element, "edaha-article-browser");
     const show = vi.spyOn(browser, "show").mockResolvedValue();
-    button(element, "edit an existing one").click();
+    button(element, "Edit an existing one").click();
     expect(show).toHaveBeenCalledWith({});
     button(element, "Write a new article").click();
     await settle(element);
@@ -248,9 +268,7 @@ describe("edaha-editor", () => {
     element.editing = false;
     await element.refresh();
     await element.updateComplete;
-    expect(
-      element.querySelector(".welcome-attention .welcome-prompt-browse"),
-    ).toBeNull();
+    expect(element.querySelector(".welcome-attention .btn-browse")).toBeNull();
   });
 
   it("should welcome with the message alone when there are no articles", async () => {
@@ -265,7 +283,7 @@ describe("edaha-editor", () => {
       find(element, ".welcome-prompt-message")
         .textContent?.replace(/\s+/g, " ")
         .trim(),
-    ).toBe("Write a new article or edit an existing one...");
+    ).toBe("Write a new article or Edit an existing one");
   });
 
   it("should label the groups, linking to all of a type's articles when it has more", async () => {
@@ -277,7 +295,7 @@ describe("edaha-editor", () => {
       groups.map((group) => [
         group.querySelector("h2")!.textContent,
         group
-          .querySelector(".show-all")
+          .querySelector(".btn-show-all")
           ?.textContent?.replace(/\s+/g, " ")
           .trim(),
       ]),
@@ -285,7 +303,11 @@ describe("edaha-editor", () => {
       ["Articles", "Show all Articles (7)"],
       ["page", undefined],
     ]);
-    (groups[0]!.querySelector(".show-all") as HTMLButtonElement).click();
+    // With the article browser's icon on its left
+    expect(
+      groups[0]!.querySelector(".btn-show-all")!.firstElementChild!.classList,
+    ).toContain("icon-manage_search");
+    (groups[0]!.querySelector(".btn-show-all") as HTMLButtonElement).click();
     expect(show).toHaveBeenCalledWith({ type: "article" });
     expect(browser.types).toBe(element.types);
   });
@@ -335,7 +357,7 @@ describe("edaha-editor", () => {
     expect(
       element.querySelector('.search-results [role="status"]'),
     ).not.toBeNull();
-    expect(element.querySelector(".search-results .show-all")).toBeNull();
+    expect(element.querySelector(".search-results .btn-show-all")).toBeNull();
     expect(element.querySelector("[data-type]")).toBeNull();
 
     // More matches than shown link to them all in the article browser
@@ -703,8 +725,11 @@ describe("edaha-editor unsaved changes", () => {
     expect(dialog.getAttribute("role")).toBe("alertdialog");
     expect(find(dialog, "h2").textContent).toBe(UNSAVED_DIALOG.heading);
     expect(find(dialog, "p").textContent).toBe(UNSAVED_DIALOG.message);
+    // Its buttons are grouped together
     expect(
-      [...dialog.querySelectorAll("button")].map((b) => b.textContent?.trim()),
+      [...dialog.querySelectorAll(".dialog-actions > button")].map((b) =>
+        b.textContent?.trim(),
+      ),
     ).toEqual(["Save", "Don't save", "Cancel"]);
     await answer(element, "cancel");
     await opening;
@@ -836,7 +861,7 @@ describe("edaha-editor theme switcher", () => {
 
   it("should switch the theme and say which theme it switches to next", async () => {
     const { element } = await setup();
-    const switcher = find<HTMLButtonElement>(element, ".theme-switcher");
+    const switcher = find<HTMLButtonElement>(element, ".btn-theme-switcher");
     expect(switcher.title).toBe("Switch to the dark theme");
     switcher.click();
     await settle(element);
@@ -849,7 +874,7 @@ describe("edaha-editor theme switcher", () => {
     document.documentElement.dataset.theme = "dark";
     const { element } = await setup(undefined, ["hide-theme-switcher"]);
     expect(element.hideThemeSwitcher).toBe(true);
-    expect(element.querySelector(".theme-switcher")).toBeNull();
+    expect(element.querySelector(".btn-theme-switcher")).toBeNull();
     expect(document.documentElement.dataset.theme).toBeUndefined();
   });
 });
@@ -913,7 +938,7 @@ describe("edaha-editor article list on narrow screens", () => {
 
   it("should open the list from the menu button and close it, moving focus between them", async () => {
     const { element } = await setup();
-    const toggle = find<HTMLButtonElement>(element, ".nav-toggle");
+    const toggle = find<HTMLButtonElement>(element, ".btn-nav-toggle");
     const nav = find(element, "nav");
     const composer = find(element, ".edaha-editor-composer");
     expect(toggle.getAttribute("aria-controls")).toBe(nav.id);
@@ -927,7 +952,7 @@ describe("edaha-editor article list on narrow screens", () => {
     expect(nav.classList.contains("open")).toBe(true);
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(composer.hasAttribute("inert")).toBe(true);
-    expect(document.activeElement).toBe(find(element, ".nav-close"));
+    expect(document.activeElement).toBe(find(element, ".btn-nav-close"));
 
     // Escape, the close button and the backdrop close it
     press("Tab");

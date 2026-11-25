@@ -7,6 +7,13 @@ export {
   type BuildResult,
 } from "./generator/build/index.ts";
 export {
+  checkSite,
+  checkTemplates,
+  formatProblem,
+  type CheckOptions,
+  type TemplateProblem,
+} from "./generator/check/index.ts";
+export {
   parseConfig,
   type ArticleTypeConfig,
   type EdahaConfig,
