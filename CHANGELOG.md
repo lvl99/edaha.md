@@ -2,6 +2,23 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
+## @lvl99dotcom/edaha.md 0.7.1 (2026-11-25)
+
+Build a site into another folder, e.g. to look at it before publishing.
+
+### Added
+
+- `buildSite` takes an `outputDir` option, and `edaha build` takes `--output-dir <folder>`, to build into another folder instead of the config file's `outputDir`: any folder apart from the site's source folders, and not the site folder or a folder it's in. Nothing is copied into `publishDir`, and shared files hosted elsewhere (`files.url`) aren't written. `resolveBuildDir` is exported.
+- Docs: [building into another folder](https://edaha.md/docs/08-build-and-deploy/#building-into-another-folder), and `buildSite`'s `outputDir` option in the API docs.
+
+### Changed
+
+- Nothing.
+
+### Fixed
+
+- Nothing.
+
 ## 0.7.0 (2026-11-25)
 
 Templates escape values only for HTML and XML, pages link their other outputs and feeds, `edaha check` finds template problems without building, and a round of editor improvements.
