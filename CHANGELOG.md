@@ -2,6 +2,24 @@
 
 edaha.md follows [semantic versioning](https://semver.org).
 
+## @lvl99dotcom/edaha-editor 0.7.1 (2026-11-26)
+
+The editor works in apps with a strict content security policy and allows their pages to show its previews.
+
+### Added
+
+- `startEditor` takes `frameAncestors`, naming other pages that may show its preview pages and embed frames.
+- `EditorApi.validateMetadata` and `POST /api/metadata-validations` check custom metadata values on the editor's server.
+- Docs: [showing the editor in an app](https://edaha.md/docs/10-api/#showing-the-editor-in-your-own-app), including its content security policy and `frameAncestors`.
+
+### Changed
+
+- Nothing.
+
+### Fixed
+
+- The editor checks custom metadata on its server when the page cannot compile the checks, and says why when checks cannot be made.
+
 ## @lvl99dotcom/edaha.md 0.7.1 (2026-11-25)
 
 Build a site into another folder, e.g. to look at it before publishing.
