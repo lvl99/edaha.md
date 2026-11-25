@@ -102,6 +102,13 @@ export interface BuildOptions {
    * the build. Default: false
    */
   dryRun?: boolean | undefined;
+  /**
+   * Build into this folder instead of the config file's `outputDir`, e.g. a temporary folder to look at the website
+   * before publishing: any folder (relative to the current folder) apart from the site's source folders, and not the
+   * site folder or a folder it's in, as it is emptied first. Nothing is copied into `publishDir`, and shared files hosted
+   * elsewhere (`files.url`) aren't written. Default: the config file's `outputDir`
+   */
+  outputDir?: string | undefined;
 }
 
 /** What a build produced */
@@ -206,6 +213,33 @@ export const resolveOutputDir = (
   if (sources.some((source) => overlaps(join(siteDir, source), dir)))
     throw new Error(
       `"${setting}" must be apart from ${sources.join(", ")}, got "${folder}"`,
+    );
+  return dir;
+};
+
+/**
+ * Resolve the `outputDir` build option: any folder apart from the site's source folders, and not the site folder or a
+ * folder it's in, as it is emptied on every build.
+ *
+ * @param sources - the source folders, relative to the site folder
+ *
+ * @example
+ * resolveBuildDir("/tmp/site-preview", "/site", ["articles", "templates", "static", "files"]); // "/tmp/site-preview"
+ * resolveBuildDir("/", "/site", ["articles"]); // throws
+ */
+export const resolveBuildDir = (
+  folder: string,
+  siteDir: string,
+  sources: readonly string[],
+): string => {
+  const dir = resolve(folder);
+  if (!relative(dir, resolve(siteDir)).startsWith(".."))
+    throw new Error(
+      `The "outputDir" option must not be the site folder or a folder it's in, got "${folder}"`,
+    );
+  if (sources.some((source) => overlaps(join(siteDir, source), dir)))
+    throw new Error(
+      `The "outputDir" option must be apart from ${sources.join(", ")}, got "${folder}"`,
     );
   return dir;
 };
@@ -388,7 +422,7 @@ export const withPlugins = (
  * RSS feed, and its tag and author lists, and copy the static files (the theme's, overridden by the site's `static/`)
  * as they are. Files are written to `outputDir` (emptied first). If `publishDir` is set, they are then copied into it
  * (the website's root): the files published by the previous build are removed from it first, and the build stops if a
- * file is already there.
+ * file is already there. With the `outputDir` option, files are written there instead, and not published.
  *
  * @example
  * await buildSite({ siteDir: "my-site", siteUrl: "https://example.com" });
@@ -422,12 +456,15 @@ export const buildSite = async (
     config.staticDir,
     config.files.dir,
   ];
-  const outputDir = checkConfig(() =>
-    resolveOutputDir(siteDir, config.outputDir, sources),
-  );
+  // A build into another folder (the `outputDir` option) is to look at, so it isn't published
+  const elsewhere = options.outputDir !== undefined;
+  const outputDir = elsewhere
+    ? resolveBuildDir(options.outputDir as string, siteDir, sources)
+    : checkConfig(() => resolveOutputDir(siteDir, config.outputDir, sources));
   // Shared files hosted elsewhere are built into their own folder, to upload there
+  const hosted = config.files.url !== undefined;
   const filesOutputDir =
-    config.files.url === undefined
+    !hosted || elsewhere
       ? undefined
       : checkConfig(() =>
           resolveOutputDir(
@@ -438,7 +475,7 @@ export const buildSite = async (
           ),
         );
   const publishDir =
-    config.publishDir === undefined
+    config.publishDir === undefined || elsewhere
       ? undefined
       : checkConfig(() =>
           resolvePublishDir(siteDir, config.publishDir as string),
@@ -474,7 +511,7 @@ export const buildSite = async (
   const sharedFilesDir = join(siteDir, config.files.dir);
   const sharedFileList = await listFiles(sharedFilesDir);
   const reservedPaths =
-    sharedFileList.length && !filesOutputDir
+    sharedFileList.length && !hosted
       ? [...config.reservedPaths, config.files.path.split("/")[0] as string]
       : config.reservedPaths;
   checkConfig(() => checkTypePaths(config.path, typeConfigs, reservedPaths));
@@ -711,13 +748,15 @@ export const buildSite = async (
   }
 
   // Shared files: at their website path, beside the articles and static files, or in their own folder when hosted
-  // elsewhere
+  // elsewhere (not written in a build into another folder)
   if (filesOutputDir)
     await rm(filesOutputDir, { recursive: true, force: true });
-  const sharedOutput = filesOutputDir ?? join(outputDir, config.files.path);
-  for (const file of sharedFileList) {
-    const target = join(sharedOutput, file);
-    if (!filesOutputDir && (await exists(target)))
+  const sharedOutput = hosted
+    ? filesOutputDir
+    : join(outputDir, config.files.path);
+  for (const file of sharedOutput ? sharedFileList : []) {
+    const target = join(sharedOutput as string, file);
+    if (!hosted && (await exists(target)))
       throw new Error(
         `${config.files.dir}/${file} has the same path as an article's or a static file; rename one of them`,
       );

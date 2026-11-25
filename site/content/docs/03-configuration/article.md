@@ -218,6 +218,8 @@ The folder the website is built into, relative to the site folder. It is **empti
 - **Accepted values:** a folder inside the site folder, apart from the articles, templates, static files and shared files folders.
 - **Default:** `build`
 
+To build somewhere else once, e.g. to look at the website before publishing it, use `edaha build --output-dir <folder>` (see [Build & deploy](/docs/08-build-and-deploy/#building-into-another-folder)).
+
 ```yaml
 outputDir: build
 ```
@@ -563,6 +565,7 @@ Builds the website into `outputDir`, and copies it into `publishDir` if that is 
 | `-c`, `--config <file>` | The config file. Default: the first one found (see [Where it is found](#where-it-is-found)). |
 | `--dir <folder>`        | The folder to look for a config file in. Default: the current folder.                        |
 | `--site-url <url>`      | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl`.                  |
+| `--output-dir <folder>` | Build into this folder instead of `outputDir`, without copying into `publishDir`.            |
 
 ### `edaha check`
 

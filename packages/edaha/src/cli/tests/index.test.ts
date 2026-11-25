@@ -129,9 +129,28 @@ describe("runCli", () => {
       configFile: undefined,
       siteUrl: "https://example.com",
       logger: { warn: ctx.error },
+      outputDir: undefined,
     });
     expect(ctx.log).toHaveBeenCalledWith(
       "Built 0 articles (1 files) into /site/dist and copied them into /app/dist",
+    );
+  });
+
+  it("should build into another folder with --output-dir", async () => {
+    const ctx = context({
+      build: vi.fn(async () => ({
+        outputDir: "/tmp/preview",
+        publishDir: undefined,
+        articles: [],
+        files: [],
+      })),
+    });
+    expect(await runCli(["build", "--output-dir", "../preview"], ctx)).toBe(0);
+    expect(ctx.build).toHaveBeenCalledWith(
+      expect.objectContaining({ outputDir: "/preview" }),
+    );
+    expect(ctx.log).toHaveBeenCalledWith(
+      "Built 0 articles (0 files) into /tmp/preview",
     );
   });
 

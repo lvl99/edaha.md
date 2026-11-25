@@ -110,6 +110,20 @@ A site's template can build on the theme's version of itself with `{% extends "@
 | `logger`     | `{ warn }`      | Where warnings go, e.g. about articles with problems.                                                                                                 | `console`                                                                                               |
 | `fetch`      | Function        | Fetches data for embeds that need it, e.g. Bandcamp's.                                                                                                | The global `fetch`                                                                                      |
 | `dryRun`     | Boolean         | Render every page without writing anything, and report pages that can't be rendered in `problems` instead of stopping (see below).                    | `false`                                                                                                 |
+| `outputDir`  | String          | Build into this folder instead, e.g. a temporary folder to look at the website before publishing. See below.                                          | The config file's [`outputDir`](/docs/03-configuration/#outputdir)                                      |
+
+With `outputDir`, the website is built into that folder: any folder apart from the site's source folders (the articles, templates, static files and shared files folders), and not the site folder or a folder it's in, as it is emptied first. A relative folder is relative to the current folder. Nothing is copied into `publishDir`, and shared files hosted elsewhere (`files.url`) aren't written, so the site's own build and its published copy stay as they are:
+
+```js
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+const preview = await buildSite({
+  siteDir: "my-site",
+  outputDir: join(tmpdir(), "my-site-preview"),
+});
+// Serve preview.outputDir to look at the website
+```
 
 `buildSite` resolves with:
 
