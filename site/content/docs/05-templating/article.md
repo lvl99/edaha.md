@@ -269,7 +269,20 @@ templates/news/list.njk:1:4 Template "layouts/page.njk" not found
 Found 3 problems in the templates
 ```
 
-It finds syntax mistakes and unknown tags, unknown filters, templates named in `extends`, `include` and `import` that don't exist, missing required templates, and two templates in one folder that output the same type of file. It exits with code 1 when there are problems, so it can run before a build, e.g. in CI. It can't check what only shows when a page is rendered, such as a misspelt variable, or templates named in variables. It takes the same `--config` and `--dir` options as `edaha build`.
+It finds syntax mistakes and unknown tags, unknown filters, templates named in `extends`, `include` and `import` that don't exist, missing required templates, and two templates in one folder that output the same type of file. It exits with code 1 when there are problems, so it can run before a build, e.g. in CI. It takes the same `--config` and `--dir` options as `edaha build`.
+
+Some mistakes only show when a page is rendered, such as calling something that isn't a function, or a template named in a variable that doesn't exist. Add `--render` to also render every page as the build would, without writing anything. Each problem is listed once, in the template it is in (e.g. an included partial), with the first page it was found on:
+
+```sh
+npx edaha check --render
+```
+
+```
+templates/partials/byline.njk:3:15 Unable to call `formatName`, which is undefined or falsey (on /news/hello/ and 11 other pages)
+Found 1 problem in the templates
+```
+
+Pages are only rendered once the templates have no problems of the first kind. A misspelt variable (e.g. `{{ artcle.title }}`) isn't a problem to Nunjucks, which writes nothing for it, so it isn't found. `--render` takes `--site-url` too, like `edaha build`.
 
 ## Examples
 

@@ -109,6 +109,7 @@ A site's template can build on the theme's version of itself with `{% extends "@
 | `plugins`    | EmbedPlugin\[\] | [Embed plugins](/docs/07-embeds/) added after the config file's `plugins`. One with the same key as the config file's is left out.                    | None                                                                                                    |
 | `logger`     | `{ warn }`      | Where warnings go, e.g. about articles with problems.                                                                                                 | `console`                                                                                               |
 | `fetch`      | Function        | Fetches data for embeds that need it, e.g. Bandcamp's.                                                                                                | The global `fetch`                                                                                      |
+| `dryRun`     | Boolean         | Render every page without writing anything, and report pages that can't be rendered in `problems` instead of stopping (see below).                    | `false`                                                                                                 |
 
 `buildSite` resolves with:
 
@@ -124,7 +125,7 @@ It rejects with an error that names the problem (and the config file or article)
 
 ### Checking templates
 
-`checkSite` checks a site's templates and its theme's as `edaha check` does (see [Templating](/docs/05-templating/#checking-templates)), without building. It takes `siteDir`, `configFile`, `themeDir` and `logger`, like `buildSite`, and resolves with a list of problems, empty when there are none. Each has the template's `file` (an absolute path), its `line` and `column` (from 1; not given for problems with a whole file) and a `message`. `checkTemplates` checks template folders you give it (the site's first, the theme's last), and `formatProblem` writes a problem as `file:line:column message`, with the file relative to a folder:
+`checkSite` checks a site's templates and its theme's as `edaha check` does (see [Templating](/docs/05-templating/#checking-templates)), without building. It takes `siteDir`, `configFile`, `themeDir` and `logger`, like `buildSite`, and resolves with a list of problems, empty when there are none. Each has the template's `file` (an absolute path), its `line` and `column` (from 1; not given for problems with a whole file) and a `message`. `checkTemplates` checks template folders you give it (the site's first, the theme's last), and `formatProblem` writes a problem as `file:line:column message`, with the file relative to a folder. To also render every page, as `edaha check --render` does, call `buildSite` with `dryRun: true`: nothing is written (static and shared files aren't copied), `files` lists the pages it rendered, and `problems` lists each render problem once, in the template it is in, with the first page it was found on:
 
 <!-- embed:codehighlight -->
 

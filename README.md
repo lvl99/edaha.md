@@ -71,7 +71,7 @@ The build writes the website into `my-site/build`. The editor runs at [http://12
 
 ```sh
 edaha build    # Build the site into the config file's outputDir (and copy it into publishDir, if set)
-edaha check    # Check the site's and theme's templates for problems, by file and line, without building
+edaha check    # Check the site's and theme's templates for problems, by file and line, without building (--render: and render every page)
 edaha editor   # Run the local article editor (only reachable from this computer)
 ```
 
@@ -80,6 +80,7 @@ edaha editor   # Run the local article editor (only reachable from this computer
 | `-c`, `--config <file>` | all     | The config file. Default: the first one found (see [Config file](#config-file))      |
 | `--dir <folder>`        | all     | The folder to look for a config file in. Default: the current folder                 |
 | `--site-url <url>`      | build   | The website's absolute URL, for feeds. Default: `SITE_URL`, then `siteUrl` in config |
+| `--render`              | check   | Also render every page as the build would, without writing anything                  |
 | `--port <number>`       | editor  | The port to listen on. Default: 5180                                                 |
 | `-h`, `--help`          |         | Show help                                                                            |
 | `-v`, `--version`       |         | Show the version                                                                     |
@@ -174,7 +175,7 @@ Templates that output HTML or XML escape values for HTML; others (e.g. JSON) wri
 
 Within Nunjucks templates, names starting with `@theme/` always load the theme's file, so a template can override the theme's and still extend it: `{% extends "@theme/article/single.njk" %}`. A name can leave out the output extension (`@theme/layouts/rssfeed.njk` loads `layouts/rssfeed.xml.njk`), and names starting with `./` or `../` are relative to the template that names them.
 
-`edaha check` lists problems in the templates (syntax mistakes, unknown filters, templates that don't exist) by file and line, without building.
+`edaha check` lists problems in the templates (syntax mistakes, unknown filters, templates that don't exist) by file and line, without building. `edaha check --render` also renders every page in memory and lists the errors that only show when rendering.
 
 The `theme` setting uses another theme instead: a folder path starting with `.` (relative to the site folder) or an absolute path, or an installed theme package's name. A theme is a folder with `templates/`, `static/` and optionally an `edahatheme.yml` with its `name`, `description`, `version` and `authors` (packages use their `package.json`).
 

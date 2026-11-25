@@ -26,7 +26,7 @@ Built 12 articles (48 files) into /my-project/build
 
 Problems that would make a broken website stop the build with an error naming the file, e.g. an article without a date. Problems the website can live with are warnings, e.g. an embed that couldn't be rendered.
 
-To find mistakes in your templates before building, e.g. in CI, run `npx edaha check`: it lists each problem by file and line, and exits with an error when there are any (see [Checking templates](/docs/05-templating/#checking-templates)).
+To find mistakes in your templates before building, e.g. in CI, run `npx edaha check`: it lists each problem by file and line, and exits with an error when there are any. `npx edaha check --render` also renders every page, without writing anything, to find errors that only show then (see [Checking templates](/docs/05-templating/#checking-templates)).
 
 To add it to your project's scripts, in `package.json`:
 

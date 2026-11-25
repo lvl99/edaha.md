@@ -568,10 +568,12 @@ Builds the website into `outputDir`, and copies it into `publishDir` if that is 
 
 Checks your templates and the theme's for problems without building, and lists each one by file and line. See [Checking templates](/docs/05-templating/#checking-templates).
 
-| Option                  | Description                                                    |
-| ----------------------- | -------------------------------------------------------------- |
-| `-c`, `--config <file>` | The config file, as for `edaha build`.                         |
-| `--dir <folder>`        | The folder to look for a config file in, as for `edaha build`. |
+| Option                  | Description                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `-c`, `--config <file>` | The config file, as for `edaha build`.                                        |
+| `--dir <folder>`        | The folder to look for a config file in, as for `edaha build`.                |
+| `--render`              | Also render every page as the build would, without writing anything.          |
+| `--site-url <url>`      | With `--render`, the website's absolute URL, for feeds, as for `edaha build`. |
 
 ### `edaha editor`
 
