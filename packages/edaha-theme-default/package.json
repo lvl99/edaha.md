@@ -1,6 +1,6 @@
 {
   "name": "@lvl99dotcom/edaha-theme-default",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "edaha.md's default theme: neutral Nunjucks templates and a stylesheet.",
   "keywords": [
     "edaha.md",
