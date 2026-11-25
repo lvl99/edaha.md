@@ -40,6 +40,11 @@ export interface EditorServerOptions extends SiteConfigOptions {
   clientDir?: string;
   /** Fetches extra data for embeds (defaults to the global fetch) */
   fetch?: typeof fetch;
+  /**
+   * Other pages that may show the editor's preview pages and embed frames in frames: e.g. an app's page that shows
+   * `<edaha-editor>`, by its origin ("http://localhost:5173") or scheme ("file:"). Default: only the editor's own page
+   */
+  frameAncestors?: readonly string[];
   /** Embed plugins added after the config file's `plugins` (a key in both uses the config file's). Default: none */
   plugins?: readonly EmbedPlugin[];
   /**
@@ -150,6 +155,7 @@ const editorServerParts = async (
   const previewOrigin = previewOriginOf(editorUrl(port));
   const editorApp = createEditorApp(store, {
     allowedOrigins: [editorUrl(port)],
+    frameAncestors: options.frameAncestors,
     fetch: options.fetch,
     plugins: options.plugins,
     previewOrigin,

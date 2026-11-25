@@ -146,6 +146,26 @@ describe("createEditorServer", () => {
     expect((await app.request("http://127.0.0.1:5555/")).status).toBe(200);
   });
 
+  it("should let other pages given show previews in frames, besides the editor's", async () => {
+    const { siteDir, clientDir } = await setup();
+    const ancestors = async (frameAncestors?: string[]) => {
+      const app = await createEditorServer({
+        siteDir,
+        clientDir,
+        port: 5555,
+        frameAncestors,
+      });
+      const css = await app.request("http://localhost:5555/base.css");
+      return /frame-ancestors ([^;]*)/.exec(
+        css.headers.get("content-security-policy") ?? "",
+      )?.[1];
+    };
+    expect(await ancestors()).toBe("'self' http://127.0.0.1:5555");
+    expect(await ancestors(["http://localhost:5173", "file:"])).toBe(
+      "'self' http://127.0.0.1:5555 http://localhost:5173 file:",
+    );
+  });
+
   it("should allow changes from the default port's address when no port is given", async () => {
     const { siteDir, clientDir } = await setup();
     const app = await createEditorServer({ siteDir, clientDir });

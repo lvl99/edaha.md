@@ -134,6 +134,11 @@ export const articleQuery = (params: URLSearchParams): ArticleQuery => {
 export interface EditorAppOptions {
   /** Origins allowed to change articles, e.g. "http://127.0.0.1:5180" */
   allowedOrigins: readonly string[];
+  /**
+   * Other pages that may show preview pages and embed frames in frames, besides `allowedOrigins`: e.g. an app's page
+   * that shows `<edaha-editor>`, by its origin ("http://localhost:5173") or scheme ("file:"). Default: none
+   */
+  frameAncestors?: readonly string[] | undefined;
   /** Fetches extra data for embeds (defaults to the global fetch) */
   fetch?: typeof fetch | undefined;
   /** Embed plugins added after the config file's `plugins` (a key in both uses the config file's). Default: none */
@@ -231,10 +236,11 @@ const SOURCE_DIRECTIVES: Record<keyof EmbedSources, string> = {
  * of their own (`previewOrigin`), which the editor's API doesn't answer and whose changes it refuses, and are
  * sandboxed (`sandbox`, keeping their own origin, so embedded players such as Bandcamp's keep theirs) so they can't
  * send forms or navigate the editor page. Inside, they may run their own scripts and styles, and load from their own
- * address and the web addresses the embed plugins list in `sources`. Only the editor's pages may show them in frames.
+ * address and the web addresses the embed plugins list in `sources`. Only the editor's pages (and the other pages given)
+ * may show them in frames.
  *
  * @param self - the address they are served from, e.g. "http://localhost:5180"
- * @param ancestors - the editor's own addresses, which may show them in frames
+ * @param ancestors - the editor's own addresses, and any other pages (e.g. an app's), which may show them in frames
  * @example
  * previewCsp([youtube], "http://localhost:5180", ["http://127.0.0.1:5180"]); // "sandbox allow-scripts allow-same-origin ...; default-src http://localhost:5180; ...; frame-src https://www.youtube-nocookie.com; ..."
  */
@@ -399,6 +405,7 @@ export const createEditorApp = (
   store: ArticleStore,
   {
     allowedOrigins,
+    frameAncestors = [],
     fetch: fetchFn = (...args) => fetch(...args),
     plugins: givenPlugins = [],
     previewOrigin,
@@ -417,7 +424,10 @@ export const createEditorApp = (
 
   /** The Content Security Policy of preview pages and embed frames, allowing the plugins' sources */
   const csp = async (url: string) =>
-    previewCsp(await plugins(), new URL(url).origin, allowedOrigins);
+    previewCsp(await plugins(), new URL(url).origin, [
+      ...allowedOrigins,
+      ...frameAncestors,
+    ]);
 
   app.use(async (c, next) => {
     // The previews' own origin only shows previews, embed frames and their files: not the API
